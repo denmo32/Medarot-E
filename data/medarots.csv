@@ -1,0 +1,7 @@
+id,name,team,is_leader,draw_index,medal_id,head_id,r_arm_id,l_arm_id,legs_id
+P-01,メタビー,0,true,0,M-01,H-001,RA-001,LA-001,L-001
+P-02,ブルースドッグ,0,false,1,M-03,H-003,RA-003,LA-003,L-003
+P-03,シアンドッグ,0,false,2,M-05,H-005,RA-005,LA-005,L-005
+E-01,ロクショウ,1,true,0,M-02,H-002,RA-002,LA-002,L-002
+E-02,ブラックメイル,1,false,1,M-04,H-004,RA-004,LA-004,L-004
+E-03,ウォーバニット,1,false,2,M-06,H-006,RA-006,LA-006,L-006
