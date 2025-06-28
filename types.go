@@ -197,8 +197,8 @@ type Part struct {
 	Propulsion int
 	Mobility   int
 	Defense    int
-	
-	IsBroken   bool
+
+	IsBroken bool
 }
 type Medal struct {
 	ID         string
@@ -216,4 +216,3 @@ type infoPanelPartUI struct {
 	hpText       *widget.Text
 	hpBar        *widget.ProgressBar
 }
-

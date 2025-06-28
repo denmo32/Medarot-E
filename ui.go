@@ -1,9 +1,10 @@
 package main
 
 import (
-	"log"
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
+	"log"
 )
 
 // UI はゲームの全UI要素を管理する構造体
@@ -17,12 +18,13 @@ type UI struct {
 
 // NewUI はUIを構築し、管理構造体を返す
 func NewUI(game *Game) *UI {
+	// 修正適用済み: マップを初期化
 	ui := &UI{
-		// フィールドをここで初期化する
 		medarotInfoPanels: make(map[string]*infoPanelUI),
 	}
 
-	// --- UIの構築 ---
+	game.ui = ui // gameオブジェクトにUIインスタンスを早期に設定する
+
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
 	)
@@ -36,7 +38,6 @@ func NewUI(game *Game) *UI {
 	)
 	rootContainer.AddChild(mainUIContainer)
 
-	// チーム1の情報パネルのコンテナ
 	team1PanelContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewRowLayout(
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
@@ -44,23 +45,14 @@ func NewUI(game *Game) *UI {
 		)),
 		widget.ContainerOpts.WidgetOpts(
 			widget.WidgetOpts.MinSize(int(game.Config.UI.InfoPanel.BlockWidth), 0),
-			widget.WidgetOpts.LayoutData(widget.GridLayoutData{
-				HorizontalPosition: widget.GridLayoutPositionCenter,
-				VerticalPosition:   widget.GridLayoutPositionCenter,
-			}),
 		),
 	)
 	mainUIContainer.AddChild(team1PanelContainer)
 
-	// バトルフィールドウィジェット
 	ui.battlefieldWidget = NewBattlefieldWidget(game)
-	ui.battlefieldWidget.Container.GetWidget().LayoutData = widget.GridLayoutData{
-		HorizontalPosition: widget.GridLayoutPositionCenter,
-		VerticalPosition:   widget.GridLayoutPositionCenter,
-	}
+	ui.battlefieldWidget.Container.GetWidget().LayoutData = widget.GridLayoutData{}
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)
 
-	// チーム2の情報パネルのコンテナ
 	team2PanelContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewRowLayout(
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
@@ -68,25 +60,12 @@ func NewUI(game *Game) *UI {
 		)),
 		widget.ContainerOpts.WidgetOpts(
 			widget.WidgetOpts.MinSize(int(game.Config.UI.InfoPanel.BlockWidth), 0),
-			widget.WidgetOpts.LayoutData(widget.GridLayoutData{
-				HorizontalPosition: widget.GridLayoutPositionCenter,
-				VerticalPosition:   widget.GridLayoutPositionCenter,
-			}),
 		),
 	)
 	mainUIContainer.AddChild(team2PanelContainer)
 
 	// メダロット情報パネルを生成して配置
-	for _, m := range game.Medarots {
-		panelUI := createSingleMedarotInfoPanel(game, m)
-		// グローバル変数ではなく、UI構造体のフィールドに格納する
-		ui.medarotInfoPanels[m.ID] = panelUI
-		if m.Team == Team1 {
-			team1PanelContainer.AddChild(panelUI.rootContainer)
-		} else {
-			team2PanelContainer.AddChild(panelUI.rootContainer)
-		}
-	}
+	setupInfoPanels(game, team1PanelContainer, team2PanelContainer)
 
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
@@ -95,11 +74,11 @@ func NewUI(game *Game) *UI {
 }
 
 // ShowActionModal は行動選択モーダルを表示する
-func (u *UI) ShowActionModal(game *Game, actingMedarot *Medarot) {
+func (u *UI) ShowActionModal(game *Game, actingEntry *donburi.Entry) {
 	if u.actionModal != nil {
 		u.HideActionModal()
 	}
-	modal := createActionModalUI(game, actingMedarot)
+	modal := createActionModalUI(game, actingEntry)
 	if modal == nil {
 		game.State = StatePlaying
 		return

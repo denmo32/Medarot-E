@@ -3,13 +3,21 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"sort"
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
-func createSingleMedarotInfoPanel(game *Game, medarot *Medarot) *infoPanelUI {
+func createSingleMedarotInfoPanel(game *Game, entry *donburi.Entry) *infoPanelUI {
 	c := game.Config.UI
+	// 修正: ComponentType.Get を使用
+	settings := SettingsComponent.Get(entry)
+	// 修正: ComponentType.Get を使用
+	parts := PartsComponent.Get(entry).Map
 
 	panelContainer := widget.NewContainer(
 		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{50, 50, 70, 200})),
@@ -21,7 +29,6 @@ func createSingleMedarotInfoPanel(game *Game, medarot *Medarot) *infoPanelUI {
 		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.MinSize(int(c.InfoPanel.BlockWidth), 0)),
 	)
 
-	// 名前と状態
 	headerContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewGridLayout(
 			widget.GridLayoutOpts.Columns(2),
@@ -31,22 +38,21 @@ func createSingleMedarotInfoPanel(game *Game, medarot *Medarot) *infoPanelUI {
 	panelContainer.AddChild(headerContainer)
 
 	nameText := widget.NewText(
-		widget.TextOpts.Text(medarot.Name, game.MplusFont, c.Colors.White),
+		widget.TextOpts.Text(settings.Name, game.MplusFont, c.Colors.White),
 	)
 	headerContainer.AddChild(nameText)
 
 	stateText := widget.NewText(
-		widget.TextOpts.Text(string(medarot.State), game.MplusFont, c.Colors.Yellow),
+		widget.TextOpts.Text(string(StateIdle), game.MplusFont, c.Colors.Yellow),
 		widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{
 			HorizontalPosition: widget.GridLayoutPositionEnd,
 		})),
 	)
 	headerContainer.AddChild(stateText)
 
-	// パーツ情報
 	partSlots := make(map[PartSlotKey]*infoPanelPartUI)
 	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
-		part := medarot.GetPart(slotKey)
+		part := parts[slotKey]
 		partName := "---"
 		if part != nil {
 			partName = part.PartName
@@ -65,15 +71,12 @@ func createSingleMedarotInfoPanel(game *Game, medarot *Medarot) *infoPanelUI {
 		)
 		partContainer.AddChild(partNameText)
 
-		// [FIXED] ProgressBarの画像設定方法を修正しました
 		hpBar := widget.NewProgressBar(
 			widget.ProgressBarOpts.WidgetOpts(widget.WidgetOpts.MinSize(int(c.InfoPanel.PartHPGaugeWidth), int(c.InfoPanel.PartHPGaugeHeight))),
 			widget.ProgressBarOpts.Images(
-				// Fill (progress) image
 				&widget.ProgressBarImage{
 					Idle: image.NewNineSliceColor(c.Colors.HP),
 				},
-				// Track (background) image
 				&widget.ProgressBarImage{
 					Idle: image.NewNineSliceColor(c.Colors.Broken),
 				},
@@ -103,30 +106,70 @@ func createSingleMedarotInfoPanel(game *Game, medarot *Medarot) *infoPanelUI {
 	}
 }
 
-func updateAllInfoPanels(game *Game) {
-	for _, medarot := range game.Medarots {
-		// グローバル変数 `medarotInfoPanelUIs` の代わりに `game.ui.medarotInfoPanels` を参照する
-		ui, ok := game.ui.medarotInfoPanels[medarot.ID]
-		if !ok {
-			continue
+// UIの初期化時に呼ばれる
+func setupInfoPanels(game *Game, team1Container, team2Container *widget.Container) {
+	// 描画順でソートするために一度スライスに集める
+	var entries []*donburi.Entry
+	// 修正: filter.With を filter.Contains に変更
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(game.World, func(entry *donburi.Entry) {
+		entries = append(entries, entry)
+	})
+
+	sort.Slice(entries, func(i, j int) bool {
+		// 修正: ComponentType.Get を使用
+		iSettings := SettingsComponent.Get(entries[i])
+		// 修正: ComponentType.Get を使用
+		jSettings := SettingsComponent.Get(entries[j])
+		if iSettings.Team != jSettings.Team {
+			return iSettings.Team < jSettings.Team
 		}
-		updateSingleInfoPanel(medarot, ui, &game.Config)
+		return iSettings.DrawIndex < jSettings.DrawIndex
+	})
+
+	for _, entry := range entries {
+		// 修正: ComponentType.Get を使用
+		settings := SettingsComponent.Get(entry)
+		panelUI := createSingleMedarotInfoPanel(game, entry)
+		game.ui.medarotInfoPanels[settings.ID] = panelUI
+		if settings.Team == Team1 {
+			team1Container.AddChild(panelUI.rootContainer)
+		} else {
+			team2Container.AddChild(panelUI.rootContainer)
+		}
 	}
 }
 
-func updateSingleInfoPanel(medarot *Medarot, ui *infoPanelUI, config *Config) {
-	c := config.UI
-	ui.stateText.Label = string(medarot.State)
+func updateAllInfoPanels(game *Game) {
+	// 修正: filter.With を filter.Contains に変更
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(game.World, func(entry *donburi.Entry) {
+		settings := SettingsComponent.Get(entry)
+		ui, ok := game.ui.medarotInfoPanels[settings.ID]
+		if !ok {
+			return
+		}
+		updateSingleInfoPanel(entry, ui, &game.Config)
+	})
+}
 
-	if medarot.IsLeader {
+func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config) {
+	c := config.UI
+	// 修正: ComponentType.Get を使用
+	settings := SettingsComponent.Get(entry)
+	// 修正: ComponentType.Get を使用
+	state := StateComponent.Get(entry)
+	// 修正: ComponentType.Get を使用
+	partsMap := PartsComponent.Get(entry).Map
+
+	ui.stateText.Label = string(state.State)
+
+	if settings.IsLeader {
 		ui.nameText.Color = c.Colors.Leader
 	} else {
 		ui.nameText.Color = c.Colors.White
 	}
 
-	// [FIXED] 未使用変数エラーを解消するため、partUI変数を使用するようにしました
 	for slotKey, partUI := range ui.partSlots {
-		part := medarot.GetPart(slotKey)
+		part := partsMap[slotKey]
 		if part == nil {
 			continue
 		}

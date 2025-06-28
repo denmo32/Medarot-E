@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt" // fmtパッケージをインポート
+	"fmt"
 	"image"
 	"image/color"
 	"math"
@@ -9,25 +9,32 @@ import (
 	uiimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil" // ebitenutilをインポート
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
-// ... (BattlefieldWidget, CustomIconWidget構造体は変更なし) ...
+// 各ComponentTypeが定義されていることを想定しています
+// var SettingsComponent = donburi.NewComponentType[Settings]()
+// var StateComponent = donburi.NewComponentType[State]()
+// var GaugeComponent = donburi.NewComponentType[Gauge]()
+
 type BattlefieldWidget struct {
 	*widget.Container
 	game         *Game
 	medarotIcons []*CustomIconWidget
 }
+
 type CustomIconWidget struct {
-	medarot *Medarot
-	game    *Game
-	xPos    float32
-	yPos    float32
-	rect    image.Rectangle
+	entry *donburi.Entry
+	game  *Game
+	xPos  float32
+	yPos  float32
+	rect  image.Rectangle
 }
 
-// ... (NewBattlefieldWidget, createMedarotIcons, NewCustomIconWidget は変更なし) ...
 func NewBattlefieldWidget(game *Game) *BattlefieldWidget {
 	bf := &BattlefieldWidget{
 		game:         game,
@@ -42,21 +49,23 @@ func NewBattlefieldWidget(game *Game) *BattlefieldWidget {
 	bf.createMedarotIcons()
 	return bf
 }
+
 func (bf *BattlefieldWidget) createMedarotIcons() {
-	for _, medarot := range bf.game.Medarots {
-		icon := NewCustomIconWidget(medarot, bf.game)
+	// 修正: filter.With を filter.Contains に変更
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(bf.game.World, func(entry *donburi.Entry) {
+		icon := NewCustomIconWidget(entry, bf.game)
 		bf.medarotIcons = append(bf.medarotIcons, icon)
-	}
+	})
 }
-func NewCustomIconWidget(medarot *Medarot, game *Game) *CustomIconWidget {
+
+func NewCustomIconWidget(entry *donburi.Entry, game *Game) *CustomIconWidget {
 	return &CustomIconWidget{
-		medarot: medarot,
-		game:    game,
-		rect:    image.Rect(0, 0, 20, 20),
+		entry: entry,
+		game:  game,
+		rect:  image.Rect(0, 0, 20, 20),
 	}
 }
 
-// Render は変更なし
 func (w *CustomIconWidget) Render(screen *ebiten.Image) {
 	if w.rect.Dx() == 0 || w.rect.Dy() == 0 {
 		return
@@ -67,37 +76,41 @@ func (w *CustomIconWidget) Render(screen *ebiten.Image) {
 	radius := w.game.Config.UI.Battlefield.IconRadius
 	vector.DrawFilledCircle(screen, centerX, centerY, radius, iconColor, true)
 
-	if w.medarot.IsLeader {
+	// 修正: ComponentType.Get(entry) を使用
+	settings := SettingsComponent.Get(w.entry)
+	if settings.IsLeader {
 		vector.StrokeCircle(screen, centerX, centerY, radius+3, 2,
 			w.game.Config.UI.Colors.Leader, true)
 	}
 	w.drawStateIndicator(screen, centerX, centerY)
 }
 
-// [NEW] drawDebugInfo - デバッグ情報を描画する
 func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
 	if !w.game.DebugMode {
 		return
 	}
 
-	// 描画するテキストを生成
+	// 修正: 未使用の settings 変数を削除し、各ComponentType.Get(entry) を使用
+	state := StateComponent.Get(w.entry)
+	gauge := GaugeComponent.Get(w.entry)
+
 	debugText := fmt.Sprintf(
 		"State: %s\nGauge: %.1f\nProg: %.1f / %.1f",
-		w.medarot.State,
-		w.medarot.Gauge,
-		w.medarot.ProgressCounter,
-		w.medarot.TotalDuration,
+		state.State,
+		gauge.CurrentGauge,
+		gauge.ProgressCounter,
+		gauge.TotalDuration,
 	)
 
-	// アイコンの右隣にテキストを描画
 	x := int(w.xPos + 20)
 	y := int(w.yPos - 20)
 	ebitenutil.DebugPrintAt(screen, debugText, x, y)
 }
 
-// ... (drawStateIndicator, drawCooldownGauge, getIconColor, UpdatePositions, calculateIconPosition は変更なし) ...
 func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, centerY float32) {
-	switch w.medarot.State {
+	// 修正: ComponentType.Get(entry) を使用
+	state := StateComponent.Get(w.entry)
+	switch state.State {
 	case StateBroken:
 		lineWidth := float32(2)
 		size := float32(6)
@@ -113,15 +126,16 @@ func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, cen
 				w.game.Config.UI.Battlefield.IconRadius+5, 2,
 				w.game.Config.UI.Colors.Yellow, true)
 		}
-	case StateCooldown:
-		w.drawCooldownGauge(screen, centerX, centerY)
-	case StateCharging:
+	case StateCooldown, StateCharging:
 		w.drawCooldownGauge(screen, centerX, centerY)
 	}
 }
+
 func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, centerY float32) {
+	// 修正: ComponentType.Get(entry) を使用
+	gauge := GaugeComponent.Get(w.entry)
 	radius := w.game.Config.UI.Battlefield.IconRadius + 8
-	progress := w.medarot.Gauge / 100.0
+	progress := gauge.CurrentGauge / 100.0
 	vector.StrokeCircle(screen, centerX, centerY, radius, 2,
 		w.game.Config.UI.Colors.Gray, true)
 	if progress > 0 {
@@ -138,15 +152,22 @@ func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, cent
 		}
 	}
 }
+
 func (w *CustomIconWidget) getIconColor() color.Color {
-	if w.medarot.State == StateBroken {
+	// 修正: ComponentType.Get(entry) を使用
+	settings := SettingsComponent.Get(w.entry)
+	// 修正: ComponentType.Get(entry) を使用
+	state := StateComponent.Get(w.entry)
+
+	if state.State == StateBroken {
 		return w.game.Config.UI.Colors.Broken
 	}
-	if w.medarot.Team == Team1 {
+	if settings.Team == Team1 {
 		return w.game.Config.UI.Colors.Team1
 	}
 	return w.game.Config.UI.Colors.Team2
 }
+
 func (bf *BattlefieldWidget) UpdatePositions() {
 	rect := bf.Container.GetWidget().Rect
 	if rect.Dx() == 0 || rect.Dy() == 0 {
@@ -156,8 +177,9 @@ func (bf *BattlefieldWidget) UpdatePositions() {
 	height := float32(rect.Dy())
 	offsetX := float32(rect.Min.X)
 	offsetY := float32(rect.Min.Y)
+
 	for _, icon := range bf.medarotIcons {
-		x, y := bf.calculateIconPosition(icon.medarot, width, height)
+		x, y := bf.calculateIconPosition(icon.entry, width, height)
 		icon.xPos = offsetX + x
 		icon.yPos = offsetY + y
 		icon.rect = image.Rect(
@@ -166,24 +188,31 @@ func (bf *BattlefieldWidget) UpdatePositions() {
 		)
 	}
 }
-func (bf *BattlefieldWidget) calculateIconPosition(medarot *Medarot, width, height float32) (float32, float32) {
-	progress := float32(medarot.Gauge / 100.0)
-	yPos := (height / float32(PlayersPerTeam+1)) * (float32(medarot.DrawIndex) + 1)
+
+func (bf *BattlefieldWidget) calculateIconPosition(entry *donburi.Entry, width, height float32) (float32, float32) {
+	// 修正: ComponentType.Get(entry) を使用
+	settings := SettingsComponent.Get(entry)
+	// 修正: ComponentType.Get(entry) を使用
+	state := StateComponent.Get(entry)
+	// 修正: ComponentType.Get(entry) を使用
+	gauge := GaugeComponent.Get(entry)
+
+	progress := float32(gauge.CurrentGauge / 100.0)
+	yPos := (height / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 	homeX, execX := width*0.1, width*0.4
-	if medarot.Team == Team2 {
+	if settings.Team == Team2 {
 		homeX, execX = width*0.9, width*0.6
 	}
+
 	var xPos float32
-	switch medarot.State {
+	switch state.State {
 	case StateCharging:
 		xPos = homeX + (execX-homeX)*progress
 	case StateReady:
 		xPos = execX
 	case StateCooldown:
 		xPos = execX - (execX-homeX)*progress
-	case StateIdle:
-		xPos = homeX
-	case StateBroken:
+	case StateIdle, StateBroken:
 		xPos = homeX
 	default:
 		xPos = homeX
@@ -191,21 +220,18 @@ func (bf *BattlefieldWidget) calculateIconPosition(medarot *Medarot, width, heig
 	return xPos, yPos
 }
 
-// DrawIcons は変更なし
 func (bf *BattlefieldWidget) DrawIcons(screen *ebiten.Image) {
 	for _, icon := range bf.medarotIcons {
 		icon.Render(screen)
 	}
 }
 
-// [NEW] DrawDebug - デバッグ情報を描画するための新しい公開メソッド
 func (bf *BattlefieldWidget) DrawDebug(screen *ebiten.Image) {
 	for _, icon := range bf.medarotIcons {
 		icon.drawDebugInfo(screen)
 	}
 }
 
-// DrawBackground は変更なし
 func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 	rect := bf.Container.GetWidget().Rect
 	if rect.Dx() == 0 || rect.Dy() == 0 {
@@ -230,6 +256,7 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 			bf.game.Config.UI.Colors.Gray, true)
 		vector.StrokeCircle(screen, team2HomeX, yPos,
 			bf.game.Config.UI.Battlefield.HomeMarkerRadius,
+			// 修正: bf.game.Code を bf.game.Config に変更
 			bf.game.Config.UI.Battlefield.LineWidth,
 			bf.game.Config.UI.Colors.Gray, true)
 	}

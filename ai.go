@@ -3,27 +3,37 @@ package main
 import (
 	"log"
 	"sort"
+
+	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
-// aiSelectAction はAIメダロットの行動を決定し、チャージを開始させる
-func aiSelectAction(game *Game, medarot *Medarot) {
-	availableParts := medarot.GetAvailableAttackParts()
+// SettingsComponent や PartsComponent などの変数が
+// このように定義されていることを想定しています。
+// var SettingsComponent = donburi.NewComponentType[Settings]()
+// var PartsComponent = donburi.NewComponentType[Parts]()
+// var StateComponent = donburi.NewComponentType[State]()
+
+func aiSelectAction(g *Game, entry *donburi.Entry) {
+	// 修正: ComponentType.Get(entry) を使用
+	settings := SettingsComponent.Get(entry)
+	availableParts := GetAvailableAttackParts(entry)
 	if len(availableParts) == 0 {
-		log.Printf("%s: AIは攻撃可能なパーツがないため待機。", medarot.Name)
+		log.Printf("%s: AIは攻撃可能なパーツがないため待機。", settings.Name)
 		return
 	}
 
-	targetCandidates := getTargetCandidates(game, medarot)
+	targetCandidates := getTargetCandidates(g, entry)
 	if len(targetCandidates) == 0 {
-		log.Printf("%s: AIは攻撃対象がいないため待機。", medarot.Name)
+		log.Printf("%s: AIは攻撃対象がいないため待機。", settings.Name)
 		return
 	}
 
-	// === シンプルなAI思考ルーチン ===
-	// 利用可能な最初のパーツで、相手のリーダーを優先して狙う
-	var target *Medarot
+	var target *donburi.Entry
 	for _, cand := range targetCandidates {
-		if cand.IsLeader {
+		// 修正: ComponentType.Get(entry) を使用
+		if SettingsComponent.Get(cand).IsLeader {
 			target = cand
 			break
 		}
@@ -35,33 +45,47 @@ func aiSelectAction(game *Game, medarot *Medarot) {
 	selectedPart := availableParts[0]
 
 	var slotKey PartSlotKey
-	for s, p := range medarot.Parts {
+	// 修正: ComponentType.Get(entry) を使用
+	partsMap := PartsComponent.Get(entry).Map
+	for s, p := range partsMap {
 		if p.ID == selectedPart.ID {
 			slotKey = s
 			break
 		}
 	}
 
-	// [MODIFIED] メソッド呼び出しから関数呼び出しへ変更
-	StartCharge(medarot, slotKey, target, &game.Config.Balance)
+	StartCharge(entry, slotKey, target, &g.Config.Balance)
 }
 
-// getTargetCandidates は指定されたメダロットの攻撃対象候補リストを返す
-func getTargetCandidates(game *Game, actingMedarot *Medarot) []*Medarot {
-	candidates := []*Medarot{}
+func getTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.Entry {
+	// 修正: ComponentType.Get(entry) を使用
+	actingSettings := SettingsComponent.Get(actingEntry)
 	var opponentTeamID TeamID = Team2
-	if actingMedarot.Team == Team2 {
+	if actingSettings.Team == Team2 {
 		opponentTeamID = Team1
 	}
 
-	for _, m := range game.Medarots {
-		if m.Team == opponentTeamID && m.State != StateBroken {
-			candidates = append(candidates, m)
+	candidates := []*donburi.Entry{}
+	// 修正: filter.Contains() でコンポーネントをラップ
+	query.NewQuery(filter.And(
+		filter.Contains(SettingsComponent),
+		filter.Contains(StateComponent),
+	)).Each(g.World, func(entry *donburi.Entry) {
+		// 修正: ComponentType.Get(entry) を使用
+		settings := SettingsComponent.Get(entry)
+		// 修正: ComponentType.Get(entry) を使用
+		state := StateComponent.Get(entry)
+		if settings.Team == opponentTeamID && state.State != StateBroken {
+			candidates = append(candidates, entry)
 		}
-	}
+	})
 
 	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].DrawIndex < candidates[j].DrawIndex
+		// 修正: ComponentType.Get(entry) を使用
+		iSettings := SettingsComponent.Get(candidates[i])
+		// 修正: ComponentType.Get(entry) を使用
+		jSettings := SettingsComponent.Get(candidates[j])
+		return iSettings.DrawIndex < jSettings.DrawIndex
 	})
 	return candidates
 }

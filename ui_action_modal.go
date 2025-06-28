@@ -7,11 +7,14 @@ import (
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
 )
 
-func createActionModalUI(game *Game, actingMedarot *Medarot) widget.PreferredSizeLocateableWidget {
-    // ... この関数の中身は変更なし ...
+func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.PreferredSizeLocateableWidget {
 	c := game.Config.UI
+	// 修正: ComponentType.Get を使用
+	settings := SettingsComponent.Get(actingEntry)
+
 	overlay := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
 		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{0, 0, 0, 180})),
@@ -33,14 +36,14 @@ func createActionModalUI(game *Game, actingMedarot *Medarot) widget.PreferredSiz
 	)
 	overlay.AddChild(panel)
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(fmt.Sprintf("行動選択: %s", actingMedarot.Name), game.MplusFont, c.Colors.White),
+		widget.TextOpts.Text(fmt.Sprintf("行動選択: %s", settings.Name), game.MplusFont, c.Colors.White),
 	))
 	buttonImage := &widget.ButtonImage{
 		Idle:    image.NewNineSliceColor(c.Colors.Gray),
 		Hover:   image.NewNineSliceColor(color.RGBA{180, 180, 180, 255}),
 		Pressed: image.NewNineSliceColor(color.RGBA{100, 100, 100, 255}),
 	}
-	availableParts := actingMedarot.GetAvailableAttackParts()
+	availableParts := GetAvailableAttackParts(actingEntry)
 	if len(availableParts) == 0 {
 		panel.AddChild(widget.NewText(
 			widget.TextOpts.Text("利用可能なパーツがありません。", game.MplusFont, c.Colors.White),
@@ -58,7 +61,7 @@ func createActionModalUI(game *Game, actingMedarot *Medarot) widget.PreferredSiz
 			}),
 			widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-				handleActionSelection(game, actingMedarot, capturedPart)
+				handleActionSelection(game, actingEntry, capturedPart)
 			}),
 		)
 		panel.AddChild(actionButton)
@@ -82,16 +85,21 @@ func createActionModalUI(game *Game, actingMedarot *Medarot) widget.PreferredSiz
 	return overlay
 }
 
-func handleActionSelection(game *Game, actingMedarot *Medarot, selectedPart *Part) {
-	target := game.team2Leader
-	if actingMedarot.Team == Team2 {
-		target = game.team1Leader
+func handleActionSelection(game *Game, actingEntry *donburi.Entry, selectedPart *Part) {
+	// 修正: ComponentType.Get を使用
+	actingSettings := SettingsComponent.Get(actingEntry)
+	var opponentTeamID TeamID = Team2
+	if actingSettings.Team == Team1 {
+		opponentTeamID = Team1
 	}
-	candidates := game.getTargetCandidates(actingMedarot)
+	target := FindLeader(game.World, opponentTeamID)
+
+	candidates := getTargetCandidates(game, actingEntry)
 	if len(candidates) > 0 {
 		isLeaderFound := false
 		for _, cand := range candidates {
-			if cand.IsLeader {
+			// 修正: ComponentType.Get を使用
+			if SettingsComponent.Get(cand).IsLeader {
 				target = cand
 				isLeaderFound = true
 				break
@@ -110,21 +118,22 @@ func handleActionSelection(game *Game, actingMedarot *Medarot, selectedPart *Par
 	}
 
 	var slotKey PartSlotKey
-	for s, p := range actingMedarot.Parts {
+	// 修正: ComponentType.Get を使用
+	partsMap := PartsComponent.Get(actingEntry).Map
+	for s, p := range partsMap {
 		if p.ID == selectedPart.ID {
 			slotKey = s
 			break
 		}
 	}
 
-	// [MODIFIED] メソッド呼び出しから関数呼び出しへ変更
-	if StartCharge(actingMedarot, slotKey, target, &game.Config.Balance) {
+	if StartCharge(actingEntry, slotKey, target, &game.Config.Balance) {
 		game.ui.HideActionModal()
 		game.playerMedarotToAct = nil
 		game.State = StatePlaying
-		SystemProcessIdleMedarots(game) // 他に待機中のメダロットがいれば処理
+		SystemProcessIdleMedarots(game)
 	} else {
-		log.Printf("エラー: %s の行動選択に失敗しました。", actingMedarot.Name)
+		log.Printf("エラー: %s の行動選択に失敗しました。", actingSettings.Name)
 		game.ui.HideActionModal()
 		game.playerMedarotToAct = nil
 		game.State = StatePlaying
