@@ -13,14 +13,10 @@ func LoadConfig() Config {
 		Balance: BalanceConfig{
 			Time: struct {
 				PropulsionEffectRate float64
-				// [REMOVED] OverallTimeDivisor を削除
-				// OverallTimeDivisor   float64
-				// [NEW] ゲーム全体の速度倍率を追加
-				GameSpeedMultiplier float64
+				GameSpeedMultiplier  float64
 			}{
 				PropulsionEffectRate: 0.01,
-				// [NEW] 1.0を基準速度とする。値を大きくするとゲームが速くなる。
-				GameSpeedMultiplier: 50,
+				GameSpeedMultiplier:  50,
 			},
 			Hit: struct {
 				BaseChance         int
@@ -60,6 +56,10 @@ func LoadConfig() Config {
 				HomeMarkerRadius       float32
 				LineWidth              float32
 				MedarotVerticalSpacing float32
+				TargetIndicator        struct {
+					Width  float32
+					Height float32
+				}
 			}{
 				Height:                 float32(screenHeight) * 0.5,
 				Team1HomeX:             float32(screenWidth) * 0.1,
@@ -70,6 +70,13 @@ func LoadConfig() Config {
 				HomeMarkerRadius:       15,
 				LineWidth:              2,
 				MedarotVerticalSpacing: float32(screenHeight) * 0.5 / float32(PlayersPerTeam+1),
+				TargetIndicator: struct {
+					Width  float32
+					Height float32
+				}{
+					Width:  15,
+					Height: 12,
+				},
 			},
 			InfoPanel: struct {
 				Padding           int

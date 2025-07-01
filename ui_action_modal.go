@@ -50,13 +50,13 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 		))
 	}
 
-	// ★★★ 修正点1: モーダル表示時に各パーツのターゲットを事前計算して保存 ★★★
+	// モーダル表示時に各パーツのターゲットを事前計算して保存
 	for _, part := range availableParts {
 		slotKey := findPartSlot(actingEntry, part)
 		if part.Category == CategoryShoot {
-			// 性格に基づいてターゲットを決定し、UIのマップに保存
-			target, _ := selectRandomTargetPart(game, actingEntry) // 今はジョーカーの動き
-			game.ui.actionTargetMap[slotKey] = target
+			// ★★★ 修正点: プレイヤー専用のターゲット選択関数を呼び出す ★★★
+			targetEntity, targetSlot := playerSelectRandomTarget(game, actingEntry)
+			game.ui.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
 		}
 	}
 
@@ -76,12 +76,10 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 				handleActionSelection(game, actingEntry, capturedPart)
 			}),
-			// ★★★ 修正点2: カーソルホバー時に事前計算したターゲットを表示 ★★★
 			widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
 				if capturedPart.Category == CategoryShoot {
-					// UIのマップからターゲット情報を取得して表示
-					if target, ok := game.ui.actionTargetMap[slotKey]; ok {
-						game.currentTarget = target
+					if actionTarget, ok := game.ui.actionTargetMap[slotKey]; ok {
+						game.currentTarget = actionTarget.Target
 					}
 				}
 			}),
@@ -113,15 +111,13 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 	return overlay
 }
 
-// ★★★ 修正点3: 行動決定時も事前計算したターゲットを使用 ★★★
 func handleActionSelection(game *Game, actingEntry *donburi.Entry, selectedPart *Part) {
 	slotKey := findPartSlot(actingEntry, selectedPart)
 	var successful bool
 
 	if selectedPart.Category == CategoryShoot {
-		// UIのマップからターゲット情報を取得
-		targetEntry, ok := game.ui.actionTargetMap[slotKey]
-		if !ok || targetEntry == nil {
+		actionTarget, ok := game.ui.actionTargetMap[slotKey]
+		if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
 			game.enqueueMessage("ターゲットがいません！", func() {
 				game.playerMedarotToAct = nil
 				game.currentTarget = nil
@@ -130,15 +126,7 @@ func handleActionSelection(game *Game, actingEntry *donburi.Entry, selectedPart 
 			game.ui.HideActionModal()
 			return
 		}
-		// ターゲットのランダムなパーツを攻撃対象とする
-		targetPart := SelectRandomPartToDamage(targetEntry)
-		if targetPart == nil {
-			log.Printf("%sは%sを狙ったが、攻撃できる部位がなかった！", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(targetEntry).Name)
-			game.ui.HideActionModal()
-			return
-		}
-		targetPartSlot := findPartSlot(targetEntry, targetPart)
-		successful = StartCharge(actingEntry, slotKey, targetEntry, targetPartSlot, &game.Config.Balance)
+		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, &game.Config.Balance)
 
 	} else if selectedPart.Category == CategoryMelee {
 		successful = StartCharge(actingEntry, slotKey, nil, "", &game.Config.Balance)

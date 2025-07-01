@@ -14,17 +14,17 @@ type UI struct {
 	messageWindow     widget.PreferredSizeLocateableWidget
 	battlefieldWidget *BattlefieldWidget
 	medarotInfoPanels map[string]*infoPanelUI
-	actionTargetMap   map[PartSlotKey]*donburi.Entry // [追加] 行動選択時のパーツごとのターゲットを保持
+	actionTargetMap   map[PartSlotKey]ActionTarget // [修正] 保持する型をActionTargetに変更
 }
 
 // NewUI はUIを構築し、管理構造体を返す
 func NewUI(game *Game) *UI {
 	ui := &UI{
 		medarotInfoPanels: make(map[string]*infoPanelUI),
-		actionTargetMap:   make(map[PartSlotKey]*donburi.Entry), // [追加] マップを初期化
+		actionTargetMap:   make(map[PartSlotKey]ActionTarget), // [修正] マップを初期化
 	}
 
-	game.ui = ui // gameオブジェクトにUIインスタンスを早期に設定する
+	game.ui = ui
 
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
@@ -65,7 +65,6 @@ func NewUI(game *Game) *UI {
 	)
 	mainUIContainer.AddChild(team2PanelContainer)
 
-	// メダロット情報パネルを生成して配置
 	setupInfoPanels(game, team1PanelContainer, team2PanelContainer)
 
 	ui.ebitenui = &ebitenui.UI{
@@ -79,8 +78,7 @@ func (u *UI) ShowActionModal(game *Game, actingEntry *donburi.Entry) {
 	if u.actionModal != nil {
 		u.HideActionModal()
 	}
-	// [修正] モーダルを生成する前にターゲットマップをクリア
-	u.actionTargetMap = make(map[PartSlotKey]*donburi.Entry)
+	u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
 
 	modal := createActionModalUI(game, actingEntry)
 	if modal == nil {
@@ -96,10 +94,8 @@ func (u *UI) ShowActionModal(game *Game, actingEntry *donburi.Entry) {
 func (u *UI) HideActionModal() {
 	if u.actionModal != nil {
 		u.ebitenui.Container.RemoveChild(u.actionModal)
+		u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
 		u.actionModal = nil
-		// [追加] モーダルを閉じるときにターゲットマップとターゲット表示をクリア
-		u.actionTargetMap = make(map[PartSlotKey]*donburi.Entry)
-		u.actionModal = nil // game.uiがnilになる問題を修正
 		log.Println("Action modal hidden.")
 	}
 }

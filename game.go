@@ -20,14 +20,16 @@ type Game struct {
 	DebugMode           bool
 	State               GameState
 	PlayerTeam          TeamID
-	actionQueue         []*donburi.Entry // Medarot* から donburi.Entry* へ変更
+	actionQueue         []*donburi.Entry
 	ui                  *UI
 	message             string
 	postMessageCallback func()
 	winner              TeamID
 	restartRequested    bool
-	playerMedarotToAct  *donburi.Entry // Medarot* から donburi.Entry* へ変更
-	currentTarget       *donburi.Entry // プレイヤーがターゲットしている相手
+	playerMedarotToAct  *donburi.Entry
+	currentTarget       *donburi.Entry
+	attackingEntity     *donburi.Entry
+	targetedEntity      *donburi.Entry
 }
 
 func NewGame(gameData *GameData, config Config, font text.Face) *Game {
@@ -44,6 +46,8 @@ func NewGame(gameData *GameData, config Config, font text.Face) *Game {
 		PlayerTeam:         Team1,
 		actionQueue:        make([]*donburi.Entry, 0),
 		playerMedarotToAct: nil,
+		attackingEntity:    nil,
+		targetedEntity:     nil,
 		currentTarget:      nil,
 	}
 
@@ -63,21 +67,17 @@ func (g *Game) Update() error {
 	switch g.State {
 	case StatePlaying:
 		g.TickCount++
-		// 各Systemを呼び出す
 		SystemUpdateProgress(g)
 		SystemProcessReadyQueue(g)
 		SystemProcessIdleMedarots(g)
 		SystemCheckGameEnd(g)
 
-		// UI更新
 		updateAllInfoPanels(g)
 		if g.ui.battlefieldWidget != nil {
 			g.ui.battlefieldWidget.UpdatePositions()
 		}
 
 	case StatePlayerActionSelect:
-		// ★★★ 修正点 ★★★
-		// 行動選択中もアイコン座標を更新し続ける
 		if g.ui.battlefieldWidget != nil {
 			g.ui.battlefieldWidget.UpdatePositions()
 		}
@@ -85,21 +85,23 @@ func (g *Game) Update() error {
 			g.ui.ShowActionModal(g, g.playerMedarotToAct)
 		}
 
-	case StateMessage, StateGameOver:
+	case StateMessage:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			if g.State == StateMessage {
-				g.ui.HideMessageWindow()
-				if g.postMessageCallback != nil {
-					g.postMessageCallback()
-					g.postMessageCallback = nil
-				}
-				g.State = StatePlaying
-				SystemProcessIdleMedarots(g)
-			} else if g.State == StateGameOver {
-				// リスタート処理など
+			g.ui.HideMessageWindow()
+			if g.postMessageCallback != nil {
+				g.postMessageCallback()
+				g.postMessageCallback = nil
 			}
+			g.State = StatePlaying
+			SystemProcessIdleMedarots(g)
+		}
+
+	case StateGameOver:
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			// リスタート処理
 		}
 	}
+
 	return nil
 }
 
@@ -110,9 +112,18 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if bf != nil {
 		bf.DrawBackground(screen)
 		bf.DrawIcons(screen)
-		if g.currentTarget != nil {
-			bf.DrawTargetIndicator(screen)
+
+		var indicatorTarget *donburi.Entry
+		if g.State == StatePlayerActionSelect && g.currentTarget != nil {
+			indicatorTarget = g.currentTarget
+		} else if g.State == StateMessage && g.targetedEntity != nil {
+			indicatorTarget = g.targetedEntity
 		}
+
+		if indicatorTarget != nil {
+			bf.DrawTargetIndicator(screen, indicatorTarget)
+		}
+
 		bf.DrawDebug(screen)
 	}
 	if g.DebugMode {

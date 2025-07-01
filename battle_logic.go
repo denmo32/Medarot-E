@@ -213,8 +213,12 @@ func findClosestEnemy(g *Game, actingEntry *donburi.Entry) *donburi.Entry {
 // getTargetCandidates 敵チームの中で行動可能なメダロット一覧を取得
 func getTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.Entry {
 	actingSettings := SettingsComponent.Get(actingEntry)
-	var opponentTeamID TeamID = Team2
-	if actingSettings.Team == Team2 {
+
+	// ★★★ 修正点: ロジックをより明確に ★★★
+	var opponentTeamID TeamID
+	if actingSettings.Team == Team1 {
+		opponentTeamID = Team2
+	} else {
 		opponentTeamID = Team1
 	}
 

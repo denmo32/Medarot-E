@@ -3,16 +3,10 @@ package main
 import (
 	"log"
 	"math/rand"
+	"sort"
 
 	"github.com/yohamta/donburi"
 )
-
-// SettingsComponent や PartsComponent などの変数が
-// このように定義されていることを想定しています。
-// var SettingsComponent = donburi.NewComponentType[Settings]()
-// var PartsComponent = donburi.NewComponentType[Parts]()
-// var MedalComponent = donburi.NewComponentType[Medal]()
-// var StateComponent = donburi.NewComponentType[State]()
 
 func aiSelectAction(g *Game, entry *donburi.Entry) {
 	settings := SettingsComponent.Get(entry)
@@ -24,7 +18,6 @@ func aiSelectAction(g *Game, entry *donburi.Entry) {
 		return
 	}
 
-	// TODO: 性格に応じて使用パーツも変えるべきだが、今回は最初の有効なパーツを使う
 	selectedPart := availableParts[0]
 	slotKey := findPartSlot(entry, selectedPart)
 
@@ -32,10 +25,15 @@ func aiSelectAction(g *Game, entry *donburi.Entry) {
 		var targetEntry *donburi.Entry
 		var targetPartSlot PartSlotKey
 
+		// ★★★ 修正点1: 新しい性格の分岐を追加 ★★★
 		switch medal.Personality {
+		case "クラッシャー":
+			targetEntry, targetPartSlot = selectCrusherTarget(g, entry)
+		case "ハンター":
+			targetEntry, targetPartSlot = selectHunterTarget(g, entry)
 		case "ジョーカー":
 			targetEntry, targetPartSlot = selectRandomTargetPart(g, entry)
-		default: // デフォルトの挙動としてリーダーを狙う
+		default: // デフォルトの挙動はリーダー狙い
 			targetEntry, targetPartSlot = selectLeaderPart(g, entry)
 		}
 
@@ -46,36 +44,100 @@ func aiSelectAction(g *Game, entry *donburi.Entry) {
 		StartCharge(entry, slotKey, targetEntry, targetPartSlot, &g.Config.Balance)
 
 	} else if selectedPart.Category == CategoryMelee {
-		// FIGHTの場合、ターゲットは実行時に決定されるので、ここではnilでチャージ開始
 		StartCharge(entry, slotKey, nil, "", &g.Config.Balance)
 	}
 }
 
-// selectRandomTargetPart は「ジョーカー」性格用のターゲット選択ロジック
-func selectRandomTargetPart(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	var allEnemyEntries []*donburi.Entry
-	var allEnemySlots []PartSlotKey
+// targetablePart はソートや選択に使うための一時的な構造体
+type targetablePart struct {
+	entity *donburi.Entry
+	part   *Part
+	slot   PartSlotKey
+}
 
+// getAllTargetableParts は相手チームの攻撃可能な全パーツのリストを返す
+func getAllTargetableParts(g *Game, actingEntry *donburi.Entry, includeHead bool) []targetablePart {
+	var allParts []targetablePart
 	candidates := getTargetCandidates(g, actingEntry)
+
 	for _, enemyEntry := range candidates {
 		partsMap := PartsComponent.Get(enemyEntry).Map
-		for slot, part := range partsMap {
-			if !part.IsBroken {
-				allEnemyEntries = append(allEnemyEntries, enemyEntry)
-				allEnemySlots = append(allEnemySlots, slot)
+		for slotKey, part := range partsMap {
+			// 脚部パーツは常に除外
+			if part.IsBroken || slotKey == PartSlotLegs {
+				continue
 			}
+			// 頭部を含めるかどうかの判定
+			if !includeHead && slotKey == PartSlotHead {
+				continue
+			}
+			allParts = append(allParts, targetablePart{
+				entity: enemyEntry,
+				part:   part,
+				slot:   slotKey,
+			})
 		}
 	}
+	return allParts
+}
 
-	if len(allEnemyEntries) == 0 {
+// ★★★ 修正点2: 新しい性格「クラッシャー」のロジックを追加 ★★★
+func selectCrusherTarget(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
+	// まずは頭部以外のパーツを取得
+	targetParts := getAllTargetableParts(g, actingEntry, false)
+
+	// 頭部以外のパーツがなければ、頭部をターゲット候補に含めて再取得
+	if len(targetParts) == 0 {
+		targetParts = getAllTargetableParts(g, actingEntry, true)
+	}
+
+	if len(targetParts) == 0 {
 		return nil, ""
 	}
 
-	idx := rand.Intn(len(allEnemyEntries))
-	return allEnemyEntries[idx], allEnemySlots[idx]
+	// 装甲値が最も高い順（降順）にソート
+	sort.Slice(targetParts, func(i, j int) bool {
+		return targetParts[i].part.Armor > targetParts[j].part.Armor
+	})
+
+	selected := targetParts[0]
+	return selected.entity, selected.slot
 }
 
-// selectLeaderPart はデフォルト用のターゲット選択ロジック
+// ★★★ 修正点3: 新しい性格「ハンター」のロジックを追加 ★★★
+func selectHunterTarget(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
+	// まずは頭部以外のパーツを取得
+	targetParts := getAllTargetableParts(g, actingEntry, false)
+
+	// 頭部以外のパーツがなければ、頭部をターゲット候補に含めて再取得
+	if len(targetParts) == 0 {
+		targetParts = getAllTargetableParts(g, actingEntry, true)
+	}
+
+	if len(targetParts) == 0 {
+		return nil, ""
+	}
+
+	// 装甲値が最も低い順（昇順）にソート
+	sort.Slice(targetParts, func(i, j int) bool {
+		return targetParts[i].part.Armor < targetParts[j].part.Armor
+	})
+
+	selected := targetParts[0]
+	return selected.entity, selected.slot
+}
+
+func selectRandomTargetPart(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
+	// 頭部を含めた全ての攻撃可能パーツを取得
+	allEnemyParts := getAllTargetableParts(g, actingEntry, true)
+	if len(allEnemyParts) == 0 {
+		return nil, ""
+	}
+
+	idx := rand.Intn(len(allEnemyParts))
+	return allEnemyParts[idx].entity, allEnemyParts[idx].slot
+}
+
 func selectLeaderPart(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
 	actingTeam := SettingsComponent.Get(actingEntry).Team
 	opponentTeamID := Team2

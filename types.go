@@ -2,10 +2,10 @@ package main
 
 import (
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi" // ActionTargetでdonburi.Entryを使うため
 	"image/color"
 )
 
-// ... (TeamID, MedarotState, GameState, etc. は変更なし) ...
 type TeamID int
 type MedarotState string
 type GameState string
@@ -64,6 +64,12 @@ const (
 
 const PlayersPerTeam = 3
 
+// ActionTarget はUIで使うための一時的なターゲット情報
+type ActionTarget struct {
+	Target *donburi.Entry
+	Slot   PartSlotKey
+}
+
 type Config struct {
 	Balance BalanceConfig
 	UI      UIConfig
@@ -89,7 +95,6 @@ type BalanceConfig struct {
 	}
 }
 
-// ... (UIConfig, GameData, etc. は変更なし) ...
 type UIConfig struct {
 	Screen struct {
 		Width  int
@@ -106,6 +111,10 @@ type UIConfig struct {
 		HomeMarkerRadius       float32
 		LineWidth              float32
 		MedarotVerticalSpacing float32
+		TargetIndicator        struct {
+			Width  float32
+			Height float32
+		}
 	}
 	InfoPanel struct {
 		Padding           int

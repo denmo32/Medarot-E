@@ -16,8 +16,6 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// ★★★ 修正点1 ★★★
-// 構造体に白ピクセル画像を保持するフィールドを追加
 type BattlefieldWidget struct {
 	*widget.Container
 	game         *Game
@@ -34,15 +32,13 @@ type CustomIconWidget struct {
 }
 
 func NewBattlefieldWidget(game *Game) *BattlefieldWidget {
-	// ★★★ 修正点2 ★★★
-	// 1x1の白い画像をここで一度だけ生成する
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
 	bf := &BattlefieldWidget{
 		game:         game,
 		medarotIcons: make([]*CustomIconWidget, 0),
-		whitePixel:   whiteImg, // 生成した画像を構造体に保持
+		whitePixel:   whiteImg,
 	}
 	bf.Container = widget.NewContainer(
 		widget.ContainerOpts.BackgroundImage(
@@ -200,67 +196,42 @@ func (bf *BattlefieldWidget) DrawDebug(screen *ebiten.Image) {
 	}
 }
 
-func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image) {
-	g := bf.game
-	if g.currentTarget == nil {
-		return
-	}
-
+func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetEntry *donburi.Entry) {
 	var targetIcon *CustomIconWidget
 	for _, icon := range bf.medarotIcons {
-		if icon.entry == g.currentTarget {
+		if icon.entry == targetEntry {
 			targetIcon = icon
 			break
 		}
 	}
-
 	if targetIcon == nil {
 		return
 	}
-
-	// ターゲットアイコンの座標を取得
+	// インジケータサイズや座標計算
 	tx, ty := targetIcon.xPos, targetIcon.yPos
-
-	// インジケータ(▼)のプロパティ
-	indicatorColor := g.Config.UI.Colors.Yellow
-	iconRadius := g.Config.UI.Battlefield.IconRadius
-	indicatorHeight := float32(8)
-	indicatorWidth := float32(10)
+	iconRadius := bf.game.Config.UI.Battlefield.IconRadius
 	margin := float32(5)
+	width := bf.game.Config.UI.Battlefield.TargetIndicator.Width
+	height := bf.game.Config.UI.Battlefield.TargetIndicator.Height
 
-	// 三角形の3つの頂点座標を計算
-	p1x := tx - indicatorWidth/2
-	p1y := ty - iconRadius - margin - indicatorHeight
-	p2x := tx + indicatorWidth/2
-	p2y := ty - iconRadius - margin - indicatorHeight
+	p1x := tx - width/2
+	p1y := ty - iconRadius - margin - height
+	p2x := tx + width/2
+	p2y := p1y
 	p3x := tx
 	p3y := ty - iconRadius - margin
 
-	// 頂点スライスを作成
+	// 頂点配列を作成して三角形を描画
 	vertices := []ebiten.Vertex{
-		{DstX: p1x, DstY: p1y, SrcX: 0, SrcY: 0},
-		{DstX: p2x, DstY: p2y, SrcX: 0, SrcY: 0},
-		{DstX: p3x, DstY: p3y, SrcX: 0, SrcY: 0},
+		{DstX: p1x, DstY: p1y},
+		{DstX: p2x, DstY: p2y},
+		{DstX: p3x, DstY: p3y},
 	}
-
-	// 色をfloat32に変換して各頂点に設定
-	rVal, gVal, bVal, aVal := indicatorColor.RGBA()
-	cr := float32(rVal) / 65535
-	cg := float32(gVal) / 65535
-	cb := float32(bVal) / 65535
-	ca := float32(aVal) / 65535
+	r, g, b, a := float32(1), float32(1), float32(0), float32(1)
 	for i := range vertices {
-		vertices[i].ColorR = cr
-		vertices[i].ColorG = cg
-		vertices[i].ColorB = cb
-		vertices[i].ColorA = ca
+		vertices[i].ColorR, vertices[i].ColorG, vertices[i].ColorB, vertices[i].ColorA = r, g, b, a
 	}
-
-	// インデックススライスを作成
 	indices := []uint16{0, 1, 2}
-
-	// ★★★ 修正点3 ★★★
-	// 構造体に保持した白ピクセル画像をテクスチャとして使用する
 	screen.DrawTriangles(vertices, indices, bf.whitePixel, &ebiten.DrawTrianglesOptions{})
 }
 
