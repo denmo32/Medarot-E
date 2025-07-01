@@ -86,42 +86,68 @@ func executeActionLogic(
 	}
 
 	var targetEntry *donburi.Entry
-	var intendedTargetPart *Part
+	// var intendedTargetPart *Part // This will be determined by the handler or from its result
 
-	// --- ターゲット選択 ---
-	if actingPart.Category == CategoryShoot {
-		targetEntry = action.TargetEntity
-		if targetEntry == nil || targetEntry.HasComponent(BrokenStateComponent) {
-			result.LogMessage = fmt.Sprintf("%sはターゲットを狙ったが、既に行動不能だった！", settings.Name)
+	// --- Target Resolution using ActionHandler ---
+	handler := GetActionHandlerForCategory(actingPart.Category)
+	if handler == nil {
+		result.LogMessage = fmt.Sprintf("%sは行動カテゴリ '%s' の処理に失敗した（対応ハンドラなし）。", settings.Name, actingPart.Category)
+		RemoveActionModifiersSystem(entry) // Clean up modifiers if action fails early
+		return result
+	}
+
+	targetingResult := handler.ResolveTarget(entry, world, action, targetSelector, partInfoProvider)
+	if !targetingResult.Success {
+		result.LogMessage = targetingResult.LogMessage
+		// If ResolveTarget provides a target entity even on failure (e.g. part broken on valid entity), set it.
+		result.TargetEntry = targetingResult.TargetEntity
+		RemoveActionModifiersSystem(entry) // Clean up modifiers
+		return result
+	}
+
+	targetEntry = targetingResult.TargetEntity
+	// intendedTargetPart is implicitly defined by targetingResult.TargetPartSlot for SHOOT,
+	// or resolved to a specific Part for MELEE by the handler.
+	// For damage application, we'll need the actual Part struct.
+	var intendedTargetPart *Part
+	if targetEntry != nil && targetingResult.TargetPartSlot != "" {
+		intendedTargetPart = PartsComponent.Get(targetEntry).Map[targetingResult.TargetPartSlot]
+		if intendedTargetPart == nil || intendedTargetPart.IsBroken { // Double check after handler
+			result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、パーツは存在しないか既に破壊されていた(Handler後チェック)。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot)
+			result.TargetEntry = targetEntry
+			RemoveActionModifiersSystem(entry)
 			return result
 		}
-		intendedTargetPart = PartsComponent.Get(targetEntry).Map[action.TargetPartSlot]
-		if intendedTargetPart == nil || intendedTargetPart.IsBroken {
-			result.LogMessage = fmt.Sprintf("%sは%sを狙ったが、パーツは既に破壊されていた！", settings.Name, action.TargetPartSlot)
-			result.TargetEntry = targetEntry // ターゲット自体は存在した
-			return result
+	} else if actingPart.Category != CategoryShoot && targetEntry != nil {
+		// For non-shoot actions that might not use TargetPartSlot directly from handler in this specific way,
+		// ensure intendedTargetPart is set if applicable (e.g. Melee handler might have picked one).
+		// This part might need refinement based on how handlers for other categories (SUPPORT, DEFENSE) work.
+		// For Melee, the handler's LogMessage implies a part was chosen. We need to ensure 'intendedTargetPart' is the one.
+		// The current MeleeActionHandler.ResolveTarget returns a valid TargetPartSlot for a valid Part.
+		// So, the above block should cover it.
+	}
+
+
+	if targetEntry == nil && (actingPart.Category == CategoryShoot || actingPart.Category == CategoryMelee) {
+		// If it's an attack category but no target was resolved by the handler (e.g. Melee found no enemies)
+		result.LogMessage = targetingResult.LogMessage // Use handler's log
+		if result.LogMessage == "" { // Fallback if handler didn't set one
+			result.LogMessage = fmt.Sprintf("%sは攻撃対象を見つけられませんでした。", settings.Name)
 		}
-	} else if actingPart.Category == CategoryMelee {
-		closestEnemy := targetSelector.FindClosestEnemy(entry)
-		if closestEnemy == nil {
-			result.LogMessage = fmt.Sprintf("%sは攻撃しようとしたが、相手がいなかった。", settings.Name)
-			return result
-		}
-		targetEntry = closestEnemy
-		intendedTargetPart = targetSelector.SelectRandomPartToDamage(targetEntry)
-		if intendedTargetPart == nil {
-			result.LogMessage = fmt.Sprintf("%sは%sを狙ったが、攻撃できる部位がなかった！", settings.Name, SettingsComponent.Get(targetEntry).Name)
-			result.TargetEntry = targetEntry // ターゲット自体は存在した
-			return result
-		}
-	} else {
-		result.LogMessage = fmt.Sprintf("%sは行動 '%s' に失敗した（未対応カテゴリ）。", settings.Name, actingPart.Category)
+		RemoveActionModifiersSystem(entry)
 		return result
 	}
 	result.TargetEntry = targetEntry
 
+
 	// --- 命中判定 ---
-	didHit := hitCalculator.CalculateHit(entry, targetEntry, actingPart)
+	// Note: For actions that don't require a target (e.g. self-buffs), targetEntry might be nil.
+	// Hit calculation should only proceed if there's a target and it's an offensive action.
+	// This logic might need to be part of the ActionHandler or an earlier check.
+	var didHit bool = true // Assume hit for non-targeted actions or if no hit calc is needed
+	if targetEntry != nil && (actingPart.Category == CategoryShoot || actingPart.Category == CategoryMelee) {
+		didHit = hitCalculator.CalculateHit(entry, targetEntry, actingPart)
+	}
 	result.ActionDidHit = didHit
 
 	if !didHit {
