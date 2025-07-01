@@ -15,6 +15,7 @@ var (
 	ActionComponent        = donburi.NewComponentType[Action]()
 	LogComponent           = donburi.NewComponentType[Log]()
 	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
+	EffectsComponent       = donburi.NewComponentType[Effects]() // ★★★ この行を新しく追加 ★★★
 )
 
 // --- Componentの構造体定義 ---
@@ -59,3 +60,9 @@ type Log struct {
 
 // PlayerControl はプレイヤーが操作するエンティティであることを示すタグ
 type PlayerControl struct{}
+
+// Effects はメダロットにかかっている一時的な効果（バフ・デバフ）を管理します
+type Effects struct {
+	EvasionRateMultiplier float64 // 回避率の倍率 (例: 0.5で半減)
+	DefenseRateMultiplier float64 // 防御率の倍率 (例: 0.5で半減)
+}

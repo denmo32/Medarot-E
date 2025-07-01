@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/ebitenui/ebitenui/widget"
-	"github.com/yohamta/donburi" // ActionTargetでdonburi.Entryを使うため
 	"image/color"
+
+	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
 )
 
 type TeamID int
@@ -18,7 +19,6 @@ const (
 	Team1 TeamID = 0
 	Team2 TeamID = 1
 )
-
 const (
 	StateIdle     MedarotState = "待機"
 	StateCharging MedarotState = "チャージ中"
@@ -26,34 +26,29 @@ const (
 	StateCooldown MedarotState = "クールダウン"
 	StateBroken   MedarotState = "機能停止"
 )
-
 const (
 	StatePlaying            GameState = "Playing"
 	StatePlayerActionSelect GameState = "PlayerActionSelect"
 	StateMessage            GameState = "Message"
 	StateGameOver           GameState = "GameOver"
 )
-
 const (
 	PartSlotHead     PartSlotKey = "head"
 	PartSlotRightArm PartSlotKey = "r_arm"
 	PartSlotLeftArm  PartSlotKey = "l_arm"
 	PartSlotLegs     PartSlotKey = "legs"
 )
-
 const (
 	PartTypeHead PartType = "HEAD"
 	PartTypeRArm PartType = "R_ARM"
 	PartTypeLArm PartType = "L_ARM"
 	PartTypeLegs PartType = "LEG"
 )
-
 const (
 	CategoryShoot PartCategory = "SHOOT"
 	CategoryMelee PartCategory = "FIGHT"
 	CategoryNone  PartCategory = "NONE"
 )
-
 const (
 	TraitAim     Trait = "AIM"
 	TraitStrike  Trait = "STRIKE"
@@ -61,7 +56,6 @@ const (
 	TraitNormal  Trait = "NORMAL"
 	TraitNone    Trait = "NONE"
 )
-
 const PlayersPerTeam = 3
 
 // ActionTarget はUIで使うための一時的なターゲット情報
@@ -75,19 +69,35 @@ type Config struct {
 	UI      UIConfig
 }
 
+// BalanceConfig 構造体を新しいルールに合わせて拡張
 type BalanceConfig struct {
 	Time struct {
 		PropulsionEffectRate float64
-		// [REMOVED] 古いフィールドを削除
-		// OverallTimeDivisor   float64
-		// [NEW] 新しいフィールドを追加
-		GameSpeedMultiplier float64
+		GameSpeedMultiplier  float64
 	}
-	Hit struct {
-		BaseChance         int
-		TraitAimBonus      int
-		TraitStrikeBonus   int
-		TraitBerserkDebuff int
+	// ★★★ ここから下を新しく追加・修正 ★★★
+	Factors struct {
+		AccuracyStabilityFactor      float64
+		EvasionStabilityFactor       float64
+		DefenseStabilityFactor       float64
+		PowerStabilityFactor         float64
+		MeleeAccuracyMobilityFactor  float64
+		BerserkPowerPropulsionFactor float64
+	}
+	Effects struct {
+		Melee struct {
+			DefenseRateDebuff float64
+			CriticalRateBonus int
+		}
+		Berserk struct {
+			DefenseRateDebuff float64
+			EvasionRateDebuff float64
+		}
+		Shoot struct{}
+		Aim   struct {
+			EvasionRateDebuff float64
+			CriticalRateBonus int
+		}
 	}
 	Damage struct {
 		CriticalMultiplier float64
@@ -143,13 +153,11 @@ type UIConfig struct {
 		Background color.Color
 	}
 }
-
 type GameData struct {
 	Medals   []Medal
 	AllParts map[string]*Part
 	Medarots []MedarotData
 }
-
 type MedarotData struct {
 	ID         string
 	Name       string
@@ -162,7 +170,6 @@ type MedarotData struct {
 	LegsID     string
 	DrawIndex  int
 }
-
 type PartData struct {
 	ID         string
 	Name       string
@@ -177,13 +184,11 @@ type PartData struct {
 	Propulsion int
 	Mobility   int
 }
-
 type MedalData struct {
 	ID         string
 	Name       string
 	SkillLevel int
 }
-
 type Medarot struct {
 	ID                string
 	Name              string
@@ -202,7 +207,6 @@ type Medarot struct {
 	ProgressCounter   float64
 	TotalDuration     float64
 }
-
 type Part struct {
 	ID         string
 	PartName   string
@@ -218,23 +222,21 @@ type Part struct {
 	Propulsion int
 	Mobility   int
 	Defense    int
+	Stability  int
 	IsBroken   bool
 }
-
 type Medal struct {
 	ID          string
 	Name        string
-	Personality string // 追加されたフィールド
+	Personality string
 	SkillLevel  int
 }
-
 type infoPanelUI struct {
 	rootContainer *widget.Container
 	nameText      *widget.Text
 	stateText     *widget.Text
 	partSlots     map[PartSlotKey]*infoPanelPartUI
 }
-
 type infoPanelPartUI struct {
 	partNameText *widget.Text
 	hpText       *widget.Text

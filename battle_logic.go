@@ -12,7 +12,11 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
+// ApplyDamage はパーツにダメージを適用し、メダロットの状態を更新します
 func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
+	if damage < 0 {
+		damage = 0
+	}
 	part.Armor -= damage
 	if part.Armor <= 0 {
 		part.Armor = 0
@@ -25,42 +29,140 @@ func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
 	}
 }
 
-func CalculateHit(attacker *donburi.Entry, target *donburi.Entry, part *Part, balanceConfig *BalanceConfig) bool {
-	baseChance := balanceConfig.Hit.BaseChance
-	accuracyBonus := part.Accuracy / 2
-	evasionPenalty := GetOverallMobility(target) / 2
-	chance := baseChance + accuracyBonus - evasionPenalty
-	switch part.Trait {
-	case TraitAim:
-		chance += balanceConfig.Hit.TraitAimBonus
-	case TraitStrike:
-		chance += balanceConfig.Hit.TraitStrikeBonus
-	case TraitBerserk:
-		chance += balanceConfig.Hit.TraitBerserkDebuff
+// CalculateHit は新しいルールに基づいて命中判定を行います
+func CalculateHit(attacker, target *donburi.Entry, part *Part, config *BalanceConfig) bool {
+	// 攻撃側の命中性能を計算
+	attackerLegs := PartsComponent.Get(attacker).Map[PartSlotLegs]
+	attackerStability := 0
+	if attackerLegs != nil {
+		attackerStability = attackerLegs.Stability
 	}
-	if chance < 10 {
-		chance = 10
-	} else if chance > 95 {
+
+	baseAccuracy := float64(part.Accuracy) + float64(attackerStability)*config.Factors.AccuracyStabilityFactor
+
+	// アクション特性によるボーナス
+	switch part.Category {
+	case CategoryMelee:
+		baseAccuracy += float64(GetOverallMobility(attacker)) * config.Factors.MeleeAccuracyMobilityFactor
+	case CategoryShoot:
+		// 「撃つ」は純粋な安定ボーナスのみ
+	}
+
+	// 回避側の回避性能を計算
+	targetEffects := EffectsComponent.Get(target)
+	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
+	targetStability := 0
+	if targetLegs != nil {
+		targetStability = targetLegs.Stability
+	}
+
+	baseEvasion := float64(GetOverallMobility(target)) + float64(targetStability)*config.Factors.EvasionStabilityFactor
+	finalEvasion := baseEvasion * targetEffects.EvasionRateMultiplier // デバフを適用
+
+	// 最終的な命中率を計算 (例: 50 + (攻撃側の命中 - 敵の回避))
+	chance := 50 + baseAccuracy - finalEvasion
+	if chance < 5 {
+		chance = 5
+	}
+	if chance > 95 {
 		chance = 95
 	}
+
 	roll := rand.Intn(100)
-	attackerSettings := SettingsComponent.Get(attacker)
-	targetSettings := SettingsComponent.Get(target)
-	log.Printf("命中判定: %s -> %s | 命中率: %d, ロール: %d", attackerSettings.Name, targetSettings.Name, chance, roll)
-	return roll < chance
+	log.Printf("命中判定: %s -> %s | 命中率: %.1f, ロール: %d", SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, roll)
+	return roll < int(chance)
 }
 
-func CalculateDamage(attacker *donburi.Entry, part *Part, balanceConfig *BalanceConfig) (damage int, isCritical bool) {
+// CalculateDefense は防御の成否を判定します
+func CalculateDefense(attacker, target *donburi.Entry, defensePart *Part, config *BalanceConfig) bool {
+	// 防御側の防御性能を計算
+	targetEffects := EffectsComponent.Get(target)
+	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
+	targetStability := 0
+	if targetLegs != nil {
+		targetStability = targetLegs.Stability
+	}
+
+	baseDefense := float64(defensePart.Defense) + float64(targetStability)*config.Factors.DefenseStabilityFactor
+	finalDefense := baseDefense * targetEffects.DefenseRateMultiplier // デバフを適用
+
+	// 防御成功率を計算 (例: 10 + 防御性能)
+	chance := 10 + finalDefense
+	if chance < 5 {
+		chance = 5
+	}
+	if chance > 95 {
+		chance = 95
+	}
+
+	roll := rand.Intn(100)
+	log.Printf("防御判定: %s | 防御成功率: %.1f, ロール: %d", SettingsComponent.Get(target).Name, chance, roll)
+	return roll < int(chance)
+}
+
+// CalculateDamage は新しいルールに基づいてダメージを計算します
+func CalculateDamage(attacker *donburi.Entry, part *Part, config *BalanceConfig) (int, bool) {
+	// 基本威力を計算
+	attackerLegs := PartsComponent.Get(attacker).Map[PartSlotLegs]
+	attackerStability := 0
+	if attackerLegs != nil {
+		attackerStability = attackerLegs.Stability
+	}
+	baseDamage := float64(part.Power) + float64(attackerStability)*config.Factors.PowerStabilityFactor
+
+	// アクション特性によるボーナス
+	if part.Trait == TraitBerserk {
+		baseDamage += float64(GetOverallPropulsion(attacker)) * config.Factors.BerserkPowerPropulsionFactor
+	}
+
+	// クリティカル判定
 	medal := MedalComponent.Get(attacker)
-	baseDamage := part.Power
-	isCritical = false
-	criticalChance := medal.SkillLevel * 2
+	isCritical := false
+	criticalBonus := 0
+	switch part.Category {
+	case CategoryMelee:
+		criticalBonus = config.Effects.Melee.CriticalRateBonus
+	case CategoryShoot:
+		if part.Trait == TraitAim {
+			criticalBonus = config.Effects.Aim.CriticalRateBonus
+		}
+	}
+	criticalChance := medal.SkillLevel*2 + criticalBonus
 	if rand.Intn(100) < criticalChance {
-		baseDamage = int(float64(baseDamage) * balanceConfig.Damage.CriticalMultiplier)
+		baseDamage *= config.Damage.CriticalMultiplier
 		isCritical = true
 	}
-	baseDamage += medal.SkillLevel * balanceConfig.Damage.MedalSkillFactor
-	return baseDamage, isCritical
+
+	finalDamage := baseDamage + float64(medal.SkillLevel*config.Damage.MedalSkillFactor)
+	return int(finalDamage), isCritical
+}
+
+// SelectDefensePart は防御に使用するパーツを選択します
+func SelectDefensePart(target *donburi.Entry) *Part {
+	parts := PartsComponent.Get(target).Map
+	var bestPart *Part
+	var otherParts []*Part
+
+	// 頭部以外の未破壊パーツを探す
+	for slot, part := range parts {
+		if !part.IsBroken && slot != PartSlotLegs && slot != PartSlotHead {
+			otherParts = append(otherParts, part)
+		}
+	}
+
+	if len(otherParts) > 0 {
+		// 装甲が最も高いパーツで防御
+		sort.Slice(otherParts, func(i, j int) bool {
+			return otherParts[i].Armor > otherParts[j].Armor
+		})
+		bestPart = otherParts[0]
+	} else {
+		// 他にパーツがなければ頭部で防御
+		if head := parts[PartSlotHead]; head != nil && !head.IsBroken {
+			bestPart = head
+		}
+	}
+	return bestPart
 }
 
 func SelectRandomPartToDamage(target *donburi.Entry) *Part {

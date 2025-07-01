@@ -35,6 +35,25 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 		log.Printf("%sは%sで攻撃準備！", settings.Name, part.PartName)
 	}
 
+	if target != nil {
+		effects := EffectsComponent.Get(target)
+		effects.DefenseRateMultiplier = 1.0
+		effects.EvasionRateMultiplier = 1.0
+
+		switch part.Category {
+		case CategoryMelee:
+			effects.DefenseRateMultiplier = balanceConfig.Effects.Melee.DefenseRateDebuff
+		case CategoryShoot:
+			if part.Trait == TraitAim {
+				effects.EvasionRateMultiplier = balanceConfig.Effects.Aim.EvasionRateDebuff
+			}
+		}
+		if part.Trait == TraitBerserk {
+			effects.DefenseRateMultiplier = balanceConfig.Effects.Berserk.DefenseRateDebuff
+			effects.EvasionRateMultiplier = balanceConfig.Effects.Berserk.EvasionRateDebuff
+		}
+	}
+
 	legs := parts.Map[PartSlotLegs]
 	propulsion := 1
 	if legs != nil && !legs.IsBroken {
@@ -58,9 +77,14 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 }
 
 func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
+	part := PartsComponent.Get(entry).Map[ActionComponent.Get(entry).SelectedPartKey]
+	if part.Trait != TraitBerserk {
+		ResetAllEffects(entry.World)
+	}
+
 	parts := PartsComponent.Get(entry)
 	action := ActionComponent.Get(entry)
-	part := parts.Map[action.SelectedPartKey]
+	part = parts.Map[action.SelectedPartKey]
 
 	baseSeconds := 1.0
 	if part != nil {
@@ -81,14 +105,23 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	ChangeState(entry, StateCooldown)
 }
 
+func ResetAllEffects(world donburi.World) {
+	query.NewQuery(filter.Contains(EffectsComponent)).Each(world, func(e *donburi.Entry) {
+		effects := EffectsComponent.Get(e)
+		effects.DefenseRateMultiplier = 1.0
+		effects.EvasionRateMultiplier = 1.0
+	})
+}
+
 func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 	action := ActionComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
 	logComp := LogComponent.Get(entry)
 	part := PartsComponent.Get(entry).Map[action.SelectedPartKey]
+	config := &bs.resources.Config
 
 	var targetEntry *donburi.Entry
-	var targetPart *Part
+	var intendedTargetPart *Part
 
 	if part.Category == CategoryShoot {
 		targetEntry = action.TargetEntity
@@ -96,8 +129,8 @@ func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 			logComp.LastActionLog = fmt.Sprintf("%sはターゲットを狙ったが、既に行動不能だった！", settings.Name)
 			return nil
 		}
-		targetPart = PartsComponent.Get(targetEntry).Map[action.TargetPartSlot]
-		if targetPart == nil || targetPart.IsBroken {
+		intendedTargetPart = PartsComponent.Get(targetEntry).Map[action.TargetPartSlot]
+		if intendedTargetPart == nil || intendedTargetPart.IsBroken {
 			logComp.LastActionLog = fmt.Sprintf("%sは%sを狙ったが、パーツは既に破壊されていた！", settings.Name, action.TargetPartSlot)
 			return nil
 		}
@@ -108,8 +141,8 @@ func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 			return nil
 		}
 		targetEntry = closestEnemy
-		targetPart = SelectRandomPartToDamage(targetEntry)
-		if targetPart == nil {
+		intendedTargetPart = SelectRandomPartToDamage(targetEntry)
+		if intendedTargetPart == nil {
 			logComp.LastActionLog = fmt.Sprintf("%sは%sを狙ったが、攻撃できる部位がなかった！", settings.Name, SettingsComponent.Get(targetEntry).Name)
 			return nil
 		}
@@ -117,19 +150,47 @@ func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 		logComp.LastActionLog = fmt.Sprintf("%sは行動に失敗した。", settings.Name)
 		return nil
 	}
+	
+	// ★★★ ここから下を修正 ★★★
+	balanceConf := &config.Balance
 
-	logComp.LastActionLog = "実行中..."
-
-	isHit := CalculateHit(entry, targetEntry, part, &bs.resources.Config.Balance)
-	if isHit {
-		damage, isCritical := CalculateDamage(entry, part, &bs.resources.Config.Balance)
-		ApplyDamage(targetEntry, targetPart, damage)
-		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, targetPart, damage, isCritical, true)
-	} else {
+	if !CalculateHit(entry, targetEntry, part, balanceConf) {
 		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, nil, 0, false, false)
+		if part.Trait == TraitBerserk {
+			ResetAllEffects(bs.world)
+		}
+		return targetEntry
+	}
+
+	damage, isCritical := CalculateDamage(entry, part, balanceConf)
+	defensePart := SelectDefensePart(targetEntry)
+
+	if defensePart != nil && CalculateDefense(entry, targetEntry, defensePart, balanceConf) {
+		finalDamage := damage - defensePart.Defense
+		ApplyDamage(targetEntry, defensePart, finalDamage)
+		logComp.LastActionLog = GenerateActionLogDefense(entry, targetEntry, defensePart, finalDamage, isCritical)
+	} else {
+		ApplyDamage(targetEntry, intendedTargetPart, damage)
+		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, intendedTargetPart, damage, isCritical, true)
+	}
+
+	if part.Trait == TraitBerserk {
+		ResetAllEffects(bs.world)
 	}
 
 	return targetEntry
+}
+
+func GenerateActionLogDefense(attacker, target *donburi.Entry, defensePart *Part, damage int, isCritical bool) string {
+	targetSettings := SettingsComponent.Get(target)
+	logMsg := fmt.Sprintf("%sは%sで防御し、%dダメージに抑えた！", targetSettings.Name, defensePart.PartName, damage)
+	if isCritical {
+		logMsg = fmt.Sprintf("%sは%sで防御！クリティカルヒットを%dダメージに抑えた！", targetSettings.Name, defensePart.PartName, damage)
+	}
+	if defensePart.IsBroken {
+		logMsg += " しかし、パーツは破壊された！"
+	}
+	return logMsg
 }
 
 func SystemUpdateProgress(bs *BattleScene) {
@@ -155,6 +216,10 @@ func SystemUpdateProgress(bs *BattleScene) {
 				log.Printf("%s のチャージが完了。実行キューに追加。", SettingsComponent.Get(entry).Name)
 			} else if state.State == StateCooldown {
 				ChangeState(entry, StateIdle)
+				part := PartsComponent.Get(entry).Map[ActionComponent.Get(entry).SelectedPartKey]
+				if part != nil && part.Trait == TraitBerserk {
+					ResetAllEffects(bs.world)
+				}
 			}
 		}
 	})

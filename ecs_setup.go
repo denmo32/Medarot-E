@@ -23,6 +23,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
+			EffectsComponent, // ★★★ この行を新しく追加 ★★★
 		))
 
 		// (... Settings, Parts, Medal などの設定は変更なし ...)
@@ -60,6 +61,12 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		GaugeComponent.SetValue(entry, Gauge{})
 		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""}) // TargetPartSlotを初期化
 		LogComponent.SetValue(entry, Log{})
+
+		// ★★★ EffectsComponentの初期値を設定 ★★★
+		EffectsComponent.SetValue(entry, Effects{
+			EvasionRateMultiplier: 1.0, // 通常は1.0 (100%)
+			DefenseRateMultiplier: 1.0, // 通常は1.0 (100%)
+		})
 
 		// プレイヤーチームならPlayerControlタグを追加
 		if loadout.Team == playerTeam {

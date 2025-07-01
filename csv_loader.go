@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-// parseInt, parseBool, LoadMedals, LoadParts, LoadMedarotLoadouts, LoadAllGameData
-// ... (既存のLoad系関数は変更なし) ...
 func parseInt(s string, defaultValue int) int {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -55,6 +53,7 @@ func LoadMedals(filePath string) ([]Medal, error) {
 	return medals, nil
 }
 
+// LoadParts のインデックスをCSVの列に完全に合わせる
 func LoadParts(filePath string) (map[string]*Part, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -62,7 +61,7 @@ func LoadParts(filePath string) (map[string]*Part, error) {
 	}
 	defer file.Close()
 	reader := csv.NewReader(file)
-	reader.Read()
+	reader.Read() // Skip header
 
 	partsMap := make(map[string]*Part)
 	for {
@@ -70,7 +69,8 @@ func LoadParts(filePath string) (map[string]*Part, error) {
 		if err == io.EOF {
 			break
 		}
-		if err != nil || len(record) < 14 {
+		// ★★★ 修正点1: 列数を15に更新 ★★★
+		if err != nil || len(record) < 15 {
 			continue
 		}
 		armor := parseInt(record[6], 1)
@@ -89,7 +89,9 @@ func LoadParts(filePath string) (map[string]*Part, error) {
 			Accuracy:   parseInt(record[11], 0),
 			Mobility:   parseInt(record[12], 0),
 			Propulsion: parseInt(record[13], 0),
-			IsBroken:   false,
+			// ★★★ 修正点2: 新しいstability列(インデックス14)を読み込む ★★★
+			Stability: parseInt(record[14], 0),
+			IsBroken:  false,
 		}
 		partsMap[part.ID] = part
 	}
@@ -153,8 +155,6 @@ func LoadAllGameData() (*GameData, error) {
 	return gameData, nil
 }
 
-// ★★★ ここから下を新しく追加 ★★★
-
 // SaveMedarotLoadouts は、現在のメダロットの構成をCSVファイルに保存します。
 func SaveMedarotLoadouts(filePath string, medarots []MedarotData) error {
 	file, err := os.Create(filePath)
@@ -190,6 +190,5 @@ func SaveMedarotLoadouts(filePath string, medarots []MedarotData) error {
 			return fmt.Errorf("failed to write record for %s: %w", medarot.Name, err)
 		}
 	}
-
 	return nil
 }

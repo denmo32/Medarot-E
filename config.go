@@ -18,16 +18,59 @@ func LoadConfig() Config {
 				PropulsionEffectRate: 0.01,
 				GameSpeedMultiplier:  50,
 			},
-			Hit: struct {
-				BaseChance         int
-				TraitAimBonus      int
-				TraitStrikeBonus   int
-				TraitBerserkDebuff int
+			// ★★★ この部分を正しく設定 ★★★
+			Factors: struct {
+				AccuracyStabilityFactor      float64
+				EvasionStabilityFactor       float64
+				DefenseStabilityFactor       float64
+				PowerStabilityFactor         float64
+				MeleeAccuracyMobilityFactor  float64
+				BerserkPowerPropulsionFactor float64
 			}{
-				BaseChance:         70,
-				TraitAimBonus:      20,
-				TraitStrikeBonus:   10,
-				TraitBerserkDebuff: -30,
+				AccuracyStabilityFactor:      0.5,
+				EvasionStabilityFactor:       0.5,
+				DefenseStabilityFactor:       0.5,
+				PowerStabilityFactor:         0.2,
+				MeleeAccuracyMobilityFactor:  1.0,
+				BerserkPowerPropulsionFactor: 1.0,
+			},
+			Effects: struct {
+				Melee struct {
+					DefenseRateDebuff float64
+					CriticalRateBonus int
+				}
+				Berserk struct {
+					DefenseRateDebuff float64
+					EvasionRateDebuff float64
+				}
+				Shoot struct{}
+				Aim   struct {
+					EvasionRateDebuff float64
+					CriticalRateBonus int
+				}
+			}{
+				Melee: struct {
+					DefenseRateDebuff float64
+					CriticalRateBonus int
+				}{
+					DefenseRateDebuff: 0.5,
+					CriticalRateBonus: 10,
+				},
+				Berserk: struct {
+					DefenseRateDebuff float64
+					EvasionRateDebuff float64
+				}{
+					DefenseRateDebuff: 0.5,
+					EvasionRateDebuff: 0.5,
+				},
+				Shoot: struct{}{},
+				Aim: struct {
+					EvasionRateDebuff float64
+					CriticalRateBonus int
+				}{
+					EvasionRateDebuff: 0.5,
+					CriticalRateBonus: 15,
+				},
 			},
 			Damage: struct {
 				CriticalMultiplier float64
