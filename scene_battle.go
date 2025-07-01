@@ -90,7 +90,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	// Ensure the world state entity with ActionQueueComponent exists.
 	// This will create the entity and the ActionQueueComponentData if they don't exist.
 	EnsureActionQueueEntity(bs.world)
-	RegisterStateChangeEventHandlers(bs.world) // Register event handlers
+	// RegisterStateChangeEventHandlers(bs.world) // Removed: Event system replaced with tag polling system
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
 	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも良い
@@ -193,6 +193,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		if bs.ui.battlefieldWidget != nil {
 			bs.ui.battlefieldWidget.UpdatePositions()
 		}
+		ProcessStateEffectsSystem(bs.world) // Process state change side effects at the end of StatePlaying
 	case StatePlayerActionSelect:
 		// Ensure battlefield icons are updated while player is selecting action
 		if bs.ui.battlefieldWidget != nil {

@@ -121,6 +121,19 @@ var ActingWithAimTraitTagComponent = donburi.NewComponentType[ActingWithAimTrait
 
 // Potentially others: ActingWithStrikeTraitTag, etc.
 
+// --- Temporary State Change Tags ---
+// These tags are added when an entity transitions to a specific state,
+// and are typically removed by a system after processing the side effects of that state change.
+
+// JustBecameIdleTag indicates the entity has just transitioned to the Idle state.
+type JustBecameIdleTag struct{}
+var JustBecameIdleTagComponent = donburi.NewComponentType[JustBecameIdleTag]()
+
+// JustBecameBrokenTag indicates the entity has just transitioned to the Broken state.
+type JustBecameBrokenTag struct{}
+var JustBecameBrokenTagComponent = donburi.NewComponentType[JustBecameBrokenTag]()
+
+
 // --- Action Modifier Component ---
 // Temporarily added to an entity before action calculation (hit/damage)
 // to aggregate all modifiers from traits, skills, buffs, debuffs, etc.

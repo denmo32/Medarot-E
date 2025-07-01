@@ -60,16 +60,23 @@ func ChangeState(entry *donburi.Entry, newStateType StateType) {
 		// Gauge reset for Broken moved to handleStateChangeForGaugeReset event handler
 	}
 
-	// Publish StateChangedEvent
-	if oldStateType != newStateType { // Only publish if state actually changed
-		eventToSend := StateChangedEvent{
-			Entity:   entry,
-			OldState: oldStateType,
-			NewState: newStateType,
-		}
-		event.Publish(entry.World, eventToSend) // Use event.Publish
-		if entry.HasComponent(SettingsComponent) { // Additional log for event
-			log.Printf("Event: StateChanged for %s from %v to %v", SettingsComponent.Get(entry).Name, oldStateType, newStateType)
+	// Publish StateChangedEvent -> Replaced with adding temporary tags
+	if oldStateType != newStateType { // Only add tag if state actually changed
+		// Remove any existing "JustBecame..." tags first to handle rapid state changes if necessary,
+		// though typically a system would remove them after one frame.
+		// For now, we assume systems will clean them up.
+		switch newStateType {
+		case StateTypeIdle:
+			donburi.Add(entry, JustBecameIdleTagComponent, &JustBecameIdleTag{})
+			if entry.HasComponent(SettingsComponent) {
+				log.Printf("TagAdded: JustBecameIdleTag for %s", SettingsComponent.Get(entry).Name)
+			}
+		case StateTypeBroken:
+			donburi.Add(entry, JustBecameBrokenTagComponent, &JustBecameBrokenTag{})
+			if entry.HasComponent(SettingsComponent) {
+				log.Printf("TagAdded: JustBecameBrokenTag for %s", SettingsComponent.Get(entry).Name)
+			}
+			// Add other JustBecame... tags here if needed for other states
 		}
 	}
 }
