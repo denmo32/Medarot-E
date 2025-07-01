@@ -12,11 +12,9 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-func createSingleMedarotInfoPanel(game *Game, entry *donburi.Entry) *infoPanelUI {
-	c := game.Config.UI
-	// 修正: ComponentType.Get を使用
+func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPanelUI {
+	c := bs.resources.Config.UI
 	settings := SettingsComponent.Get(entry)
-	// 修正: ComponentType.Get を使用
 	parts := PartsComponent.Get(entry).Map
 
 	panelContainer := widget.NewContainer(
@@ -38,12 +36,12 @@ func createSingleMedarotInfoPanel(game *Game, entry *donburi.Entry) *infoPanelUI
 	panelContainer.AddChild(headerContainer)
 
 	nameText := widget.NewText(
-		widget.TextOpts.Text(settings.Name, game.MplusFont, c.Colors.White),
+		widget.TextOpts.Text(settings.Name, bs.resources.Font, c.Colors.White),
 	)
 	headerContainer.AddChild(nameText)
 
 	stateText := widget.NewText(
-		widget.TextOpts.Text(string(StateIdle), game.MplusFont, c.Colors.Yellow),
+		widget.TextOpts.Text(string(StateIdle), bs.resources.Font, c.Colors.Yellow),
 		widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{
 			HorizontalPosition: widget.GridLayoutPositionEnd,
 		})),
@@ -67,7 +65,7 @@ func createSingleMedarotInfoPanel(game *Game, entry *donburi.Entry) *infoPanelUI
 		panelContainer.AddChild(partContainer)
 
 		partNameText := widget.NewText(
-			widget.TextOpts.Text(partName, game.MplusFont, c.Colors.White),
+			widget.TextOpts.Text(partName, bs.resources.Font, c.Colors.White),
 		)
 		partContainer.AddChild(partNameText)
 
@@ -87,7 +85,7 @@ func createSingleMedarotInfoPanel(game *Game, entry *donburi.Entry) *infoPanelUI
 		partContainer.AddChild(hpBar)
 
 		hpText := widget.NewText(
-			widget.TextOpts.Text("0/0", game.MplusFont, c.Colors.White),
+			widget.TextOpts.Text("0/0", bs.resources.Font, c.Colors.White),
 		)
 		partContainer.AddChild(hpText)
 
@@ -106,19 +104,14 @@ func createSingleMedarotInfoPanel(game *Game, entry *donburi.Entry) *infoPanelUI
 	}
 }
 
-// UIの初期化時に呼ばれる
-func setupInfoPanels(game *Game, team1Container, team2Container *widget.Container) {
-	// 描画順でソートするために一度スライスに集める
+func setupInfoPanels(bs *BattleScene, team1Container, team2Container *widget.Container) {
 	var entries []*donburi.Entry
-	// 修正: filter.With を filter.Contains に変更
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(game.World, func(entry *donburi.Entry) {
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(bs.world, func(entry *donburi.Entry) {
 		entries = append(entries, entry)
 	})
 
 	sort.Slice(entries, func(i, j int) bool {
-		// 修正: ComponentType.Get を使用
 		iSettings := SettingsComponent.Get(entries[i])
-		// 修正: ComponentType.Get を使用
 		jSettings := SettingsComponent.Get(entries[j])
 		if iSettings.Team != jSettings.Team {
 			return iSettings.Team < jSettings.Team
@@ -127,10 +120,9 @@ func setupInfoPanels(game *Game, team1Container, team2Container *widget.Containe
 	})
 
 	for _, entry := range entries {
-		// 修正: ComponentType.Get を使用
 		settings := SettingsComponent.Get(entry)
-		panelUI := createSingleMedarotInfoPanel(game, entry)
-		game.ui.medarotInfoPanels[settings.ID] = panelUI
+		panelUI := createSingleMedarotInfoPanel(bs, entry)
+		bs.ui.medarotInfoPanels[settings.ID] = panelUI
 		if settings.Team == Team1 {
 			team1Container.AddChild(panelUI.rootContainer)
 		} else {
@@ -139,25 +131,21 @@ func setupInfoPanels(game *Game, team1Container, team2Container *widget.Containe
 	}
 }
 
-func updateAllInfoPanels(game *Game) {
-	// 修正: filter.With を filter.Contains に変更
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(game.World, func(entry *donburi.Entry) {
+func updateAllInfoPanels(bs *BattleScene) {
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(bs.world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)
-		ui, ok := game.ui.medarotInfoPanels[settings.ID]
+		ui, ok := bs.ui.medarotInfoPanels[settings.ID]
 		if !ok {
 			return
 		}
-		updateSingleInfoPanel(entry, ui, &game.Config)
+		updateSingleInfoPanel(entry, ui, &bs.resources.Config)
 	})
 }
 
 func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config) {
 	c := config.UI
-	// 修正: ComponentType.Get を使用
 	settings := SettingsComponent.Get(entry)
-	// 修正: ComponentType.Get を使用
 	state := StateComponent.Get(entry)
-	// 修正: ComponentType.Get を使用
 	partsMap := PartsComponent.Get(entry).Map
 
 	ui.stateText.Label = string(state.State)

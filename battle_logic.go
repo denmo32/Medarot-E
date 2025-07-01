@@ -12,13 +12,11 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// ApplyDamage はパーツにダメージを適用し、メダロットの状態を更新する
 func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
 	part.Armor -= damage
 	if part.Armor <= 0 {
 		part.Armor = 0
 		part.IsBroken = true
-		// 修正: ComponentType.Get(entry) を使用
 		settings := SettingsComponent.Get(entry)
 		log.Printf("%s の %s が破壊された！", settings.Name, part.PartName)
 		if part.Type == PartTypeHead {
@@ -27,7 +25,6 @@ func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
 	}
 }
 
-// CalculateHit は命中判定を行う
 func CalculateHit(attacker *donburi.Entry, target *donburi.Entry, part *Part, balanceConfig *BalanceConfig) bool {
 	baseChance := balanceConfig.Hit.BaseChance
 	accuracyBonus := part.Accuracy / 2
@@ -47,17 +44,13 @@ func CalculateHit(attacker *donburi.Entry, target *donburi.Entry, part *Part, ba
 		chance = 95
 	}
 	roll := rand.Intn(100)
-	// 修正: ComponentType.Get(entry) を使用
 	attackerSettings := SettingsComponent.Get(attacker)
-	// 修正: ComponentType.Get(entry) を使用
 	targetSettings := SettingsComponent.Get(target)
 	log.Printf("命中判定: %s -> %s | 命中率: %d, ロール: %d", attackerSettings.Name, targetSettings.Name, chance, roll)
 	return roll < chance
 }
 
-// CalculateDamage はダメージ計算を行う
 func CalculateDamage(attacker *donburi.Entry, part *Part, balanceConfig *BalanceConfig) (damage int, isCritical bool) {
-	// 修正: ComponentType.Get(entry) を使用
 	medal := MedalComponent.Get(attacker)
 	baseDamage := part.Power
 	isCritical = false
@@ -70,9 +63,7 @@ func CalculateDamage(attacker *donburi.Entry, part *Part, balanceConfig *Balance
 	return baseDamage, isCritical
 }
 
-// SelectRandomPartToDamage はダメージを受けるパーツをランダムに選択する
 func SelectRandomPartToDamage(target *donburi.Entry) *Part {
-	// 修正: ComponentType.Get(entry) を使用
 	parts := PartsComponent.Get(target).Map
 	vulnerable := []*Part{}
 	slots := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs}
@@ -87,16 +78,11 @@ func SelectRandomPartToDamage(target *donburi.Entry) *Part {
 	return vulnerable[rand.Intn(len(vulnerable))]
 }
 
-// GenerateActionLog は行動ログの文字列を生成する
 func GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, targetPart *Part, damage int, isCritical bool, didHit bool) string {
-	// 修正: ComponentType.Get(entry) を使用
 	attackerSettings := SettingsComponent.Get(attacker)
-	// 修正: ComponentType.Get(entry) を使用
 	targetSettings := SettingsComponent.Get(target)
 	if !didHit {
-		// 修正: ComponentType.Get(entry) を使用
 		actingPartKey := ActionComponent.Get(attacker).SelectedPartKey
-		// 修正: ComponentType.Get(entry) を使用
 		actingPart := PartsComponent.Get(attacker).Map[actingPartKey]
 		return fmt.Sprintf("%sの%s攻撃は%sに外れた！", attackerSettings.Name, actingPart.PartName, targetSettings.Name)
 	}
@@ -110,7 +96,6 @@ func GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, targetPar
 	return logMsg
 }
 
-// findPartSlot は指定されたパーツがどのスロットにあるかを返す
 func findPartSlot(entry *donburi.Entry, part *Part) PartSlotKey {
 	partsMap := PartsComponent.Get(entry).Map
 	for s, p := range partsMap {
@@ -121,12 +106,7 @@ func findPartSlot(entry *donburi.Entry, part *Part) PartSlotKey {
 	return ""
 }
 
-// --- Componentデータからのゲッター関数 ---
-// 古いMedarot構造体のゲッターメソッドの代わり
-
-// GetAvailableAttackParts は攻撃可能なパーツ一覧を返す
 func GetAvailableAttackParts(entry *donburi.Entry) []*Part {
-	// 修正: ComponentType.Get(entry) を使用
 	partsMap := PartsComponent.Get(entry).Map
 	var availableParts []*Part
 	slotsToConsider := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm}
@@ -139,9 +119,7 @@ func GetAvailableAttackParts(entry *donburi.Entry) []*Part {
 	return availableParts
 }
 
-// GetOverallPropulsion は推進力を取得（足回り）
 func GetOverallPropulsion(entry *donburi.Entry) int {
-	// 修正: ComponentType.Get(entry) を使用
 	partsMap := PartsComponent.Get(entry).Map
 	legs := partsMap[PartSlotLegs]
 	if legs == nil || legs.IsBroken {
@@ -150,9 +128,7 @@ func GetOverallPropulsion(entry *donburi.Entry) int {
 	return legs.Propulsion
 }
 
-// GetOverallMobility は機動性を取得（足回り）
 func GetOverallMobility(entry *donburi.Entry) int {
-	// 修正: ComponentType.Get(entry) を使用
 	partsMap := PartsComponent.Get(entry).Map
 	legs := partsMap[PartSlotLegs]
 	if legs == nil || legs.IsBroken {
@@ -161,7 +137,6 @@ func GetOverallMobility(entry *donburi.Entry) int {
 	return legs.Mobility
 }
 
-// CalculateIconXPosition はメダロットの描画位置(X座標)をステートから算出
 func CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
 	settings := SettingsComponent.Get(entry)
 	state := StateComponent.Get(entry)
@@ -189,17 +164,13 @@ func CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
 	return xPos
 }
 
-// findClosestEnemy は最も近い敵を見つける
-func findClosestEnemy(g *Game, actingEntry *donburi.Entry) *donburi.Entry {
+func findClosestEnemy(bs *BattleScene, actingEntry *donburi.Entry) *donburi.Entry {
 	var closestEnemy *donburi.Entry
 	minDist := float32(math.MaxFloat32)
-
-	// battlefieldの幅をUI設定から取得
-	bfWidth := float32(g.Config.UI.Screen.Width) * 0.5 // 仮。実際のレイアウトに依存
-
+	bfWidth := float32(bs.resources.Config.UI.Screen.Width) * 0.5
 	actingX := CalculateIconXPosition(actingEntry, bfWidth)
 
-	for _, enemy := range getTargetCandidates(g, actingEntry) {
+	for _, enemy := range getTargetCandidates(bs, actingEntry) {
 		enemyX := CalculateIconXPosition(enemy, bfWidth)
 		dist := float32(math.Abs(float64(actingX - enemyX)))
 		if dist < minDist {
@@ -210,11 +181,8 @@ func findClosestEnemy(g *Game, actingEntry *donburi.Entry) *donburi.Entry {
 	return closestEnemy
 }
 
-// getTargetCandidates 敵チームの中で行動可能なメダロット一覧を取得
-func getTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.Entry {
+func getTargetCandidates(bs *BattleScene, actingEntry *donburi.Entry) []*donburi.Entry {
 	actingSettings := SettingsComponent.Get(actingEntry)
-
-	// ★★★ 修正点: ロジックをより明確に ★★★
 	var opponentTeamID TeamID
 	if actingSettings.Team == Team1 {
 		opponentTeamID = Team2
@@ -226,7 +194,7 @@ func getTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.Entry {
 	query.NewQuery(filter.And(
 		filter.Contains(SettingsComponent),
 		filter.Contains(StateComponent),
-	)).Each(g.World, func(entry *donburi.Entry) {
+	)).Each(bs.world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)
 		state := StateComponent.Get(entry)
 		if settings.Team == opponentTeamID && state.State != StateBroken {

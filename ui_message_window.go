@@ -7,8 +7,8 @@ import (
 	"github.com/ebitenui/ebitenui/widget"
 )
 
-func createMessageWindow(game *Game) widget.PreferredSizeLocateableWidget {
-	c := game.Config.UI
+func createMessageWindow(bs *BattleScene) widget.PreferredSizeLocateableWidget {
+	c := bs.resources.Config.UI
 
 	root := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout(
@@ -32,14 +32,12 @@ func createMessageWindow(game *Game) widget.PreferredSizeLocateableWidget {
 	root.AddChild(panel)
 
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(game.message, game.MplusFont, c.Colors.White),
+		widget.TextOpts.Text(bs.message, bs.resources.Font, c.Colors.White),
 	))
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text("クリックして続行...", game.MplusFont, c.Colors.Gray),
+		widget.TextOpts.Text("クリックして続行...", bs.resources.Font, c.Colors.Gray),
 		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd),
 	))
 
 	return root
 }
-
-// [REMOVED] showUIMessage と hideUIMessage を削除

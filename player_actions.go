@@ -10,7 +10,8 @@ import (
 )
 
 // playerGetTargetCandidates はプレイヤー専用の、相手チームの有効なメダロットリストを返す関数
-func playerGetTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.Entry {
+// ★★★ 修正点: 引数を *Game から *BattleScene に変更 ★★★
+func playerGetTargetCandidates(bs *BattleScene, actingEntry *donburi.Entry) []*donburi.Entry {
 	playerTeam := SettingsComponent.Get(actingEntry).Team
 
 	var opponentTeamID TeamID
@@ -24,7 +25,7 @@ func playerGetTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.E
 	query.NewQuery(filter.And(
 		filter.Contains(SettingsComponent),
 		filter.Contains(StateComponent),
-	)).Each(g.World, func(entry *donburi.Entry) {
+	)).Each(bs.world, func(entry *donburi.Entry) { // ★★★ 修正点: g.World -> bs.world ★★★
 		settings := SettingsComponent.Get(entry)
 		state := StateComponent.Get(entry)
 		if settings.Team == opponentTeamID && state.State != StateBroken {
@@ -42,9 +43,10 @@ func playerGetTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.E
 }
 
 // playerSelectRandomTarget はプレイヤー専用の、ランダムな敵パーツをターゲットとして選択する関数
-func playerSelectRandomTarget(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
+// ★★★ 修正点: 引数を *Game から *BattleScene に変更 ★★★
+func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
 	// プレイヤー専用の候補取得関数を使う
-	candidates := playerGetTargetCandidates(g, actingEntry)
+	candidates := playerGetTargetCandidates(bs, actingEntry) // ★★★ 修正点: g -> bs ★★★
 	if len(candidates) == 0 {
 		return nil, ""
 	}
@@ -70,8 +72,7 @@ func playerSelectRandomTarget(g *Game, actingEntry *donburi.Entry) (*donburi.Ent
 	}
 
 	if len(allTargetableParts) == 0 {
-		// 攻撃できるパーツがない場合でも、最低限敵エンティティは返す（例：全パーツ破壊済みの脚部だけ残っている場合など）
-		// この場合、ターゲットインジケータは表示できるが、攻撃は失敗する
+		// 攻撃できるパーツがない場合でも、最低限敵エンティティは返す
 		if len(candidates) > 0 {
 			return candidates[0], ""
 		}

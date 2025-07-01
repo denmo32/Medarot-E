@@ -10,8 +10,8 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.PreferredSizeLocateableWidget {
-	c := game.Config.UI
+func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.PreferredSizeLocateableWidget {
+	c := bs.resources.Config.UI
 	settings := SettingsComponent.Get(actingEntry)
 	overlay := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
@@ -34,7 +34,7 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 	)
 	overlay.AddChild(panel)
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(fmt.Sprintf("行動選択: %s", settings.Name), game.MplusFont, c.Colors.White),
+		widget.TextOpts.Text(fmt.Sprintf("行動選択: %s", settings.Name), bs.resources.Font, c.Colors.White),
 	))
 
 	buttonImage := &widget.ButtonImage{
@@ -46,17 +46,15 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 	availableParts := GetAvailableAttackParts(actingEntry)
 	if len(availableParts) == 0 {
 		panel.AddChild(widget.NewText(
-			widget.TextOpts.Text("利用可能なパーツがありません。", game.MplusFont, c.Colors.White),
+			widget.TextOpts.Text("利用可能なパーツがありません。", bs.resources.Font, c.Colors.White),
 		))
 	}
 
-	// モーダル表示時に各パーツのターゲットを事前計算して保存
 	for _, part := range availableParts {
 		slotKey := findPartSlot(actingEntry, part)
 		if part.Category == CategoryShoot {
-			// ★★★ 修正点: プレイヤー専用のターゲット選択関数を呼び出す ★★★
-			targetEntity, targetSlot := playerSelectRandomTarget(game, actingEntry)
-			game.ui.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
+			targetEntity, targetSlot := playerSelectRandomTarget(bs, actingEntry)
+			bs.ui.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
 		}
 	}
 
@@ -65,88 +63,82 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 		slotKey := findPartSlot(actingEntry, capturedPart)
 
 		actionButton := widget.NewButton(
-			widget.ButtonOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
-				Stretch: true,
-			})),
 			widget.ButtonOpts.Image(buttonImage),
-			widget.ButtonOpts.Text(fmt.Sprintf("%s (%s)", capturedPart.PartName, capturedPart.Category), game.MplusFont, &widget.ButtonTextColor{
+			widget.ButtonOpts.Text(fmt.Sprintf("%s (%s)", capturedPart.PartName, capturedPart.Category), bs.resources.Font, &widget.ButtonTextColor{
 				Idle: c.Colors.White,
 			}),
 			widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-				handleActionSelection(game, actingEntry, capturedPart)
+				handleActionSelection(bs, actingEntry, capturedPart)
 			}),
 			widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
 				if capturedPart.Category == CategoryShoot {
-					if actionTarget, ok := game.ui.actionTargetMap[slotKey]; ok {
-						game.currentTarget = actionTarget.Target
+					if actionTarget, ok := bs.ui.actionTargetMap[slotKey]; ok {
+						bs.currentTarget = actionTarget.Target
 					}
 				}
 			}),
 			widget.ButtonOpts.CursorExitedHandler(func(args *widget.ButtonHoverEventArgs) {
-				game.currentTarget = nil
+				bs.currentTarget = nil
 			}),
 		)
 		panel.AddChild(actionButton)
 	}
 
 	cancelButton := widget.NewButton(
-		widget.ButtonOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
-			Stretch: true,
-		})),
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("キャンセル", game.MplusFont, &widget.ButtonTextColor{
+		widget.ButtonOpts.Text("キャンセル", bs.resources.Font, &widget.ButtonTextColor{
 			Idle: c.Colors.White,
 		}),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			game.ui.HideActionModal()
-			game.playerMedarotToAct = nil
-			game.currentTarget = nil
-			game.State = StatePlaying
+			bs.ui.HideActionModal()
+			bs.playerMedarotToAct = nil
+			bs.currentTarget = nil
+			bs.state = StatePlaying
 		}),
 	)
 	panel.AddChild(cancelButton)
 
 	return overlay
+
 }
 
-func handleActionSelection(game *Game, actingEntry *donburi.Entry, selectedPart *Part) {
+func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selectedPart *Part) {
 	slotKey := findPartSlot(actingEntry, selectedPart)
 	var successful bool
 
 	if selectedPart.Category == CategoryShoot {
-		actionTarget, ok := game.ui.actionTargetMap[slotKey]
+		actionTarget, ok := bs.ui.actionTargetMap[slotKey]
 		if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
-			game.enqueueMessage("ターゲットがいません！", func() {
-				game.playerMedarotToAct = nil
-				game.currentTarget = nil
-				game.State = StatePlaying
+			bs.enqueueMessage("ターゲットがいません！", func() {
+				bs.playerMedarotToAct = nil
+				bs.currentTarget = nil
+				bs.state = StatePlaying
 			})
-			game.ui.HideActionModal()
+			bs.ui.HideActionModal()
 			return
 		}
-		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, &game.Config.Balance)
-
+		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, &bs.resources.Config.Balance)
 	} else if selectedPart.Category == CategoryMelee {
-		successful = StartCharge(actingEntry, slotKey, nil, "", &game.Config.Balance)
+		successful = StartCharge(actingEntry, slotKey, nil, "", &bs.resources.Config.Balance)
 	} else {
 		log.Printf("未対応のパーツカテゴリです: %s", selectedPart.Category)
 		successful = false
 	}
 
 	if successful {
-		game.ui.HideActionModal()
-		game.playerMedarotToAct = nil
-		game.currentTarget = nil
-		game.State = StatePlaying
-		SystemProcessIdleMedarots(game)
+		bs.ui.HideActionModal()
+		bs.playerMedarotToAct = nil
+		bs.currentTarget = nil
+		bs.state = StatePlaying
+		SystemProcessIdleMedarots(bs)
 	} else {
-		log.Printf("エラー: %s の行動選択に失敗しました。",
-			SettingsComponent.Get(actingEntry).Name)
-		game.ui.HideActionModal()
-		game.playerMedarotToAct = nil
-		game.currentTarget = nil
-		game.State = StatePlaying
+		log.Printf("エラー: %s の行動選択に失敗しました。", SettingsComponent.Get(actingEntry).Name)
+		bs.ui.HideActionModal()
+		bs.playerMedarotToAct = nil
+		bs.currentTarget = nil
+		bs.state = StatePlaying
 	}
+
 }

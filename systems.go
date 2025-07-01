@@ -10,7 +10,6 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// --- メダロット個別の行動ロジック（ECS版） ---
 func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entry, targetPartSlot PartSlotKey, balanceConfig *BalanceConfig) bool {
 	parts := PartsComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
@@ -82,7 +81,7 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	ChangeState(entry, StateCooldown)
 }
 
-func ExecuteAction(entry *donburi.Entry, g *Game) *donburi.Entry {
+func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 	action := ActionComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
 	logComp := LogComponent.Get(entry)
@@ -103,7 +102,7 @@ func ExecuteAction(entry *donburi.Entry, g *Game) *donburi.Entry {
 			return nil
 		}
 	} else if part.Category == CategoryMelee {
-		closestEnemy := findClosestEnemy(g, entry)
+		closestEnemy := findClosestEnemy(bs, entry)
 		if closestEnemy == nil {
 			logComp.LastActionLog = fmt.Sprintf("%sは攻撃しようとしたが、相手がいなかった。", settings.Name)
 			return nil
@@ -121,9 +120,9 @@ func ExecuteAction(entry *donburi.Entry, g *Game) *donburi.Entry {
 
 	logComp.LastActionLog = "実行中..."
 
-	isHit := CalculateHit(entry, targetEntry, part, &g.Config.Balance)
+	isHit := CalculateHit(entry, targetEntry, part, &bs.resources.Config.Balance)
 	if isHit {
-		damage, isCritical := CalculateDamage(entry, part, &g.Config.Balance)
+		damage, isCritical := CalculateDamage(entry, part, &bs.resources.Config.Balance)
 		ApplyDamage(targetEntry, targetPart, damage)
 		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, targetPart, damage, isCritical, true)
 	} else {
@@ -133,11 +132,11 @@ func ExecuteAction(entry *donburi.Entry, g *Game) *donburi.Entry {
 	return targetEntry
 }
 
-func SystemUpdateProgress(g *Game) {
+func SystemUpdateProgress(bs *BattleScene) {
 	query.NewQuery(filter.And(
 		filter.Contains(StateComponent),
 		filter.Contains(GaugeComponent),
-	)).Each(g.World, func(entry *donburi.Entry) {
+	)).Each(bs.world, func(entry *donburi.Entry) {
 		state := StateComponent.Get(entry)
 		if state.State != StateCharging && state.State != StateCooldown {
 			return
@@ -152,7 +151,7 @@ func SystemUpdateProgress(g *Game) {
 		if gauge.ProgressCounter >= gauge.TotalDuration {
 			if state.State == StateCharging {
 				ChangeState(entry, StateReady)
-				g.actionQueue = append(g.actionQueue, entry)
+				bs.actionQueue = append(bs.actionQueue, entry)
 				log.Printf("%s のチャージが完了。実行キューに追加。", SettingsComponent.Get(entry).Name)
 			} else if state.State == StateCooldown {
 				ChangeState(entry, StateIdle)
@@ -161,75 +160,72 @@ func SystemUpdateProgress(g *Game) {
 	})
 }
 
-func SystemProcessReadyQueue(g *Game) {
-	if len(g.actionQueue) == 0 {
+func SystemProcessReadyQueue(bs *BattleScene) {
+	if len(bs.actionQueue) == 0 {
 		return
 	}
-	sort.SliceStable(g.actionQueue, func(i, j int) bool {
-		propI := GetOverallPropulsion(g.actionQueue[i])
-		propJ := GetOverallPropulsion(g.actionQueue[j])
+	sort.SliceStable(bs.actionQueue, func(i, j int) bool {
+		propI := GetOverallPropulsion(bs.actionQueue[i])
+		propJ := GetOverallPropulsion(bs.actionQueue[j])
 		return propI > propJ
 	})
 
-	if len(g.actionQueue) > 0 {
-		// ★★★ 修正点1: 実行前に前回のターゲット情報をクリア ★★★
-		g.attackingEntity = nil
-		g.targetedEntity = nil
+	if len(bs.actionQueue) > 0 {
+		bs.attackingEntity = nil
+		bs.targetedEntity = nil
 
-		actingEntry := g.actionQueue[0]
-		g.actionQueue = g.actionQueue[1:]
+		actingEntry := bs.actionQueue[0]
+		bs.actionQueue = bs.actionQueue[1:]
 
-		finalTarget := ExecuteAction(actingEntry, g)
+		finalTarget := ExecuteAction(actingEntry, bs)
 
-		// ★★★ 修正点2: メッセージ表示の前にターゲット情報を設定 ★★★
 		if finalTarget != nil {
-			g.attackingEntity = actingEntry
-			g.targetedEntity = finalTarget
+			bs.attackingEntity = actingEntry
+			bs.targetedEntity = finalTarget
 		}
 
-		// ★★★ 修正点3: コールバックからはターゲット設定を削除 ★★★
-		g.enqueueMessage(LogComponent.Get(actingEntry).LastActionLog, func() {
+		bs.enqueueMessage(LogComponent.Get(actingEntry).LastActionLog, func() {
 			if actingEntry.Valid() && StateComponent.Get(actingEntry).State != StateBroken {
-				StartCooldown(actingEntry, &g.Config.Balance)
+				StartCooldown(actingEntry, &bs.resources.Config.Balance)
 			}
 		})
 	}
 }
 
-func SystemProcessIdleMedarots(g *Game) {
-	if g.playerMedarotToAct != nil || g.State != StatePlaying {
+func SystemProcessIdleMedarots(bs *BattleScene) {
+	if bs.playerMedarotToAct != nil || bs.state != StatePlaying {
 		return
 	}
 	query.NewQuery(filter.And(
 		filter.Contains(StateComponent),
 		filter.Contains(SettingsComponent),
-	)).Each(g.World, func(entry *donburi.Entry) {
+	)).Each(bs.world, func(entry *donburi.Entry) {
 		state := StateComponent.Get(entry)
 		if state.State == StateIdle {
 			if !entry.HasComponent(PlayerControlComponent) {
-				aiSelectAction(g, entry)
+				aiSelectAction(bs, entry)
 			}
 		}
 	})
 	query.NewQuery(filter.And(
 		filter.Contains(PlayerControlComponent),
 		filter.Contains(StateComponent),
-	)).Each(g.World, func(entry *donburi.Entry) {
+	)).Each(bs.world, func(entry *donburi.Entry) {
 		state := StateComponent.Get(entry)
 		if state.State == StateIdle {
-			g.playerMedarotToAct = entry
-			g.State = StatePlayerActionSelect
+			bs.playerMedarotToAct = entry
+			bs.state = StatePlayerActionSelect
 			return
 		}
 	})
 }
 
-func SystemCheckGameEnd(g *Game) {
-	if g.State == StateGameOver {
+func SystemCheckGameEnd(bs *BattleScene) {
+	if bs.state == StateGameOver {
 		return
 	}
-	team1Leader := FindLeader(g.World, Team1)
-	team2Leader := FindLeader(g.World, Team2)
+	team1Leader := FindLeader(bs.world, Team1)
+	team2Leader := FindLeader(bs.world, Team2)
 
 	team1FuncCount := 0
 	team2FuncCount := 0
@@ -237,7 +233,7 @@ func SystemCheckGameEnd(g *Game) {
 	query.NewQuery(filter.And(
 		filter.Contains(SettingsComponent),
 		filter.Contains(StateComponent),
-	)).Each(g.World, func(entry *donburi.Entry) {
+	)).Each(bs.world, func(entry *donburi.Entry) {
 		state := StateComponent.Get(entry)
 		if state.State != StateBroken {
 			if SettingsComponent.Get(entry).Team == Team1 {
@@ -250,23 +246,23 @@ func SystemCheckGameEnd(g *Game) {
 
 	var gameOverMsg string
 	if team1Leader == nil || PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken || team2FuncCount == 0 {
-		g.winner = Team2
-		g.State = StateGameOver
+		bs.winner = Team2
+		bs.state = StateGameOver
 		if team1Leader != nil {
 			gameOverMsg = fmt.Sprintf("%sが機能停止！ チーム2の勝利！", SettingsComponent.Get(team1Leader).Name)
 		} else {
 			gameOverMsg = "チーム1のリーダー不在！ チーム2の勝利！"
 		}
-		g.enqueueMessage(gameOverMsg, nil)
+		bs.enqueueMessage(gameOverMsg, nil)
 	} else if team2Leader == nil || PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken || team1FuncCount == 0 {
-		g.winner = Team1
-		g.State = StateGameOver
+		bs.winner = Team1
+		bs.state = StateGameOver
 		if team2Leader != nil {
 			gameOverMsg = fmt.Sprintf("%sが機能停止！ チーム1の勝利！", SettingsComponent.Get(team2Leader).Name)
 		} else {
 			gameOverMsg = "チーム2のリーダー不在！ チーム1の勝利！"
 		}
-		g.enqueueMessage(gameOverMsg, nil)
+		bs.enqueueMessage(gameOverMsg, nil)
 	}
 }
 

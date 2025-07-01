@@ -18,25 +18,25 @@ import (
 
 type BattlefieldWidget struct {
 	*widget.Container
-	game         *Game
+	scene        *BattleScene
 	medarotIcons []*CustomIconWidget
 	whitePixel   *ebiten.Image
 }
 
 type CustomIconWidget struct {
 	entry *donburi.Entry
-	game  *Game
+	scene *BattleScene
 	xPos  float32
 	yPos  float32
 	rect  image.Rectangle
 }
 
-func NewBattlefieldWidget(game *Game) *BattlefieldWidget {
+func NewBattlefieldWidget(bs *BattleScene) *BattlefieldWidget {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
 	bf := &BattlefieldWidget{
-		game:         game,
+		scene:        bs,
 		medarotIcons: make([]*CustomIconWidget, 0),
 		whitePixel:   whiteImg,
 	}
@@ -51,16 +51,16 @@ func NewBattlefieldWidget(game *Game) *BattlefieldWidget {
 }
 
 func (bf *BattlefieldWidget) createMedarotIcons() {
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(bf.game.World, func(entry *donburi.Entry) {
-		icon := NewCustomIconWidget(entry, bf.game)
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(bf.scene.world, func(entry *donburi.Entry) {
+		icon := NewCustomIconWidget(entry, bf.scene)
 		bf.medarotIcons = append(bf.medarotIcons, icon)
 	})
 }
 
-func NewCustomIconWidget(entry *donburi.Entry, game *Game) *CustomIconWidget {
+func NewCustomIconWidget(entry *donburi.Entry, bs *BattleScene) *CustomIconWidget {
 	return &CustomIconWidget{
 		entry: entry,
-		game:  game,
+		scene: bs,
 		rect:  image.Rect(0, 0, 20, 20),
 	}
 }
@@ -72,19 +72,19 @@ func (w *CustomIconWidget) Render(screen *ebiten.Image) {
 	centerX := w.xPos
 	centerY := w.yPos
 	iconColor := w.getIconColor()
-	radius := w.game.Config.UI.Battlefield.IconRadius
+	radius := w.scene.resources.Config.UI.Battlefield.IconRadius
 	vector.DrawFilledCircle(screen, centerX, centerY, radius, iconColor, true)
 
 	settings := SettingsComponent.Get(w.entry)
 	if settings.IsLeader {
 		vector.StrokeCircle(screen, centerX, centerY, radius+3, 2,
-			w.game.Config.UI.Colors.Leader, true)
+			w.scene.resources.Config.UI.Colors.Leader, true)
 	}
 	w.drawStateIndicator(screen, centerX, centerY)
 }
 
 func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
-	if !w.game.DebugMode {
+	if !w.scene.debugMode {
 		return
 	}
 
@@ -112,15 +112,15 @@ func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, cen
 		size := float32(6)
 		vector.StrokeLine(screen, centerX-size, centerY-size,
 			centerX+size, centerY+size, lineWidth,
-			w.game.Config.UI.Colors.White, true)
+			w.scene.resources.Config.UI.Colors.White, true)
 		vector.StrokeLine(screen, centerX-size, centerY+size,
 			centerX+size, centerY-size, lineWidth,
-			w.game.Config.UI.Colors.White, true)
+			w.scene.resources.Config.UI.Colors.White, true)
 	case StateReady:
-		if (w.game.TickCount/30)%2 == 0 {
+		if (w.scene.tickCount/30)%2 == 0 {
 			vector.StrokeCircle(screen, centerX, centerY,
-				w.game.Config.UI.Battlefield.IconRadius+5, 2,
-				w.game.Config.UI.Colors.Yellow, true)
+				w.scene.resources.Config.UI.Battlefield.IconRadius+5, 2,
+				w.scene.resources.Config.UI.Colors.Yellow, true)
 		}
 	case StateCooldown, StateCharging:
 		w.drawCooldownGauge(screen, centerX, centerY)
@@ -129,10 +129,10 @@ func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, cen
 
 func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, centerY float32) {
 	gauge := GaugeComponent.Get(w.entry)
-	radius := w.game.Config.UI.Battlefield.IconRadius + 8
+	radius := w.scene.resources.Config.UI.Battlefield.IconRadius + 8
 	progress := gauge.CurrentGauge / 100.0
 	vector.StrokeCircle(screen, centerX, centerY, radius, 2,
-		w.game.Config.UI.Colors.Gray, true)
+		w.scene.resources.Config.UI.Colors.Gray, true)
 	if progress > 0 {
 		steps := int(progress * 32)
 		for i := 0; i < steps; i++ {
@@ -143,7 +143,7 @@ func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, cent
 			x2 := centerX + radius*float32(math.Cos(nextAngle-math.Pi/2))
 			y2 := centerY + radius*float32(math.Sin(nextAngle-math.Pi/2))
 			vector.StrokeLine(screen, x1, y1, x2, y2, 3,
-				w.game.Config.UI.Colors.Yellow, true)
+				w.scene.resources.Config.UI.Colors.Yellow, true)
 		}
 	}
 }
@@ -153,12 +153,12 @@ func (w *CustomIconWidget) getIconColor() color.Color {
 	state := StateComponent.Get(w.entry)
 
 	if state.State == StateBroken {
-		return w.game.Config.UI.Colors.Broken
+		return w.scene.resources.Config.UI.Colors.Broken
 	}
 	if settings.Team == Team1 {
-		return w.game.Config.UI.Colors.Team1
+		return w.scene.resources.Config.UI.Colors.Team1
 	}
-	return w.game.Config.UI.Colors.Team2
+	return w.scene.resources.Config.UI.Colors.Team2
 }
 
 func (bf *BattlefieldWidget) UpdatePositions() {
@@ -207,29 +207,36 @@ func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetEnt
 	if targetIcon == nil {
 		return
 	}
-	// インジケータサイズや座標計算
 	tx, ty := targetIcon.xPos, targetIcon.yPos
-	iconRadius := bf.game.Config.UI.Battlefield.IconRadius
-	margin := float32(5)
-	width := bf.game.Config.UI.Battlefield.TargetIndicator.Width
-	height := bf.game.Config.UI.Battlefield.TargetIndicator.Height
 
-	p1x := tx - width/2
-	p1y := ty - iconRadius - margin - height
-	p2x := tx + width/2
+	indicatorColor := bf.scene.resources.Config.UI.Colors.Yellow
+	iconRadius := bf.scene.resources.Config.UI.Battlefield.IconRadius
+	indicatorHeight := bf.scene.resources.Config.UI.Battlefield.TargetIndicator.Height
+	indicatorWidth := bf.scene.resources.Config.UI.Battlefield.TargetIndicator.Width
+	margin := float32(5)
+
+	p1x := tx - indicatorWidth/2
+	p1y := ty - iconRadius - margin - indicatorHeight
+	p2x := tx + indicatorWidth/2
 	p2y := p1y
 	p3x := tx
 	p3y := ty - iconRadius - margin
 
-	// 頂点配列を作成して三角形を描画
 	vertices := []ebiten.Vertex{
 		{DstX: p1x, DstY: p1y},
 		{DstX: p2x, DstY: p2y},
 		{DstX: p3x, DstY: p3y},
 	}
-	r, g, b, a := float32(1), float32(1), float32(0), float32(1)
+	r, g, b, a := indicatorColor.RGBA()
+	cr := float32(r) / 65535
+	cg := float32(g) / 65535
+	cb := float32(b) / 65535
+	ca := float32(a) / 65535
 	for i := range vertices {
-		vertices[i].ColorR, vertices[i].ColorG, vertices[i].ColorB, vertices[i].ColorA = r, g, b, a
+		vertices[i].ColorR = cr
+		vertices[i].ColorG = cg
+		vertices[i].ColorB = cb
+		vertices[i].ColorA = ca
 	}
 	indices := []uint16{0, 1, 2}
 	screen.DrawTriangles(vertices, indices, bf.whitePixel, &ebiten.DrawTrianglesOptions{})
@@ -245,8 +252,8 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 	offsetX := float32(rect.Min.X)
 	offsetY := float32(rect.Min.Y)
 	vector.StrokeRect(screen, offsetX, offsetY, width, height,
-		bf.game.Config.UI.Battlefield.LineWidth,
-		bf.game.Config.UI.Colors.Gray, false)
+		bf.scene.resources.Config.UI.Battlefield.LineWidth,
+		bf.scene.resources.Config.UI.Colors.Gray, false)
 	team1HomeX := offsetX + width*0.1
 	team2HomeX := offsetX + width*0.9
 	team1ExecX := offsetX + width*0.4
@@ -254,18 +261,18 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 	for i := 0; i < PlayersPerTeam; i++ {
 		yPos := offsetY + (height/float32(PlayersPerTeam+1))*(float32(i)+1)
 		vector.StrokeCircle(screen, team1HomeX, yPos,
-			bf.game.Config.UI.Battlefield.HomeMarkerRadius,
-			bf.game.Config.UI.Battlefield.LineWidth,
-			bf.game.Config.UI.Colors.Gray, true)
+			bf.scene.resources.Config.UI.Battlefield.HomeMarkerRadius,
+			bf.scene.resources.Config.UI.Battlefield.LineWidth,
+			bf.scene.resources.Config.UI.Colors.Gray, true)
 		vector.StrokeCircle(screen, team2HomeX, yPos,
-			bf.game.Config.UI.Battlefield.HomeMarkerRadius,
-			bf.game.Config.UI.Battlefield.LineWidth,
-			bf.game.Config.UI.Colors.Gray, true)
+			bf.scene.resources.Config.UI.Battlefield.HomeMarkerRadius,
+			bf.scene.resources.Config.UI.Battlefield.LineWidth,
+			bf.scene.resources.Config.UI.Colors.Gray, true)
 	}
 	vector.StrokeLine(screen, team1ExecX, offsetY, team1ExecX, offsetY+height,
-		bf.game.Config.UI.Battlefield.LineWidth,
-		bf.game.Config.UI.Colors.White, true)
+		bf.scene.resources.Config.UI.Battlefield.LineWidth,
+		bf.scene.resources.Config.UI.Colors.White, true)
 	vector.StrokeLine(screen, team2ExecX, offsetY, team2ExecX, offsetY+height,
-		bf.game.Config.UI.Battlefield.LineWidth,
-		bf.game.Config.UI.Colors.White, true)
+		bf.scene.resources.Config.UI.Battlefield.LineWidth,
+		bf.scene.resources.Config.UI.Colors.White, true)
 }

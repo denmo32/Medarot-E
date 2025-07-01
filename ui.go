@@ -7,34 +7,30 @@ import (
 	"log"
 )
 
-// UI はゲームの全UI要素を管理する構造体
 type UI struct {
 	ebitenui          *ebitenui.UI
 	actionModal       widget.PreferredSizeLocateableWidget
 	messageWindow     widget.PreferredSizeLocateableWidget
 	battlefieldWidget *BattlefieldWidget
 	medarotInfoPanels map[string]*infoPanelUI
-	actionTargetMap   map[PartSlotKey]ActionTarget // [修正] 保持する型をActionTargetに変更
+	actionTargetMap   map[PartSlotKey]ActionTarget
 }
 
-// NewUI はUIを構築し、管理構造体を返す
-func NewUI(game *Game) *UI {
+func NewUI(bs *BattleScene) *UI {
 	ui := &UI{
 		medarotInfoPanels: make(map[string]*infoPanelUI),
-		actionTargetMap:   make(map[PartSlotKey]ActionTarget), // [修正] マップを初期化
+		actionTargetMap:   make(map[PartSlotKey]ActionTarget),
 	}
-
-	game.ui = ui
+	bs.ui = ui
 
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
 	)
-
 	mainUIContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewGridLayout(
 			widget.GridLayoutOpts.Columns(3),
 			widget.GridLayoutOpts.Stretch([]bool{false, true, false}, []bool{true}),
-			widget.GridLayoutOpts.Spacing(game.Config.UI.InfoPanel.Padding, 0),
+			widget.GridLayoutOpts.Spacing(bs.resources.Config.UI.InfoPanel.Padding, 0),
 		)),
 	)
 	rootContainer.AddChild(mainUIContainer)
@@ -42,30 +38,30 @@ func NewUI(game *Game) *UI {
 	team1PanelContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewRowLayout(
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-			widget.RowLayoutOpts.Spacing(game.Config.UI.InfoPanel.Padding),
+			widget.RowLayoutOpts.Spacing(bs.resources.Config.UI.InfoPanel.Padding),
 		)),
 		widget.ContainerOpts.WidgetOpts(
-			widget.WidgetOpts.MinSize(int(game.Config.UI.InfoPanel.BlockWidth), 0),
+			widget.WidgetOpts.MinSize(int(bs.resources.Config.UI.InfoPanel.BlockWidth), 0),
 		),
 	)
 	mainUIContainer.AddChild(team1PanelContainer)
 
-	ui.battlefieldWidget = NewBattlefieldWidget(game)
+	ui.battlefieldWidget = NewBattlefieldWidget(bs)
 	ui.battlefieldWidget.Container.GetWidget().LayoutData = widget.GridLayoutData{}
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)
 
 	team2PanelContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewRowLayout(
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-			widget.RowLayoutOpts.Spacing(game.Config.UI.InfoPanel.Padding),
+			widget.RowLayoutOpts.Spacing(bs.resources.Config.UI.InfoPanel.Padding),
 		)),
 		widget.ContainerOpts.WidgetOpts(
-			widget.WidgetOpts.MinSize(int(game.Config.UI.InfoPanel.BlockWidth), 0),
+			widget.WidgetOpts.MinSize(int(bs.resources.Config.UI.InfoPanel.BlockWidth), 0),
 		),
 	)
 	mainUIContainer.AddChild(team2PanelContainer)
 
-	setupInfoPanels(game, team1PanelContainer, team2PanelContainer)
+	setupInfoPanels(bs, team1PanelContainer, team2PanelContainer)
 
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
@@ -73,16 +69,15 @@ func NewUI(game *Game) *UI {
 	return ui
 }
 
-// ShowActionModal は行動選択モーダルを表示する
-func (u *UI) ShowActionModal(game *Game, actingEntry *donburi.Entry) {
+func (u *UI) ShowActionModal(bs *BattleScene, actingEntry *donburi.Entry) {
 	if u.actionModal != nil {
 		u.HideActionModal()
 	}
 	u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
 
-	modal := createActionModalUI(game, actingEntry)
+	modal := createActionModalUI(bs, actingEntry)
 	if modal == nil {
-		game.State = StatePlaying
+		bs.state = StatePlaying
 		return
 	}
 	u.actionModal = modal
@@ -90,7 +85,6 @@ func (u *UI) ShowActionModal(game *Game, actingEntry *donburi.Entry) {
 	log.Println("Action modal shown.")
 }
 
-// HideActionModal は行動選択モーダルを非表示にする
 func (u *UI) HideActionModal() {
 	if u.actionModal != nil {
 		u.ebitenui.Container.RemoveChild(u.actionModal)
@@ -100,17 +94,15 @@ func (u *UI) HideActionModal() {
 	}
 }
 
-// ShowMessageWindow はメッセージウィンドウを表示する
-func (u *UI) ShowMessageWindow(game *Game) {
+func (u *UI) ShowMessageWindow(bs *BattleScene) {
 	if u.messageWindow != nil {
 		u.HideMessageWindow()
 	}
-	win := createMessageWindow(game)
+	win := createMessageWindow(bs)
 	u.messageWindow = win
 	u.ebitenui.Container.AddChild(u.messageWindow)
 }
 
-// HideMessageWindow はメッセージウィンドウを非表示にする
 func (u *UI) HideMessageWindow() {
 	if u.messageWindow != nil {
 		u.ebitenui.Container.RemoveChild(u.messageWindow)
