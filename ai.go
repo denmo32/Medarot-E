@@ -31,10 +31,31 @@ func aiSelectAction(
 		return
 	}
 
-	// TODO: AIのパーツ選択ロジックをより高度化する（現在は常に最初のパーツを選択）
-	selectedAvailablePart := availableParts[0]
-	selectedPart := selectedAvailablePart.Part
-	slotKey := selectedAvailablePart.Slot
+	// TODO: AIのパーツ選択ロジックをより高度化する（現在は常に最初のパーツを選択） -> Strategyパターンで対応
+	var slotKey PartSlotKey
+	var selectedPart *Part
+
+	foundPartSelectionStrategy := false
+	if entry.HasComponent(AIPartSelectionStrategyComponent) {
+		partStrategyComp := AIPartSelectionStrategyComponent.Get(entry)
+		if partStrategyComp.Strategy != nil {
+			slotKey, selectedPart = partStrategyComp.Strategy(entry, availableParts, world, partInfoProvider, targetSelector)
+			foundPartSelectionStrategy = true
+		}
+	}
+
+	if !foundPartSelectionStrategy {
+		log.Printf("%s: AIエラー - AIPartSelectionStrategyComponentが見つからないか有効なStrategyがないため、デフォルトのパーツ選択(最初のパーツ)を使用。", settings.Name)
+		if len(availableParts) > 0 {
+			slotKey = availableParts[0].Slot
+			selectedPart = availableParts[0].Part
+		}
+	}
+
+	if selectedPart == nil {
+		log.Printf("%s: AIは戦略に基づいて選択できるパーツがありませんでした。", settings.Name)
+		return
+	}
 
 	if selectedPart.Category == CategoryShoot {
 		var targetEntry *donburi.Entry
@@ -202,4 +223,67 @@ func selectLeaderPart(
 		}
 	}
 	return selectRandomTargetPartAI(world, actingEntry, targetSelector, partInfoProvider)
+}
+
+// --- AI Part Selection Strategies ---
+
+// SelectFirstAvailablePart is a simple strategy that selects the first available part.
+func SelectFirstAvailablePart(
+	actingEntry *donburi.Entry,
+	availableParts []AvailablePart,
+	world donburi.World,
+	partInfoProvider *PartInfoProvider,
+	targetSelector *TargetSelector,
+) (PartSlotKey, *Part) {
+	if len(availableParts) > 0 {
+		return availableParts[0].Slot, availableParts[0].Part
+	}
+	return "", nil // No part selected
+}
+
+// SelectHighestPowerPart selects the part with the highest power among available parts.
+// (Skeleton for future implementation)
+func SelectHighestPowerPart(
+	actingEntry *donburi.Entry,
+	availableParts []AvailablePart,
+	world donburi.World,
+	partInfoProvider *PartInfoProvider,
+	targetSelector *TargetSelector,
+) (PartSlotKey, *Part) {
+	if len(availableParts) == 0 {
+		return "", nil
+	}
+	bestPart := availableParts[0].Part
+	bestSlot := availableParts[0].Slot
+	for _, ap := range availableParts[1:] {
+		if ap.Part.Power > bestPart.Power {
+			bestPart = ap.Part
+			bestSlot = ap.Slot
+		}
+	}
+	return bestSlot, bestPart
+}
+
+// SelectFastestChargePart selects the part with the lowest charge time.
+// (Skeleton for future implementation)
+func SelectFastestChargePart(
+	actingEntry *donburi.Entry,
+	availableParts []AvailablePart,
+	world donburi.World,
+	partInfoProvider *PartInfoProvider,
+	targetSelector *TargetSelector,
+) (PartSlotKey, *Part) {
+	if len(availableParts) == 0 {
+		return "", nil
+	}
+	bestPart := availableParts[0].Part
+	bestSlot := availableParts[0].Slot
+	// Assuming lower charge value is better
+	for _, ap := range availableParts[1:] {
+		if ap.Part.Charge < bestPart.Charge { // Lower charge time is faster
+			bestPart = ap.Part
+			bestSlot = ap.Slot
+		}
+	}
+	return bestSlot, bestPart
 }

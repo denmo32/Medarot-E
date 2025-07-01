@@ -141,3 +141,21 @@ type ActionModifierComponentData struct {
 	// AccuracyMultiplier    float64 // e.g., 1.1 for +10%
 }
 var ActionModifierComponent = donburi.NewComponentType[ActionModifierComponentData]()
+
+// --- AI Part Selection Strategy Component ---
+
+// AIPartSelectionStrategyFunc defines the function signature for an AI part selection strategy.
+// It takes the acting AI entity and a list of available parts, and returns the chosen part and its slot.
+type AIPartSelectionStrategyFunc func(
+	actingEntry *donburi.Entry,
+	availableParts []AvailablePart, // AvailablePart is defined in battle_logic.go
+	world donburi.World, // For more complex strategies needing world access
+	partInfoProvider *PartInfoProvider,
+	targetSelector *TargetSelector,
+) (PartSlotKey, *Part) // Returns selected part's slot key and the part itself
+
+// AIPartSelectionStrategyComponentData holds the part selection strategy for an AI entity.
+type AIPartSelectionStrategyComponentData struct {
+	Strategy AIPartSelectionStrategyFunc
+}
+var AIPartSelectionStrategyComponent = donburi.NewComponentType[AIPartSelectionStrategyComponentData]()

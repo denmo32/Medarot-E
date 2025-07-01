@@ -25,7 +25,8 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
-			TargetingStrategyComponent, // Added TargetingStrategyComponent
+			TargetingStrategyComponent,
+			AIPartSelectionStrategyComponent, // Added AIPartSelectionStrategyComponent
 			// EffectsComponent,
 		))
 		SettingsComponent.SetValue(entry, Settings{
@@ -83,6 +84,14 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			strategy = selectLeaderPart // Default to targeting leader or a fallback like random
 		}
 		TargetingStrategyComponent.SetValue(entry, TargetingStrategyComponentData{Strategy: strategy})
+
+		// Set default AI Part Selection Strategy for non-player entities
+		if loadout.Team != playerTeam { // Only for AI
+			// Default strategy, can be customized later based on AI type or medal
+			partSelectionStrategy := SelectFirstAvailablePart
+			// Example: if medal.Personality == "Aggressive" { partSelectionStrategy = SelectHighestPowerPart }
+			AIPartSelectionStrategyComponent.SetValue(entry, AIPartSelectionStrategyComponentData{Strategy: partSelectionStrategy})
+		}
 
 		// プレイヤーチームならPlayerControlタグを追加
 		if loadout.Team == playerTeam {
