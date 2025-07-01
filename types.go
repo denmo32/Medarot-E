@@ -46,9 +46,11 @@ const (
 	PartTypeLegs PartType = "LEG"
 )
 const (
-	CategoryShoot PartCategory = "SHOOT"
-	CategoryMelee PartCategory = "FIGHT"
-	CategoryNone  PartCategory = "NONE"
+	CategoryShoot   PartCategory = "SHOOT"
+	CategoryMelee   PartCategory = "FIGHT"
+	CategorySupport PartCategory = "SUPPORT"
+	CategoryDefense PartCategory = "DEFENSE"
+	CategoryNone    PartCategory = "NONE"
 )
 const (
 	TraitAim     Trait = "AIM"

@@ -12,8 +12,11 @@ import (
 // playerSelectRandomTarget はプレイヤー専用の、ランダムな敵パーツをターゲットとして選択する関数
 // ★★★ 修正点: 引数を *Game から *BattleScene に変更 ★★★
 func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	// ★★★ 古い関数呼び出しを新しい共通関数に置き換え ★★★
-	candidates := GetTargetableEnemies(bs.world, actingEntry)
+	if bs.targetSelector == nil {
+		log.Println("Error: playerSelectRandomTarget - bs.targetSelector is nil")
+		return nil, ""
+	}
+	candidates := bs.targetSelector.GetTargetableEnemies(actingEntry)
 	if len(candidates) == 0 {
 		return nil, ""
 	}
