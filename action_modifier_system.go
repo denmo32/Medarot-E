@@ -84,8 +84,13 @@ func RemoveActionModifiersSystem(actingEntry *donburi.Entry) {
 	}
 	if actingEntry.HasComponent(ActionModifierComponent) {
 		actingEntry.RemoveComponent(ActionModifierComponent)
-		if settingsComp, ok := SettingsComponent.TryGet(actingEntry); ok {
+		// Correctly get SettingsComponent for logging
+		if actingEntry.HasComponent(SettingsComponent) {
+			settingsComp := SettingsComponent.Get(actingEntry)
 			log.Printf("%s: ActionModifierComponent解除", settingsComp.Name)
+		} else {
+			// Fallback log if SettingsComponent is somehow not present (should not happen for medarots)
+			log.Println("ActionModifierComponent解除 (対象エンティティ名不明)")
 		}
 	}
 }

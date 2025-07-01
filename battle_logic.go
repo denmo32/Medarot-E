@@ -68,7 +68,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, part *Part)
 	var criticalRateBonus int
 	var customCriticalMultiplier float64 = 0 // 0 means use default
 
-	if ActionModifierComponent.Has(attacker) {
+	if attacker.HasComponent(ActionModifierComponent) {
 		modifiers := ActionModifierComponent.Get(attacker)
 		powerAdditiveBonus = modifiers.PowerAdditiveBonus
 		powerMultiplierBonus = modifiers.PowerMultiplierBonus
@@ -115,7 +115,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, part *Part)
 	finalDamage := modifiedPower + float64(medal.SkillLevel*dc.config.Balance.Damage.MedalSkillFactor)
 
 	// Apply final overall damage multipliers if any (e.g. from global buffs/debuffs)
-	if ActionModifierComponent.Has(attacker) {
+	if attacker.HasComponent(ActionModifierComponent) {
 		modifiers := ActionModifierComponent.Get(attacker)
 		finalDamage *= modifiers.DamageMultiplierBonus
 		finalDamage += float64(modifiers.DamageAdditiveBonus)
@@ -186,16 +186,29 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, part *Par
 	if attackerLegs != nil {
 		attackerStability = attackerLegs.Stability
 	}
-	baseAccuracy := float64(part.Accuracy) + float64(attackerStability)*hc.config.Balance.Factors.AccuracyStabilityFactor
 
+	// Get modifiers if available
+	var accuracyAdditiveBonus int = 0
+	// var accuracyMultiplier float64 = 1.0 // If added later to ActionModifierComponentData
+	if attacker.HasComponent(ActionModifierComponent) {
+		modifiers := ActionModifierComponent.Get(attacker)
+		accuracyAdditiveBonus = modifiers.AccuracyAdditiveBonus
+		// accuracyMultiplier = modifiers.AccuracyMultiplier
+	}
+
+	baseAccuracy := float64(part.Accuracy) + float64(attackerStability)*hc.config.Balance.Factors.AccuracyStabilityFactor + float64(accuracyAdditiveBonus)
+	// baseAccuracy *= accuracyMultiplier // Apply multiplicative bonus if exists
+
+	// Original category-based accuracy bonus (e.g., Melee from mobility)
+	// This should ideally be moved into ApplyActionModifiersSystem if it's a fixed bonus for a category/trait.
 	if hc.partInfoProvider == nil {
-		log.Println("Error: HitCalculator.partInfoProvider is not initialized")
+		log.Println("Error: HitCalculator.partInfoProvider is not initialized for category bonus")
 	} else {
 		switch part.Category {
 		case CategoryMelee:
 			baseAccuracy += float64(hc.partInfoProvider.GetOverallMobility(attacker)) * hc.config.Balance.Factors.MeleeAccuracyMobilityFactor
 		case CategoryShoot:
-			// 「撃つ」は純粋な安定ボーナスのみ
+			// No specific bonus here in original logic beyond stability/base accuracy
 		}
 	}
 
