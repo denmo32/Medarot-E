@@ -10,22 +10,26 @@ import (
 
 // ChangeState はエンティティの状態コンポーネントを切り替えます。
 func ChangeState(entry *donburi.Entry, newStateType StateType) {
-	// 既存の状態コンポーネントをすべて削除
+	var oldStateType StateType = -1 // Initialize with a value indicating no specific previous state or an unknown state
+
+	// Determine old state and remove old state component
 	if entry.HasComponent(IdleStateComponent) {
+		oldStateType = StateTypeIdle
 		entry.RemoveComponent(IdleStateComponent)
-	}
-	if entry.HasComponent(ChargingStateComponent) {
+	} else if entry.HasComponent(ChargingStateComponent) {
+		oldStateType = StateTypeCharging
 		entry.RemoveComponent(ChargingStateComponent)
-	}
-	if entry.HasComponent(ReadyStateComponent) {
+	} else if entry.HasComponent(ReadyStateComponent) {
+		oldStateType = StateTypeReady
 		entry.RemoveComponent(ReadyStateComponent)
-	}
-	if entry.HasComponent(CooldownStateComponent) {
+	} else if entry.HasComponent(CooldownStateComponent) {
+		oldStateType = StateTypeCooldown
 		entry.RemoveComponent(CooldownStateComponent)
-	}
-	if entry.HasComponent(BrokenStateComponent) {
+	} else if entry.HasComponent(BrokenStateComponent) {
+		oldStateType = StateTypeBroken
 		entry.RemoveComponent(BrokenStateComponent)
 	}
+	// Note: If an entity can have no state component initially, oldStateType might remain -1.
 
 	// Log only if SettingsComponent exists, to prevent panic if called on non-medarot entities
 	if entry.HasComponent(SettingsComponent) {
@@ -40,29 +44,30 @@ func ChangeState(entry *donburi.Entry, newStateType StateType) {
 	switch newStateType {
 	case StateTypeIdle:
 		donburi.Add(entry, IdleStateComponent, &IdleState{})
-		if gauge != nil {
-			gauge.CurrentGauge = 0
-			gauge.ProgressCounter = 0
-			gauge.TotalDuration = 0
-		}
-		if action != nil {
-			action.SelectedPartKey = ""
-			action.TargetPartSlot = ""
-			action.TargetEntity = nil
-		}
+		// Gauge and Action reset logic moved to handleStateChangeForGaugeReset event handler
 	case StateTypeCharging:
 		donburi.Add(entry, ChargingStateComponent, &ChargingState{})
 	case StateTypeReady:
 		donburi.Add(entry, ReadyStateComponent, &ReadyState{})
-		if gauge != nil {
+		if gauge != nil { // Still set gauge to 100 immediately on Ready, event might be too late for some UI
 			gauge.CurrentGauge = 100
 		}
 	case StateTypeCooldown:
 		donburi.Add(entry, CooldownStateComponent, &CooldownState{})
 	case StateTypeBroken:
 		donburi.Add(entry, BrokenStateComponent, &BrokenState{})
-		if gauge != nil {
-			gauge.CurrentGauge = 0
+		// Gauge reset for Broken moved to handleStateChangeForGaugeReset event handler
+	}
+
+	// Publish StateChangedEvent
+	if oldStateType != newStateType { // Only publish if state actually changed
+		donburi.Send(entry.World, StateChangedEventType, StateChangedEvent{
+			Entity:   entry,
+			OldState: oldStateType,
+			NewState: newStateType,
+		})
+		if entry.HasComponent(SettingsComponent) { // Additional log for event
+			log.Printf("Event: StateChanged for %s from %v to %v", SettingsComponent.Get(entry).Name, oldStateType, newStateType)
 		}
 	}
 }
