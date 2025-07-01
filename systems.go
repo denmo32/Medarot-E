@@ -185,7 +185,7 @@ func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 
 	// --- 防御判定とダメージ適用 ---
 	defensePart := bs.targetSelector.SelectDefensePart(targetEntry)
-	damageDealt := damage
+	// damageDealt := damage // この行を削除
 
 	if defensePart != nil && bs.hitCalculator.CalculateDefense(targetEntry, defensePart) {
 		// 防御成功
@@ -193,11 +193,13 @@ func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 		if finalDamageAfterDefense < 0 {
 			finalDamageAfterDefense = 0
 		}
-		damageDealt = finalDamageAfterDefense
+		// damageDealt = finalDamageAfterDefense // この行も不要
 		bs.damageCalculator.ApplyDamage(targetEntry, defensePart, finalDamageAfterDefense)
+		// GenerateActionLogDefense の第3引数は防御後の実ダメージ (finalDamageAfterDefense)
 		logComp.LastActionLog = bs.damageCalculator.GenerateActionLogDefense(targetEntry, defensePart, finalDamageAfterDefense, originalDamage, isCritical)
 	} else {
 		// 防御失敗または防御パーツなし
+		// GenerateActionLog の第4引数は与ダメージ (damage)
 		bs.damageCalculator.ApplyDamage(targetEntry, intendedTargetPart, damage)
 		logComp.LastActionLog = bs.damageCalculator.GenerateActionLog(entry, targetEntry, intendedTargetPart, damage, isCritical, true)
 	}

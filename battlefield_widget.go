@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"log"
 	"math"
 
 	uiimage "github.com/ebitenui/ebitenui/image"
