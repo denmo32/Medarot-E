@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/event" // Added for event.Publish
+	// "github.com/yohamta/donburi/event" // Removed: No longer used
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
