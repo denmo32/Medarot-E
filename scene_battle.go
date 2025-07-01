@@ -102,7 +102,11 @@ func (bs *BattleScene) Update() (SceneType, error) {
 	switch bs.state {
 	case StatePlaying:
 		bs.tickCount++
-		UpdateGaugeSystem(bs.world) // Modified: Call the new system
+		// Only update gauges if no player is currently selecting an action
+		// and the game is in a state where gauges should normally progress.
+		if bs.playerMedarotToAct == nil {
+			UpdateGaugeSystem(bs.world)
+		}
 
 		// Call the new ActionQueueSystem
 		actionResults, err := UpdateActionQueueSystem(
