@@ -27,10 +27,10 @@ type Game struct {
 	winner              TeamID
 	restartRequested    bool
 	playerMedarotToAct  *donburi.Entry // Medarot* から donburi.Entry* へ変更
+	currentTarget       *donburi.Entry // プレイヤーがターゲットしている相手
 }
 
 func NewGame(gameData *GameData, config Config, font text.Face) *Game {
-	// 修正: donburi.New() を donburi.NewWorld() に変更
 	world := donburi.NewWorld()
 
 	g := &Game{
@@ -44,6 +44,7 @@ func NewGame(gameData *GameData, config Config, font text.Face) *Game {
 		PlayerTeam:         Team1,
 		actionQueue:        make([]*donburi.Entry, 0),
 		playerMedarotToAct: nil,
+		currentTarget:      nil,
 	}
 
 	CreateMedarotEntities(g.World, g.GameData, g.PlayerTeam)
@@ -75,6 +76,11 @@ func (g *Game) Update() error {
 		}
 
 	case StatePlayerActionSelect:
+		// ★★★ 修正点 ★★★
+		// 行動選択中もアイコン座標を更新し続ける
+		if g.ui.battlefieldWidget != nil {
+			g.ui.battlefieldWidget.UpdatePositions()
+		}
 		if g.ui.actionModal == nil && g.playerMedarotToAct != nil {
 			g.ui.ShowActionModal(g, g.playerMedarotToAct)
 		}
@@ -104,6 +110,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if bf != nil {
 		bf.DrawBackground(screen)
 		bf.DrawIcons(screen)
+		if g.currentTarget != nil {
+			bf.DrawTargetIndicator(screen)
+		}
 		bf.DrawDebug(screen)
 	}
 	if g.DebugMode {

@@ -58,7 +58,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		MedalComponent.SetValue(entry, *medal)
 		StateComponent.SetValue(entry, State{State: StateIdle})
 		GaugeComponent.SetValue(entry, Gauge{})
-		ActionComponent.SetValue(entry, Action{})
+		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""}) // TargetPartSlotを初期化
 		LogComponent.SetValue(entry, Log{})
 
 		// プレイヤーチームならPlayerControlタグを追加

@@ -16,15 +16,13 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// 各ComponentTypeが定義されていることを想定しています
-// var SettingsComponent = donburi.NewComponentType[Settings]()
-// var StateComponent = donburi.NewComponentType[State]()
-// var GaugeComponent = donburi.NewComponentType[Gauge]()
-
+// ★★★ 修正点1 ★★★
+// 構造体に白ピクセル画像を保持するフィールドを追加
 type BattlefieldWidget struct {
 	*widget.Container
 	game         *Game
 	medarotIcons []*CustomIconWidget
+	whitePixel   *ebiten.Image
 }
 
 type CustomIconWidget struct {
@@ -36,9 +34,15 @@ type CustomIconWidget struct {
 }
 
 func NewBattlefieldWidget(game *Game) *BattlefieldWidget {
+	// ★★★ 修正点2 ★★★
+	// 1x1の白い画像をここで一度だけ生成する
+	whiteImg := ebiten.NewImage(1, 1)
+	whiteImg.Fill(color.White)
+
 	bf := &BattlefieldWidget{
 		game:         game,
 		medarotIcons: make([]*CustomIconWidget, 0),
+		whitePixel:   whiteImg, // 生成した画像を構造体に保持
 	}
 	bf.Container = widget.NewContainer(
 		widget.ContainerOpts.BackgroundImage(
@@ -51,7 +55,6 @@ func NewBattlefieldWidget(game *Game) *BattlefieldWidget {
 }
 
 func (bf *BattlefieldWidget) createMedarotIcons() {
-	// 修正: filter.With を filter.Contains に変更
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(bf.game.World, func(entry *donburi.Entry) {
 		icon := NewCustomIconWidget(entry, bf.game)
 		bf.medarotIcons = append(bf.medarotIcons, icon)
@@ -76,7 +79,6 @@ func (w *CustomIconWidget) Render(screen *ebiten.Image) {
 	radius := w.game.Config.UI.Battlefield.IconRadius
 	vector.DrawFilledCircle(screen, centerX, centerY, radius, iconColor, true)
 
-	// 修正: ComponentType.Get(entry) を使用
 	settings := SettingsComponent.Get(w.entry)
 	if settings.IsLeader {
 		vector.StrokeCircle(screen, centerX, centerY, radius+3, 2,
@@ -90,7 +92,6 @@ func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
 		return
 	}
 
-	// 修正: 未使用の settings 変数を削除し、各ComponentType.Get(entry) を使用
 	state := StateComponent.Get(w.entry)
 	gauge := GaugeComponent.Get(w.entry)
 
@@ -108,7 +109,6 @@ func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
 }
 
 func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, centerY float32) {
-	// 修正: ComponentType.Get(entry) を使用
 	state := StateComponent.Get(w.entry)
 	switch state.State {
 	case StateBroken:
@@ -132,7 +132,6 @@ func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, cen
 }
 
 func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, centerY float32) {
-	// 修正: ComponentType.Get(entry) を使用
 	gauge := GaugeComponent.Get(w.entry)
 	radius := w.game.Config.UI.Battlefield.IconRadius + 8
 	progress := gauge.CurrentGauge / 100.0
@@ -154,9 +153,7 @@ func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, cent
 }
 
 func (w *CustomIconWidget) getIconColor() color.Color {
-	// 修正: ComponentType.Get(entry) を使用
 	settings := SettingsComponent.Get(w.entry)
-	// 修正: ComponentType.Get(entry) を使用
 	state := StateComponent.Get(w.entry)
 
 	if state.State == StateBroken {
@@ -179,7 +176,9 @@ func (bf *BattlefieldWidget) UpdatePositions() {
 	offsetY := float32(rect.Min.Y)
 
 	for _, icon := range bf.medarotIcons {
-		x, y := bf.calculateIconPosition(icon.entry, width, height)
+		x := CalculateIconXPosition(icon.entry, width)
+		settings := SettingsComponent.Get(icon.entry)
+		y := (height / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 		icon.xPos = offsetX + x
 		icon.yPos = offsetY + y
 		icon.rect = image.Rect(
@@ -187,37 +186,6 @@ func (bf *BattlefieldWidget) UpdatePositions() {
 			int(icon.xPos+10), int(icon.yPos+10),
 		)
 	}
-}
-
-func (bf *BattlefieldWidget) calculateIconPosition(entry *donburi.Entry, width, height float32) (float32, float32) {
-	// 修正: ComponentType.Get(entry) を使用
-	settings := SettingsComponent.Get(entry)
-	// 修正: ComponentType.Get(entry) を使用
-	state := StateComponent.Get(entry)
-	// 修正: ComponentType.Get(entry) を使用
-	gauge := GaugeComponent.Get(entry)
-
-	progress := float32(gauge.CurrentGauge / 100.0)
-	yPos := (height / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
-	homeX, execX := width*0.1, width*0.4
-	if settings.Team == Team2 {
-		homeX, execX = width*0.9, width*0.6
-	}
-
-	var xPos float32
-	switch state.State {
-	case StateCharging:
-		xPos = homeX + (execX-homeX)*progress
-	case StateReady:
-		xPos = execX
-	case StateCooldown:
-		xPos = execX - (execX-homeX)*progress
-	case StateIdle, StateBroken:
-		xPos = homeX
-	default:
-		xPos = homeX
-	}
-	return xPos, yPos
 }
 
 func (bf *BattlefieldWidget) DrawIcons(screen *ebiten.Image) {
@@ -230,6 +198,70 @@ func (bf *BattlefieldWidget) DrawDebug(screen *ebiten.Image) {
 	for _, icon := range bf.medarotIcons {
 		icon.drawDebugInfo(screen)
 	}
+}
+
+func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image) {
+	g := bf.game
+	if g.currentTarget == nil {
+		return
+	}
+
+	var targetIcon *CustomIconWidget
+	for _, icon := range bf.medarotIcons {
+		if icon.entry == g.currentTarget {
+			targetIcon = icon
+			break
+		}
+	}
+
+	if targetIcon == nil {
+		return
+	}
+
+	// ターゲットアイコンの座標を取得
+	tx, ty := targetIcon.xPos, targetIcon.yPos
+
+	// インジケータ(▼)のプロパティ
+	indicatorColor := g.Config.UI.Colors.Yellow
+	iconRadius := g.Config.UI.Battlefield.IconRadius
+	indicatorHeight := float32(8)
+	indicatorWidth := float32(10)
+	margin := float32(5)
+
+	// 三角形の3つの頂点座標を計算
+	p1x := tx - indicatorWidth/2
+	p1y := ty - iconRadius - margin - indicatorHeight
+	p2x := tx + indicatorWidth/2
+	p2y := ty - iconRadius - margin - indicatorHeight
+	p3x := tx
+	p3y := ty - iconRadius - margin
+
+	// 頂点スライスを作成
+	vertices := []ebiten.Vertex{
+		{DstX: p1x, DstY: p1y, SrcX: 0, SrcY: 0},
+		{DstX: p2x, DstY: p2y, SrcX: 0, SrcY: 0},
+		{DstX: p3x, DstY: p3y, SrcX: 0, SrcY: 0},
+	}
+
+	// 色をfloat32に変換して各頂点に設定
+	rVal, gVal, bVal, aVal := indicatorColor.RGBA()
+	cr := float32(rVal) / 65535
+	cg := float32(gVal) / 65535
+	cb := float32(bVal) / 65535
+	ca := float32(aVal) / 65535
+	for i := range vertices {
+		vertices[i].ColorR = cr
+		vertices[i].ColorG = cg
+		vertices[i].ColorB = cb
+		vertices[i].ColorA = ca
+	}
+
+	// インデックススライスを作成
+	indices := []uint16{0, 1, 2}
+
+	// ★★★ 修正点3 ★★★
+	// 構造体に保持した白ピクセル画像をテクスチャとして使用する
+	screen.DrawTriangles(vertices, indices, bf.whitePixel, &ebiten.DrawTrianglesOptions{})
 }
 
 func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
@@ -256,7 +288,6 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 			bf.game.Config.UI.Colors.Gray, true)
 		vector.StrokeCircle(screen, team2HomeX, yPos,
 			bf.game.Config.UI.Battlefield.HomeMarkerRadius,
-			// 修正: bf.game.Code を bf.game.Config に変更
 			bf.game.Config.UI.Battlefield.LineWidth,
 			bf.game.Config.UI.Colors.Gray, true)
 	}

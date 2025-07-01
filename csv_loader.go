@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// ... (parseInt, parseBool, LoadMedalsは変更なし) ...
+// ... (parseInt, parseBool は変更なし) ...
 func parseInt(s string, defaultValue int) int {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -26,18 +26,19 @@ func parseBool(s string) bool {
 	return strings.ToLower(strings.TrimSpace(s)) == "true"
 }
 
+// LoadMedals - medals.csv の列構造に合わせて修正 (ID, Name, Personality, ...)
 func LoadMedals(filePath string) ([]Medal, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+
 	reader := csv.NewReader(file)
 	reader.Read() // Skip header
 
 	var medals []Medal
 	for {
-		// medals.csv の列数が少ないので、lenチェックは不要
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
@@ -45,16 +46,19 @@ func LoadMedals(filePath string) ([]Medal, error) {
 		if err != nil {
 			continue
 		}
-		// medals.csv の列構造に合わせて修正
+
+		// medals.csv の列構造に合わせて修正 (ID, Name, Personality, ...)
 		medals = append(medals, Medal{
-			ID:   record[0],
-			Name: record[1],
+			ID:          record[0],
+			Name:        record[1],
+			Personality: record[2], // 新しいフィールドを追加
 			// skill_shoot, skill_fightを考慮して、ここでは単純にSkillLevelを固定値にするか、
 			// またはCSVに合わせてMedal構造体自体を修正する必要があります。
 			// 今回は skill_fight を代表値として使います。
 			SkillLevel: parseInt(record[6], 1), // "skill_fight" はインデックス6
 		})
 	}
+
 	return medals, nil
 }
 
@@ -65,10 +69,12 @@ func LoadParts(filePath string) (map[string]*Part, error) {
 		return nil, err
 	}
 	defer file.Close()
+
 	reader := csv.NewReader(file)
 	reader.Read() // Skip header
 
 	partsMap := make(map[string]*Part)
+
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -77,6 +83,7 @@ func LoadParts(filePath string) (map[string]*Part, error) {
 		if err != nil || len(record) < 14 { // 列数は14
 			continue
 		}
+
 		// 正しいインデックスでArmorを読み込む
 		armor := parseInt(record[6], 1)
 		part := &Part{
@@ -99,6 +106,7 @@ func LoadParts(filePath string) (map[string]*Part, error) {
 		}
 		partsMap[part.ID] = part
 	}
+
 	return partsMap, nil
 }
 
@@ -109,10 +117,12 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 		return nil, err
 	}
 	defer file.Close()
+
 	reader := csv.NewReader(file)
 	reader.Read() // Skip header
 
 	var medarots []MedarotData
+
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -121,6 +131,7 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 		if err != nil || len(record) < 10 {
 			continue
 		}
+
 		medarot := MedarotData{
 			ID:         record[0],
 			Name:       record[1],
@@ -135,6 +146,7 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 		}
 		medarots = append(medarots, medarot)
 	}
+
 	return medarots, nil
 }
 

@@ -12,25 +12,31 @@ import (
 
 // --- メダロット個別の行動ロジック（ECS版） ---
 
-func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entry, balanceConfig *BalanceConfig) bool {
+func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entry, targetPartSlot PartSlotKey, balanceConfig *BalanceConfig) bool {
 	parts := PartsComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
-	targetState := StateComponent.Get(target)
 	part := parts.Map[partKey]
 
 	if part == nil || part.IsBroken {
 		log.Printf("%s: 選択されたパーツ %s は存在しないか破壊されています。", settings.Name, partKey)
 		return false
 	}
-	if target == nil || targetState.State == StateBroken {
-		log.Printf("%s: ターゲットが存在しないか破壊されています。", settings.Name)
-		return false
-	}
 
 	action := ActionComponent.Get(entry)
 	action.SelectedPartKey = partKey
 	action.TargetEntity = target
-	log.Printf("%sは%sで%sを狙う！", settings.Name, part.PartName, SettingsComponent.Get(target).Name)
+	action.TargetPartSlot = targetPartSlot
+
+	// カテゴリに応じてログとターゲット検証を変更
+	if part.Category == CategoryShoot {
+		if target == nil || StateComponent.Get(target).State == StateBroken {
+			log.Printf("%s: [SHOOT] ターゲットが存在しないか破壊されています。", settings.Name)
+			return false
+		}
+		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, part.PartName, SettingsComponent.Get(target).Name, targetPartSlot)
+	} else { // FIGHTやその他の場合
+		log.Printf("%sは%sで攻撃準備！", settings.Name, part.PartName)
+	}
 
 	legs := parts.Map[PartSlotLegs]
 	propulsion := 1
@@ -42,15 +48,14 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
+
 	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
 	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
-
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
 	if gauge.TotalDuration < 1 {
 		gauge.TotalDuration = 1
 	}
-
 	ChangeState(entry, StateCharging)
 	return true
 }
@@ -59,7 +64,6 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	parts := PartsComponent.Get(entry)
 	action := ActionComponent.Get(entry)
 	part := parts.Map[action.SelectedPartKey]
-
 	baseSeconds := 1.0
 	if part != nil {
 		baseSeconds = float64(part.Cooldown)
@@ -67,7 +71,6 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
-
 	totalTicks := (baseSeconds * 60.0) / balanceConfig.Time.GameSpeedMultiplier
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
@@ -76,41 +79,59 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	}
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
-
 	ChangeState(entry, StateCooldown)
 }
 
-func ExecuteAction(entry *donburi.Entry, balanceConfig *BalanceConfig) {
+func ExecuteAction(entry *donburi.Entry, g *Game) {
 	action := ActionComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
-	log := LogComponent.Get(entry)
-
-	if action.SelectedPartKey == "" || action.TargetEntity == nil {
-		log.LastActionLog = fmt.Sprintf("%sは行動に失敗した。", settings.Name)
-		return
-	}
-
-	targetEntry := action.TargetEntity
-	if StateComponent.Get(targetEntry).State == StateBroken {
-		log.LastActionLog = fmt.Sprintf("%sは%sを狙ったが、既に行動不能だった！", settings.Name, SettingsComponent.Get(targetEntry).Name)
-		return
-	}
-
+	logComp := LogComponent.Get(entry)
 	part := PartsComponent.Get(entry).Map[action.SelectedPartKey]
-	log.LastActionLog = "実行中..." // Placeholder
 
-	isHit := CalculateHit(entry, targetEntry, part, balanceConfig)
-	if isHit {
-		damage, isCritical := CalculateDamage(entry, part, balanceConfig)
-		targetPart := SelectRandomPartToDamage(targetEntry)
-		if targetPart != nil {
-			ApplyDamage(targetEntry, targetPart, damage)
-			log.LastActionLog = GenerateActionLog(entry, targetEntry, targetPart, damage, isCritical, true)
-		} else {
-			log.LastActionLog = fmt.Sprintf("%sの攻撃は%sに当たらなかった。", settings.Name, SettingsComponent.Get(targetEntry).Name)
+	var targetEntry *donburi.Entry
+	var targetPart *Part
+
+	// カテゴリによってターゲット決定/検証方法を分岐
+	if part.Category == CategoryShoot {
+		// --- SHOOT: 事前ターゲットの検証 ---
+		targetEntry = action.TargetEntity
+		if targetEntry == nil || StateComponent.Get(targetEntry).State == StateBroken {
+			logComp.LastActionLog = fmt.Sprintf("%sはターゲットを狙ったが、既に行動不能だった！", settings.Name)
+			return // ターゲットロスト
+		}
+		targetPart = PartsComponent.Get(targetEntry).Map[action.TargetPartSlot]
+		if targetPart == nil || targetPart.IsBroken {
+			logComp.LastActionLog = fmt.Sprintf("%sは%sを狙ったが、パーツは既に破壊されていた！", settings.Name, action.TargetPartSlot)
+			return // ターゲットロスト
+		}
+	} else if part.Category == CategoryMelee {
+		// --- FIGHT: 直前ターゲットの決定 ---
+		closestEnemy := findClosestEnemy(g, entry)
+		if closestEnemy == nil {
+			logComp.LastActionLog = fmt.Sprintf("%sは攻撃しようとしたが、相手がいなかった。", settings.Name)
+			return
+		}
+		targetEntry = closestEnemy
+		targetPart = SelectRandomPartToDamage(targetEntry) // 最も近い敵のランダムな部位を狙う
+		if targetPart == nil {
+			logComp.LastActionLog = fmt.Sprintf("%sは%sを狙ったが、攻撃できる部位がなかった！", settings.Name, SettingsComponent.Get(targetEntry).Name)
+			return
 		}
 	} else {
-		log.LastActionLog = GenerateActionLog(entry, targetEntry, nil, 0, false, false)
+		logComp.LastActionLog = fmt.Sprintf("%sは行動に失敗した。", settings.Name)
+		return
+	}
+
+	// --- 共通の命中判定とダメージ適用 ---
+	logComp.LastActionLog = "実行中..."
+
+	isHit := CalculateHit(entry, targetEntry, part, &g.Config.Balance)
+	if isHit {
+		damage, isCritical := CalculateDamage(entry, part, &g.Config.Balance)
+		ApplyDamage(targetEntry, targetPart, damage)
+		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, targetPart, damage, isCritical, true)
+	} else {
+		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, nil, 0, false, false)
 	}
 
 	if PartsComponent.Get(entry).Map[PartSlotHead].IsBroken {
@@ -129,7 +150,6 @@ func SystemUpdateProgress(g *Game) {
 		if state.State != StateCharging && state.State != StateCooldown {
 			return // continue
 		}
-
 		gauge := GaugeComponent.Get(entry)
 		gauge.ProgressCounter++
 		if gauge.TotalDuration > 0 {
@@ -137,7 +157,6 @@ func SystemUpdateProgress(g *Game) {
 		} else {
 			gauge.CurrentGauge = 100
 		}
-
 		if gauge.ProgressCounter >= gauge.TotalDuration {
 			if state.State == StateCharging {
 				ChangeState(entry, StateReady)
@@ -159,15 +178,14 @@ func SystemProcessReadyQueue(g *Game) {
 		propJ := GetOverallPropulsion(g.actionQueue[j])
 		return propI > propJ
 	})
-
 	if len(g.actionQueue) > 0 {
 		actingEntry := g.actionQueue[0]
 		g.actionQueue = g.actionQueue[1:]
 
-		ExecuteAction(actingEntry, &g.Config.Balance)
+		ExecuteAction(actingEntry, g)
 
 		g.enqueueMessage(LogComponent.Get(actingEntry).LastActionLog, func() {
-			if StateComponent.Get(actingEntry).State != StateBroken {
+			if actingEntry.Valid() && StateComponent.Get(actingEntry).State != StateBroken {
 				StartCooldown(actingEntry, &g.Config.Balance)
 			}
 		})
@@ -178,7 +196,6 @@ func SystemProcessIdleMedarots(g *Game) {
 	if g.playerMedarotToAct != nil || g.State != StatePlaying {
 		return
 	}
-
 	query.NewQuery(filter.And(
 		filter.Contains(StateComponent),
 		filter.Contains(SettingsComponent),
@@ -190,7 +207,6 @@ func SystemProcessIdleMedarots(g *Game) {
 			}
 		}
 	})
-
 	query.NewQuery(filter.And(
 		filter.Contains(PlayerControlComponent),
 		filter.Contains(StateComponent),
@@ -208,10 +224,8 @@ func SystemCheckGameEnd(g *Game) {
 	if g.State == StateGameOver {
 		return
 	}
-
 	team1Leader := FindLeader(g.World, Team1)
 	team2Leader := FindLeader(g.World, Team2)
-
 	team1FuncCount := 0
 	team2FuncCount := 0
 	query.NewQuery(filter.And(
@@ -226,7 +240,6 @@ func SystemCheckGameEnd(g *Game) {
 			}
 		}
 	})
-
 	if PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken || team2FuncCount == 0 {
 		g.winner = Team2
 		g.State = StateGameOver
@@ -246,16 +259,15 @@ func ChangeState(entry *donburi.Entry, newState MedarotState) {
 	}
 	log.Printf("%s のステートが %s から %s に変更されました。", SettingsComponent.Get(entry).Name, state.State, newState)
 	state.State = newState
-
 	gauge := GaugeComponent.Get(entry)
 	action := ActionComponent.Get(entry)
-
 	switch newState {
 	case StateIdle:
 		gauge.CurrentGauge = 0
 		gauge.ProgressCounter = 0
 		gauge.TotalDuration = 0
 		action.SelectedPartKey = ""
+		action.TargetPartSlot = ""
 		action.TargetEntity = nil
 	case StateReady:
 		gauge.CurrentGauge = 100

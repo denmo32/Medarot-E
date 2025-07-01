@@ -48,6 +48,7 @@ type Gauge struct {
 // Action は選択された行動とターゲットを保持する
 type Action struct {
 	SelectedPartKey PartSlotKey
+	TargetPartSlot  PartSlotKey
 	TargetEntity    *donburi.Entry
 }
 

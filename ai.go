@@ -2,90 +2,95 @@ package main
 
 import (
 	"log"
-	"sort"
+	"math/rand"
 
 	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // SettingsComponent や PartsComponent などの変数が
 // このように定義されていることを想定しています。
 // var SettingsComponent = donburi.NewComponentType[Settings]()
 // var PartsComponent = donburi.NewComponentType[Parts]()
+// var MedalComponent = donburi.NewComponentType[Medal]()
 // var StateComponent = donburi.NewComponentType[State]()
 
 func aiSelectAction(g *Game, entry *donburi.Entry) {
-	// 修正: ComponentType.Get(entry) を使用
 	settings := SettingsComponent.Get(entry)
+	medal := MedalComponent.Get(entry)
 	availableParts := GetAvailableAttackParts(entry)
+
 	if len(availableParts) == 0 {
 		log.Printf("%s: AIは攻撃可能なパーツがないため待機。", settings.Name)
 		return
 	}
 
-	targetCandidates := getTargetCandidates(g, entry)
-	if len(targetCandidates) == 0 {
-		log.Printf("%s: AIは攻撃対象がいないため待機。", settings.Name)
-		return
-	}
-
-	var target *donburi.Entry
-	for _, cand := range targetCandidates {
-		// 修正: ComponentType.Get(entry) を使用
-		if SettingsComponent.Get(cand).IsLeader {
-			target = cand
-			break
-		}
-	}
-	if target == nil {
-		target = targetCandidates[0]
-	}
-
+	// TODO: 性格に応じて使用パーツも変えるべきだが、今回は最初の有効なパーツを使う
 	selectedPart := availableParts[0]
+	slotKey := findPartSlot(entry, selectedPart)
 
-	var slotKey PartSlotKey
-	// 修正: ComponentType.Get(entry) を使用
-	partsMap := PartsComponent.Get(entry).Map
-	for s, p := range partsMap {
-		if p.ID == selectedPart.ID {
-			slotKey = s
-			break
+	if selectedPart.Category == CategoryShoot {
+		var targetEntry *donburi.Entry
+		var targetPartSlot PartSlotKey
+
+		switch medal.Personality {
+		case "ジョーカー":
+			targetEntry, targetPartSlot = selectRandomTargetPart(g, entry)
+		default: // デフォルトの挙動としてリーダーを狙う
+			targetEntry, targetPartSlot = selectLeaderPart(g, entry)
 		}
-	}
 
-	StartCharge(entry, slotKey, target, &g.Config.Balance)
+		if targetEntry == nil {
+			log.Printf("%s: AIは[SHOOT]の攻撃対象がいないため待機。", settings.Name)
+			return
+		}
+		StartCharge(entry, slotKey, targetEntry, targetPartSlot, &g.Config.Balance)
+
+	} else if selectedPart.Category == CategoryMelee {
+		// FIGHTの場合、ターゲットは実行時に決定されるので、ここではnilでチャージ開始
+		StartCharge(entry, slotKey, nil, "", &g.Config.Balance)
+	}
 }
 
-func getTargetCandidates(g *Game, actingEntry *donburi.Entry) []*donburi.Entry {
-	// 修正: ComponentType.Get(entry) を使用
-	actingSettings := SettingsComponent.Get(actingEntry)
-	var opponentTeamID TeamID = Team2
-	if actingSettings.Team == Team2 {
+// selectRandomTargetPart は「ジョーカー」性格用のターゲット選択ロジック
+func selectRandomTargetPart(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
+	var allEnemyEntries []*donburi.Entry
+	var allEnemySlots []PartSlotKey
+
+	candidates := getTargetCandidates(g, actingEntry)
+	for _, enemyEntry := range candidates {
+		partsMap := PartsComponent.Get(enemyEntry).Map
+		for slot, part := range partsMap {
+			if !part.IsBroken {
+				allEnemyEntries = append(allEnemyEntries, enemyEntry)
+				allEnemySlots = append(allEnemySlots, slot)
+			}
+		}
+	}
+
+	if len(allEnemyEntries) == 0 {
+		return nil, ""
+	}
+
+	idx := rand.Intn(len(allEnemyEntries))
+	return allEnemyEntries[idx], allEnemySlots[idx]
+}
+
+// selectLeaderPart はデフォルト用のターゲット選択ロジック
+func selectLeaderPart(g *Game, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
+	actingTeam := SettingsComponent.Get(actingEntry).Team
+	opponentTeamID := Team2
+	if actingTeam == Team2 {
 		opponentTeamID = Team1
 	}
 
-	candidates := []*donburi.Entry{}
-	// 修正: filter.Contains() でコンポーネントをラップ
-	query.NewQuery(filter.And(
-		filter.Contains(SettingsComponent),
-		filter.Contains(StateComponent),
-	)).Each(g.World, func(entry *donburi.Entry) {
-		// 修正: ComponentType.Get(entry) を使用
-		settings := SettingsComponent.Get(entry)
-		// 修正: ComponentType.Get(entry) を使用
-		state := StateComponent.Get(entry)
-		if settings.Team == opponentTeamID && state.State != StateBroken {
-			candidates = append(candidates, entry)
+	leader := FindLeader(g.World, opponentTeamID)
+	if leader != nil && StateComponent.Get(leader).State != StateBroken {
+		part := SelectRandomPartToDamage(leader)
+		if part != nil {
+			return leader, findPartSlot(leader, part)
 		}
-	})
+	}
 
-	sort.Slice(candidates, func(i, j int) bool {
-		// 修正: ComponentType.Get(entry) を使用
-		iSettings := SettingsComponent.Get(candidates[i])
-		// 修正: ComponentType.Get(entry) を使用
-		jSettings := SettingsComponent.Get(candidates[j])
-		return iSettings.DrawIndex < jSettings.DrawIndex
-	})
-	return candidates
+	// リーダーがいない or 破壊済み → ジョーカーと同じ動き
+	return selectRandomTargetPart(g, actingEntry)
 }

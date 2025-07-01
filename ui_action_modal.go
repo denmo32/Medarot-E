@@ -12,9 +12,7 @@ import (
 
 func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.PreferredSizeLocateableWidget {
 	c := game.Config.UI
-	// 修正: ComponentType.Get を使用
 	settings := SettingsComponent.Get(actingEntry)
-
 	overlay := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
 		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{0, 0, 0, 180})),
@@ -38,19 +36,34 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 	panel.AddChild(widget.NewText(
 		widget.TextOpts.Text(fmt.Sprintf("行動選択: %s", settings.Name), game.MplusFont, c.Colors.White),
 	))
+
 	buttonImage := &widget.ButtonImage{
 		Idle:    image.NewNineSliceColor(c.Colors.Gray),
 		Hover:   image.NewNineSliceColor(color.RGBA{180, 180, 180, 255}),
 		Pressed: image.NewNineSliceColor(color.RGBA{100, 100, 100, 255}),
 	}
+
 	availableParts := GetAvailableAttackParts(actingEntry)
 	if len(availableParts) == 0 {
 		panel.AddChild(widget.NewText(
 			widget.TextOpts.Text("利用可能なパーツがありません。", game.MplusFont, c.Colors.White),
 		))
 	}
+
+	// ★★★ 修正点1: モーダル表示時に各パーツのターゲットを事前計算して保存 ★★★
+	for _, part := range availableParts {
+		slotKey := findPartSlot(actingEntry, part)
+		if part.Category == CategoryShoot {
+			// 性格に基づいてターゲットを決定し、UIのマップに保存
+			target, _ := selectRandomTargetPart(game, actingEntry) // 今はジョーカーの動き
+			game.ui.actionTargetMap[slotKey] = target
+		}
+	}
+
 	for _, part := range availableParts {
 		capturedPart := part
+		slotKey := findPartSlot(actingEntry, capturedPart)
+
 		actionButton := widget.NewButton(
 			widget.ButtonOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
 				Stretch: true,
@@ -63,9 +76,22 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 				handleActionSelection(game, actingEntry, capturedPart)
 			}),
+			// ★★★ 修正点2: カーソルホバー時に事前計算したターゲットを表示 ★★★
+			widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
+				if capturedPart.Category == CategoryShoot {
+					// UIのマップからターゲット情報を取得して表示
+					if target, ok := game.ui.actionTargetMap[slotKey]; ok {
+						game.currentTarget = target
+					}
+				}
+			}),
+			widget.ButtonOpts.CursorExitedHandler(func(args *widget.ButtonHoverEventArgs) {
+				game.currentTarget = nil
+			}),
 		)
 		panel.AddChild(actionButton)
 	}
+
 	cancelButton := widget.NewButton(
 		widget.ButtonOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
 			Stretch: true,
@@ -78,64 +104,61 @@ func createActionModalUI(game *Game, actingEntry *donburi.Entry) widget.Preferre
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 			game.ui.HideActionModal()
 			game.playerMedarotToAct = nil
+			game.currentTarget = nil
 			game.State = StatePlaying
 		}),
 	)
 	panel.AddChild(cancelButton)
+
 	return overlay
 }
 
+// ★★★ 修正点3: 行動決定時も事前計算したターゲットを使用 ★★★
 func handleActionSelection(game *Game, actingEntry *donburi.Entry, selectedPart *Part) {
-	// 修正: ComponentType.Get を使用
-	actingSettings := SettingsComponent.Get(actingEntry)
-	var opponentTeamID TeamID = Team2
-	if actingSettings.Team == Team1 {
-		opponentTeamID = Team1
-	}
-	target := FindLeader(game.World, opponentTeamID)
+	slotKey := findPartSlot(actingEntry, selectedPart)
+	var successful bool
 
-	candidates := getTargetCandidates(game, actingEntry)
-	if len(candidates) > 0 {
-		isLeaderFound := false
-		for _, cand := range candidates {
-			// 修正: ComponentType.Get を使用
-			if SettingsComponent.Get(cand).IsLeader {
-				target = cand
-				isLeaderFound = true
-				break
-			}
+	if selectedPart.Category == CategoryShoot {
+		// UIのマップからターゲット情報を取得
+		targetEntry, ok := game.ui.actionTargetMap[slotKey]
+		if !ok || targetEntry == nil {
+			game.enqueueMessage("ターゲットがいません！", func() {
+				game.playerMedarotToAct = nil
+				game.currentTarget = nil
+				game.State = StatePlaying
+			})
+			game.ui.HideActionModal()
+			return
 		}
-		if !isLeaderFound {
-			target = candidates[0]
+		// ターゲットのランダムなパーツを攻撃対象とする
+		targetPart := SelectRandomPartToDamage(targetEntry)
+		if targetPart == nil {
+			log.Printf("%sは%sを狙ったが、攻撃できる部位がなかった！", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(targetEntry).Name)
+			game.ui.HideActionModal()
+			return
 		}
+		targetPartSlot := findPartSlot(targetEntry, targetPart)
+		successful = StartCharge(actingEntry, slotKey, targetEntry, targetPartSlot, &game.Config.Balance)
+
+	} else if selectedPart.Category == CategoryMelee {
+		successful = StartCharge(actingEntry, slotKey, nil, "", &game.Config.Balance)
 	} else {
-		game.enqueueMessage("ターゲットがいません！", func() {
-			game.playerMedarotToAct = nil
-			game.State = StatePlaying
-		})
-		game.ui.HideActionModal()
-		return
+		log.Printf("未対応のパーツカテゴリです: %s", selectedPart.Category)
+		successful = false
 	}
 
-	var slotKey PartSlotKey
-	// 修正: ComponentType.Get を使用
-	partsMap := PartsComponent.Get(actingEntry).Map
-	for s, p := range partsMap {
-		if p.ID == selectedPart.ID {
-			slotKey = s
-			break
-		}
-	}
-
-	if StartCharge(actingEntry, slotKey, target, &game.Config.Balance) {
+	if successful {
 		game.ui.HideActionModal()
 		game.playerMedarotToAct = nil
+		game.currentTarget = nil
 		game.State = StatePlaying
 		SystemProcessIdleMedarots(game)
 	} else {
-		log.Printf("エラー: %s の行動選択に失敗しました。", actingSettings.Name)
+		log.Printf("エラー: %s の行動選択に失敗しました。",
+			SettingsComponent.Get(actingEntry).Name)
 		game.ui.HideActionModal()
 		game.playerMedarotToAct = nil
+		game.currentTarget = nil
 		game.State = StatePlaying
 	}
 }
