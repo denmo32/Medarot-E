@@ -143,6 +143,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 				bs.damageCalculator,
 				bs.hitCalculator,
 				bs.targetSelector,
+			&bs.resources.Config, // Pass gameConfig
 			)
 			if err != nil {
 				// Handle error appropriately

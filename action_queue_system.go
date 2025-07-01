@@ -30,6 +30,7 @@ func UpdateActionQueueSystem(
 	damageCalculator *DamageCalculator, // ExecuteActionから移動したため追加
 	hitCalculator *HitCalculator, // ExecuteActionから移動したため追加
 	targetSelector *TargetSelector, // ExecuteActionから移動したため追加
+	gameConfig *Config, // Added to pass to executeActionLogic
 ) ([]ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
@@ -53,7 +54,7 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:] // キューから取り出し
 
-		actionResult := executeActionLogic(actingEntry, world, damageCalculator, hitCalculator, targetSelector, partInfoProvider)
+		actionResult := executeActionLogic(actingEntry, world, damageCalculator, hitCalculator, targetSelector, partInfoProvider, gameConfig)
 		results = append(results, actionResult)
 
 		// StartCooldown の呼び出しは BattleScene 側で行うか、ここで完了イベントを生成する
@@ -71,10 +72,14 @@ func executeActionLogic(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
+	gameConfig *Config, // Added to pass to ApplyActionModifiersSystem
 ) ActionResult {
 	action := ActionComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
 	actingPart := PartsComponent.Get(entry).Map[action.SelectedPartKey]
+
+	// Apply action modifiers before any calculations
+	ApplyActionModifiersSystem(world, entry, gameConfig, partInfoProvider)
 
 	result := ActionResult{
 		ActingEntry: entry,
@@ -179,8 +184,10 @@ func executeActionLogic(
 	}
 	if entry.HasComponent(ActingWithAimTraitTagComponent) {
 		entry.RemoveComponent(ActingWithAimTraitTagComponent)
-		// log.Printf("%s のAIM特性タグをexecuteActionLogicで解除(念のため)。", SettingsComponent.Get(entry).Name)
+		// log.Printf("%s のAIM特性タグをexecuteActionLogi で解除(念のため)。", SettingsComponent.Get(entry).Name)
 	}
+
+	RemoveActionModifiersSystem(entry) // Remove modifiers after action is fully resolved
 
 	return result
 }
@@ -227,6 +234,7 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 		entry.RemoveComponent(ActingWithAimTraitTagComponent)
 		log.Printf("%s のAIM特性タグを解除。", SettingsComponent.Get(entry).Name)
 	}
+	RemoveActionModifiersSystem(entry) // Ensure modifiers are removed when cooldown starts
 
 	ChangeState(entry, StateTypeCooldown) // ChangeState is in entity_utils.go
 }

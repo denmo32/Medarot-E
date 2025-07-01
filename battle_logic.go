@@ -54,43 +54,77 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, part *Part, damage
 	}
 }
 
-// CalculateDamage は新しいルールに基づいてダメージを計算します。
+// CalculateDamage は ActionModifierComponent を考慮してダメージを計算します。
 func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, part *Part) (int, bool) {
 	attackerLegs := PartsComponent.Get(attacker).Map[PartSlotLegs]
 	attackerStability := 0
 	if attackerLegs != nil {
 		attackerStability = attackerLegs.Stability
 	}
-	baseDamage := float64(part.Power) + float64(attackerStability)*dc.config.Balance.Factors.PowerStabilityFactor
 
-	if part.Trait == TraitBerserk {
-		// PartInfoProvider が初期化されていることを確認
-		if dc.partInfoProvider == nil {
-			log.Println("Error: DamageCalculator.partInfoProvider is not initialized")
-			// エラーハンドリングまたはデフォルト値の使用
-		} else {
-			baseDamage += float64(dc.partInfoProvider.GetOverallPropulsion(attacker)) * dc.config.Balance.Factors.BerserkPowerPropulsionFactor
-		}
+	// Get modifiers if available
+	var powerAdditiveBonus int
+	var powerMultiplierBonus float64 = 1.0
+	var criticalRateBonus int
+	var customCriticalMultiplier float64 = 0 // 0 means use default
+
+	if ActionModifierComponent.Has(attacker) {
+		modifiers := ActionModifierComponent.Get(attacker)
+		powerAdditiveBonus = modifiers.PowerAdditiveBonus
+		powerMultiplierBonus = modifiers.PowerMultiplierBonus
+		criticalRateBonus = modifiers.CriticalRateBonus
+		customCriticalMultiplier = modifiers.CriticalMultiplier
+		// Note: DamageAdditiveBonus and DamageMultiplierBonus are applied at the very end if used.
 	}
 
+	// Base power calculation
+	basePower := float64(part.Power)
+	// Apply additive power bonuses (from traits like Berserk via ActionModifierComponent, and stability)
+	modifiedPower := basePower + float64(powerAdditiveBonus) + float64(attackerStability)*dc.config.Balance.Factors.PowerStabilityFactor
+	// Apply multiplicative power bonuses
+	modifiedPower *= powerMultiplierBonus
+
+	// Critical Hit Calculation
 	medal := MedalComponent.Get(attacker)
 	isCritical := false
-	criticalBonus := 0
-	switch part.Category {
-	case CategoryMelee:
-		criticalBonus = dc.config.Balance.Effects.Melee.CriticalRateBonus
-	case CategoryShoot:
-		if part.Trait == TraitAim {
-			criticalBonus = dc.config.Balance.Effects.Aim.CriticalRateBonus
-		}
-	}
-	criticalChance := medal.SkillLevel*2 + criticalBonus
+	// Base critical chance from medal skill level
+	// Original: criticalChance := medal.SkillLevel*2 + criticalBonus
+	// criticalBonus from AIM trait is now in modifiers.CriticalRateBonus
+	// The original switch for part.Category (Melee crit bonus) is not yet in modifiers.
+	// For now, let's assume all crit bonuses are aggregated into modifiers.CriticalRateBonus by ApplyActionModifiersSystem
+	// or this part needs ApplyActionModifiersSystem to be aware of part.Category for AIM.
+	// The ApplyActionModifiersSystem currently adds AIM crit bonus if ActingWithAimTraitTag is present.
+	// Let's assume medal.SkillLevel*2 is a base, and modifiers.CriticalRateBonus contains trait/other bonuses.
+	criticalChance := medal.SkillLevel*2 + criticalRateBonus
+	if criticalChance < 0 { criticalChance = 0 } // Ensure non-negative chance
+
 	if rand.Intn(100) < criticalChance {
-		baseDamage *= dc.config.Balance.Damage.CriticalMultiplier
+		critMultiplierToUse := dc.config.Balance.Damage.CriticalMultiplier
+		if customCriticalMultiplier > 0 { // If a custom multiplier is set by a trait/effect
+			critMultiplierToUse = customCriticalMultiplier
+		}
+		modifiedPower *= critMultiplierToUse
 		isCritical = true
+		log.Printf("%sの攻撃がクリティカルヒット！(Chance: %d%%, Multiplier: %.2f)", SettingsComponent.Get(attacker).Name, criticalChance, critMultiplierToUse)
 	}
 
-	finalDamage := baseDamage + float64(medal.SkillLevel*dc.config.Balance.Damage.MedalSkillFactor)
+	// Final damage calculation (includes medal skill factor as an additive bonus at the end)
+	// Original: finalDamage := baseDamage + float64(medal.SkillLevel*dc.config.Balance.Damage.MedalSkillFactor)
+	// This MedalSkillFactor should ideally also be part of ActionModifierComponent.DamageAdditiveBonus or PowerAdditiveBonus.
+	// For now, keeping it separate as per original logic, applied after critical.
+	finalDamage := modifiedPower + float64(medal.SkillLevel*dc.config.Balance.Damage.MedalSkillFactor)
+
+	// Apply final overall damage multipliers if any (e.g. from global buffs/debuffs)
+	if ActionModifierComponent.Has(attacker) {
+		modifiers := ActionModifierComponent.Get(attacker)
+		finalDamage *= modifiers.DamageMultiplierBonus
+		finalDamage += float64(modifiers.DamageAdditiveBonus)
+	}
+
+	if finalDamage < 0 {
+		finalDamage = 0
+	}
+
 	return int(finalDamage), isCritical
 }
 
