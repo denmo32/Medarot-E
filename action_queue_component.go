@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter" // Added for filter
 	"github.com/yohamta/donburi/query"
 )
 
@@ -19,9 +20,13 @@ var ActionQueueComponentType = donburi.NewComponentType[ActionQueueComponentData
 var worldStateTag = donburi.NewComponentType[struct{}]()
 
 // GetActionQueueComponent retrieves the ActionQueueComponentData from the world state entity.
-// It expects a single entity with ActionQueueComponentType and worldStateTag to exist.
+// It expects a single entity with ActionQueueComponentType to exist.
+// Note: The worldStateTag check is done in EnsureActionQueueEntity.
 func GetActionQueueComponent(world donburi.World) *ActionQueueComponentData {
-	entry, ok := query.NewQuery(query.Contains(ActionQueueComponentType)).First(world)
+	// Query for entities that have the ActionQueueComponentType.
+	// It's assumed that EnsureActionQueueEntity has already created such an entity,
+	// possibly also tagged with worldStateTag. For simplicity in Get, we just look for the component.
+	entry, ok := query.NewQuery(filter.Contains(ActionQueueComponentType)).First(world)
 	if !ok {
 		// This should not happen if initialized correctly in NewBattleScene
 		log.Panicln("ActionQueueComponent not found in the world. It should be initialized on a world state entity.")
@@ -30,10 +35,11 @@ func GetActionQueueComponent(world donburi.World) *ActionQueueComponentData {
 	return ActionQueueComponentType.Get(entry)
 }
 
-// EnsureWorldStateEntity ensures that an entity with ActionQueueComponentType and worldStateTag exists.
+// EnsureActionQueueEntity ensures that an entity with ActionQueueComponentType and worldStateTag exists.
 // If not, it creates one. This is typically called once during setup.
 func EnsureActionQueueEntity(world donburi.World) *donburi.Entry {
-	entry, ok := query.NewQuery(query.And(query.Contains(ActionQueueComponentType), query.Contains(worldStateTag))).First(world)
+	// Query for an entity that has both ActionQueueComponentType and worldStateTag.
+	entry, ok := query.NewQuery(filter.And(filter.Contains(ActionQueueComponentType), filter.Contains(worldStateTag))).First(world)
 	if ok {
 		return entry
 	}

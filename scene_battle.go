@@ -85,12 +85,8 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		fmt.Println("Error: TargetSelector or PartInfoProvider is nil during NewBattleScene setup.")
 	}
 
-	// Initialize and add ActionQueueResource to the world
-	actionQueue := &ActionQueueResource{
-		Queue: make([]*donburi.Entry, 0),
-	}
-	// Use world.Store to store the ActionQueueResource instance
-	// Ensure the world state entity with ActionQueueComponent exists
+	// Ensure the world state entity with ActionQueueComponent exists.
+	// This will create the entity and the ActionQueueComponentData if they don't exist.
 	EnsureActionQueueEntity(bs.world)
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
