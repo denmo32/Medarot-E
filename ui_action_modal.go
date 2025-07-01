@@ -43,7 +43,16 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		Pressed: image.NewNineSliceColor(color.RGBA{100, 100, 100, 255}),
 	}
 
-	availableParts := GetAvailableAttackParts(actingEntry)
+	if bs.partInfoProvider == nil {
+		log.Println("Error: createActionModalUI - partInfoProvider is nil")
+		// partInfoProvider がないとパーツリストを取得できないため、モーダルを生成せずに終了するなどのエラーハンドリングが必要
+		panel.AddChild(widget.NewText(
+			widget.TextOpts.Text("エラー:パーツ情報取得不可", bs.resources.Font, c.Colors.White),
+		))
+		// overlayにpanelを追加しているので、このままでは空のモーダルが表示される。より適切なハンドリングを検討。
+		return overlay
+	}
+	availableParts := bs.partInfoProvider.GetAvailableAttackParts(actingEntry)
 	if len(availableParts) == 0 {
 		panel.AddChild(widget.NewText(
 			widget.TextOpts.Text("利用可能なパーツがありません。", bs.resources.Font, c.Colors.White),
@@ -54,7 +63,7 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		// ★★★ availableから直接パーツとスロットキーを取得 ★★★
 		part := available.Part
 		slotKey := available.Slot
-		// slotKey := findPartSlot(actingEntry, part) // ← 削除
+		// findPartSlot の呼び出しは不要になったため削除
 		if part.Category == CategoryShoot {
 			targetEntity, targetSlot := playerSelectRandomTarget(bs, actingEntry)
 			bs.ui.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
@@ -64,7 +73,7 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 	for _, available := range availableParts {
 		// ★★★ availableから直接パーツとスロットキーを取得 ★★★
 		capturedPart := available.Part
-		// slotKey := findPartSlot(actingEntry, capturedPart) // ← 削除
+		// findPartSlot の呼び出しは不要になったため削除
 
 		actionButton := widget.NewButton(
 			widget.ButtonOpts.Image(buttonImage),
@@ -111,8 +120,24 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 }
 
 func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selectedPart *Part) {
-	// ★★★ この関数内でも findPartSlot を呼んでいるので修正 ★★★
-	slotKey := findPartSlot(actingEntry, selectedPart) // この呼び出しは残す必要がある
+	if bs.partInfoProvider == nil {
+		log.Println("Error: handleActionSelection - partInfoProvider is nil")
+		// エラーハンドリング: UIを閉じてステートを戻すなど
+		bs.ui.HideActionModal()
+		bs.playerMedarotToAct = nil
+		bs.currentTarget = nil
+		bs.state = StatePlaying
+		return
+	}
+	slotKey := bs.partInfoProvider.FindPartSlot(actingEntry, selectedPart)
+	if slotKey == "" {
+		log.Printf("Error: handleActionSelection - slotKey not found for part %s", selectedPart.PartName)
+		bs.ui.HideActionModal()
+		bs.playerMedarotToAct = nil
+		bs.currentTarget = nil
+		bs.state = StatePlaying
+		return
+	}
 	var successful bool
 
 	if selectedPart.Category == CategoryShoot {
@@ -126,12 +151,9 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 			bs.ui.HideActionModal()
 			return
 		}
-		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, &bs.resources.Config.Balance)
+		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, bs)
 	} else if selectedPart.Category == CategoryMelee {
-		// `handleActionSelection` は `*Part` しか受け取らないため、ここでは `findPartSlot` が必要
-		// しかし、この関数にスロットキーも渡すように変更すると、さらに良くなる
-		// 今回は一旦このままにします
-		successful = StartCharge(actingEntry, slotKey, nil, "", &bs.resources.Config.Balance)
+		successful = StartCharge(actingEntry, slotKey, nil, "", bs)
 	} else {
 		log.Printf("未対応のパーツカテゴリです: %s", selectedPart.Category)
 		successful = false

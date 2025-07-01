@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"math/rand"
 	// "sort"
 
@@ -12,8 +13,11 @@ import (
 // playerSelectRandomTarget はプレイヤー専用の、ランダムな敵パーツをターゲットとして選択する関数
 // ★★★ 修正点: 引数を *Game から *BattleScene に変更 ★★★
 func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	// ★★★ 古い関数呼び出しを新しい共通関数に置き換え ★★★
-	candidates := GetTargetableEnemies(bs.world, actingEntry)
+	if bs.targetSelector == nil {
+		log.Println("Error: playerSelectRandomTarget - bs.targetSelector is nil")
+		return nil, ""
+	}
+	candidates := bs.targetSelector.GetTargetableEnemies(actingEntry)
 	if len(candidates) == 0 {
 		return nil, ""
 	}
@@ -28,8 +32,8 @@ func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*don
 	for _, enemyEntry := range candidates {
 		partsMap := PartsComponent.Get(enemyEntry).Map
 		for slotKey, part := range partsMap {
-			// 脚部パーツは攻撃対象外とする
-			if !part.IsBroken && slotKey != PartSlotLegs {
+			// 破壊されていないパーツは全て攻撃対象候補とする
+			if !part.IsBroken {
 				allTargetableParts = append(allTargetableParts, targetablePart{
 					entity: enemyEntry,
 					slot:   slotKey,
@@ -39,9 +43,10 @@ func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*don
 	}
 
 	if len(allTargetableParts) == 0 {
-		// 攻撃できるパーツがない場合でも、最低限敵エンティティは返す
+		// 攻撃できるパーツがない場合でも、最低限敵エンティティは返す（スロットキーは空）
 		if len(candidates) > 0 {
-			return candidates[0], ""
+			// 破壊されていない敵がいれば、そのうちの1体を返す (パーツは特定できない)
+			return candidates[rand.Intn(len(candidates))], ""
 		}
 		return nil, ""
 	}
