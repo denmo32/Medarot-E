@@ -108,6 +108,7 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 			bs.ui.HideActionModal()
+			bs.playerActionPendingQueue = make([]*donburi.Entry, 0) // Clear the pending queue
 			bs.playerMedarotToAct = nil
 			bs.currentTarget = nil
 			bs.state = StatePlaying
@@ -162,14 +163,41 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 	}
 
 	if successful {
-		bs.ui.HideActionModal()
-		bs.playerMedarotToAct = nil
-		bs.currentTarget = nil
-		bs.state = StatePlaying
-		// SystemProcessIdleMedarots(bs) // Removed: BattleScene update loop will handle this
+		bs.ui.HideActionModal() // Hide current modal first
+		bs.currentTarget = nil    // Clear target indicator
+
+		// Dequeue the current medarot
+		if len(bs.playerActionPendingQueue) > 0 && bs.playerActionPendingQueue[0] == actingEntry {
+			bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
+		}
+
+		if len(bs.playerActionPendingQueue) > 0 {
+			// There are more players waiting, set up for the next one
+			bs.playerMedarotToAct = bs.playerActionPendingQueue[0] // Already set by BattleScene's update loop, but good to be explicit
+			bs.state = StatePlayerActionSelect                     // Ensure state is correct for modal display next frame
+			// UI should re-create the modal for the new playerMedarotToAct in the next Update cycle of BattleScene
+		} else {
+			// No more players in the queue
+			bs.playerMedarotToAct = nil
+			bs.state = StatePlaying
+		}
 	} else {
+		// Action was not successful (e.g., part broken, no target)
 		log.Printf("エラー: %s の行動選択に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 		bs.ui.HideActionModal()
+		// If action failed, treat as if this player's turn is done for now regarding the queue.
+		// This logic might need refinement: should it try next player or reset queue?
+		// For now, similar to successful action, try to proceed with queue.
+		if len(bs.playerActionPendingQueue) > 0 && bs.playerActionPendingQueue[0] == actingEntry {
+			bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
+		}
+		if len(bs.playerActionPendingQueue) > 0 {
+			bs.playerMedarotToAct = bs.playerActionPendingQueue[0]
+			bs.state = StatePlayerActionSelect
+		} else {
+			bs.playerMedarotToAct = nil
+			bs.state = StatePlaying
+		}
 		bs.playerMedarotToAct = nil
 		bs.currentTarget = nil
 		bs.state = StatePlaying

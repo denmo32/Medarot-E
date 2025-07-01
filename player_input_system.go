@@ -6,28 +6,27 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// PlayerInputSystemResult holds the entity that requires player input.
+// PlayerInputSystemResult holds the list of entities that require player input.
 type PlayerInputSystemResult struct {
-	PlayerMedarotToAct *donburi.Entry
+	PlayerMedarotsToAct []*donburi.Entry
 }
 
-// UpdatePlayerInputSystem はプレイヤーが操作するメダロットの行動選択状態への遷移を処理します。
-// このシステムは BattleScene に直接依存しません。
-// 行動が必要なプレイヤーエンティティを返します。
+// UpdatePlayerInputSystem finds all player-controlled medarots in the Idle state.
+// This system does not depend directly on BattleScene.
+// It returns a list of player entities that need to act.
 func UpdatePlayerInputSystem(world donburi.World) PlayerInputSystemResult {
-	var playerToAct *donburi.Entry
+	var playersToAct []*donburi.Entry
 
-	// 設計上、一度にプレイヤーが操作するのは1体なので、最初に見つかったものを返す
 	query.NewQuery(filter.And(
 		filter.Contains(PlayerControlComponent),
 		filter.Contains(IdleStateComponent),
 	)).Each(world, func(entry *donburi.Entry) {
-		if playerToAct == nil { // まだ行動可能なプレイヤーが見つかっていなければ設定
-			playerToAct = entry
-		}
-		// Each は途中で抜けられないが、playerToAct が設定されていれば
-		// 後続のループで上書きはしない。
+		playersToAct = append(playersToAct, entry)
 	})
 
-	return PlayerInputSystemResult{PlayerMedarotToAct: playerToAct}
+	// 行動順は推進力などでソートすることも可能だが、ここでは単純に検出順とする。
+	// 必要であれば、ここでソートロジックを追加。
+	// sort.Slice(playersToAct, func(i, j int) bool { ... })
+
+	return PlayerInputSystemResult{PlayerMedarotsToAct: playersToAct}
 }

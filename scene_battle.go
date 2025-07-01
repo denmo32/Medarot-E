@@ -25,10 +25,11 @@ type BattleScene struct {
 	postMessageCallback func()
 	winner              TeamID // Initialized to TeamNone
 	restartRequested    bool
-	playerMedarotToAct  *donburi.Entry
-	currentTarget       *donburi.Entry
-	attackingEntity     *donburi.Entry
-	targetedEntity      *donburi.Entry
+	playerMedarotToAct       *donburi.Entry
+	playerActionPendingQueue []*donburi.Entry // Queue for player medarots waiting for action selection
+	currentTarget            *donburi.Entry
+	attackingEntity          *donburi.Entry
+	targetedEntity           *donburi.Entry
 
 	// リファクタリングで追加されたヘルパー
 	damageCalculator *DamageCalculator
@@ -49,11 +50,12 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		state:              StatePlaying,
 		playerTeam:         Team1,
 		// actionQueue:        make([]*donburi.Entry, 0), // Removed
-		playerMedarotToAct: nil,
-		attackingEntity:    nil,
-		targetedEntity:     nil,
-		currentTarget:      nil,
-		winner:             TeamNone, // Initialize winner to TeamNone
+		playerMedarotToAct:       nil,
+		playerActionPendingQueue: make([]*donburi.Entry, 0), // Initialize the new queue
+		attackingEntity:          nil,
+		targetedEntity:           nil,
+		currentTarget:            nil,
+		winner:                   TeamNone, // Initialize winner to TeamNone
 		// ヘルパーは後で初期化
 	}
 
@@ -102,59 +104,80 @@ func (bs *BattleScene) Update() (SceneType, error) {
 	switch bs.state {
 	case StatePlaying:
 		bs.tickCount++
-		// Only update gauges if no player is currently selecting an action
-		// and the game is in a state where gauges should normally progress.
-		if bs.playerMedarotToAct == nil {
-			UpdateGaugeSystem(bs.world)
-		}
 
-		// Call the new ActionQueueSystem
-		actionResults, err := UpdateActionQueueSystem(
-			bs.world,
-			bs.partInfoProvider,
-			bs.damageCalculator,
-			bs.hitCalculator,
-			bs.targetSelector,
-		)
-		if err != nil {
-			// Handle error appropriately
-			fmt.Println("Error processing action queue system:", err)
-		}
-
-		for _, result := range actionResults {
-			if result.ActingEntry != nil && result.ActingEntry.Valid() {
-				logComp := LogComponent.Get(result.ActingEntry)
-				if logComp != nil {
-					logComp.LastActionLog = result.LogMessage
-				}
-				bs.attackingEntity = result.ActingEntry // For UI indication
-				bs.targetedEntity = result.TargetEntry   // For UI indication
-
-				// Enqueue message and set callback for cooldown
-				bs.enqueueMessage(result.LogMessage, func() {
-					// Check validity and state again before starting cooldown
-					if result.ActingEntry.Valid() && !result.ActingEntry.HasComponent(BrokenStateComponent) {
-						// Call StartCooldownSystem (moved from systems.go)
-						StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config)
-					}
-					bs.attackingEntity = nil // Clear after action processed
-					bs.targetedEntity = nil  // Clear after action processed
-				})
-			}
-		}
-
-		// Process AI and Player inputs if no player is currently acting and game is playing
-		if bs.playerMedarotToAct == nil && bs.state == StatePlaying {
+		// Process inputs if no player is currently selecting an action AND the pending queue is empty.
+		// This means we are not in the middle of a multi-unit player action sequence.
+		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 {
 			UpdateAIInputSystem(bs.world, bs.partInfoProvider, bs.targetSelector, &bs.resources.Config)
 
 			playerInputResult := UpdatePlayerInputSystem(bs.world)
-			if playerInputResult.PlayerMedarotToAct != nil {
-				bs.playerMedarotToAct = playerInputResult.PlayerMedarotToAct
-				bs.state = StatePlayerActionSelect
+			if len(playerInputResult.PlayerMedarotsToAct) > 0 {
+				bs.playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
+				// Don't set playerMedarotToAct or change state here yet,
+				// let the logic below handle picking from the queue.
 			}
 		}
 
-		if bs.state == StatePlaying { // Only check game end if still playing
+		// If there are players in the pending queue and no one is currently acting (modal not shown yet for current one)
+		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) > 0 {
+			bs.playerMedarotToAct = bs.playerActionPendingQueue[0]
+			// bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:] // Dequeueing happens after selection in handleActionSelection
+			bs.state = StatePlayerActionSelect
+		}
+
+		// Update gauges only if no player action is pending (neither currently selecting nor in queue)
+		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 {
+			UpdateGaugeSystem(bs.world)
+		}
+
+		// If still in StatePlaying (e.g. AI might have queued an action, or no input was needed, and no player pending),
+		// process the action queue. This needs to happen regardless of shouldSkipGaugeUpdateThisFrame
+		// because AI actions or previously queued player actions should still execute.
+		// However, if state changed to PlayerActionSelect, this part might be skipped or handled differently.
+		if bs.state == StatePlaying { // Re-check state as it might have changed to PlayerActionSelect
+			actionResults, err := UpdateActionQueueSystem(
+				bs.world,
+				bs.partInfoProvider,
+				bs.damageCalculator,
+				bs.hitCalculator,
+				bs.targetSelector,
+			)
+			if err != nil {
+				// Handle error appropriately
+				fmt.Println("Error processing action queue system:", err)
+			}
+
+			for _, result := range actionResults {
+				if result.ActingEntry != nil && result.ActingEntry.Valid() {
+					logComp := LogComponent.Get(result.ActingEntry)
+					if logComp != nil {
+						logComp.LastActionLog = result.LogMessage
+					}
+					bs.attackingEntity = result.ActingEntry // For UI indication
+					bs.targetedEntity = result.TargetEntry   // For UI indication
+
+					// Enqueue message and set callback for cooldown
+					bs.enqueueMessage(result.LogMessage, func() {
+						// Check validity and state again before starting cooldown
+						if result.ActingEntry.Valid() && !result.ActingEntry.HasComponent(BrokenStateComponent) {
+							// Call StartCooldownSystem (moved from systems.go)
+							StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config)
+						}
+						bs.attackingEntity = nil // Clear after action processed
+						bs.targetedEntity = nil  // Clear after action processed
+					})
+					// If a message was enqueued, state changes to StateMessage, so we might want to break/return early
+					// to avoid further processing in StatePlaying this frame.
+					if bs.state == StateMessage {
+						break // Exit the actionResults loop as state has changed
+					}
+				}
+			}
+		}
+
+		// Check for game end only if still in StatePlaying and no message is being shown
+		// (as enqueueMessage from actionResults could change state to StateMessage)
+		if bs.state == StatePlaying {
 			gameEndResult := CheckGameEndSystem(bs.world)
 			if gameEndResult.IsGameOver {
 				bs.winner = gameEndResult.Winner
