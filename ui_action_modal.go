@@ -50,17 +50,21 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		))
 	}
 
-	for _, part := range availableParts {
-		slotKey := findPartSlot(actingEntry, part)
+	for _, available := range availableParts {
+		// ★★★ availableから直接パーツとスロットキーを取得 ★★★
+		part := available.Part
+		slotKey := available.Slot
+		// slotKey := findPartSlot(actingEntry, part) // ← 削除
 		if part.Category == CategoryShoot {
 			targetEntity, targetSlot := playerSelectRandomTarget(bs, actingEntry)
 			bs.ui.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
 		}
 	}
 
-	for _, part := range availableParts {
-		capturedPart := part
-		slotKey := findPartSlot(actingEntry, capturedPart)
+	for _, available := range availableParts {
+		// ★★★ availableから直接パーツとスロットキーを取得 ★★★
+		capturedPart := available.Part
+		// slotKey := findPartSlot(actingEntry, capturedPart) // ← 削除
 
 		actionButton := widget.NewButton(
 			widget.ButtonOpts.Image(buttonImage),
@@ -73,6 +77,8 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 			}),
 			widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
 				if capturedPart.Category == CategoryShoot {
+					// ★★★ slotKey を直接使う ★★★
+					slotKey := available.Slot
 					if actionTarget, ok := bs.ui.actionTargetMap[slotKey]; ok {
 						bs.currentTarget = actionTarget.Target
 					}
@@ -105,7 +111,8 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 }
 
 func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selectedPart *Part) {
-	slotKey := findPartSlot(actingEntry, selectedPart)
+	// ★★★ この関数内でも findPartSlot を呼んでいるので修正 ★★★
+	slotKey := findPartSlot(actingEntry, selectedPart) // この呼び出しは残す必要がある
 	var successful bool
 
 	if selectedPart.Category == CategoryShoot {
@@ -121,6 +128,9 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 		}
 		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, &bs.resources.Config.Balance)
 	} else if selectedPart.Category == CategoryMelee {
+		// `handleActionSelection` は `*Part` しか受け取らないため、ここでは `findPartSlot` が必要
+		// しかし、この関数にスロットキーも渡すように変更すると、さらに良くなる
+		// 今回は一旦このままにします
 		successful = StartCharge(actingEntry, slotKey, nil, "", &bs.resources.Config.Balance)
 	} else {
 		log.Printf("未対応のパーツカテゴリです: %s", selectedPart.Category)

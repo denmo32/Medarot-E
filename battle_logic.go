@@ -12,6 +12,12 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
+// ★★★ この構造体を新しく追加 ★★★
+type AvailablePart struct {
+	Part *Part
+	Slot PartSlotKey
+}
+
 // ApplyDamage はパーツにダメージを適用し、メダロットの状態を更新します
 func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
 	if damage < 0 {
@@ -24,7 +30,7 @@ func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
 		settings := SettingsComponent.Get(entry)
 		log.Printf("%s の %s が破壊された！", settings.Name, part.PartName)
 		if part.Type == PartTypeHead {
-			ChangeState(entry, StateBroken)
+			ChangeState(entry, StateTypeBroken) // ★★★ 修正 ★★★
 		}
 	}
 }
@@ -49,7 +55,7 @@ func CalculateHit(attacker, target *donburi.Entry, part *Part, config *BalanceCo
 	}
 
 	// 回避側の回避性能を計算
-	targetEffects := EffectsComponent.Get(target)
+	// ★★★ targetEffects の部分を修正 ★★★
 	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
 	targetStability := 0
 	if targetLegs != nil {
@@ -57,7 +63,13 @@ func CalculateHit(attacker, target *donburi.Entry, part *Part, config *BalanceCo
 	}
 
 	baseEvasion := float64(GetOverallMobility(target)) + float64(targetStability)*config.Factors.EvasionStabilityFactor
-	finalEvasion := baseEvasion * targetEffects.EvasionRateMultiplier // デバフを適用
+
+	finalEvasion := baseEvasion
+	// 回避デバフコンポーネントがあれば、その値を適用
+	if target.HasComponent(EvasionDebuffComponent) {
+		debuff := EvasionDebuffComponent.Get(target)
+		finalEvasion *= debuff.Multiplier
+	}
 
 	// 最終的な命中率を計算 (例: 50 + (攻撃側の命中 - 敵の回避))
 	chance := 50 + baseAccuracy - finalEvasion
@@ -76,7 +88,7 @@ func CalculateHit(attacker, target *donburi.Entry, part *Part, config *BalanceCo
 // CalculateDefense は防御の成否を判定します
 func CalculateDefense(attacker, target *donburi.Entry, defensePart *Part, config *BalanceConfig) bool {
 	// 防御側の防御性能を計算
-	targetEffects := EffectsComponent.Get(target)
+	// ★★★ targetEffects の部分を修正 ★★★
 	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
 	targetStability := 0
 	if targetLegs != nil {
@@ -84,7 +96,12 @@ func CalculateDefense(attacker, target *donburi.Entry, defensePart *Part, config
 	}
 
 	baseDefense := float64(defensePart.Defense) + float64(targetStability)*config.Factors.DefenseStabilityFactor
-	finalDefense := baseDefense * targetEffects.DefenseRateMultiplier // デバフを適用
+	finalDefense := baseDefense
+	// 防御デバフコンポーネントがあれば、その値を適用
+	if target.HasComponent(DefenseDebuffComponent) {
+		debuff := DefenseDebuffComponent.Get(target)
+		finalDefense *= debuff.Multiplier
+	}
 
 	// 防御成功率を計算 (例: 10 + 防御性能)
 	chance := 10 + finalDefense
@@ -208,14 +225,17 @@ func findPartSlot(entry *donburi.Entry, part *Part) PartSlotKey {
 	return ""
 }
 
-func GetAvailableAttackParts(entry *donburi.Entry) []*Part {
+// ★★★ 戻り値の型を変更 ★★★
+func GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
 	partsMap := PartsComponent.Get(entry).Map
-	var availableParts []*Part
+	// ★★★ 変数の型を変更 ★★★
+	var availableParts []AvailablePart
 	slotsToConsider := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm}
 	for _, slot := range slotsToConsider {
 		part := partsMap[slot]
 		if part != nil && !part.IsBroken && part.Category != CategoryNone {
-			availableParts = append(availableParts, part)
+			// ★★★ 構造体で追加するように変更 ★★★
+			availableParts = append(availableParts, AvailablePart{Part: part, Slot: slot})
 		}
 	}
 	return availableParts
@@ -241,7 +261,8 @@ func GetOverallMobility(entry *donburi.Entry) int {
 
 func CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
 	settings := SettingsComponent.Get(entry)
-	state := StateComponent.Get(entry)
+	// ★★★ 削除
+	// state := StateComponent.Get(entry)
 	gauge := GaugeComponent.Get(entry)
 
 	progress := float32(gauge.CurrentGauge / 100.0)
@@ -251,16 +272,16 @@ func CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
 	}
 
 	var xPos float32
-	switch state.State {
-	case StateCharging:
+	// ★★★ ここのswitch文をif文に書き換え ★★★
+	if entry.HasComponent(ChargingStateComponent) {
 		xPos = homeX + (execX-homeX)*progress
-	case StateReady:
+	} else if entry.HasComponent(ReadyStateComponent) {
 		xPos = execX
-	case StateCooldown:
+	} else if entry.HasComponent(CooldownStateComponent) {
 		xPos = execX - (execX-homeX)*progress
-	case StateIdle, StateBroken:
+	} else if entry.HasComponent(IdleStateComponent) || entry.HasComponent(BrokenStateComponent) {
 		xPos = homeX
-	default:
+	} else {
 		xPos = homeX
 	}
 	return xPos
@@ -295,15 +316,46 @@ func getTargetCandidates(bs *BattleScene, actingEntry *donburi.Entry) []*donburi
 	candidates := []*donburi.Entry{}
 	query.NewQuery(filter.And(
 		filter.Contains(SettingsComponent),
-		filter.Contains(StateComponent),
+		filter.Not(filter.Contains(BrokenStateComponent)), // ★★★ 修正 ★★★
 	)).Each(bs.world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)
-		state := StateComponent.Get(entry)
-		if settings.Team == opponentTeamID && state.State != StateBroken {
+		if settings.Team == opponentTeamID { // stateのチェックは不要になった
 			candidates = append(candidates, entry)
 		}
 	})
 
+	sort.Slice(candidates, func(i, j int) bool {
+		iSettings := SettingsComponent.Get(candidates[i])
+		jSettings := SettingsComponent.Get(candidates[j])
+		return iSettings.DrawIndex < jSettings.DrawIndex
+	})
+
+	return candidates
+}
+
+// GetOpponentTeam は指定されたエンティティの敵チームIDを返します
+func GetOpponentTeam(actingEntry *donburi.Entry) TeamID {
+	if SettingsComponent.Get(actingEntry).Team == Team1 {
+		return Team2
+	}
+	return Team1
+}
+
+// GetTargetableEnemies は指定されたエンティティが攻撃可能な敵のリストを返します
+func GetTargetableEnemies(world donburi.World, actingEntry *donburi.Entry) []*donburi.Entry {
+	opponentTeamID := GetOpponentTeam(actingEntry)
+
+	candidates := []*donburi.Entry{}
+	query.NewQuery(filter.And(
+		filter.Contains(SettingsComponent),
+		filter.Not(filter.Contains(BrokenStateComponent)),
+	)).Each(world, func(entry *donburi.Entry) {
+		if SettingsComponent.Get(entry).Team == opponentTeamID {
+			candidates = append(candidates, entry)
+		}
+	})
+
+	// 描画順でソートして、常に同じ順序で返却されるようにする
 	sort.Slice(candidates, func(i, j int) bool {
 		iSettings := SettingsComponent.Get(candidates[i])
 		jSettings := SettingsComponent.Get(candidates[j])

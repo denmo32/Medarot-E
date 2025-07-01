@@ -10,16 +10,24 @@ var (
 	SettingsComponent      = donburi.NewComponentType[Settings]()
 	PartsComponent         = donburi.NewComponentType[Parts]()
 	MedalComponent         = donburi.NewComponentType[Medal]()
-	StateComponent         = donburi.NewComponentType[State]()
 	GaugeComponent         = donburi.NewComponentType[Gauge]()
 	ActionComponent        = donburi.NewComponentType[Action]()
 	LogComponent           = donburi.NewComponentType[Log]()
 	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
-	EffectsComponent       = donburi.NewComponentType[Effects]() // ★★★ この行を新しく追加 ★★★
+	// EffectsComponent       = donburi.NewComponentType[Effects]()
+
+	// ★★★ 以下を新しく追加 ★★★
+	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
+	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
+
+	IdleStateComponent     = donburi.NewComponentType[IdleState]()
+	ChargingStateComponent = donburi.NewComponentType[ChargingState]()
+	ReadyStateComponent    = donburi.NewComponentType[ReadyState]()
+	CooldownStateComponent = donburi.NewComponentType[CooldownState]()
+	BrokenStateComponent   = donburi.NewComponentType[BrokenState]()
 )
 
 // --- Componentの構造体定義 ---
-
 // Settings はメダロットの不変的な設定を保持する
 type Settings struct {
 	ID        string
@@ -34,10 +42,12 @@ type Parts struct {
 	Map map[PartSlotKey]*Part
 }
 
-// State はメダロットの現在の状態を保持する
-type State struct {
-	State MedarotState
-}
+// 新しい状態タグコンポーネント
+type IdleState struct{}
+type ChargingState struct{}
+type ReadyState struct{}
+type CooldownState struct{}
+type BrokenState struct{}
 
 // Gauge はチャージやクールダウンの進行状況を保持する
 type Gauge struct {
@@ -62,7 +72,18 @@ type Log struct {
 type PlayerControl struct{}
 
 // Effects はメダロットにかかっている一時的な効果（バフ・デバフ）を管理します
-type Effects struct {
-	EvasionRateMultiplier float64 // 回避率の倍率 (例: 0.5で半減)
-	DefenseRateMultiplier float64 // 防御率の倍率 (例: 0.5で半減)
+// type Effects struct {
+//	EvasionRateMultiplier float64 // 回避率の倍率 (例: 0.5で半減)
+//	DefenseRateMultiplier float64 // 防御率の倍率 (例: 0.5で半減)
+//}
+
+// ★★★ 以下を新しく追加 ★★★
+// 防御率デバフ効果
+type DefenseDebuff struct {
+	Multiplier float64 // 防御率に乗算される値 (例: 0.5)
+}
+
+// 回避率デバフ効果
+type EvasionDebuff struct {
+	Multiplier float64 // 回避率に乗算される値 (例: 0.5)
 }

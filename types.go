@@ -8,23 +8,24 @@ import (
 )
 
 type TeamID int
-type MedarotState string
 type GameState string
 type PartSlotKey string
 type PartType string
 type PartCategory string
 type Trait string
+type StateType int
+type CustomizeCategory string
 
+const (
+	StateTypeIdle StateType = iota
+	StateTypeCharging
+	StateTypeReady
+	StateTypeCooldown
+	StateTypeBroken
+)
 const (
 	Team1 TeamID = 0
 	Team2 TeamID = 1
-)
-const (
-	StateIdle     MedarotState = "待機"
-	StateCharging MedarotState = "チャージ中"
-	StateReady    MedarotState = "実行準備"
-	StateCooldown MedarotState = "クールダウン"
-	StateBroken   MedarotState = "機能停止"
 )
 const (
 	StatePlaying            GameState = "Playing"
@@ -56,6 +57,15 @@ const (
 	TraitNormal  Trait = "NORMAL"
 	TraitNone    Trait = "NONE"
 )
+
+const (
+	CustomizeCategoryMedal CustomizeCategory = "Medal"
+	CustomizeCategoryHead  CustomizeCategory = "Head"
+	CustomizeCategoryRArm  CustomizeCategory = "Right Arm"
+	CustomizeCategoryLArm  CustomizeCategory = "Left Arm"
+	CustomizeCategoryLegs  CustomizeCategory = "Legs"
+)
+
 const PlayersPerTeam = 3
 
 // ActionTarget はUIで使うための一時的なターゲット情報
@@ -75,7 +85,6 @@ type BalanceConfig struct {
 		PropulsionEffectRate float64
 		GameSpeedMultiplier  float64
 	}
-	// ★★★ ここから下を新しく追加・修正 ★★★
 	Factors struct {
 		AccuracyStabilityFactor      float64
 		EvasionStabilityFactor       float64
@@ -153,11 +162,13 @@ type UIConfig struct {
 		Background color.Color
 	}
 }
+
 type GameData struct {
 	Medals   []Medal
 	AllParts map[string]*Part
 	Medarots []MedarotData
 }
+
 type MedarotData struct {
 	ID         string
 	Name       string
@@ -170,6 +181,7 @@ type MedarotData struct {
 	LegsID     string
 	DrawIndex  int
 }
+
 type PartData struct {
 	ID         string
 	Name       string
@@ -184,11 +196,13 @@ type PartData struct {
 	Propulsion int
 	Mobility   int
 }
+
 type MedalData struct {
 	ID         string
 	Name       string
 	SkillLevel int
 }
+
 type Medarot struct {
 	ID                string
 	Name              string
@@ -196,7 +210,6 @@ type Medarot struct {
 	Medal             *Medal
 	Parts             map[PartSlotKey]*Part
 	IsLeader          bool
-	State             MedarotState
 	Gauge             float64
 	SelectedPartKey   PartSlotKey
 	TargetedMedarot   *Medarot
@@ -207,6 +220,7 @@ type Medarot struct {
 	ProgressCounter   float64
 	TotalDuration     float64
 }
+
 type Part struct {
 	ID         string
 	PartName   string
@@ -225,18 +239,21 @@ type Part struct {
 	Stability  int
 	IsBroken   bool
 }
+
 type Medal struct {
 	ID          string
 	Name        string
 	Personality string
 	SkillLevel  int
 }
+
 type infoPanelUI struct {
 	rootContainer *widget.Container
 	nameText      *widget.Text
 	stateText     *widget.Text
 	partSlots     map[PartSlotKey]*infoPanelPartUI
 }
+
 type infoPanelPartUI struct {
 	partNameText *widget.Text
 	hpText       *widget.Text

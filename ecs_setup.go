@@ -19,14 +19,14 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			SettingsComponent,
 			PartsComponent,
 			MedalComponent,
-			StateComponent,
+			// ★★★ 削除
+			// StateComponent,
+			IdleStateComponent, // ★★★ 追加 ★★★
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
-			EffectsComponent, // ★★★ この行を新しく追加 ★★★
+			// EffectsComponent,
 		))
-
-		// (... Settings, Parts, Medal などの設定は変更なし ...)
 		SettingsComponent.SetValue(entry, Settings{
 			ID:        loadout.ID,
 			Name:      loadout.Name,
@@ -57,16 +57,17 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			medal = &Medal{ID: "fallback", Name: "フォールバック", SkillLevel: 1}
 		}
 		MedalComponent.SetValue(entry, *medal)
-		StateComponent.SetValue(entry, State{State: StateIdle})
+		// ★★★ 削除
+		// StateComponent.SetValue(entry, State{State: StateIdle})
 		GaugeComponent.SetValue(entry, Gauge{})
 		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""}) // TargetPartSlotを初期化
 		LogComponent.SetValue(entry, Log{})
 
 		// ★★★ EffectsComponentの初期値を設定 ★★★
-		EffectsComponent.SetValue(entry, Effects{
-			EvasionRateMultiplier: 1.0, // 通常は1.0 (100%)
-			DefenseRateMultiplier: 1.0, // 通常は1.0 (100%)
-		})
+		// EffectsComponent.SetValue(entry, Effects{
+		//	EvasionRateMultiplier: 1.0, // 通常は1.0 (100%)
+		//	DefenseRateMultiplier: 1.0, // 通常は1.0 (100%)
+		// })
 
 		// プレイヤーチームならPlayerControlタグを追加
 		if loadout.Team == playerTeam {

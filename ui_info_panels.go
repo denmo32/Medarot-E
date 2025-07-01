@@ -41,7 +41,7 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 	headerContainer.AddChild(nameText)
 
 	stateText := widget.NewText(
-		widget.TextOpts.Text(string(StateIdle), bs.resources.Font, c.Colors.Yellow),
+		widget.TextOpts.Text("待機", bs.resources.Font, c.Colors.Yellow),
 		widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{
 			HorizontalPosition: widget.GridLayoutPositionEnd,
 		})),
@@ -73,13 +73,13 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 			widget.ProgressBarOpts.WidgetOpts(widget.WidgetOpts.MinSize(int(c.InfoPanel.PartHPGaugeWidth), int(c.InfoPanel.PartHPGaugeHeight))),
 			widget.ProgressBarOpts.Images(
 				&widget.ProgressBarImage{
-					Idle: image.NewNineSliceColor(c.Colors.HP),
+					Idle: image.NewNineSliceColor(c.Colors.Gray),
 				},
 				&widget.ProgressBarImage{
-					Idle: image.NewNineSliceColor(c.Colors.Broken),
+					Idle: image.NewNineSliceColor(c.Colors.HP),
 				},
 			),
-			widget.ProgressBarOpts.Values(0, 100, 0),
+			widget.ProgressBarOpts.Values(0, 100, 100),
 			widget.ProgressBarOpts.TrackPadding(widget.NewInsetsSimple(1)),
 		)
 		partContainer.AddChild(hpBar)
@@ -145,10 +145,21 @@ func updateAllInfoPanels(bs *BattleScene) {
 func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config) {
 	c := config.UI
 	settings := SettingsComponent.Get(entry)
-	state := StateComponent.Get(entry)
 	partsMap := PartsComponent.Get(entry).Map
 
-	ui.stateText.Label = string(state.State)
+	var stateStr string
+	if entry.HasComponent(IdleStateComponent) {
+		stateStr = "待機"
+	} else if entry.HasComponent(ChargingStateComponent) {
+		stateStr = "チャージ中"
+	} else if entry.HasComponent(ReadyStateComponent) {
+		stateStr = "実行準備"
+	} else if entry.HasComponent(CooldownStateComponent) {
+		stateStr = "クールダウン"
+	} else if entry.HasComponent(BrokenStateComponent) {
+		stateStr = "機能停止"
+	}
+	ui.stateText.Label = stateStr
 
 	if settings.IsLeader {
 		ui.nameText.Color = c.Colors.Leader

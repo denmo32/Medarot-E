@@ -2,51 +2,18 @@ package main
 
 import (
 	"math/rand"
-	"sort"
+	// "sort"
 
 	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
+	// "github.com/yohamta/donburi/filter"
+	// "github.com/yohamta/donburi/query"
 )
-
-// playerGetTargetCandidates はプレイヤー専用の、相手チームの有効なメダロットリストを返す関数
-// ★★★ 修正点: 引数を *Game から *BattleScene に変更 ★★★
-func playerGetTargetCandidates(bs *BattleScene, actingEntry *donburi.Entry) []*donburi.Entry {
-	playerTeam := SettingsComponent.Get(actingEntry).Team
-
-	var opponentTeamID TeamID
-	if playerTeam == Team1 {
-		opponentTeamID = Team2
-	} else {
-		opponentTeamID = Team1
-	}
-
-	candidates := []*donburi.Entry{}
-	query.NewQuery(filter.And(
-		filter.Contains(SettingsComponent),
-		filter.Contains(StateComponent),
-	)).Each(bs.world, func(entry *donburi.Entry) { // ★★★ 修正点: g.World -> bs.world ★★★
-		settings := SettingsComponent.Get(entry)
-		state := StateComponent.Get(entry)
-		if settings.Team == opponentTeamID && state.State != StateBroken {
-			candidates = append(candidates, entry)
-		}
-	})
-
-	sort.Slice(candidates, func(i, j int) bool {
-		iSettings := SettingsComponent.Get(candidates[i])
-		jSettings := SettingsComponent.Get(candidates[j])
-		return iSettings.DrawIndex < jSettings.DrawIndex
-	})
-
-	return candidates
-}
 
 // playerSelectRandomTarget はプレイヤー専用の、ランダムな敵パーツをターゲットとして選択する関数
 // ★★★ 修正点: 引数を *Game から *BattleScene に変更 ★★★
 func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	// プレイヤー専用の候補取得関数を使う
-	candidates := playerGetTargetCandidates(bs, actingEntry) // ★★★ 修正点: g -> bs ★★★
+	// ★★★ 古い関数呼び出しを新しい共通関数に置き換え ★★★
+	candidates := GetTargetableEnemies(bs.world, actingEntry)
 	if len(candidates) == 0 {
 		return nil, ""
 	}

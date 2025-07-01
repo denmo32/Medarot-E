@@ -18,8 +18,11 @@ func aiSelectAction(bs *BattleScene, entry *donburi.Entry) {
 		return
 	}
 
-	selectedPart := availableParts[0]
-	slotKey := findPartSlot(entry, selectedPart)
+	selected := availableParts[0]
+	// ★★★ findPartSlotの呼び出しを削除し、直接スロットキーを取得 ★★★
+	selectedPart := selected.Part
+	slotKey := selected.Slot
+	// slotKey := findPartSlot(entry, selectedPart) // ← 削除
 
 	if selectedPart.Category == CategoryShoot {
 		var targetEntry *donburi.Entry
@@ -55,7 +58,8 @@ type targetablePart struct {
 
 func getAllTargetableParts(bs *BattleScene, actingEntry *donburi.Entry, includeHead bool) []targetablePart {
 	var allParts []targetablePart
-	candidates := getTargetCandidates(bs, actingEntry)
+	// ★★★ 古い関数呼び出しを新しい共通関数に置き換え ★★★
+	candidates := GetTargetableEnemies(bs.world, actingEntry)
 
 	for _, enemyEntry := range candidates {
 		partsMap := PartsComponent.Get(enemyEntry).Map
@@ -125,14 +129,12 @@ func selectRandomTargetPart(bs *BattleScene, actingEntry *donburi.Entry) (*donbu
 }
 
 func selectLeaderPart(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	actingTeam := SettingsComponent.Get(actingEntry).Team
-	opponentTeamID := Team2
-	if actingTeam == Team2 {
-		opponentTeamID = Team1
-	}
+	// actingTeam := SettingsComponent.Get(actingEntry).Team
+	// ★★★ 古いロジックを新しい共通関数に置き換え ★★★
+	opponentTeamID := GetOpponentTeam(actingEntry)
 
 	leader := FindLeader(bs.world, opponentTeamID)
-	if leader != nil && StateComponent.Get(leader).State != StateBroken {
+	if leader != nil && !leader.HasComponent(BrokenStateComponent) {
 		part := SelectRandomPartToDamage(leader)
 		if part != nil {
 			return leader, findPartSlot(leader, part)

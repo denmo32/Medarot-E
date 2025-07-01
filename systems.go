@@ -26,7 +26,7 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 	action.TargetPartSlot = targetPartSlot
 
 	if part.Category == CategoryShoot {
-		if target == nil || StateComponent.Get(target).State == StateBroken {
+		if target == nil || target.HasComponent(BrokenStateComponent) {
 			log.Printf("%s: [SHOOT] ターゲットが存在しないか破壊されています。", settings.Name)
 			return false
 		}
@@ -36,21 +36,27 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 	}
 
 	if target != nil {
-		effects := EffectsComponent.Get(target)
-		effects.DefenseRateMultiplier = 1.0
-		effects.EvasionRateMultiplier = 1.0
-
+		// ★★★ ここから下の effects の部分を全面的に書き換える ★★★
 		switch part.Category {
 		case CategoryMelee:
-			effects.DefenseRateMultiplier = balanceConfig.Effects.Melee.DefenseRateDebuff
+			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
+				Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff,
+			})
 		case CategoryShoot:
 			if part.Trait == TraitAim {
-				effects.EvasionRateMultiplier = balanceConfig.Effects.Aim.EvasionRateDebuff
+				donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{
+					Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff,
+				})
 			}
 		}
 		if part.Trait == TraitBerserk {
-			effects.DefenseRateMultiplier = balanceConfig.Effects.Berserk.DefenseRateDebuff
-			effects.EvasionRateMultiplier = balanceConfig.Effects.Berserk.EvasionRateDebuff
+			// Berserkは両方のデバフを付与
+			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
+				Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff,
+			})
+			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{
+				Multiplier: balanceConfig.Effects.Berserk.EvasionRateDebuff,
+			})
 		}
 	}
 
@@ -72,7 +78,7 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 	if gauge.TotalDuration < 1 {
 		gauge.TotalDuration = 1
 	}
-	ChangeState(entry, StateCharging)
+	ChangeState(entry, StateTypeCharging) // ★★★ 修正 ★★★
 	return true
 }
 
@@ -102,14 +108,18 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	}
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
-	ChangeState(entry, StateCooldown)
+	ChangeState(entry, StateTypeCooldown) // ★★★ 修正 ★★★
 }
 
+// ★★★ ResetAllEffects を全面的に書き換える ★★★
 func ResetAllEffects(world donburi.World) {
-	query.NewQuery(filter.Contains(EffectsComponent)).Each(world, func(e *donburi.Entry) {
-		effects := EffectsComponent.Get(e)
-		effects.DefenseRateMultiplier = 1.0
-		effects.EvasionRateMultiplier = 1.0
+	// 防御デバフを持つすべてのエンティティを探してコンポーネントを削除
+	query.NewQuery(filter.Contains(DefenseDebuffComponent)).Each(world, func(e *donburi.Entry) {
+		e.RemoveComponent(DefenseDebuffComponent)
+	})
+	// 回避デバフを持つすべてのエンティティを探してコンポーネントを削除
+	query.NewQuery(filter.Contains(EvasionDebuffComponent)).Each(world, func(e *donburi.Entry) {
+		e.RemoveComponent(EvasionDebuffComponent)
 	})
 }
 
@@ -125,7 +135,7 @@ func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 
 	if part.Category == CategoryShoot {
 		targetEntry = action.TargetEntity
-		if targetEntry == nil || StateComponent.Get(targetEntry).State == StateBroken {
+		if targetEntry == nil || targetEntry.HasComponent(BrokenStateComponent) {
 			logComp.LastActionLog = fmt.Sprintf("%sはターゲットを狙ったが、既に行動不能だった！", settings.Name)
 			return nil
 		}
@@ -150,8 +160,7 @@ func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 		logComp.LastActionLog = fmt.Sprintf("%sは行動に失敗した。", settings.Name)
 		return nil
 	}
-	
-	// ★★★ ここから下を修正 ★★★
+
 	balanceConf := &config.Balance
 
 	if !CalculateHit(entry, targetEntry, part, balanceConf) {
@@ -194,14 +203,10 @@ func GenerateActionLogDefense(attacker, target *donburi.Entry, defensePart *Part
 }
 
 func SystemUpdateProgress(bs *BattleScene) {
-	query.NewQuery(filter.And(
-		filter.Contains(StateComponent),
-		filter.Contains(GaugeComponent),
+	query.NewQuery(filter.Or(
+		filter.Contains(ChargingStateComponent),
+		filter.Contains(CooldownStateComponent),
 	)).Each(bs.world, func(entry *donburi.Entry) {
-		state := StateComponent.Get(entry)
-		if state.State != StateCharging && state.State != StateCooldown {
-			return
-		}
 		gauge := GaugeComponent.Get(entry)
 		gauge.ProgressCounter++
 		if gauge.TotalDuration > 0 {
@@ -210,12 +215,12 @@ func SystemUpdateProgress(bs *BattleScene) {
 			gauge.CurrentGauge = 100
 		}
 		if gauge.ProgressCounter >= gauge.TotalDuration {
-			if state.State == StateCharging {
-				ChangeState(entry, StateReady)
+			if entry.HasComponent(ChargingStateComponent) {
+				ChangeState(entry, StateTypeReady) // ★★★ 修正 ★★★
 				bs.actionQueue = append(bs.actionQueue, entry)
 				log.Printf("%s のチャージが完了。実行キューに追加。", SettingsComponent.Get(entry).Name)
-			} else if state.State == StateCooldown {
-				ChangeState(entry, StateIdle)
+			} else if entry.HasComponent(CooldownStateComponent) {
+				ChangeState(entry, StateTypeIdle) // ★★★ 修正 ★★★
 				part := PartsComponent.Get(entry).Map[ActionComponent.Get(entry).SelectedPartKey]
 				if part != nil && part.Trait == TraitBerserk {
 					ResetAllEffects(bs.world)
@@ -250,7 +255,7 @@ func SystemProcessReadyQueue(bs *BattleScene) {
 		}
 
 		bs.enqueueMessage(LogComponent.Get(actingEntry).LastActionLog, func() {
-			if actingEntry.Valid() && StateComponent.Get(actingEntry).State != StateBroken {
+			if actingEntry.Valid() && !actingEntry.HasComponent(BrokenStateComponent) {
 				StartCooldown(actingEntry, &bs.resources.Config.Balance)
 			}
 		})
@@ -262,26 +267,19 @@ func SystemProcessIdleMedarots(bs *BattleScene) {
 		return
 	}
 	query.NewQuery(filter.And(
-		filter.Contains(StateComponent),
-		filter.Contains(SettingsComponent),
+		filter.Contains(IdleStateComponent),
+		filter.Not(filter.Contains(PlayerControlComponent)),
 	)).Each(bs.world, func(entry *donburi.Entry) {
-		state := StateComponent.Get(entry)
-		if state.State == StateIdle {
-			if !entry.HasComponent(PlayerControlComponent) {
-				aiSelectAction(bs, entry)
-			}
-		}
+		aiSelectAction(bs, entry)
 	})
+
 	query.NewQuery(filter.And(
 		filter.Contains(PlayerControlComponent),
-		filter.Contains(StateComponent),
+		filter.Contains(IdleStateComponent),
 	)).Each(bs.world, func(entry *donburi.Entry) {
-		state := StateComponent.Get(entry)
-		if state.State == StateIdle {
-			bs.playerMedarotToAct = entry
-			bs.state = StatePlayerActionSelect
-			return
-		}
+		bs.playerMedarotToAct = entry
+		bs.state = StatePlayerActionSelect
+		return
 	})
 }
 
@@ -297,15 +295,12 @@ func SystemCheckGameEnd(bs *BattleScene) {
 
 	query.NewQuery(filter.And(
 		filter.Contains(SettingsComponent),
-		filter.Contains(StateComponent),
+		filter.Not(filter.Contains(BrokenStateComponent)),
 	)).Each(bs.world, func(entry *donburi.Entry) {
-		state := StateComponent.Get(entry)
-		if state.State != StateBroken {
-			if SettingsComponent.Get(entry).Team == Team1 {
-				team1FuncCount++
-			} else {
-				team2FuncCount++
-			}
+		if SettingsComponent.Get(entry).Team == Team1 {
+			team1FuncCount++
+		} else {
+			team2FuncCount++
 		}
 	})
 
@@ -331,29 +326,48 @@ func SystemCheckGameEnd(bs *BattleScene) {
 	}
 }
 
-func ChangeState(entry *donburi.Entry, newState MedarotState) {
-	state := StateComponent.Get(entry)
-	if state.State == newState {
-		return
+func ChangeState(entry *donburi.Entry, newStateType StateType) {
+	// 既存の状態コンポーネントをすべて削除
+	if entry.HasComponent(IdleStateComponent) {
+		entry.RemoveComponent(IdleStateComponent)
 	}
-	log.Printf("%s のステートが %s から %s に変更されました。",
-		SettingsComponent.Get(entry).Name, state.State, newState)
-	state.State = newState
+	if entry.HasComponent(ChargingStateComponent) {
+		entry.RemoveComponent(ChargingStateComponent)
+	}
+	if entry.HasComponent(ReadyStateComponent) {
+		entry.RemoveComponent(ReadyStateComponent)
+	}
+	if entry.HasComponent(CooldownStateComponent) {
+		entry.RemoveComponent(CooldownStateComponent)
+	}
+	if entry.HasComponent(BrokenStateComponent) {
+		entry.RemoveComponent(BrokenStateComponent)
+	}
+
+	log.Printf("%s のステートが変更されました。", SettingsComponent.Get(entry).Name)
 
 	gauge := GaugeComponent.Get(entry)
 	action := ActionComponent.Get(entry)
 
-	switch newState {
-	case StateIdle:
+	// 新しい状態に応じた初期化処理とコンポーネントの追加
+	switch newStateType {
+	case StateTypeIdle:
+		donburi.Add(entry, IdleStateComponent, &IdleState{})
 		gauge.CurrentGauge = 0
 		gauge.ProgressCounter = 0
 		gauge.TotalDuration = 0
 		action.SelectedPartKey = ""
 		action.TargetPartSlot = ""
 		action.TargetEntity = nil
-	case StateReady:
+	case StateTypeCharging:
+		donburi.Add(entry, ChargingStateComponent, &ChargingState{})
+	case StateTypeReady:
+		donburi.Add(entry, ReadyStateComponent, &ReadyState{})
 		gauge.CurrentGauge = 100
-	case StateBroken:
+	case StateTypeCooldown:
+		donburi.Add(entry, CooldownStateComponent, &CooldownState{})
+	case StateTypeBroken:
+		donburi.Add(entry, BrokenStateComponent, &BrokenState{})
 		gauge.CurrentGauge = 0
 	}
 }
