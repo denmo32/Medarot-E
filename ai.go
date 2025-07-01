@@ -8,15 +8,23 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-func aiSelectAction(bs *BattleScene, entry *donburi.Entry) {
+// aiSelectAction はAI制御のメダロットの行動を決定します。
+// BattleScene への依存をなくし、必要な情報を引数で受け取ります。
+func aiSelectAction(
+	world donburi.World,
+	entry *donburi.Entry,
+	partInfoProvider *PartInfoProvider,
+	targetSelector *TargetSelector,
+	gameConfig *Config, // StartCharge が Config を必要とするため
+) {
 	settings := SettingsComponent.Get(entry)
 	medal := MedalComponent.Get(entry)
 
-	if bs.partInfoProvider == nil {
+	if partInfoProvider == nil {
 		log.Printf("%s: AI行動選択エラー - PartInfoProviderが初期化されていません。", settings.Name)
 		return
 	}
-	availableParts := bs.partInfoProvider.GetAvailableAttackParts(entry)
+	availableParts := partInfoProvider.GetAvailableAttackParts(entry)
 
 	if len(availableParts) == 0 {
 		log.Printf("%s: AIは攻撃可能なパーツがないため待機。", settings.Name)
@@ -34,25 +42,25 @@ func aiSelectAction(bs *BattleScene, entry *donburi.Entry) {
 
 		switch medal.Personality {
 		case "クラッシャー":
-			targetEntry, targetPartSlot = selectCrusherTarget(bs, entry)
+			targetEntry, targetPartSlot = selectCrusherTarget(world, entry, targetSelector, partInfoProvider)
 		case "ハンター":
-			targetEntry, targetPartSlot = selectHunterTarget(bs, entry)
+			targetEntry, targetPartSlot = selectHunterTarget(world, entry, targetSelector, partInfoProvider)
 		case "ジョーカー":
-			targetEntry, targetPartSlot = selectRandomTargetPartAI(bs, entry) // 名前変更: selectRandomTargetPart -> selectRandomTargetPartAI
+			targetEntry, targetPartSlot = selectRandomTargetPartAI(world, entry, targetSelector)
 		default:
-			targetEntry, targetPartSlot = selectLeaderPart(bs, entry)
+			targetEntry, targetPartSlot = selectLeaderPart(world, entry, targetSelector, partInfoProvider)
 		}
 
 		if targetEntry == nil {
 			log.Printf("%s: AIは[SHOOT]の攻撃対象がいないため待機。", settings.Name)
 			return
 		}
-		// StartCharge の第5引数を bs に変更
-		StartCharge(entry, slotKey, targetEntry, targetPartSlot, bs)
+		// StartCharge のシグネチャ変更に対応
+		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, gameConfig, partInfoProvider)
 
 	} else if selectedPart.Category == CategoryMelee {
-		// StartCharge の第5引数を bs に変更
-		StartCharge(entry, slotKey, nil, "", bs)
+		// StartCharge のシグネチャ変更に対応
+		StartCharge(entry, slotKey, nil, "", world, gameConfig, partInfoProvider)
 	} else {
 		log.Printf("%s: AIはパーツカテゴリ '%s' の行動を決定できませんでした。", settings.Name, selectedPart.Category)
 	}
@@ -65,14 +73,20 @@ type targetablePart struct {
 }
 
 // getAllTargetableParts はAIがターゲット可能な全パーツのリストを返します。
-// bs.targetSelector.GetTargetableEnemies を使用するように変更。
-func getAllTargetableParts(bs *BattleScene, actingEntry *donburi.Entry, includeHead bool) []targetablePart {
+func getAllTargetableParts(
+	world donburi.World, // world を追加 (未使用だが一貫性のため)
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	includeHead bool,
+) []targetablePart {
 	var allParts []targetablePart
-	if bs.targetSelector == nil {
-		log.Println("Error: getAllTargetableParts - bs.targetSelector is nil")
+	if targetSelector == nil {
+		log.Println("Error: getAllTargetableParts - targetSelector is nil")
 		return allParts
 	}
-	candidates := bs.targetSelector.GetTargetableEnemies(actingEntry)
+	// targetSelector.GetTargetableEnemies は world を引数に取るように変更される想定
+	// (現状は world を内部で持っているが、将来的には引数で渡す方が良い)
+	candidates := targetSelector.GetTargetableEnemies(actingEntry)
 
 	for _, enemyEntry := range candidates {
 		partsMap := PartsComponent.Get(enemyEntry).Map
@@ -95,10 +109,15 @@ func getAllTargetableParts(bs *BattleScene, actingEntry *donburi.Entry, includeH
 	return allParts
 }
 
-func selectCrusherTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	targetParts := getAllTargetableParts(bs, actingEntry, false) // 脚部以外、頭部以外
+func selectCrusherTarget(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider, // getAllTargetableParts が必要とする可能性を考慮 (現状は未使用)
+) (*donburi.Entry, PartSlotKey) {
+	targetParts := getAllTargetableParts(world, actingEntry, targetSelector, false) // 脚部以外、頭部以外
 	if len(targetParts) == 0 {
-		targetParts = getAllTargetableParts(bs, actingEntry, true) // 脚部以外 (頭部含む)
+		targetParts = getAllTargetableParts(world, actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	}
 	if len(targetParts) == 0 {
 		return nil, ""
@@ -113,10 +132,15 @@ func selectCrusherTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.
 	return selected.entity, selected.slot
 }
 
-func selectHunterTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	targetParts := getAllTargetableParts(bs, actingEntry, false) // 脚部以外、頭部以外
+func selectHunterTarget(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider, // getAllTargetableParts が必要とする可能性を考慮 (現状は未使用)
+) (*donburi.Entry, PartSlotKey) {
+	targetParts := getAllTargetableParts(world, actingEntry, targetSelector, false) // 脚部以外、頭部以外
 	if len(targetParts) == 0 {
-		targetParts = getAllTargetableParts(bs, actingEntry, true) // 脚部以外 (頭部含む)
+		targetParts = getAllTargetableParts(world, actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	}
 	if len(targetParts) == 0 {
 		return nil, ""
@@ -132,9 +156,12 @@ func selectHunterTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.E
 }
 
 // selectRandomTargetPartAI はAI用にランダムなターゲットパーツを選択します。
-// battle_logic.go の SelectRandomPartToDamage とは別物（あっちは単一ターゲットからパーツを選ぶ）。
-func selectRandomTargetPartAI(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	allEnemyParts := getAllTargetableParts(bs, actingEntry, true) // 脚部以外 (頭部含む)
+func selectRandomTargetPartAI(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+) (*donburi.Entry, PartSlotKey) {
+	allEnemyParts := getAllTargetableParts(world, actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	if len(allEnemyParts) == 0 {
 		return nil, ""
 	}
@@ -143,27 +170,28 @@ func selectRandomTargetPartAI(bs *BattleScene, actingEntry *donburi.Entry) (*don
 	return allEnemyParts[idx].entity, allEnemyParts[idx].slot
 }
 
-func selectLeaderPart(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	if bs.targetSelector == nil || bs.partInfoProvider == nil {
-		log.Println("Error: selectLeaderPart - bs.targetSelector or bs.partInfoProvider is nil")
-		return selectRandomTargetPartAI(bs, actingEntry) // フォールバック
+func selectLeaderPart(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider,
+) (*donburi.Entry, PartSlotKey) {
+	if targetSelector == nil || partInfoProvider == nil {
+		log.Println("Error: selectLeaderPart - targetSelector or partInfoProvider is nil")
+		return selectRandomTargetPartAI(world, actingEntry, targetSelector) // フォールバック
 	}
 
-	opponentTeamID := bs.targetSelector.GetOpponentTeam(actingEntry)
-	leader := FindLeader(bs.world, opponentTeamID) // FindLeader は ecs_setup.go のグローバル関数
+	opponentTeamID := targetSelector.GetOpponentTeam(actingEntry)
+	leader := FindLeader(world, opponentTeamID) // FindLeader は ecs_setup.go のグローバル関数 (world を引数に取る)
 
 	if leader != nil && !leader.HasComponent(BrokenStateComponent) {
-		// リーダーのランダムなパーツを狙う
-		// TargetSelector の SelectRandomPartToDamage はターゲットエンティティ内のパーツを選ぶ
-		targetPart := bs.targetSelector.SelectRandomPartToDamage(leader)
+		targetPart := targetSelector.SelectRandomPartToDamage(leader)
 		if targetPart != nil {
-			// そのパーツのスロットキーを取得
-			slotKey := bs.partInfoProvider.FindPartSlot(leader, targetPart)
+			slotKey := partInfoProvider.FindPartSlot(leader, targetPart)
 			if slotKey != "" {
 				return leader, slotKey
 			}
 		}
 	}
-	// リーダーを狙えない場合はランダムなターゲット
-	return selectRandomTargetPartAI(bs, actingEntry)
+	return selectRandomTargetPartAI(world, actingEntry, targetSelector)
 }

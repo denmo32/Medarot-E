@@ -17,7 +17,7 @@ type BattleScene struct {
 	debugMode           bool
 	state               GameState
 	playerTeam          TeamID
-	actionQueue         []*donburi.Entry
+	// actionQueue         []*donburi.Entry // Removed: Will be managed as a world resource
 	ui                  *UI
 	message             string
 	postMessageCallback func()
@@ -46,7 +46,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		debugMode:          true,
 		state:              StatePlaying,
 		playerTeam:         Team1,
-		actionQueue:        make([]*donburi.Entry, 0),
+		// actionQueue:        make([]*donburi.Entry, 0), // Removed
 		playerMedarotToAct: nil,
 		attackingEntity:    nil,
 		targetedEntity:     nil,
@@ -82,6 +82,11 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		fmt.Println("Error: TargetSelector or PartInfoProvider is nil during NewBattleScene setup.")
 	}
 
+	// Initialize and add ActionQueueResource to the world
+	actionQueue := &ActionQueueResource{
+		Queue: make([]*donburi.Entry, 0),
+	}
+	donburi.AddResource(bs.world, ActionQueueResourceType, actionQueue)
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
 	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも良い
@@ -96,20 +101,81 @@ func (bs *BattleScene) Update() (SceneType, error) {
 	switch bs.state {
 	case StatePlaying:
 		bs.tickCount++
-		SystemUpdateProgress(bs)
-		SystemProcessReadyQueue(bs)
-		SystemProcessIdleMedarots(bs)
-		SystemCheckGameEnd(bs)
+		UpdateGaugeSystem(bs.world) // Modified: Call the new system
+
+		// Call the new ActionQueueSystem
+		actionResults, err := UpdateActionQueueSystem(
+			bs.world,
+			bs.partInfoProvider,
+			bs.damageCalculator,
+			bs.hitCalculator,
+			bs.targetSelector,
+		)
+		if err != nil {
+			// Handle error appropriately
+			fmt.Println("Error processing action queue system:", err)
+		}
+
+		for _, result := range actionResults {
+			if result.ActingEntry != nil && result.ActingEntry.Valid() {
+				logComp := LogComponent.Get(result.ActingEntry)
+				if logComp != nil {
+					logComp.LastActionLog = result.LogMessage
+				}
+				bs.attackingEntity = result.ActingEntry // For UI indication
+				bs.targetedEntity = result.TargetEntry   // For UI indication
+
+				// Enqueue message and set callback for cooldown
+				bs.enqueueMessage(result.LogMessage, func() {
+					// Check validity and state again before starting cooldown
+					if result.ActingEntry.Valid() && !result.ActingEntry.HasComponent(BrokenStateComponent) {
+						// Call StartCooldownSystem (moved from systems.go)
+						StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config)
+					}
+					bs.attackingEntity = nil // Clear after action processed
+					bs.targetedEntity = nil  // Clear after action processed
+				})
+			}
+		}
+
+		// Process AI and Player inputs if no player is currently acting and game is playing
+		if bs.playerMedarotToAct == nil && bs.state == StatePlaying {
+			UpdateAIInputSystem(bs.world, bs.partInfoProvider, bs.targetSelector, &bs.resources.Config)
+
+			playerInputResult := UpdatePlayerInputSystem(bs.world)
+			if playerInputResult.PlayerMedarotToAct != nil {
+				bs.playerMedarotToAct = playerInputResult.PlayerMedarotToAct
+				bs.state = StatePlayerActionSelect
+			}
+		}
+
+		if bs.state == StatePlaying { // Only check game end if still playing
+			gameEndResult := CheckGameEndSystem(bs.world)
+			if gameEndResult.IsGameOver {
+				bs.winner = gameEndResult.Winner
+				bs.state = StateGameOver
+				bs.enqueueMessage(gameEndResult.Message, nil)
+			}
+		}
 		updateAllInfoPanels(bs)
 		if bs.ui.battlefieldWidget != nil {
 			bs.ui.battlefieldWidget.UpdatePositions()
 		}
 	case StatePlayerActionSelect:
+		// Ensure battlefield icons are updated while player is selecting action
 		if bs.ui.battlefieldWidget != nil {
 			bs.ui.battlefieldWidget.UpdatePositions()
 		}
+		// If action modal is not yet shown and a player unit needs to act, show it.
 		if bs.ui.actionModal == nil && bs.playerMedarotToAct != nil {
-			bs.ui.ShowActionModal(bs, bs.playerMedarotToAct)
+			// Ensure the selected medarot is still valid and in Idle state
+			if bs.playerMedarotToAct.Valid() && bs.playerMedarotToAct.HasComponent(IdleStateComponent) {
+				bs.ui.ShowActionModal(bs, bs.playerMedarotToAct)
+			} else {
+				// Medarot is no longer valid or not in Idle state, reset.
+				bs.playerMedarotToAct = nil
+				bs.state = StatePlaying // Go back to playing state to re-evaluate
+			}
 		}
 	case StateMessage:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
@@ -118,8 +184,16 @@ func (bs *BattleScene) Update() (SceneType, error) {
 				bs.postMessageCallback()
 				bs.postMessageCallback = nil
 			}
-			bs.state = StatePlaying
-			SystemProcessIdleMedarots(bs)
+
+			// Determine next state based on whether a winner was declared
+			if bs.winner != TeamNone { // If a winner was set (game was over)
+				bs.state = StateGameOver
+			} else {
+				bs.state = StatePlaying
+				// Input systems (AI/Player) will be called in the next StatePlaying iteration
+				// if bs.playerMedarotToAct is nil.
+			}
+			// SystemProcessIdleMedarots(bs) // Removed: Handled by StatePlaying logic
 		}
 	case StateGameOver:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
