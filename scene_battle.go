@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	// "reflect" // No longer needed here as actionQueueResourceType is used
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -88,8 +89,9 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	actionQueue := &ActionQueueResource{
 		Queue: make([]*donburi.Entry, 0),
 	}
-	// Use world.SetData to store the ActionQueueResource instance
-	bs.world.SetData(actionQueue)
+	// Use world.Store to store the ActionQueueResource instance
+	// Use the globally defined key from action_queue_resource.go
+	bs.world.Store(actionQueueResourceType, actionQueue)
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
 	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも良い
