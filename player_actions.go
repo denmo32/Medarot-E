@@ -32,8 +32,8 @@ func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*don
 	for _, enemyEntry := range candidates {
 		partsMap := PartsComponent.Get(enemyEntry).Map
 		for slotKey, part := range partsMap {
-			// 脚部パーツは攻撃対象外とする
-			if !part.IsBroken && slotKey != PartSlotLegs {
+			// 破壊されていないパーツは全て攻撃対象候補とする
+			if !part.IsBroken {
 				allTargetableParts = append(allTargetableParts, targetablePart{
 					entity: enemyEntry,
 					slot:   slotKey,
@@ -43,9 +43,10 @@ func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*don
 	}
 
 	if len(allTargetableParts) == 0 {
-		// 攻撃できるパーツがない場合でも、最低限敵エンティティは返す
+		// 攻撃できるパーツがない場合でも、最低限敵エンティティは返す（スロットキーは空）
 		if len(candidates) > 0 {
-			return candidates[0], ""
+			// 破壊されていない敵がいれば、そのうちの1体を返す (パーツは特定できない)
+			return candidates[rand.Intn(len(candidates))], ""
 		}
 		return nil, ""
 	}

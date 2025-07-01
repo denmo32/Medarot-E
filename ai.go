@@ -77,8 +77,8 @@ func getAllTargetableParts(bs *BattleScene, actingEntry *donburi.Entry, includeH
 	for _, enemyEntry := range candidates {
 		partsMap := PartsComponent.Get(enemyEntry).Map
 		for slotKey, part := range partsMap {
-			// 脚部パーツはターゲットにしない
-			if slotKey == PartSlotLegs || part.IsBroken {
+			// 破壊されているパーツはターゲットにしない
+			if part.IsBroken {
 				continue
 			}
 			// includeHeadがfalseの場合、頭部パーツも除外
