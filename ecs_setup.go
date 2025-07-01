@@ -25,6 +25,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
+			TargetingStrategyComponent, // Added TargetingStrategyComponent
 			// EffectsComponent,
 		))
 		SettingsComponent.SetValue(entry, Settings{
@@ -68,6 +69,20 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		//	EvasionRateMultiplier: 1.0, // 通常は1.0 (100%)
 		//	DefenseRateMultiplier: 1.0, // 通常は1.0 (100%)
 		// })
+
+		// Set Targeting Strategy based on medal personality
+		var strategy TargetingStrategyFunc
+		switch medal.Personality {
+		case "クラッシャー":
+			strategy = selectCrusherTarget
+		case "ハンター":
+			strategy = selectHunterTarget
+		case "ジョーカー":
+			strategy = selectRandomTargetPartAI
+		default: // デフォルトや不明な性格の場合
+			strategy = selectLeaderPart // Default to targeting leader or a fallback like random
+		}
+		TargetingStrategyComponent.SetValue(entry, TargetingStrategyComponentData{Strategy: strategy})
 
 		// プレイヤーチームならPlayerControlタグを追加
 		if loadout.Team == playerTeam {

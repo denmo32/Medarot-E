@@ -40,15 +40,13 @@ func aiSelectAction(
 		var targetEntry *donburi.Entry
 		var targetPartSlot PartSlotKey
 
-		switch medal.Personality {
-		case "クラッシャー":
-			targetEntry, targetPartSlot = selectCrusherTarget(world, entry, targetSelector, partInfoProvider)
-		case "ハンター":
-			targetEntry, targetPartSlot = selectHunterTarget(world, entry, targetSelector, partInfoProvider)
-		case "ジョーカー":
-			targetEntry, targetPartSlot = selectRandomTargetPartAI(world, entry, targetSelector)
-		default:
-			targetEntry, targetPartSlot = selectLeaderPart(world, entry, targetSelector, partInfoProvider)
+		// Get targeting strategy from component
+		strategyComp, ok := TargetingStrategyComponent.TryGet(entry)
+		if !ok || strategyComp.Strategy == nil {
+			log.Printf("%s: AIエラー - TargetingStrategyComponentが見つからないか、Strategyがnilです。デフォルトのターゲット選択を使用します。", settings.Name)
+			targetEntry, targetPartSlot = selectLeaderPart(world, entry, targetSelector, partInfoProvider) // Fallback
+		} else {
+			targetEntry, targetPartSlot = strategyComp.Strategy(world, entry, targetSelector, partInfoProvider)
 		}
 
 		if targetEntry == nil {
@@ -160,6 +158,7 @@ func selectRandomTargetPartAI(
 	world donburi.World,
 	actingEntry *donburi.Entry,
 	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider, // Added to match TargetingStrategyFunc, though not directly used here
 ) (*donburi.Entry, PartSlotKey) {
 	allEnemyParts := getAllTargetableParts(world, actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	if len(allEnemyParts) == 0 {

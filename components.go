@@ -25,6 +25,9 @@ var (
 	ReadyStateComponent    = donburi.NewComponentType[ReadyState]()
 	CooldownStateComponent = donburi.NewComponentType[CooldownState]()
 	BrokenStateComponent   = donburi.NewComponentType[BrokenState]()
+
+	// For AI Targeting Strategy
+	TargetingStrategyComponent = donburi.NewComponentType[TargetingStrategyComponentData]()
 )
 
 // --- Componentの構造体定義 ---
@@ -86,4 +89,21 @@ type DefenseDebuff struct {
 // 回避率デバフ効果
 type EvasionDebuff struct {
 	Multiplier float64 // 回避率に乗算される値 (例: 0.5)
+}
+
+// --- AI Targeting Strategy Component ---
+
+// TargetingStrategyFunc defines the function signature for a targeting strategy.
+// It needs access to the world (for querying entities), the acting AI entity,
+// the targetSelector helper, and potentially partInfoProvider.
+type TargetingStrategyFunc func(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector, // from battle_logic.go
+	partInfoProvider *PartInfoProvider, // from battle_logic.go
+) (*donburi.Entry, PartSlotKey) // Returns target entity and target part slot
+
+// TargetingStrategyComponentData holds the targeting strategy for an AI entity.
+type TargetingStrategyComponentData struct {
+	Strategy TargetingStrategyFunc
 }
