@@ -24,8 +24,9 @@ const (
 	StateTypeBroken
 )
 const (
-	Team1 TeamID = 0
-	Team2 TeamID = 1
+	Team1    TeamID = 0
+	Team2    TeamID = 1
+	TeamNone TeamID = -1 // Represents no winner or a draw
 )
 const (
 	StatePlaying            GameState = "Playing"

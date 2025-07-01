@@ -17,6 +17,7 @@ type ActionResult struct {
 	IsCritical       bool // クリティカルだったか
 	DamageDealt      int  // 実際に与えたダメージ
 	TargetPartBroken bool // ターゲットパーツが破壊されたか
+	ActionIsDefended bool // 攻撃が防御されたか
 	// ActionSuccess bool // ActionDidHit で代替可能か検討
 }
 
@@ -136,12 +137,13 @@ func executeActionLogic(
 	var actualTargetPart *Part // 実際にダメージを受けたパーツ
 
 	defensePart := targetSelector.SelectDefensePart(targetEntry)
-	isDefended := false
+	// isDefended := false // result.ActionIsDefended を直接使用
+	result.ActionIsDefended = false
 	if defensePart != nil && defensePart != intendedTargetPart && hitCalculator.CalculateDefense(targetEntry, defensePart) {
 		// 防御成功 (狙ったパーツと防御パーツが異なる場合)
 		// もし狙ったパーツが防御可能な腕や頭で、それが選択された場合、それは「防御」ではなく通常の被弾として扱う
 		// ここでは、防御行動として別のパーツが使われた場合を想定
-		isDefended = true
+		result.ActionIsDefended = true
 		actualTargetPart = defensePart
 		finalDamageAfterDefense := damage - defensePart.Defense
 		if finalDamageAfterDefense < 0 {

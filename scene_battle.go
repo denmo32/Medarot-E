@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/resource" // Import the resource subpackage
 )
 
 // BattleScene は戦闘シーンのすべてを管理します
@@ -21,7 +22,7 @@ type BattleScene struct {
 	ui                  *UI
 	message             string
 	postMessageCallback func()
-	winner              TeamID
+	winner              TeamID // Initialized to TeamNone
 	restartRequested    bool
 	playerMedarotToAct  *donburi.Entry
 	currentTarget       *donburi.Entry
@@ -51,6 +52,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		attackingEntity:    nil,
 		targetedEntity:     nil,
 		currentTarget:      nil,
+		winner:             TeamNone, // Initialize winner to TeamNone
 		// ヘルパーは後で初期化
 	}
 
@@ -86,7 +88,8 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	actionQueue := &ActionQueueResource{
 		Queue: make([]*donburi.Entry, 0),
 	}
-	donburi.AddResource(bs.world, ActionQueueResourceType, actionQueue)
+	// Use resource.Set from the subpackage to add the resource
+	resource.Set(bs.world, actionQueue)
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
 	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも良い

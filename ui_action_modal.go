@@ -151,9 +151,11 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 			bs.ui.HideActionModal()
 			return
 		}
-		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, bs)
+		// Pass bs.world, &bs.resources.Config, and bs.partInfoProvider to StartCharge
+		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, bs.world, &bs.resources.Config, bs.partInfoProvider)
 	} else if selectedPart.Category == CategoryMelee {
-		successful = StartCharge(actingEntry, slotKey, nil, "", bs)
+		// Pass bs.world, &bs.resources.Config, and bs.partInfoProvider to StartCharge
+		successful = StartCharge(actingEntry, slotKey, nil, "", bs.world, &bs.resources.Config, bs.partInfoProvider)
 	} else {
 		log.Printf("未対応のパーツカテゴリです: %s", selectedPart.Category)
 		successful = false
@@ -164,7 +166,7 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 		bs.playerMedarotToAct = nil
 		bs.currentTarget = nil
 		bs.state = StatePlaying
-		SystemProcessIdleMedarots(bs)
+		// SystemProcessIdleMedarots(bs) // Removed: BattleScene update loop will handle this
 	} else {
 		log.Printf("エラー: %s の行動選択に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 		bs.ui.HideActionModal()
