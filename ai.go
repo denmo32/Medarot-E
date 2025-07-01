@@ -18,7 +18,7 @@ func aiSelectAction(
 	gameConfig *Config, // StartCharge が Config を必要とするため
 ) {
 	settings := SettingsComponent.Get(entry)
-	medal := MedalComponent.Get(entry)
+	// medal := MedalComponent.Get(entry) // Removed: No longer used directly here for personality switch
 
 	if partInfoProvider == nil {
 		log.Printf("%s: AI行動選択エラー - PartInfoProviderが初期化されていません。", settings.Name)
@@ -41,8 +41,17 @@ func aiSelectAction(
 		var targetPartSlot PartSlotKey
 
 		// Get targeting strategy from component
-		strategyComp, ok := TargetingStrategyComponent.TryGet(entry)
-		if !ok || strategyComp.Strategy == nil {
+		var strategyComp *TargetingStrategyComponentData
+		var found bool
+		if entry.HasComponent(TargetingStrategyComponent) { // Check if component exists
+			sComp := TargetingStrategyComponent.Get(entry) // Get the component
+			if sComp.Strategy != nil {
+				strategyComp = sComp
+				found = true
+			}
+		}
+
+		if !found {
 			log.Printf("%s: AIエラー - TargetingStrategyComponentが見つからないか、Strategyがnilです。デフォルトのターゲット選択を使用します。", settings.Name)
 			targetEntry, targetPartSlot = selectLeaderPart(world, entry, targetSelector, partInfoProvider) // Fallback
 		} else {
@@ -177,7 +186,7 @@ func selectLeaderPart(
 ) (*donburi.Entry, PartSlotKey) {
 	if targetSelector == nil || partInfoProvider == nil {
 		log.Println("Error: selectLeaderPart - targetSelector or partInfoProvider is nil")
-		return selectRandomTargetPartAI(world, actingEntry, targetSelector) // フォールバック
+		return selectRandomTargetPartAI(world, actingEntry, targetSelector, partInfoProvider) // フォールバック
 	}
 
 	opponentTeamID := targetSelector.GetOpponentTeam(actingEntry)
@@ -192,5 +201,5 @@ func selectLeaderPart(
 			}
 		}
 	}
-	return selectRandomTargetPartAI(world, actingEntry, targetSelector)
+	return selectRandomTargetPartAI(world, actingEntry, targetSelector, partInfoProvider)
 }
