@@ -164,9 +164,22 @@ func executeActionLogic(
 		result.TargetPartBroken = actualTargetPart.IsBroken
 	}
 
-
-	if actingPart.Trait == TraitBerserk {
+	// Trait-specific effects post-action
+	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
+		log.Printf("%s がBERSERK特性効果（行動後全効果リセット）を発動。", settings.Name)
 		ResetAllEffects(world)
+	}
+	// Add other post-action trait effects here if any
+
+	// Ensure trait tags are removed after action execution, regardless of cooldown.
+	// This is a safeguard, primary removal is in StartCooldownSystem.
+	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
+		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
+		// log.Printf("%s のBERSERK特性タグをexecuteActionLogicで解除(念のため)。", SettingsComponent.Get(entry).Name)
+	}
+	if entry.HasComponent(ActingWithAimTraitTagComponent) {
+		entry.RemoveComponent(ActingWithAimTraitTagComponent)
+		// log.Printf("%s のAIM特性タグをexecuteActionLogicで解除(念のため)。", SettingsComponent.Get(entry).Name)
 	}
 
 	return result
@@ -204,6 +217,17 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 	}
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
+
+	// Remove Trait tags
+	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
+		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
+		log.Printf("%s のBERSERK特性タグを解除。", SettingsComponent.Get(entry).Name)
+	}
+	if entry.HasComponent(ActingWithAimTraitTagComponent) {
+		entry.RemoveComponent(ActingWithAimTraitTagComponent)
+		log.Printf("%s のAIM特性タグを解除。", SettingsComponent.Get(entry).Name)
+	}
+
 	ChangeState(entry, StateTypeCooldown) // ChangeState is in entity_utils.go
 }
 
@@ -243,26 +267,36 @@ func StartCharge(
 		log.Printf("%sは%sで攻撃準備！", settings.Name, part.PartName)
 	}
 
+	// Apply debuffs based on traits and category at the start of charge
 	if target != nil {
 		balanceConfig := &gameConfig.Balance
-		switch part.Category {
-		case CategoryMelee:
-			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
-				Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff,
-			})
-		case CategoryShoot:
-			if part.Trait == TraitAim {
-				donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{
-					Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff,
-				})
-			}
-		}
-		if part.Trait == TraitBerserk {
+		// BERSERK trait effect (on charge start)
+		if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
+			log.Printf("%s がBERSERK特性効果（チャージ時デバフ）を発動。", settings.Name)
 			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
 				Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff,
 			})
 			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{
 				Multiplier: balanceConfig.Effects.Berserk.EvasionRateDebuff,
+			})
+		}
+
+		// AIM trait effect (on charge start, for SHOOT category)
+		if part.Category == CategoryShoot && entry.HasComponent(ActingWithAimTraitTagComponent) {
+			log.Printf("%s がAIM特性効果（チャージ時デバフ）を発動。", settings.Name)
+			// Note: If Berserk also adds EvasionDebuff, this might overwrite or be redundant.
+			// Assuming donburi.Add overwrites if component already exists.
+			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{
+				Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff,
+			})
+		}
+
+		// MELEE category specific debuff (separate from traits)
+		if part.Category == CategoryMelee {
+			log.Printf("%s がMELEEカテゴリ効果（チャージ時デバフ）を発動。", settings.Name)
+			// If Berserk also adds DefenseDebuff, this might overwrite.
+			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
+				Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff,
 			})
 		}
 	}
@@ -290,6 +324,17 @@ func StartCharge(
 	if gauge.TotalDuration < 1 {
 		gauge.TotalDuration = 1
 	}
+
+	// Add Trait tags based on the part used
+	switch part.Trait {
+	case TraitBerserk:
+		donburi.Add(entry, ActingWithBerserkTraitTagComponent, &ActingWithBerserkTraitTag{})
+		log.Printf("%s の行動にBERSERK特性タグを付与。", SettingsComponent.Get(entry).Name)
+	case TraitAim:
+		donburi.Add(entry, ActingWithAimTraitTagComponent, &ActingWithAimTraitTag{})
+		log.Printf("%s の行動にAIM特性タグを付与。", SettingsComponent.Get(entry).Name)
+	}
+
 	ChangeState(entry, StateTypeCharging) // ChangeState is in entity_utils.go
 	return true
 }

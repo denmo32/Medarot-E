@@ -107,3 +107,16 @@ type TargetingStrategyFunc func(
 type TargetingStrategyComponentData struct {
 	Strategy TargetingStrategyFunc
 }
+
+// --- Trait Effect Tag Components ---
+// These are added to an entity when a part with a specific trait is being used for an action.
+
+// ActingWithBerserkTraitTag indicates the entity is currently performing an action with a BERSERK trait part.
+type ActingWithBerserkTraitTag struct{}
+var ActingWithBerserkTraitTagComponent = donburi.NewComponentType[ActingWithBerserkTraitTag]()
+
+// ActingWithAimTraitTag indicates the entity is currently performing an action with an AIM trait part.
+type ActingWithAimTraitTag struct{}
+var ActingWithAimTraitTagComponent = donburi.NewComponentType[ActingWithAimTraitTag]()
+
+// Potentially others: ActingWithStrikeTraitTag, etc.
