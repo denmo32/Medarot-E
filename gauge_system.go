@@ -27,8 +27,8 @@ func UpdateGaugeSystem(world donburi.World) {
 			if entry.HasComponent(ChargingStateComponent) {
 				// ChangeState は entity_state_utils.go に移動することを想定
 				ChangeState(entry, StateTypeReady) // world を渡す必要があれば ChangeState のシグネチャ変更も検討
-				actionQueue := GetActionQueue(world)
-				actionQueue.Queue = append(actionQueue.Queue, entry)
+				actionQueueComp := GetActionQueueComponent(world)
+				actionQueueComp.Queue = append(actionQueueComp.Queue, entry)
 				log.Printf("%s のチャージが完了。実行キューに追加。", SettingsComponent.Get(entry).Name)
 			} else if entry.HasComponent(CooldownStateComponent) {
 				// ChangeState は entity_state_utils.go に移動することを想定

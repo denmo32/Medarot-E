@@ -31,27 +31,27 @@ func UpdateActionQueueSystem(
 	hitCalculator *HitCalculator, // ExecuteActionから移動したため追加
 	targetSelector *TargetSelector, // ExecuteActionから移動したため追加
 ) ([]ActionResult, error) {
-	actionQueue := GetActionQueue(world)
-	if len(actionQueue.Queue) == 0 {
+	actionQueueComp := GetActionQueueComponent(world)
+	if len(actionQueueComp.Queue) == 0 {
 		return nil, nil
 	}
 
 	results := []ActionResult{}
 
 	// 行動順序を推進力に基づいてソート
-	sort.SliceStable(actionQueue.Queue, func(i, j int) bool {
+	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
 		if partInfoProvider == nil {
 			log.Println("Warning: UpdateActionQueueSystem - partInfoProvider is nil, using default propulsion.")
 			return false
 		}
-		propI := partInfoProvider.GetOverallPropulsion(actionQueue.Queue[i])
-		propJ := partInfoProvider.GetOverallPropulsion(actionQueue.Queue[j])
+		propI := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
+		propJ := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
 		return propI > propJ
 	})
 
-	if len(actionQueue.Queue) > 0 {
-		actingEntry := actionQueue.Queue[0]
-		actionQueue.Queue = actionQueue.Queue[1:] // キューから取り出し
+	if len(actionQueueComp.Queue) > 0 {
+		actingEntry := actionQueueComp.Queue[0]
+		actionQueueComp.Queue = actionQueueComp.Queue[1:] // キューから取り出し
 
 		actionResult := executeActionLogic(actingEntry, world, damageCalculator, hitCalculator, targetSelector, partInfoProvider)
 		results = append(results, actionResult)

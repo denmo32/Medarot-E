@@ -90,8 +90,8 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		Queue: make([]*donburi.Entry, 0),
 	}
 	// Use world.Store to store the ActionQueueResource instance
-	// Use the globally defined key from action_queue_resource.go
-	bs.world.Store(actionQueueResourceType, actionQueue)
+	// Ensure the world state entity with ActionQueueComponent exists
+	EnsureActionQueueEntity(bs.world)
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
 	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも良い
