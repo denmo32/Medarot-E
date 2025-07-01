@@ -38,7 +38,7 @@ func ChangeState(entry *donburi.Entry, newStateType StateType) {
 
 
 	gauge := GaugeComponent.Get(entry)
-	action := ActionComponent.Get(entry)
+	// action := ActionComponent.Get(entry) // Removed: No longer used directly in ChangeState
 
 	// 新しい状態に応じた初期化処理とコンポーネントの追加
 	switch newStateType {
@@ -61,11 +61,12 @@ func ChangeState(entry *donburi.Entry, newStateType StateType) {
 
 	// Publish StateChangedEvent
 	if oldStateType != newStateType { // Only publish if state actually changed
-		donburi.Send(entry.World, StateChangedEventType, StateChangedEvent{
+		eventToSend := StateChangedEvent{
 			Entity:   entry,
 			OldState: oldStateType,
 			NewState: newStateType,
-		})
+		}
+		entry.World.Send(eventToSend) // Use world.Send(eventObject)
 		if entry.HasComponent(SettingsComponent) { // Additional log for event
 			log.Printf("Event: StateChanged for %s from %v to %v", SettingsComponent.Get(entry).Name, oldStateType, newStateType)
 		}

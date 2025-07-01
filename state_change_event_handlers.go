@@ -9,8 +9,8 @@ import (
 // RegisterStateChangeEventHandlers registers all systems that listen to StateChangedEvent.
 // This function should be called once during BattleScene setup.
 func RegisterStateChangeEventHandlers(world donburi.World) {
-	donburi.Subscribe(world, StateChangedEventType, handleStateChangeForGaugeReset)
-	donburi.Subscribe(world, StateChangedEventType, handleStateChangeForIdleAI)
+	world.Subscribe(StateChangedEventType, handleStateChangeForGaugeReset)
+	world.Subscribe(StateChangedEventType, handleStateChangeForIdleAI)
 	// Add other handlers here
 }
 
