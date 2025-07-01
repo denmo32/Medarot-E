@@ -126,7 +126,9 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		}
 
 		// Update gauges only if no player action is pending (neither currently selecting nor in queue)
-		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 {
+		// AND the main action execution queue is also empty.
+		actionQueueComp := GetActionQueueComponent(bs.world) // Get the action queue component
+		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
 			UpdateGaugeSystem(bs.world)
 		}
 
