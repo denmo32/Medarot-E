@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/event" // Added for event.Publish
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
@@ -66,7 +67,7 @@ func ChangeState(entry *donburi.Entry, newStateType StateType) {
 			OldState: oldStateType,
 			NewState: newStateType,
 		}
-		entry.World.Send(eventToSend) // Use world.Send(eventObject)
+		event.Publish(entry.World, eventToSend) // Use event.Publish
 		if entry.HasComponent(SettingsComponent) { // Additional log for event
 			log.Printf("Event: StateChanged for %s from %v to %v", SettingsComponent.Get(entry).Name, oldStateType, newStateType)
 		}
