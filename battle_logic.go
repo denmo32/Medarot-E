@@ -12,14 +12,33 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// ★★★ この構造体を新しく追加 ★★★
+// AvailablePart は利用可能なパーツとそのスロットキーを保持します。
 type AvailablePart struct {
 	Part *Part
 	Slot PartSlotKey
 }
 
-// ApplyDamage はパーツにダメージを適用し、メダロットの状態を更新します
-func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
+// --- DamageCalculator ---
+
+// DamageCalculator はダメージ計算に関連するロジックを担当します。
+type DamageCalculator struct {
+	world            donburi.World
+	config           *Config
+	partInfoProvider *PartInfoProvider // 後で初期化
+}
+
+// NewDamageCalculator は新しい DamageCalculator のインスタンスを生成します。
+func NewDamageCalculator(world donburi.World, config *Config) *DamageCalculator {
+	return &DamageCalculator{world: world, config: config}
+}
+
+// SetPartInfoProvider は PartInfoProvider の依存性を設定します。
+func (dc *DamageCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
+	dc.partInfoProvider = pip
+}
+
+// ApplyDamage はパーツにダメージを適用し、メダロットの状態を更新します。
+func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
 	if damage < 0 {
 		damage = 0
 	}
@@ -30,174 +49,53 @@ func ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
 		settings := SettingsComponent.Get(entry)
 		log.Printf("%s の %s が破壊された！", settings.Name, part.PartName)
 		if part.Type == PartTypeHead {
-			ChangeState(entry, StateTypeBroken) // ★★★ 修正 ★★★
+			ChangeState(entry, StateTypeBroken) // systems.go にある ChangeState を呼び出す
 		}
 	}
 }
 
-// CalculateHit は新しいルールに基づいて命中判定を行います
-func CalculateHit(attacker, target *donburi.Entry, part *Part, config *BalanceConfig) bool {
-	// 攻撃側の命中性能を計算
+// CalculateDamage は新しいルールに基づいてダメージを計算します。
+func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, part *Part) (int, bool) {
 	attackerLegs := PartsComponent.Get(attacker).Map[PartSlotLegs]
 	attackerStability := 0
 	if attackerLegs != nil {
 		attackerStability = attackerLegs.Stability
 	}
+	baseDamage := float64(part.Power) + float64(attackerStability)*dc.config.Balance.Factors.PowerStabilityFactor
 
-	baseAccuracy := float64(part.Accuracy) + float64(attackerStability)*config.Factors.AccuracyStabilityFactor
-
-	// アクション特性によるボーナス
-	switch part.Category {
-	case CategoryMelee:
-		baseAccuracy += float64(GetOverallMobility(attacker)) * config.Factors.MeleeAccuracyMobilityFactor
-	case CategoryShoot:
-		// 「撃つ」は純粋な安定ボーナスのみ
-	}
-
-	// 回避側の回避性能を計算
-	// ★★★ targetEffects の部分を修正 ★★★
-	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
-	targetStability := 0
-	if targetLegs != nil {
-		targetStability = targetLegs.Stability
-	}
-
-	baseEvasion := float64(GetOverallMobility(target)) + float64(targetStability)*config.Factors.EvasionStabilityFactor
-
-	finalEvasion := baseEvasion
-	// 回避デバフコンポーネントがあれば、その値を適用
-	if target.HasComponent(EvasionDebuffComponent) {
-		debuff := EvasionDebuffComponent.Get(target)
-		finalEvasion *= debuff.Multiplier
-	}
-
-	// 最終的な命中率を計算 (例: 50 + (攻撃側の命中 - 敵の回避))
-	chance := 50 + baseAccuracy - finalEvasion
-	if chance < 5 {
-		chance = 5
-	}
-	if chance > 95 {
-		chance = 95
-	}
-
-	roll := rand.Intn(100)
-	log.Printf("命中判定: %s -> %s | 命中率: %.1f, ロール: %d", SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, roll)
-	return roll < int(chance)
-}
-
-// CalculateDefense は防御の成否を判定します
-func CalculateDefense(attacker, target *donburi.Entry, defensePart *Part, config *BalanceConfig) bool {
-	// 防御側の防御性能を計算
-	// ★★★ targetEffects の部分を修正 ★★★
-	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
-	targetStability := 0
-	if targetLegs != nil {
-		targetStability = targetLegs.Stability
-	}
-
-	baseDefense := float64(defensePart.Defense) + float64(targetStability)*config.Factors.DefenseStabilityFactor
-	finalDefense := baseDefense
-	// 防御デバフコンポーネントがあれば、その値を適用
-	if target.HasComponent(DefenseDebuffComponent) {
-		debuff := DefenseDebuffComponent.Get(target)
-		finalDefense *= debuff.Multiplier
-	}
-
-	// 防御成功率を計算 (例: 10 + 防御性能)
-	chance := 10 + finalDefense
-	if chance < 5 {
-		chance = 5
-	}
-	if chance > 95 {
-		chance = 95
-	}
-
-	roll := rand.Intn(100)
-	log.Printf("防御判定: %s | 防御成功率: %.1f, ロール: %d", SettingsComponent.Get(target).Name, chance, roll)
-	return roll < int(chance)
-}
-
-// CalculateDamage は新しいルールに基づいてダメージを計算します
-func CalculateDamage(attacker *donburi.Entry, part *Part, config *BalanceConfig) (int, bool) {
-	// 基本威力を計算
-	attackerLegs := PartsComponent.Get(attacker).Map[PartSlotLegs]
-	attackerStability := 0
-	if attackerLegs != nil {
-		attackerStability = attackerLegs.Stability
-	}
-	baseDamage := float64(part.Power) + float64(attackerStability)*config.Factors.PowerStabilityFactor
-
-	// アクション特性によるボーナス
 	if part.Trait == TraitBerserk {
-		baseDamage += float64(GetOverallPropulsion(attacker)) * config.Factors.BerserkPowerPropulsionFactor
+		// PartInfoProvider が初期化されていることを確認
+		if dc.partInfoProvider == nil {
+			log.Println("Error: DamageCalculator.partInfoProvider is not initialized")
+			// エラーハンドリングまたはデフォルト値の使用
+		} else {
+			baseDamage += float64(dc.partInfoProvider.GetOverallPropulsion(attacker)) * dc.config.Balance.Factors.BerserkPowerPropulsionFactor
+		}
 	}
 
-	// クリティカル判定
 	medal := MedalComponent.Get(attacker)
 	isCritical := false
 	criticalBonus := 0
 	switch part.Category {
 	case CategoryMelee:
-		criticalBonus = config.Effects.Melee.CriticalRateBonus
+		criticalBonus = dc.config.Balance.Effects.Melee.CriticalRateBonus
 	case CategoryShoot:
 		if part.Trait == TraitAim {
-			criticalBonus = config.Effects.Aim.CriticalRateBonus
+			criticalBonus = dc.config.Balance.Effects.Aim.CriticalRateBonus
 		}
 	}
 	criticalChance := medal.SkillLevel*2 + criticalBonus
 	if rand.Intn(100) < criticalChance {
-		baseDamage *= config.Damage.CriticalMultiplier
+		baseDamage *= dc.config.Balance.Damage.CriticalMultiplier
 		isCritical = true
 	}
 
-	finalDamage := baseDamage + float64(medal.SkillLevel*config.Damage.MedalSkillFactor)
+	finalDamage := baseDamage + float64(medal.SkillLevel*dc.config.Balance.Damage.MedalSkillFactor)
 	return int(finalDamage), isCritical
 }
 
-// SelectDefensePart は防御に使用するパーツを選択します
-func SelectDefensePart(target *donburi.Entry) *Part {
-	parts := PartsComponent.Get(target).Map
-	var bestPart *Part
-	var otherParts []*Part
-
-	// 頭部以外の未破壊パーツを探す
-	for slot, part := range parts {
-		if !part.IsBroken && slot != PartSlotLegs && slot != PartSlotHead {
-			otherParts = append(otherParts, part)
-		}
-	}
-
-	if len(otherParts) > 0 {
-		// 装甲が最も高いパーツで防御
-		sort.Slice(otherParts, func(i, j int) bool {
-			return otherParts[i].Armor > otherParts[j].Armor
-		})
-		bestPart = otherParts[0]
-	} else {
-		// 他にパーツがなければ頭部で防御
-		if head := parts[PartSlotHead]; head != nil && !head.IsBroken {
-			bestPart = head
-		}
-	}
-	return bestPart
-}
-
-func SelectRandomPartToDamage(target *donburi.Entry) *Part {
-	parts := PartsComponent.Get(target).Map
-	vulnerable := []*Part{}
-	slots := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs}
-	for _, s := range slots {
-		if part := parts[s]; part != nil && !part.IsBroken {
-			vulnerable = append(vulnerable, part)
-		}
-	}
-	if len(vulnerable) == 0 {
-		return nil
-	}
-	return vulnerable[rand.Intn(len(vulnerable))]
-}
-
-func GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, targetPart *Part, damage int, isCritical bool, didHit bool) string {
+// GenerateActionLog は行動の結果ログを生成します。
+func (dc *DamageCalculator) GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, targetPart *Part, damage int, isCritical bool, didHit bool) string {
 	attackerSettings := SettingsComponent.Get(attacker)
 	targetSettings := SettingsComponent.Get(target)
 	if !didHit {
@@ -215,86 +113,191 @@ func GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, targetPar
 	return logMsg
 }
 
-func findPartSlot(entry *donburi.Entry, part *Part) PartSlotKey {
-	partsMap := PartsComponent.Get(entry).Map
-	for s, p := range partsMap {
-		if p.ID == part.ID {
-			return s
-		}
+// GenerateActionLogDefense は防御時のアクションログを生成します。
+func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePart *Part, damageDealt int, originalDamage int, isCritical bool) string {
+	targetSettings := SettingsComponent.Get(target)
+	logMsg := fmt.Sprintf("%sは%sで防御し、ダメージを%dから%dに抑えた！", targetSettings.Name, defensePart.PartName, originalDamage, damageDealt)
+	if isCritical {
+		logMsg = fmt.Sprintf("%sは%sで防御！クリティカルヒットのダメージを%dから%dに抑えた！", targetSettings.Name, defensePart.PartName, originalDamage, damageDealt)
 	}
-	return ""
+	if defensePart.IsBroken {
+		logMsg += " しかし、パーツは破壊された！"
+	}
+	return logMsg
 }
 
-// ★★★ 戻り値の型を変更 ★★★
-func GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
-	partsMap := PartsComponent.Get(entry).Map
-	// ★★★ 変数の型を変更 ★★★
-	var availableParts []AvailablePart
-	slotsToConsider := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm}
-	for _, slot := range slotsToConsider {
-		part := partsMap[slot]
-		if part != nil && !part.IsBroken && part.Category != CategoryNone {
-			// ★★★ 構造体で追加するように変更 ★★★
-			availableParts = append(availableParts, AvailablePart{Part: part, Slot: slot})
-		}
-	}
-	return availableParts
+// --- HitCalculator ---
+
+// HitCalculator は命中・回避・防御判定に関連するロジックを担当します。
+type HitCalculator struct {
+	world            donburi.World
+	config           *Config
+	partInfoProvider *PartInfoProvider // 後で初期化
 }
 
-func GetOverallPropulsion(entry *donburi.Entry) int {
-	partsMap := PartsComponent.Get(entry).Map
-	legs := partsMap[PartSlotLegs]
-	if legs == nil || legs.IsBroken {
-		return 1
-	}
-	return legs.Propulsion
+// NewHitCalculator は新しい HitCalculator のインスタンスを生成します。
+func NewHitCalculator(world donburi.World, config *Config) *HitCalculator {
+	return &HitCalculator{world: world, config: config}
 }
 
-func GetOverallMobility(entry *donburi.Entry) int {
-	partsMap := PartsComponent.Get(entry).Map
-	legs := partsMap[PartSlotLegs]
-	if legs == nil || legs.IsBroken {
-		return 1
-	}
-	return legs.Mobility
+// SetPartInfoProvider は PartInfoProvider の依存性を設定します。
+func (hc *HitCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
+	hc.partInfoProvider = pip
 }
 
-func CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
-	settings := SettingsComponent.Get(entry)
-	// ★★★ 削除
-	// state := StateComponent.Get(entry)
-	gauge := GaugeComponent.Get(entry)
-
-	progress := float32(gauge.CurrentGauge / 100.0)
-	homeX, execX := worldWidth*0.1, worldWidth*0.4
-	if settings.Team == Team2 {
-		homeX, execX = worldWidth*0.9, worldWidth*0.6
+// CalculateHit は新しいルールに基づいて命中判定を行います。
+func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, part *Part) bool {
+	attackerLegs := PartsComponent.Get(attacker).Map[PartSlotLegs]
+	attackerStability := 0
+	if attackerLegs != nil {
+		attackerStability = attackerLegs.Stability
 	}
+	baseAccuracy := float64(part.Accuracy) + float64(attackerStability)*hc.config.Balance.Factors.AccuracyStabilityFactor
 
-	var xPos float32
-	// ★★★ ここのswitch文をif文に書き換え ★★★
-	if entry.HasComponent(ChargingStateComponent) {
-		xPos = homeX + (execX-homeX)*progress
-	} else if entry.HasComponent(ReadyStateComponent) {
-		xPos = execX
-	} else if entry.HasComponent(CooldownStateComponent) {
-		xPos = execX - (execX-homeX)*progress
-	} else if entry.HasComponent(IdleStateComponent) || entry.HasComponent(BrokenStateComponent) {
-		xPos = homeX
+	if hc.partInfoProvider == nil {
+		log.Println("Error: HitCalculator.partInfoProvider is not initialized")
 	} else {
-		xPos = homeX
+		switch part.Category {
+		case CategoryMelee:
+			baseAccuracy += float64(hc.partInfoProvider.GetOverallMobility(attacker)) * hc.config.Balance.Factors.MeleeAccuracyMobilityFactor
+		case CategoryShoot:
+			// 「撃つ」は純粋な安定ボーナスのみ
+		}
 	}
-	return xPos
+
+	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
+	targetStability := 0
+	if targetLegs != nil {
+		targetStability = targetLegs.Stability
+	}
+
+	baseEvasion := 0.0
+	if hc.partInfoProvider == nil {
+		log.Println("Error: HitCalculator.partInfoProvider is not initialized")
+	} else {
+		baseEvasion = float64(hc.partInfoProvider.GetOverallMobility(target)) + float64(targetStability)*hc.config.Balance.Factors.EvasionStabilityFactor
+	}
+
+	finalEvasion := baseEvasion
+	if target.HasComponent(EvasionDebuffComponent) {
+		debuff := EvasionDebuffComponent.Get(target)
+		finalEvasion *= debuff.Multiplier
+	}
+
+	chance := 50 + baseAccuracy - finalEvasion
+	if chance < 5 {
+		chance = 5
+	}
+	if chance > 95 {
+		chance = 95
+	}
+
+	roll := rand.Intn(100)
+	log.Printf("命中判定: %s -> %s | 命中率: %.1f (%f vs %f), ロール: %d", SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, baseAccuracy, finalEvasion, roll)
+	return roll < int(chance)
 }
 
-func findClosestEnemy(bs *BattleScene, actingEntry *donburi.Entry) *donburi.Entry {
+// CalculateDefense は防御の成否を判定します。
+func (hc *HitCalculator) CalculateDefense(target *donburi.Entry, defensePart *Part) bool {
+	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
+	targetStability := 0
+	if targetLegs != nil {
+		targetStability = targetLegs.Stability
+	}
+	baseDefense := float64(defensePart.Defense) + float64(targetStability)*hc.config.Balance.Factors.DefenseStabilityFactor
+	finalDefense := baseDefense
+	if target.HasComponent(DefenseDebuffComponent) {
+		debuff := DefenseDebuffComponent.Get(target)
+		finalDefense *= debuff.Multiplier
+	}
+
+	chance := 10 + finalDefense
+	if chance < 5 {
+		chance = 5
+	}
+	if chance > 95 {
+		chance = 95
+	}
+
+	roll := rand.Intn(100)
+	log.Printf("防御判定: %s (%s) | 防御成功率: %.1f, ロール: %d", SettingsComponent.Get(target).Name, defensePart.PartName, chance, roll)
+	return roll < int(chance)
+}
+
+// --- TargetSelector ---
+
+// TargetSelector はターゲット選択やパーツ選択に関連するロジックを担当します。
+type TargetSelector struct {
+	world            donburi.World
+	config           *Config
+	partInfoProvider *PartInfoProvider // 後で初期化
+}
+
+// NewTargetSelector は新しい TargetSelector のインスタンスを生成します。
+func NewTargetSelector(world donburi.World, config *Config) *TargetSelector {
+	return &TargetSelector{world: world, config: config}
+}
+
+// SetPartInfoProvider は PartInfoProvider の依存性を設定します。
+func (ts *TargetSelector) SetPartInfoProvider(pip *PartInfoProvider) {
+	ts.partInfoProvider = pip
+}
+
+// SelectDefensePart は防御に使用するパーツを選択します。
+func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *Part {
+	parts := PartsComponent.Get(target).Map
+	var bestPart *Part
+	var otherParts []*Part
+
+	for slot, part := range parts {
+		if !part.IsBroken && slot != PartSlotLegs && slot != PartSlotHead {
+			otherParts = append(otherParts, part)
+		}
+	}
+
+	if len(otherParts) > 0 {
+		sort.Slice(otherParts, func(i, j int) bool {
+			return otherParts[i].Armor > otherParts[j].Armor
+		})
+		bestPart = otherParts[0]
+	} else {
+		if head := parts[PartSlotHead]; head != nil && !head.IsBroken {
+			bestPart = head
+		}
+	}
+	return bestPart
+}
+
+// SelectRandomPartToDamage は攻撃対象のパーツをランダムに選択します。
+func (ts *TargetSelector) SelectRandomPartToDamage(target *donburi.Entry) *Part {
+	parts := PartsComponent.Get(target).Map
+	vulnerable := []*Part{}
+	slots := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs}
+	for _, s := range slots {
+		if part := parts[s]; part != nil && !part.IsBroken {
+			vulnerable = append(vulnerable, part)
+		}
+	}
+	if len(vulnerable) == 0 {
+		return nil
+	}
+	return vulnerable[rand.Intn(len(vulnerable))]
+}
+
+// FindClosestEnemy は指定されたエンティティに最も近い敵エンティティを見つけます。
+func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry) *donburi.Entry {
 	var closestEnemy *donburi.Entry
 	minDist := float32(math.MaxFloat32)
-	bfWidth := float32(bs.resources.Config.UI.Screen.Width) * 0.5
-	actingX := CalculateIconXPosition(actingEntry, bfWidth)
+	bfWidth := float32(ts.config.UI.Screen.Width) * 0.5 // BattleFieldの幅
 
-	for _, enemy := range getTargetCandidates(bs, actingEntry) {
-		enemyX := CalculateIconXPosition(enemy, bfWidth)
+	if ts.partInfoProvider == nil {
+		log.Println("Error: TargetSelector.partInfoProvider is not initialized")
+		return nil
+	}
+	actingX := ts.partInfoProvider.CalculateIconXPosition(actingEntry, bfWidth)
+
+	for _, enemy := range ts.GetTargetableEnemies(actingEntry) {
+		enemyX := ts.partInfoProvider.CalculateIconXPosition(enemy, bfWidth)
 		dist := float32(math.Abs(float64(actingX - enemyX)))
 		if dist < minDist {
 			minDist = dist
@@ -304,22 +307,19 @@ func findClosestEnemy(bs *BattleScene, actingEntry *donburi.Entry) *donburi.Entr
 	return closestEnemy
 }
 
-func getTargetCandidates(bs *BattleScene, actingEntry *donburi.Entry) []*donburi.Entry {
-	actingSettings := SettingsComponent.Get(actingEntry)
-	var opponentTeamID TeamID
-	if actingSettings.Team == Team1 {
-		opponentTeamID = Team2
-	} else {
-		opponentTeamID = Team1
-	}
-
+// GetTargetableEnemies は指定されたエンティティが攻撃可能な敵のリストを返します。
+// 破壊されていない敵チームのエンティティを返します。
+func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*donburi.Entry {
+	opponentTeamID := ts.GetOpponentTeam(actingEntry)
 	candidates := []*donburi.Entry{}
-	query.NewQuery(filter.And(
+	query := query.NewQuery(filter.And(
 		filter.Contains(SettingsComponent),
-		filter.Not(filter.Contains(BrokenStateComponent)), // ★★★ 修正 ★★★
-	)).Each(bs.world, func(entry *donburi.Entry) {
+		filter.Not(filter.Contains(BrokenStateComponent)),
+	))
+
+	query.Each(ts.world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)
-		if settings.Team == opponentTeamID { // stateのチェックは不要になった
+		if settings.Team == opponentTeamID {
 			candidates = append(candidates, entry)
 		}
 	})
@@ -329,38 +329,103 @@ func getTargetCandidates(bs *BattleScene, actingEntry *donburi.Entry) []*donburi
 		jSettings := SettingsComponent.Get(candidates[j])
 		return iSettings.DrawIndex < jSettings.DrawIndex
 	})
-
 	return candidates
 }
 
-// GetOpponentTeam は指定されたエンティティの敵チームIDを返します
-func GetOpponentTeam(actingEntry *donburi.Entry) TeamID {
+// GetOpponentTeam は指定されたエンティティの敵チームIDを返します。
+func (ts *TargetSelector) GetOpponentTeam(actingEntry *donburi.Entry) TeamID {
 	if SettingsComponent.Get(actingEntry).Team == Team1 {
 		return Team2
 	}
 	return Team1
 }
 
-// GetTargetableEnemies は指定されたエンティティが攻撃可能な敵のリストを返します
-func GetTargetableEnemies(world donburi.World, actingEntry *donburi.Entry) []*donburi.Entry {
-	opponentTeamID := GetOpponentTeam(actingEntry)
+// --- PartInfoProvider ---
 
-	candidates := []*donburi.Entry{}
-	query.NewQuery(filter.And(
-		filter.Contains(SettingsComponent),
-		filter.Not(filter.Contains(BrokenStateComponent)),
-	)).Each(world, func(entry *donburi.Entry) {
-		if SettingsComponent.Get(entry).Team == opponentTeamID {
-			candidates = append(candidates, entry)
+// PartInfoProvider はパーツの状態や情報を取得・操作するロジックを担当します。
+type PartInfoProvider struct {
+	world  donburi.World
+	config *Config
+}
+
+// NewPartInfoProvider は新しい PartInfoProvider のインスタンスを生成します。
+func NewPartInfoProvider(world donburi.World, config *Config) *PartInfoProvider {
+	return &PartInfoProvider{world: world, config: config}
+}
+
+// FindPartSlot は指定されたパーツがどのスロットにあるかを返します。
+func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFind *Part) PartSlotKey {
+	partsMap := PartsComponent.Get(entry).Map
+	for s, p := range partsMap {
+		if p.ID == partToFind.ID {
+			return s
 		}
-	})
+	}
+	return ""
+}
 
-	// 描画順でソートして、常に同じ順序で返却されるようにする
-	sort.Slice(candidates, func(i, j int) bool {
-		iSettings := SettingsComponent.Get(candidates[i])
-		jSettings := SettingsComponent.Get(candidates[j])
-		return iSettings.DrawIndex < jSettings.DrawIndex
-	})
+// GetAvailableAttackParts は攻撃に使用可能なパーツのリストを返します。
+func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
+	partsMap := PartsComponent.Get(entry).Map
+	var availableParts []AvailablePart
+	slotsToConsider := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm}
+	for _, slot := range slotsToConsider {
+		part := partsMap[slot]
+		if part != nil && !part.IsBroken && part.Category != CategoryNone && part.Category != CategorySupport && part.Category != CategoryDefense { // 防御と支援以外
+			availableParts = append(availableParts, AvailablePart{Part: part, Slot: slot})
+		}
+	}
+	return availableParts
+}
 
-	return candidates
+// GetOverallPropulsion はエンティティの総推進力を返します。
+func (pip *PartInfoProvider) GetOverallPropulsion(entry *donburi.Entry) int {
+	partsMap := PartsComponent.Get(entry).Map
+	legs := partsMap[PartSlotLegs]
+	if legs == nil || legs.IsBroken {
+		return 1 // 脚部がない、または破壊されている場合はデフォルト値
+	}
+	return legs.Propulsion
+}
+
+// GetOverallMobility はエンティティの総機動力を返します。
+func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
+	partsMap := PartsComponent.Get(entry).Map
+	legs := partsMap[PartSlotLegs]
+	if legs == nil || legs.IsBroken {
+		return 1 // 脚部がない、または破壊されている場合はデフォルト値
+	}
+	return legs.Mobility
+}
+
+// CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。
+// worldWidth はバトルフィールドの表示幅です。
+func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
+	settings := SettingsComponent.Get(entry)
+	gauge := GaugeComponent.Get(entry)
+
+	progress := float32(0)
+	if gauge.TotalDuration > 0 { // TotalDurationが0の場合のゼロ除算を避ける
+		progress = float32(gauge.CurrentGauge / 100.0)
+	}
+
+	homeX, execX := worldWidth*0.1, worldWidth*0.4
+	if settings.Team == Team2 {
+		homeX, execX = worldWidth*0.9, worldWidth*0.6
+	}
+
+	var xPos float32
+	if entry.HasComponent(ChargingStateComponent) {
+		xPos = homeX + (execX-homeX)*progress
+	} else if entry.HasComponent(ReadyStateComponent) {
+		xPos = execX
+	} else if entry.HasComponent(CooldownStateComponent) {
+		// クールダウンは execX から homeX に戻る動き
+		xPos = execX - (execX-homeX)*progress
+	} else if entry.HasComponent(IdleStateComponent) || entry.HasComponent(BrokenStateComponent) {
+		xPos = homeX
+	} else {
+		xPos = homeX // 不明な状態の場合はホームポジション
+	}
+	return xPos
 }

@@ -10,7 +10,9 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entry, targetPartSlot PartSlotKey, balanceConfig *BalanceConfig) bool {
+// StartCharge はチャージ状態を開始します。
+// BattleScene から各種ヘルパーを取得するように変更が必要です。
+func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entry, targetPartSlot PartSlotKey, bs *BattleScene) bool {
 	parts := PartsComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
 	part := parts.Map[partKey]
@@ -36,7 +38,7 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 	}
 
 	if target != nil {
-		// ★★★ ここから下の effects の部分を全面的に書き換える ★★★
+		balanceConfig := &bs.resources.Config.Balance
 		switch part.Category {
 		case CategoryMelee:
 			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
@@ -50,7 +52,6 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 			}
 		}
 		if part.Trait == TraitBerserk {
-			// Berserkは両方のデバフを付与
 			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
 				Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff,
 			})
@@ -60,17 +61,24 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 		}
 	}
 
-	legs := parts.Map[PartSlotLegs]
+	// Propulsion を PartInfoProvider から取得
 	propulsion := 1
-	if legs != nil && !legs.IsBroken {
-		propulsion = legs.Propulsion
+	if bs.partInfoProvider != nil { // nilチェックを追加
+		legs := parts.Map[PartSlotLegs]
+		if legs != nil && !legs.IsBroken { // 脚部パーツの存在と状態をチェック
+			propulsion = bs.partInfoProvider.GetOverallPropulsion(entry)
+		}
+	} else {
+		log.Println("Warning: StartCharge - bs.partInfoProvider is nil")
 	}
+
 
 	baseSeconds := float64(part.Charge)
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
 
+	balanceConfig := &bs.resources.Config.Balance
 	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
 	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
 	gauge := GaugeComponent.Get(entry)
@@ -78,19 +86,19 @@ func StartCharge(entry *donburi.Entry, partKey PartSlotKey, target *donburi.Entr
 	if gauge.TotalDuration < 1 {
 		gauge.TotalDuration = 1
 	}
-	ChangeState(entry, StateTypeCharging) // ★★★ 修正 ★★★
+	ChangeState(entry, StateTypeCharging)
 	return true
 }
 
-func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
-	part := PartsComponent.Get(entry).Map[ActionComponent.Get(entry).SelectedPartKey]
-	if part.Trait != TraitBerserk {
+// StartCooldown はクールダウン状態を開始します。
+func StartCooldown(entry *donburi.Entry, bs *BattleScene) {
+	actionComp := ActionComponent.Get(entry)
+	part := PartsComponent.Get(entry).Map[actionComp.SelectedPartKey]
+
+	if part != nil && part.Trait != TraitBerserk { // partのnilチェックを追加
 		ResetAllEffects(entry.World)
 	}
 
-	parts := PartsComponent.Get(entry)
-	action := ActionComponent.Get(entry)
-	part = parts.Map[action.SelectedPartKey]
 
 	baseSeconds := 1.0
 	if part != nil {
@@ -99,7 +107,7 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
-	totalTicks := (baseSeconds * 60.0) / balanceConfig.Time.GameSpeedMultiplier
+	totalTicks := (baseSeconds * 60.0) / bs.resources.Config.Balance.Time.GameSpeedMultiplier
 
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
@@ -108,100 +116,102 @@ func StartCooldown(entry *donburi.Entry, balanceConfig *BalanceConfig) {
 	}
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
-	ChangeState(entry, StateTypeCooldown) // ★★★ 修正 ★★★
+	ChangeState(entry, StateTypeCooldown)
 }
 
-// ★★★ ResetAllEffects を全面的に書き換える ★★★
+// ResetAllEffects は全ての効果をリセットします。
 func ResetAllEffects(world donburi.World) {
-	// 防御デバフを持つすべてのエンティティを探してコンポーネントを削除
 	query.NewQuery(filter.Contains(DefenseDebuffComponent)).Each(world, func(e *donburi.Entry) {
 		e.RemoveComponent(DefenseDebuffComponent)
 	})
-	// 回避デバフを持つすべてのエンティティを探してコンポーネントを削除
 	query.NewQuery(filter.Contains(EvasionDebuffComponent)).Each(world, func(e *donburi.Entry) {
 		e.RemoveComponent(EvasionDebuffComponent)
 	})
 }
 
+// ExecuteAction はエンティティの行動を実行します。
 func ExecuteAction(entry *donburi.Entry, bs *BattleScene) *donburi.Entry {
 	action := ActionComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
 	logComp := LogComponent.Get(entry)
-	part := PartsComponent.Get(entry).Map[action.SelectedPartKey]
-	config := &bs.resources.Config
+	actingPart := PartsComponent.Get(entry).Map[action.SelectedPartKey]
 
 	var targetEntry *donburi.Entry
-	var intendedTargetPart *Part
+	var intendedTargetPart *Part // 実際に狙うパーツ
 
-	if part.Category == CategoryShoot {
+	// --- ターゲット選択 ---
+	if actingPart.Category == CategoryShoot {
 		targetEntry = action.TargetEntity
 		if targetEntry == nil || targetEntry.HasComponent(BrokenStateComponent) {
 			logComp.LastActionLog = fmt.Sprintf("%sはターゲットを狙ったが、既に行動不能だった！", settings.Name)
 			return nil
 		}
+		// 射撃攻撃の場合、指定されたスロットのパーツを狙う
 		intendedTargetPart = PartsComponent.Get(targetEntry).Map[action.TargetPartSlot]
 		if intendedTargetPart == nil || intendedTargetPart.IsBroken {
 			logComp.LastActionLog = fmt.Sprintf("%sは%sを狙ったが、パーツは既に破壊されていた！", settings.Name, action.TargetPartSlot)
 			return nil
 		}
-	} else if part.Category == CategoryMelee {
-		closestEnemy := findClosestEnemy(bs, entry)
+	} else if actingPart.Category == CategoryMelee {
+		closestEnemy := bs.targetSelector.FindClosestEnemy(entry)
 		if closestEnemy == nil {
 			logComp.LastActionLog = fmt.Sprintf("%sは攻撃しようとしたが、相手がいなかった。", settings.Name)
 			return nil
 		}
 		targetEntry = closestEnemy
-		intendedTargetPart = SelectRandomPartToDamage(targetEntry)
-		if intendedTargetPart == nil {
+		// 格闘攻撃の場合、ランダムなパーツを狙う
+		intendedTargetPart = bs.targetSelector.SelectRandomPartToDamage(targetEntry)
+		if intendedTargetPart == nil { // 攻撃できるパーツがない
 			logComp.LastActionLog = fmt.Sprintf("%sは%sを狙ったが、攻撃できる部位がなかった！", settings.Name, SettingsComponent.Get(targetEntry).Name)
 			return nil
 		}
 	} else {
-		logComp.LastActionLog = fmt.Sprintf("%sは行動に失敗した。", settings.Name)
+		logComp.LastActionLog = fmt.Sprintf("%sは行動 '%s' に失敗した（未対応カテゴリ）。", settings.Name, actingPart.Category)
 		return nil
 	}
 
-	balanceConf := &config.Balance
-
-	if !CalculateHit(entry, targetEntry, part, balanceConf) {
-		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, nil, 0, false, false)
-		if part.Trait == TraitBerserk {
+	// --- 命中判定 ---
+	if !bs.hitCalculator.CalculateHit(entry, targetEntry, actingPart) {
+		logComp.LastActionLog = bs.damageCalculator.GenerateActionLog(entry, targetEntry, nil, 0, false, false)
+		if actingPart.Trait == TraitBerserk {
 			ResetAllEffects(bs.world)
 		}
-		return targetEntry
+		return targetEntry // 攻撃は外れたが、ターゲットは存在した
 	}
 
-	damage, isCritical := CalculateDamage(entry, part, balanceConf)
-	defensePart := SelectDefensePart(targetEntry)
+	// --- ダメージ計算 ---
+	damage, isCritical := bs.damageCalculator.CalculateDamage(entry, actingPart)
+	originalDamage := damage // 防御前のダメージを記録
 
-	if defensePart != nil && CalculateDefense(entry, targetEntry, defensePart, balanceConf) {
-		finalDamage := damage - defensePart.Defense
-		ApplyDamage(targetEntry, defensePart, finalDamage)
-		logComp.LastActionLog = GenerateActionLogDefense(entry, targetEntry, defensePart, finalDamage, isCritical)
+	// --- 防御判定とダメージ適用 ---
+	defensePart := bs.targetSelector.SelectDefensePart(targetEntry)
+	damageDealt := damage
+
+	if defensePart != nil && bs.hitCalculator.CalculateDefense(targetEntry, defensePart) {
+		// 防御成功
+		finalDamageAfterDefense := damage - defensePart.Defense
+		if finalDamageAfterDefense < 0 {
+			finalDamageAfterDefense = 0
+		}
+		damageDealt = finalDamageAfterDefense
+		bs.damageCalculator.ApplyDamage(targetEntry, defensePart, finalDamageAfterDefense)
+		logComp.LastActionLog = bs.damageCalculator.GenerateActionLogDefense(targetEntry, defensePart, finalDamageAfterDefense, originalDamage, isCritical)
 	} else {
-		ApplyDamage(targetEntry, intendedTargetPart, damage)
-		logComp.LastActionLog = GenerateActionLog(entry, targetEntry, intendedTargetPart, damage, isCritical, true)
+		// 防御失敗または防御パーツなし
+		bs.damageCalculator.ApplyDamage(targetEntry, intendedTargetPart, damage)
+		logComp.LastActionLog = bs.damageCalculator.GenerateActionLog(entry, targetEntry, intendedTargetPart, damage, isCritical, true)
 	}
 
-	if part.Trait == TraitBerserk {
+
+	if actingPart.Trait == TraitBerserk {
 		ResetAllEffects(bs.world)
 	}
 
 	return targetEntry
 }
 
-func GenerateActionLogDefense(attacker, target *donburi.Entry, defensePart *Part, damage int, isCritical bool) string {
-	targetSettings := SettingsComponent.Get(target)
-	logMsg := fmt.Sprintf("%sは%sで防御し、%dダメージに抑えた！", targetSettings.Name, defensePart.PartName, damage)
-	if isCritical {
-		logMsg = fmt.Sprintf("%sは%sで防御！クリティカルヒットを%dダメージに抑えた！", targetSettings.Name, defensePart.PartName, damage)
-	}
-	if defensePart.IsBroken {
-		logMsg += " しかし、パーツは破壊された！"
-	}
-	return logMsg
-}
 
+// SystemUpdateProgress はチャージとクールダウンのゲージ進行を更新します。
 func SystemUpdateProgress(bs *BattleScene) {
 	query.NewQuery(filter.Or(
 		filter.Contains(ChargingStateComponent),
@@ -212,31 +222,44 @@ func SystemUpdateProgress(bs *BattleScene) {
 		if gauge.TotalDuration > 0 {
 			gauge.CurrentGauge = (gauge.ProgressCounter / gauge.TotalDuration) * 100
 		} else {
-			gauge.CurrentGauge = 100
+			gauge.CurrentGauge = 100 // TotalDurationが0なら即完了
 		}
+
 		if gauge.ProgressCounter >= gauge.TotalDuration {
 			if entry.HasComponent(ChargingStateComponent) {
-				ChangeState(entry, StateTypeReady) // ★★★ 修正 ★★★
+				ChangeState(entry, StateTypeReady)
 				bs.actionQueue = append(bs.actionQueue, entry)
 				log.Printf("%s のチャージが完了。実行キューに追加。", SettingsComponent.Get(entry).Name)
 			} else if entry.HasComponent(CooldownStateComponent) {
-				ChangeState(entry, StateTypeIdle) // ★★★ 修正 ★★★
-				part := PartsComponent.Get(entry).Map[ActionComponent.Get(entry).SelectedPartKey]
-				if part != nil && part.Trait == TraitBerserk {
-					ResetAllEffects(bs.world)
+				ChangeState(entry, StateTypeIdle)
+				// バーサーク特性の場合、クールダウン終了時に効果をリセット
+				actionComp := ActionComponent.Get(entry)
+				if actionComp.SelectedPartKey != "" { // 選択パーツキーが存在するか確認
+					part := PartsComponent.Get(entry).Map[actionComp.SelectedPartKey]
+					if part != nil && part.Trait == TraitBerserk { // partのnilチェックを追加
+						ResetAllEffects(bs.world)
+					}
 				}
 			}
 		}
 	})
 }
 
+// SystemProcessReadyQueue は行動準備完了キューを処理します。
 func SystemProcessReadyQueue(bs *BattleScene) {
 	if len(bs.actionQueue) == 0 {
 		return
 	}
+
+	// 行動順序を推進力に基づいてソート
 	sort.SliceStable(bs.actionQueue, func(i, j int) bool {
-		propI := GetOverallPropulsion(bs.actionQueue[i])
-		propJ := GetOverallPropulsion(bs.actionQueue[j])
+		// nilチェックの追加
+		if bs.partInfoProvider == nil {
+			log.Println("Warning: SystemProcessReadyQueue - bs.partInfoProvider is nil, using default propulsion.")
+			return false // または他のデフォルト比較
+		}
+		propI := bs.partInfoProvider.GetOverallPropulsion(bs.actionQueue[i])
+		propJ := bs.partInfoProvider.GetOverallPropulsion(bs.actionQueue[j])
 		return propI > propJ
 	})
 
@@ -245,48 +268,61 @@ func SystemProcessReadyQueue(bs *BattleScene) {
 		bs.targetedEntity = nil
 
 		actingEntry := bs.actionQueue[0]
-		bs.actionQueue = bs.actionQueue[1:]
+		bs.actionQueue = bs.actionQueue[1:] // キューから取り出し
 
-		finalTarget := ExecuteAction(actingEntry, bs)
+		finalTarget := ExecuteAction(actingEntry, bs) // ExecuteAction に bs を渡す
 
 		if finalTarget != nil {
 			bs.attackingEntity = actingEntry
 			bs.targetedEntity = finalTarget
 		}
 
+		// メッセージ表示とコールバックの設定
 		bs.enqueueMessage(LogComponent.Get(actingEntry).LastActionLog, func() {
 			if actingEntry.Valid() && !actingEntry.HasComponent(BrokenStateComponent) {
-				StartCooldown(actingEntry, &bs.resources.Config.Balance)
+				StartCooldown(actingEntry, bs) // StartCooldown に bs を渡す
 			}
 		})
 	}
 }
 
+// SystemProcessIdleMedarots は待機状態のメダロットの行動選択を処理します。
 func SystemProcessIdleMedarots(bs *BattleScene) {
 	if bs.playerMedarotToAct != nil || bs.state != StatePlaying {
-		return
+		return // プレイヤー行動選択中、またはゲームプレイ中以外は処理しない
 	}
+
+	// AI制御のメダロットの行動選択
 	query.NewQuery(filter.And(
 		filter.Contains(IdleStateComponent),
-		filter.Not(filter.Contains(PlayerControlComponent)),
+		filter.Not(filter.Contains(PlayerControlComponent)), // プレイヤー制御でない
 	)).Each(bs.world, func(entry *donburi.Entry) {
-		aiSelectAction(bs, entry)
+		// aiSelectAction は bs を引数に取るように変更される想定
+		aiSelectAction(bs, entry) // ai.go の aiSelectAction を呼び出す
 	})
 
+	// プレイヤー制御のメダロットを行動選択状態へ
 	query.NewQuery(filter.And(
 		filter.Contains(PlayerControlComponent),
 		filter.Contains(IdleStateComponent),
 	)).Each(bs.world, func(entry *donburi.Entry) {
 		bs.playerMedarotToAct = entry
 		bs.state = StatePlayerActionSelect
-		return
+		// 複数のプレイヤー機体が同時にIdleになる場合、Eachは複数回呼ばれるが、
+		// playerMedarotToAct が設定された時点でループを抜けるべき。
+		// ただし、donburi の Each は途中で抜けられないため、このままだと最後にIdleになった機体が選択される。
+		// 設計上、一度にプレイヤーが操作するのは1体なので、現状は問題ない想定。
+		return // このreturnはEachのコールバックから抜けるだけで、クエリのループは続く
 	})
 }
 
+// SystemCheckGameEnd はゲーム終了条件をチェックします。
 func SystemCheckGameEnd(bs *BattleScene) {
 	if bs.state == StateGameOver {
 		return
 	}
+
+	// FindLeader はグローバル関数 (ecs_setup.go)
 	team1Leader := FindLeader(bs.world, Team1)
 	team2Leader := FindLeader(bs.world, Team2)
 
@@ -311,7 +347,7 @@ func SystemCheckGameEnd(bs *BattleScene) {
 		if team1Leader != nil {
 			gameOverMsg = fmt.Sprintf("%sが機能停止！ チーム2の勝利！", SettingsComponent.Get(team1Leader).Name)
 		} else {
-			gameOverMsg = "チーム1のリーダー不在！ チーム2の勝利！"
+			gameOverMsg = "チーム1のリーダー不在か全滅！ チーム2の勝利！"
 		}
 		bs.enqueueMessage(gameOverMsg, nil)
 	} else if team2Leader == nil || PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken || team1FuncCount == 0 {
@@ -320,7 +356,7 @@ func SystemCheckGameEnd(bs *BattleScene) {
 		if team2Leader != nil {
 			gameOverMsg = fmt.Sprintf("%sが機能停止！ チーム1の勝利！", SettingsComponent.Get(team2Leader).Name)
 		} else {
-			gameOverMsg = "チーム2のリーダー不在！ チーム1の勝利！"
+			gameOverMsg = "チーム2のリーダー不在か全滅！ チーム1の勝利！"
 		}
 		bs.enqueueMessage(gameOverMsg, nil)
 	}

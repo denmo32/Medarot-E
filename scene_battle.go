@@ -27,6 +27,12 @@ type BattleScene struct {
 	currentTarget       *donburi.Entry
 	attackingEntity     *donburi.Entry
 	targetedEntity      *donburi.Entry
+
+	// リファクタリングで追加されたヘルパー
+	damageCalculator *DamageCalculator
+	hitCalculator    *HitCalculator
+	targetSelector   *TargetSelector
+	partInfoProvider *PartInfoProvider
 }
 
 // NewBattleScene は新しい戦闘シーンを初期化します
@@ -45,10 +51,40 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		attackingEntity:    nil,
 		targetedEntity:     nil,
 		currentTarget:      nil,
+		// ヘルパーは後で初期化
 	}
 
+	// ヘルパー構造体の初期化
+	bs.partInfoProvider = NewPartInfoProvider(bs.world, &bs.resources.Config)
+	bs.damageCalculator = NewDamageCalculator(bs.world, &bs.resources.Config)
+	bs.hitCalculator = NewHitCalculator(bs.world, &bs.resources.Config)
+	bs.targetSelector = NewTargetSelector(bs.world, &bs.resources.Config)
+
+	// 依存性の注入
+	// DamageCalculatorへの依存性設定
+	if bs.damageCalculator != nil && bs.partInfoProvider != nil {
+		bs.damageCalculator.SetPartInfoProvider(bs.partInfoProvider)
+	} else {
+		fmt.Println("Error: DamageCalculator or PartInfoProvider is nil during NewBattleScene setup.")
+	}
+
+	// HitCalculatorへの依存性設定
+	if bs.hitCalculator != nil && bs.partInfoProvider != nil {
+		bs.hitCalculator.SetPartInfoProvider(bs.partInfoProvider)
+	} else {
+		fmt.Println("Error: HitCalculator or PartInfoProvider is nil during NewBattleScene setup.")
+	}
+
+	// TargetSelectorへの依存性設定
+	if bs.targetSelector != nil && bs.partInfoProvider != nil {
+		bs.targetSelector.SetPartInfoProvider(bs.partInfoProvider)
+	} else {
+		fmt.Println("Error: TargetSelector or PartInfoProvider is nil during NewBattleScene setup.")
+	}
+
+
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
-	bs.ui = NewUI(bs)
+	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも良い
 
 	return bs
 }
