@@ -56,8 +56,8 @@ func (g *Game) changeScene(nextType SceneType) {
 	case SceneTypeBattle:
 		g.currentScene = NewBattleScene(&g.resources)
 	case SceneTypeCustomize:
-		// 今回は「未実装」メッセージを表示するシーンに遷移
-		g.currentScene = NewPlaceholderScene(&g.resources, "Customize Scene is under construction.")
+		// ★★★ この行を追加 ★★★
+		g.currentScene = NewCustomizeScene(&g.resources)
 	}
 }
 

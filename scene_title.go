@@ -68,6 +68,7 @@ func NewTitleScene(res *SharedResources) *TitleScene {
 		widget.ButtonOpts.Text("Customize", res.Font, buttonTextColor),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(10)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			// ★★★ この行を修正 ★★★
 			t.nextScene = SceneTypeCustomize
 		}),
 	)

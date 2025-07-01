@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-// ... (parseInt, parseBool は変更なし) ...
+// parseInt, parseBool, LoadMedals, LoadParts, LoadMedarotLoadouts, LoadAllGameData
+// ... (既存のLoad系関数は変更なし) ...
 func parseInt(s string, defaultValue int) int {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -26,16 +27,14 @@ func parseBool(s string) bool {
 	return strings.ToLower(strings.TrimSpace(s)) == "true"
 }
 
-// LoadMedals - medals.csv の列構造に合わせて修正 (ID, Name, Personality, ...)
 func LoadMedals(filePath string) ([]Medal, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-
 	reader := csv.NewReader(file)
-	reader.Read() // Skip header
+	reader.Read()
 
 	var medals []Medal
 	for {
@@ -46,83 +45,67 @@ func LoadMedals(filePath string) ([]Medal, error) {
 		if err != nil {
 			continue
 		}
-
-		// medals.csv の列構造に合わせて修正 (ID, Name, Personality, ...)
 		medals = append(medals, Medal{
 			ID:          record[0],
 			Name:        record[1],
-			Personality: record[2], // 新しいフィールドを追加
-			// skill_shoot, skill_fightを考慮して、ここでは単純にSkillLevelを固定値にするか、
-			// またはCSVに合わせてMedal構造体自体を修正する必要があります。
-			// 今回は skill_fight を代表値として使います。
-			SkillLevel: parseInt(record[6], 1), // "skill_fight" はインデックス6
+			Personality: record[2],
+			SkillLevel:  parseInt(record[6], 1),
 		})
 	}
-
 	return medals, nil
 }
 
-// [FIXED] LoadParts のインデックスをCSVの列に完全に合わせる
 func LoadParts(filePath string) (map[string]*Part, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-
 	reader := csv.NewReader(file)
-	reader.Read() // Skip header
+	reader.Read()
 
 	partsMap := make(map[string]*Part)
-
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
-		if err != nil || len(record) < 14 { // 列数は14
+		if err != nil || len(record) < 14 {
 			continue
 		}
-
-		// 正しいインデックスでArmorを読み込む
 		armor := parseInt(record[6], 1)
 		part := &Part{
-			ID:       record[0],
-			PartName: record[1],
-			Type:     PartType(record[2]),
-			Category: PartCategory(record[3]),
-			Trait:    Trait(record[4]),
-			// weapon_type (record[5]) は現在Part構造体にないので読み飛ばす
+			ID:         record[0],
+			PartName:   record[1],
+			Type:       PartType(record[2]),
+			Category:   PartCategory(record[3]),
+			Trait:      Trait(record[4]),
 			Armor:      armor,
 			MaxArmor:   armor,
-			Power:      parseInt(record[7], 0),  // power はインデックス7
-			Charge:     parseInt(record[8], 1),  // charge はインデックス8
-			Cooldown:   parseInt(record[9], 1),  // cooldown はインデックス9
-			Defense:    parseInt(record[10], 0), // defense はインデックス10
-			Accuracy:   parseInt(record[11], 0), // accuracy はインデックス11
-			Mobility:   parseInt(record[12], 0), // mobility はインデックス12
-			Propulsion: parseInt(record[13], 0), // propulsion はインデックス13
+			Power:      parseInt(record[7], 0),
+			Charge:     parseInt(record[8], 1),
+			Cooldown:   parseInt(record[9], 1),
+			Defense:    parseInt(record[10], 0),
+			Accuracy:   parseInt(record[11], 0),
+			Mobility:   parseInt(record[12], 0),
+			Propulsion: parseInt(record[13], 0),
 			IsBroken:   false,
 		}
 		partsMap[part.ID] = part
 	}
-
 	return partsMap, nil
 }
 
-// ... (LoadMedarotLoadouts, LoadAllGameDataは変更なし) ...
 func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-
 	reader := csv.NewReader(file)
-	reader.Read() // Skip header
+	reader.Read()
 
 	var medarots []MedarotData
-
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -131,7 +114,6 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 		if err != nil || len(record) < 10 {
 			continue
 		}
-
 		medarot := MedarotData{
 			ID:         record[0],
 			Name:       record[1],
@@ -146,7 +128,6 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 		}
 		medarots = append(medarots, medarot)
 	}
-
 	return medarots, nil
 }
 
@@ -170,4 +151,45 @@ func LoadAllGameData() (*GameData, error) {
 	}
 
 	return gameData, nil
+}
+
+// ★★★ ここから下を新しく追加 ★★★
+
+// SaveMedarotLoadouts は、現在のメダロットの構成をCSVファイルに保存します。
+func SaveMedarotLoadouts(filePath string, medarots []MedarotData) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// ヘッダー行を書き込む
+	header := []string{"id", "name", "team", "is_leader", "draw_index", "medal_id", "head_id", "r_arm_id", "l_arm_id", "legs_id"}
+	if err := writer.Write(header); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+
+	// 各メダロットのデータを書き込む
+	for _, medarot := range medarots {
+		record := []string{
+			medarot.ID,
+			medarot.Name,
+			strconv.Itoa(int(medarot.Team)),
+			strconv.FormatBool(medarot.IsLeader),
+			strconv.Itoa(medarot.DrawIndex),
+			medarot.MedalID,
+			medarot.HeadID,
+			medarot.RightArmID,
+			medarot.LeftArmID,
+			medarot.LegsID,
+		}
+		if err := writer.Write(record); err != nil {
+			return fmt.Errorf("failed to write record for %s: %w", medarot.Name, err)
+		}
+	}
+
+	return nil
 }
