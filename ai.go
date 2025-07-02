@@ -97,12 +97,13 @@ func aiSelectAction(
 }
 
 type targetablePart struct {
-	entity *donburi.Entry
-	part   *Part
-	slot   PartSlotKey
+	entity   *donburi.Entry
+	partInst *PartInstanceData // Changed from part *Part to partInst *PartInstanceData
+	partDef  *PartDefinition   // Also store definition for easy access to static stats
+	slot     PartSlotKey
 }
 
-// getAllTargetableParts はAIがターゲット可能な全パーツのリストを返します。
+// getAllTargetableParts はAIがターゲット可能な全パーツのインスタンスと定義のリストを返します。
 func getAllTargetableParts(
 	world donburi.World, // world を追加 (未使用だが一貫性のため)
 	actingEntry *donburi.Entry,
@@ -119,20 +120,28 @@ func getAllTargetableParts(
 	candidates := targetSelector.GetTargetableEnemies(actingEntry)
 
 	for _, enemyEntry := range candidates {
-		partsMap := PartsComponent.Get(enemyEntry).Map
-		for slotKey, part := range partsMap {
-			// 破壊されているパーツはターゲットにしない
-			if part.IsBroken {
+		partsComp := PartsComponent.Get(enemyEntry)
+		if partsComp == nil {
+			continue
+		}
+		for slotKey, partInst := range partsComp.Map {
+			if partInst.IsBroken { // Check instance for broken state
 				continue
 			}
-			// includeHeadがfalseの場合、頭部パーツも除外
-			if !includeHead && slotKey == PartSlotHead {
+			// includeHeadがfalseの場合、頭部パーツも除外 (これはパーツ種別なのでDefinitionから)
+			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+			if !defFound {
+				log.Printf("Warning: getAllTargetableParts - PartDefinition %s not found.", partInst.DefinitionID)
+				continue
+			}
+			if !includeHead && partDef.Type == PartTypeHead { // Compare with PartTypeHead from definition
 				continue
 			}
 			allParts = append(allParts, targetablePart{
-				entity: enemyEntry,
-				part:   part,
-				slot:   slotKey,
+				entity:   enemyEntry,
+				partInst: partInst,
+				partDef:  partDef,
+				slot:     slotKey,
 			})
 		}
 	}
@@ -153,9 +162,9 @@ func selectCrusherTarget(
 		return nil, ""
 	}
 
-	// 装甲が最も高いパーツを優先
+	// 装甲が最も高いパーツを優先 (現在の耐久力で比較)
 	sort.Slice(targetParts, func(i, j int) bool {
-		return targetParts[i].part.Armor > targetParts[j].part.Armor
+		return targetParts[i].partInst.CurrentArmor > targetParts[j].partInst.CurrentArmor
 	})
 
 	selected := targetParts[0]
@@ -176,9 +185,9 @@ func selectHunterTarget(
 		return nil, ""
 	}
 
-	// 装甲が最も低いパーツを優先
+	// 装甲が最も低いパーツを優先 (現在の耐久力で比較)
 	sort.Slice(targetParts, func(i, j int) bool {
-		return targetParts[i].part.Armor < targetParts[j].part.Armor
+		return targetParts[i].partInst.CurrentArmor < targetParts[j].partInst.CurrentArmor
 	})
 
 	selected := targetParts[0]
@@ -238,7 +247,6 @@ func SelectFirstAvailablePart(
 	targetSelector *TargetSelector,
 ) (PartSlotKey, *PartDefinition) { // Return PartDefinition
 	if len(availableParts) > 0 {
-		// availableParts now holds AvailablePart which has PartDef (*PartDefinition)
 		return availableParts[0].Slot, availableParts[0].PartDef
 	}
 	return "", nil // No part selected
@@ -255,15 +263,15 @@ func SelectHighestPowerPart(
 	if len(availableParts) == 0 {
 		return "", nil
 	}
-	bestPartDef := availableParts[0].PartDef
-	bestSlot := availableParts[0].Slot
-	for _, ap := range availableParts[1:] {
-		if ap.PartDef.Power > bestPartDef.Power {
-			bestPartDef = ap.PartDef
-			bestSlot = ap.Slot
+	currentBestPartDef := availableParts[0].PartDef
+	currentBestSlot := availableParts[0].Slot
+	for _, ap := range availableParts[1:] { // ap is AvailablePart
+		if ap.PartDef.Power > currentBestPartDef.Power {
+			currentBestPartDef = ap.PartDef
+			currentBestSlot = ap.Slot
 		}
 	}
-	return bestSlot, bestPartDef
+	return currentBestSlot, currentBestPartDef
 }
 
 // SelectFastestChargePart selects the part with the lowest charge time.
@@ -277,13 +285,13 @@ func SelectFastestChargePart(
 	if len(availableParts) == 0 {
 		return "", nil
 	}
-	bestPartDef := availableParts[0].PartDef
-	bestSlot := availableParts[0].Slot
-	for _, ap := range availableParts[1:] {
-		if ap.PartDef.Charge < bestPartDef.Charge { // Lower charge time is faster
-			bestPartDef = ap.PartDef
-			bestSlot = ap.Slot
+	currentBestPartDef := availableParts[0].PartDef
+	currentBestSlot := availableParts[0].Slot
+	for _, ap := range availableParts[1:] { // ap is AvailablePart
+		if ap.PartDef.Charge < currentBestPartDef.Charge { // Lower charge time is faster
+			currentBestPartDef = ap.PartDef
+			currentBestSlot = ap.Slot
 		}
 	}
-	return bestSlot, bestPartDef
+	return currentBestSlot, currentBestPartDef
 }

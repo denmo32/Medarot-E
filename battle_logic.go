@@ -12,12 +12,6 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// AvailablePart は利用可能なパーツとそのスロットキーを保持します。
-type AvailablePart struct {
-	Part *Part
-	Slot PartSlotKey
-}
-
 // --- DamageCalculator ---
 
 // DamageCalculator はダメージ計算に関連するロジックを担当します。
@@ -37,19 +31,26 @@ func (dc *DamageCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
 	dc.partInfoProvider = pip
 }
 
-// ApplyDamage はパーツにダメージを適用し、メダロットの状態を更新します。
-func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, part *Part, damage int) {
+// ApplyDamage はパーツインスタンスにダメージを適用し、メダロットの状態を更新します。
+func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInstanceData, damage int) {
 	if damage < 0 {
 		damage = 0
 	}
-	part.Armor -= damage
-	if part.Armor <= 0 {
-		part.Armor = 0
-		part.IsBroken = true
+	partInst.CurrentArmor -= damage
+	if partInst.CurrentArmor <= 0 {
+		partInst.CurrentArmor = 0
+		partInst.IsBroken = true
 		settings := SettingsComponent.Get(entry)
-		log.Printf("%s の %s が破壊された！", settings.Name, part.PartName)
-		if part.Type == PartTypeHead {
-			ChangeState(entry, StateTypeBroken) // systems.go にある ChangeState を呼び出す
+		// Get PartDefinition for logging PartName
+		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partNameForLog := "(不明パーツ)"
+		if defFound {
+			partNameForLog = partDef.PartName
+		}
+		log.Printf("%s の %s (%s) が破壊された！", settings.Name, partNameForLog, partInst.DefinitionID)
+
+		if defFound && partDef.Type == PartTypeHead { // Check Type from PartDefinition
+			ChangeState(entry, StateTypeBroken)
 		}
 	}
 }
@@ -264,40 +265,6 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 		log.Println("Error: HitCalculator.partInfoProvider is not initialized for target evasion")
 	} else {
 		// GetOverallMobility should use PartDefinition for calculation
-		baseEvasion = float64(hc.partInfoProvider.GetOverallMobility(target)) + float64(targetStability)*hc.config.Balance.Factors.EvasionStabilityFactor
-	}
-
-	finalEvasion := baseEvasion
-	if target.HasComponent(EvasionDebuffComponent) {
-		debuff := EvasionDebuffComponent.Get(target)
-		finalEvasion *= debuff.Multiplier
-	}
-
-	chance := 50 + baseAccuracy - finalEvasion
-	if chance < 5 {
-		chance = 5
-	}
-	if chance > 95 {
-		chance = 95
-	}
-
-	roll := rand.Intn(100)
-	log.Printf("命中判定: %s -> %s | 命中率: %.1f (%f vs %f), ロール: %d", SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, baseAccuracy, finalEvasion, roll)
-	return roll < int(chance)
-}
-
-// CalculateDefense は防御の成否を判定します。
-func (hc *HitCalculator) CalculateDefense(target *donburi.Entry, defensePart *Part) bool {
-	targetLegs := PartsComponent.Get(target).Map[PartSlotLegs]
-	targetStability := 0
-	if targetLegs != nil {
-		targetStability = targetLegs.Stability
-	}
-
-	baseEvasion := 0.0
-	if hc.partInfoProvider == nil {
-		log.Println("Error: HitCalculator.partInfoProvider is not initialized")
-	} else {
 		baseEvasion = float64(hc.partInfoProvider.GetOverallMobility(target)) + float64(targetStability)*hc.config.Balance.Factors.EvasionStabilityFactor
 	}
 
