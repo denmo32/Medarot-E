@@ -26,7 +26,7 @@ func loadFont() (text.Face, error) {
 		Source: s,
 		Size:   12,
 	}
-	log.Println("Custom font (text/v2) loaded successfully.")
+	log.Println("カスタムフォント（text/v2）の読み込みに成功しました。")
 	return face, nil
 }
 
@@ -35,9 +35,9 @@ func main() {
 
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Printf("Failed to get current working directory: %v", err)
+		log.Printf("カレントワーキングディレクトリの取得に失敗しました: %v", err)
 	} else {
-		log.Printf("Current working directory: %s", wd)
+		log.Printf("カレントワーキングディレクトリ: %s", wd)
 	}
 
 	fontFace, err := loadFont()
@@ -45,33 +45,29 @@ func main() {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	// Load static definitions into GameDataManager
+	// 静的ゲームデータをGameDataManagerに読み込みます。
 	if err := LoadAllStaticGameData(); err != nil {
-		log.Fatalf("Failed to load static game data: %v", err)
+		log.Fatalf("静的ゲームデータの読み込みに失敗しました: %v", err)
 	}
 
-	// Load medarot loadouts
+	// メダロットのロードアウトを読み込みます。
 	medarotLoadouts, err := LoadMedarotLoadouts("data/medarots.csv")
 	if err != nil {
-		log.Fatalf("Failed to load medarot loadouts: %v", err)
+		log.Fatalf("メダロットロードアウトの読み込みに失敗しました: %v", err)
 	}
 
-	// Prepare GameData struct (now only contains Medarots, or could be passed directly)
+	// GameData構造体を準備します。（現在はMedarotsのみを格納）
 	gameData := &GameData{
 		Medarots: medarotLoadouts,
 	}
-	// if gameData == nil { // This check might be less relevant if GameData is simplified
-	// 	log.Fatal("Game data is nil after loading.")
-	// }
 
 	config := LoadConfig()
 
-	// NewGame now expects a *GameData that might only contain Medarots,
-	// or its signature could be changed to accept []MedarotData directly.
-	// For now, assuming NewGame still takes *GameData.
+	// NewGameは*GameData（現在はMedarotsのみを格納）を期待します。
+	// 将来的には[]MedarotDataを直接受け取るようにシグネチャが変更される可能性があります。
 	game := NewGame(gameData, config, fontFace)
 	if game == nil {
-		log.Fatal("Failed to create new game instance.")
+		log.Fatal("新しいゲームインスタンスの作成に失敗しました。")
 	}
 
 	ebiten.SetWindowSize(config.UI.Screen.Width, config.UI.Screen.Height)

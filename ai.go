@@ -15,10 +15,9 @@ func aiSelectAction(
 	entry *donburi.Entry,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-	gameConfig *Config, // StartCharge が Config を必要とするため
+	gameConfig *Config,
 ) {
 	settings := SettingsComponent.Get(entry)
-	// medal := MedalComponent.Get(entry) // Removed: No longer used directly here for personality switch
 
 	if partInfoProvider == nil {
 		log.Printf("%s: AI行動選択エラー - PartInfoProviderが初期化されていません。", settings.Name)
@@ -33,7 +32,7 @@ func aiSelectAction(
 
 	// TODO: AIのパーツ選択ロジックをより高度化する（現在は常に最初のパーツを選択） -> Strategyパターンで対応
 	var slotKey PartSlotKey
-	var selectedPartDef *PartDefinition // Changed to selectedPartDef
+	var selectedPartDef *PartDefinition
 
 	foundPartSelectionStrategy := false
 	if entry.HasComponent(AIPartSelectionStrategyComponent) {
@@ -45,28 +44,28 @@ func aiSelectAction(
 	}
 
 	if !foundPartSelectionStrategy {
-		log.Printf("%s: AIエラー - AIPartSelectionStrategyComponentが見つからないか有効なStrategyがないため、デフォルトのパーツ選択(最初のパーツ)を使用。", settings.Name)
+		log.Printf("%s: AIエラー - AIPartSelectionStrategyComponentが見つからないか有効なStrategyがないため、デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
 		if len(availableParts) > 0 {
 			slotKey = availableParts[0].Slot
-			selectedPartDef = availableParts[0].PartDef // Use PartDef from AvailablePart
+			selectedPartDef = availableParts[0].PartDef
 		}
 	}
 
-	if selectedPartDef == nil { // Check selectedPartDef
+	if selectedPartDef == nil {
 		log.Printf("%s: AIは戦略に基づいて選択できるパーツがありませんでした。", settings.Name)
 		return
 	}
 
 	switch selectedPartDef.Category {
-	case CategoryShoot: // Use selectedPartDef.Category
+	case CategoryShoot:
 		var targetEntry *donburi.Entry
 		var targetPartSlot PartSlotKey
 
-		// Get targeting strategy from component
+		// コンポーネントからターゲティング戦略を取得
 		var strategyComp *TargetingStrategyComponentData
 		var found bool
-		if entry.HasComponent(TargetingStrategyComponent) { // Check if component exists
-			sComp := TargetingStrategyComponent.Get(entry) // Get the component
+		if entry.HasComponent(TargetingStrategyComponent) {
+			sComp := TargetingStrategyComponent.Get(entry)
 			if sComp.Strategy != nil {
 				strategyComp = sComp
 				found = true
@@ -75,32 +74,30 @@ func aiSelectAction(
 
 		if !found {
 			log.Printf("%s: AIエラー - TargetingStrategyComponentが見つからないか、Strategyがnilです。デフォルトのターゲット選択を使用します。", settings.Name)
-			targetEntry, targetPartSlot = selectLeaderPart(world, entry, targetSelector, partInfoProvider) // Fallback
+			targetEntry, targetPartSlot = selectLeaderPart(world, entry, targetSelector, partInfoProvider) // フォールバック
 		} else {
 			targetEntry, targetPartSlot = strategyComp.Strategy(world, entry, targetSelector, partInfoProvider)
 		}
 
 		if targetEntry == nil {
-			log.Printf("%s: AIは[SHOOT]の攻撃対象がいないため待機。", settings.Name)
+			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
 			return
 		}
-		// StartCharge のシグネチャ変更に対応
 		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, gameConfig, partInfoProvider)
 
-	case CategoryMelee: // Use selectedPartDef.Category
-		// StartCharge のシグネチャ変更に対応
+	case CategoryMelee:
 		StartCharge(entry, slotKey, nil, "", world, gameConfig, partInfoProvider)
 	default:
-		// Log with selectedPartDef.Category if it's not SHOOT or MELEE but still somehow selected
-		// Or if it's a category that doesn't lead to StartCharge (e.g. SUPPORT, DEFENSE if they had strategies)
+		// 選択されたパーツが射撃でも格闘でもない場合、またはStartChargeにつながらないカテゴリの場合のログ
+		// (例: サポート、防御カテゴリで戦略があった場合など)
 		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
 	}
 }
 
 type targetablePart struct {
 	entity   *donburi.Entry
-	partInst *PartInstanceData // Changed from part *Part to partInst *PartInstanceData
-	partDef  *PartDefinition   // Also store definition for easy access to static stats
+	partInst *PartInstanceData
+	partDef  *PartDefinition // 静的なステータスに簡単にアクセスできるように定義も格納
 	slot     PartSlotKey
 }
 
@@ -108,7 +105,7 @@ type targetablePart struct {
 func getAllTargetableParts(actingEntry *donburi.Entry, targetSelector *TargetSelector, includeHead bool) []targetablePart {
 	var allParts []targetablePart
 	if targetSelector == nil {
-		log.Println("Error: getAllTargetableParts - targetSelector is nil")
+		log.Println("エラー: getAllTargetableParts - targetSelectorがnilです。")
 		return allParts
 	}
 	// targetSelector.GetTargetableEnemies は world を引数に取るように変更される想定
@@ -121,16 +118,16 @@ func getAllTargetableParts(actingEntry *donburi.Entry, targetSelector *TargetSel
 			continue
 		}
 		for slotKey, partInst := range partsComp.Map {
-			if partInst.IsBroken { // Check instance for broken state
+			if partInst.IsBroken { // インスタンスの破損状態を確認
 				continue
 			}
 			// includeHeadがfalseの場合、頭部パーツも除外 (これはパーツ種別なのでDefinitionから)
 			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
-				log.Printf("Warning: getAllTargetableParts - PartDefinition %s not found.", partInst.DefinitionID)
+				log.Printf("警告: getAllTargetableParts - PartDefinition %s が見つかりません。", partInst.DefinitionID)
 				continue
 			}
-			if !includeHead && partDef.Type == PartTypeHead { // Compare with PartTypeHead from definition
+			if !includeHead && partDef.Type == PartTypeHead { // 定義のPartTypeHeadと比較
 				continue
 			}
 			allParts = append(allParts, targetablePart{
@@ -195,7 +192,7 @@ func selectRandomTargetPartAI(
 	world donburi.World,
 	actingEntry *donburi.Entry,
 	targetSelector *TargetSelector,
-	partInfoProvider *PartInfoProvider, // Added to match TargetingStrategyFunc, though not directly used here
+	partInfoProvider *PartInfoProvider, // TargetingStrategyFuncに合わせるため追加 (ここでは直接使用しない)
 ) (*donburi.Entry, PartSlotKey) {
 	allEnemyParts := getAllTargetableParts(actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	if len(allEnemyParts) == 0 {
@@ -213,7 +210,7 @@ func selectLeaderPart(
 	partInfoProvider *PartInfoProvider,
 ) (*donburi.Entry, PartSlotKey) {
 	if targetSelector == nil || partInfoProvider == nil {
-		log.Println("Error: selectLeaderPart - targetSelector or partInfoProvider is nil")
+		log.Println("エラー: selectLeaderPart - targetSelector または partInfoProvider がnilです。")
 		return selectRandomTargetPartAI(world, actingEntry, targetSelector, partInfoProvider) // フォールバック
 	}
 
@@ -232,36 +229,36 @@ func selectLeaderPart(
 	return selectRandomTargetPartAI(world, actingEntry, targetSelector, partInfoProvider)
 }
 
-// --- AI Part Selection Strategies ---
+// --- AIパーツ選択戦略 ---
 
-// SelectFirstAvailablePart is a simple strategy that selects the first available part.
+// SelectFirstAvailablePart は利用可能な最初のパーツを選択する単純な戦略です。
 func SelectFirstAvailablePart(
 	actingEntry *donburi.Entry,
 	availableParts []AvailablePart,
 	world donburi.World,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *PartDefinition) { // Return PartDefinition
+) (PartSlotKey, *PartDefinition) {
 	if len(availableParts) > 0 {
 		return availableParts[0].Slot, availableParts[0].PartDef
 	}
-	return "", nil // No part selected
+	return "", nil // 選択パーツなし
 }
 
-// SelectHighestPowerPart selects the part with the highest power among available parts.
+// SelectHighestPowerPart は利用可能なパーツの中で最も威力のあるパーツを選択します。
 func SelectHighestPowerPart(
 	actingEntry *donburi.Entry,
-	availableParts []AvailablePart, // This is []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey}
+	availableParts []AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *PartDefinition) { // Return PartDefinition
+) (PartSlotKey, *PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil
 	}
 	currentBestPartDef := availableParts[0].PartDef
 	currentBestSlot := availableParts[0].Slot
-	for _, ap := range availableParts[1:] { // ap is AvailablePart
+	for _, ap := range availableParts[1:] { // ap は AvailablePart です
 		if ap.PartDef.Power > currentBestPartDef.Power {
 			currentBestPartDef = ap.PartDef
 			currentBestSlot = ap.Slot
@@ -270,21 +267,21 @@ func SelectHighestPowerPart(
 	return currentBestSlot, currentBestPartDef
 }
 
-// SelectFastestChargePart selects the part with the lowest charge time.
+// SelectFastestChargePart はチャージ時間が最も短いパーツを選択します。
 func SelectFastestChargePart(
 	actingEntry *donburi.Entry,
-	availableParts []AvailablePart, // This is []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey}
+	availableParts []AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *PartDefinition) { // Return PartDefinition
+) (PartSlotKey, *PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil
 	}
 	currentBestPartDef := availableParts[0].PartDef
 	currentBestSlot := availableParts[0].Slot
-	for _, ap := range availableParts[1:] { // ap is AvailablePart
-		if ap.PartDef.Charge < currentBestPartDef.Charge { // Lower charge time is faster
+	for _, ap := range availableParts[1:] { // ap は AvailablePart です
+		if ap.PartDef.Charge < currentBestPartDef.Charge { // チャージ時間が短いほど速い
 			currentBestPartDef = ap.PartDef
 			currentBestSlot = ap.Slot
 		}

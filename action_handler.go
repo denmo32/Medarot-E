@@ -15,36 +15,37 @@ type HandlerTargetingResult struct {
 	LogMessage     string
 }
 
-// ActionHandler defines the interface for category-specific action processing.
+// ActionHandler はカテゴリ固有のアクション処理のためのインターフェースを定義します。
 type ActionHandler interface {
-	// ResolveTarget determines the target(s) for an action based on the category.
-	// actingEntry: The entity performing the action.
-	// world: The game world.
-	// actionComp: The ActionComponent of the acting entity, which might contain pre-selected target info (e.g., for player-controlled shoot).
-	// targetSelector: Helper for finding targets.
-	// Returns the chosen target entity and target part slot, or an error/log.
+	// ResolveTarget はカテゴリに基づいてアクションのターゲットを決定します。
+	// actingEntry: アクションを実行するエンティティ。
+	// world: ゲームワールド。
+	// actionComp: 実行エンティティのActionComponent。プレイヤー操作の射撃など、事前に選択されたターゲット情報を含む場合があります。
+	// targetSelector: ターゲットを見つけるためのヘルパー。
+	// PartInfoProvider: 一部のターゲットロジックで必要になる場合があります。
+	// 選択されたターゲットエンティティとターゲットパーツスロット、またはエラー/ログを返します。
 	ResolveTarget(
 		actingEntry *donburi.Entry,
 		world donburi.World,
 		actionComp *Action, // ActionComponent.Get(actingEntry)
 		targetSelector *TargetSelector,
-		partInfoProvider *PartInfoProvider, // May be needed for some target logic
+		partInfoProvider *PartInfoProvider, // 一部のターゲットロジックで必要になる場合があります
 	) HandlerTargetingResult
 
-	// CanExecute (オプション): 行動実行が可能かどうかの事前チェック
-	// (例: 射撃なら弾数があるか、など。今回はスコープ外とする可能性)
+	// CanExecute (オプション): 行動実行が可能かどうかの事前チェック。
+	// (例: 射撃なら弾数があるか、など。今回はスコープ外とする可能性あり)
 	// CanExecute(actingEntry *donburi.Entry, world donburi.World, actingPart *Part) bool
 
 	// Execute (オプション): カテゴリ固有の実行ロジックの主要部分。
 	// 多くのロジックは executeActionLogic に集約されているため、
-	// このメソッドは限定的な役割になるか、あるいは不要かもしれない。
-	// executeActionLogic がこのハンドラから情報を得る形にする。
-	// 現状では ResolveTarget に集中する。
+	// このメソッドは限定的な役割になるか、あるいは不要かもしれません。
+	// executeActionLogic がこのハンドラから情報を得る形にします。
+	// 現状では ResolveTarget に集中します。
 }
 
-// --- Concrete Handlers ---
+// --- 具体的なハンドラ ---
 
-// ShootActionHandler handles actions for SHOOT category parts.
+// ShootActionHandler は射撃カテゴリのパーツのアクションを処理します。
 type ShootActionHandler struct{}
 
 func (h *ShootActionHandler) ResolveTarget(
@@ -55,8 +56,8 @@ func (h *ShootActionHandler) ResolveTarget(
 	partInfoProvider *PartInfoProvider,
 ) HandlerTargetingResult {
 	settings := SettingsComponent.Get(actingEntry)
-	// For SHOOT, a target entity and part slot should typically be pre-selected
-	// (either by player or AI's initial targeting strategy).
+	// 射撃の場合、ターゲットエンティティとパーツスロットは通常、事前に選択されているべきです
+	// (プレイヤーまたはAIの初期ターゲティング戦略によって)。
 	if actionComp.TargetEntity == nil || actionComp.TargetPartSlot == "" {
 		return HandlerTargetingResult{Success: false, LogMessage: settings.Name + "は射撃ターゲットが未選択です。"}
 	}
@@ -79,13 +80,13 @@ func (h *ShootActionHandler) ResolveTarget(
 	}
 }
 
-// MeleeActionHandler handles actions for MELEE (FIGHT) category parts.
+// MeleeActionHandler は格闘カテゴリのパーツのアクションを処理します。
 type MeleeActionHandler struct{}
 
 func (h *MeleeActionHandler) ResolveTarget(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	actionComp *Action, // Melee might ignore pre-selected target in ActionComponent
+	actionComp *Action, // 格闘はActionComponentで事前に選択されたターゲットを無視する場合があります
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 ) HandlerTargetingResult {
@@ -94,7 +95,7 @@ func (h *MeleeActionHandler) ResolveTarget(
 	if closestEnemy == nil {
 		return HandlerTargetingResult{Success: false, LogMessage: settings.Name + "は格闘攻撃しようとしたが、相手がいなかった。"}
 	}
-	if closestEnemy.HasComponent(BrokenStateComponent) { // Should be filtered by FindClosestEnemy, but double check
+	if closestEnemy.HasComponent(BrokenStateComponent) { // FindClosestEnemyでフィルタリングされるべきだが、念のため確認
 		return HandlerTargetingResult{TargetEntity: closestEnemy, Success: false, LogMessage: settings.Name + "はターゲット(" + SettingsComponent.Get(closestEnemy).Name + ")を狙ったが、既に行動不能だった！"}
 	}
 
@@ -102,10 +103,10 @@ func (h *MeleeActionHandler) ResolveTarget(
 	if targetPart == nil {
 		return HandlerTargetingResult{TargetEntity: closestEnemy, Success: false, LogMessage: settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "を狙ったが、攻撃できる部位がなかった！"}
 	}
-	// FindPartSlot is needed to get the PartSlotKey from the Part struct
+	// Part構造体からPartSlotKeyを取得するにはFindPartSlotが必要です
 	targetPartSlot := partInfoProvider.FindPartSlot(closestEnemy, targetPart)
 	if targetPartSlot == "" {
-		// This should ideally not happen if SelectRandomPartToDamage returns a valid part from the entity
+		// SelectRandomPartToDamageがエンティティから有効なパーツを返せば、これは理想的には起こりません
 		return HandlerTargetingResult{TargetEntity: closestEnemy, Success: false, LogMessage: settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。"}
 	}
 
@@ -117,28 +118,22 @@ func (h *MeleeActionHandler) ResolveTarget(
 	}
 }
 
-// Global instances of handlers (or a factory/registry could be used)
+// ハンドラのグローバルインスタンス（またはファクトリ/レジストリを使用することもできます）
 var (
 	shootHandler = &ShootActionHandler{}
 	meleeHandler = &MeleeActionHandler{}
-	// supportHandler = &SupportActionHandler{} // Example for future
-	// defenseHandler = &DefenseActionHandler{} // Example for future
 )
 
-// GetActionHandlerForCategory returns an appropriate ActionHandler based on the part category.
+// GetActionHandlerForCategory はパーツカテゴリに基づいて適切なActionHandlerを返します。
 func GetActionHandlerForCategory(category PartCategory) ActionHandler {
 	switch category {
 	case CategoryShoot:
 		return shootHandler
 	case CategoryMelee:
 		return meleeHandler
-	// case CategorySupport:
-	//	return supportHandler
-	// case CategoryDefense:
-	//	return defenseHandler
 	default:
-		// Return a default handler or nil if unhandled
-		// For now, returning nil means executeActionLogic needs a fallback or error handling
+		// 未処理の場合はデフォルトハンドラまたはnilを返します
+		// 現状、nilを返すとexecuteActionLogicでフォールバックまたはエラー処理が必要になります
 		return nil
 	}
 }

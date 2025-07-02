@@ -18,7 +18,6 @@ func LoadConfig() Config {
 				PropulsionEffectRate: 0.01,
 				GameSpeedMultiplier:  50,
 			},
-			// ★★★ この部分を正しく設定 ★★★
 			Factors: struct {
 				AccuracyStabilityFactor      float64
 				EvasionStabilityFactor       float64

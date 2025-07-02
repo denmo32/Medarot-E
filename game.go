@@ -27,7 +27,7 @@ func NewGame(gameData *GameData, config Config, font text.Face) *Game {
 	g.currentType = SceneTypeTitle
 	g.currentScene = NewTitleScene(&g.resources)
 
-	log.Println("Game initialized. Starting with Title Scene.")
+	log.Println("ゲームを初期化しました。タイトルシーンから開始します。")
 	return g
 }
 
@@ -47,7 +47,7 @@ func (g *Game) Update() error {
 
 // changeScene は指定された新しいシーンに切り替えます
 func (g *Game) changeScene(nextType SceneType) {
-	log.Printf("Changing scene from %v to %v", g.currentType, nextType)
+	log.Printf("シーンを %v から %v に変更します。", g.currentType, nextType)
 	g.currentType = nextType
 
 	switch g.currentType {
@@ -56,7 +56,6 @@ func (g *Game) changeScene(nextType SceneType) {
 	case SceneTypeBattle:
 		g.currentScene = NewBattleScene(&g.resources)
 	case SceneTypeCustomize:
-		// ★★★ この行を追加 ★★★
 		g.currentScene = NewCustomizeScene(&g.resources)
 	}
 }

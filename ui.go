@@ -17,12 +17,13 @@ type UI struct {
 	actionTargetMap   map[PartSlotKey]ActionTarget
 }
 
+// NewUI は新しいUIインスタンスを作成します。
 func NewUI(bs *BattleScene) *UI {
 	ui := &UI{
 		medarotInfoPanels: make(map[string]*infoPanelUI),
 		actionTargetMap:   make(map[PartSlotKey]ActionTarget),
 	}
-	bs.ui = ui
+	bs.ui = ui // BattleSceneにUIインスタンスを登録
 
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
@@ -70,27 +71,30 @@ func NewUI(bs *BattleScene) *UI {
 	return ui
 }
 
+// ShowActionModal はアクション選択モーダルを表示します。
 func (u *UI) ShowActionModal(bs *BattleScene, actingEntry *donburi.Entry) {
 	if u.actionModal != nil {
 		u.HideActionModal()
 	}
-	u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
+	u.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップを初期化
 
 	modal := createActionModalUI(bs, actingEntry)
 	u.actionModal = modal
 	u.ebitenui.Container.AddChild(u.actionModal)
-	log.Println("Action modal shown.")
+	log.Println("アクションモーダルを表示しました。")
 }
 
+// HideActionModal はアクション選択モーダルを非表示にします。
 func (u *UI) HideActionModal() {
 	if u.actionModal != nil {
 		u.ebitenui.Container.RemoveChild(u.actionModal)
-		u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
+		u.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップをクリア
 		u.actionModal = nil
-		log.Println("Action modal hidden.")
+		log.Println("アクションモーダルを非表示にしました。")
 	}
 }
 
+// ShowMessageWindow はメッセージウィンドウを表示します。
 func (u *UI) ShowMessageWindow(bs *BattleScene) {
 	if u.messageWindow != nil {
 		u.HideMessageWindow()
@@ -100,6 +104,7 @@ func (u *UI) ShowMessageWindow(bs *BattleScene) {
 	u.ebitenui.Container.AddChild(u.messageWindow)
 }
 
+// HideMessageWindow はメッセージウィンドウを非表示にします。
 func (u *UI) HideMessageWindow() {
 	if u.messageWindow != nil {
 		u.ebitenui.Container.RemoveChild(u.messageWindow)

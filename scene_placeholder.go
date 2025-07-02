@@ -45,8 +45,7 @@ func NewPlaceholderScene(res *SharedResources, message string) *PlaceholderScene
 	panel.AddChild(messageText)
 
 	subText := widget.NewText(
-		// ★★★ 修正点: color.Gray を Config の色に修正 ★★★
-		widget.TextOpts.Text("Click to return to Title", res.Font, res.Config.UI.Colors.Gray),
+		widget.TextOpts.Text("クリックしてタイトルに戻る", res.Font, res.Config.UI.Colors.Gray),
 	)
 	panel.AddChild(subText)
 

@@ -8,13 +8,13 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// ProcessStateEffectsSystem processes entities that have just changed state
-// by looking for temporary "JustBecame..." tags.
+// ProcessStateEffectsSystem は、一時的な "JustBecame..." タグを探すことによって、
+// 状態が変更されたばかりのエンティティを処理します。
 func ProcessStateEffectsSystem(world donburi.World) {
-	// Process entities that just became Idle
+	// アイドル状態になったばかりのエンティティを処理
 	query.NewQuery(filter.Contains(JustBecameIdleTagComponent)).Each(world, func(entry *donburi.Entry) {
-		if entry.HasComponent(SettingsComponent) { // Log context
-			log.Printf("System: Processing JustBecameIdleTag for %s. Resetting gauge and action.", SettingsComponent.Get(entry).Name)
+		if entry.HasComponent(SettingsComponent) { // ログコンテキスト
+			log.Printf("システム: %s の JustBecameIdleTag を処理中。ゲージとアクションをリセットします。", SettingsComponent.Get(entry).Name)
 		}
 
 		if gauge := GaugeComponent.Get(entry); gauge != nil {
@@ -28,24 +28,24 @@ func ProcessStateEffectsSystem(world donburi.World) {
 			action.TargetEntity = nil
 		}
 
-		// Remove the tag after processing
+		// 処理後にタグを削除
 		entry.RemoveComponent(JustBecameIdleTagComponent)
 	})
 
-	// Process entities that just became Broken
+	// 破壊状態になったばかりのエンティティを処理
 	query.NewQuery(filter.Contains(JustBecameBrokenTagComponent)).Each(world, func(entry *donburi.Entry) {
-		if entry.HasComponent(SettingsComponent) { // Log context
-			log.Printf("System: Processing JustBecameBrokenTag for %s. Resetting gauge.", SettingsComponent.Get(entry).Name)
+		if entry.HasComponent(SettingsComponent) { // ログコンテキスト
+			log.Printf("システム: %s の JustBecameBrokenTag を処理中。ゲージをリセットします。", SettingsComponent.Get(entry).Name)
 		}
 
 		if gauge := GaugeComponent.Get(entry); gauge != nil {
 			gauge.CurrentGauge = 0
-			// Other resets for Broken state might be handled by other systems or directly in ChangeState if critical
+			// 破壊状態の他のリセットは、他のシステムまたはクリティカルな場合は直接 ChangeState で処理される可能性があります
 		}
 
-		// Remove the tag after processing
+		// 処理後にタグを削除
 		entry.RemoveComponent(JustBecameBrokenTagComponent)
 	})
 
-	// Add processing for other "JustBecame..." tags here if created
+	// 他の "JustBecame..." タグが作成された場合は、ここで処理を追加
 }

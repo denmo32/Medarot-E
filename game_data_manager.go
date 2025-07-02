@@ -2,14 +2,14 @@ package main
 
 import "fmt"
 
-// GameDataManager holds all static game data definitions, like parts and medals.
+// GameDataManager はパーツやメダルなどのすべての静的ゲームデータ定義を保持します。
 type GameDataManager struct {
 	partDefinitions  map[string]*PartDefinition
-	medalDefinitions map[string]*Medal // Assuming Medal struct is mostly definition for now
-	// Other game data definitions can be added here
+	medalDefinitions map[string]*Medal // Medal構造体は今のところ主に定義情報と仮定
+	// 他のゲームデータ定義もここに追加できます
 }
 
-// NewGameDataManager creates a new instance of GameDataManager.
+// NewGameDataManager はGameDataManagerの新しいインスタンスを作成します。
 func NewGameDataManager() *GameDataManager {
 	return &GameDataManager{
 		partDefinitions:  make(map[string]*PartDefinition),
@@ -17,64 +17,64 @@ func NewGameDataManager() *GameDataManager {
 	}
 }
 
-// AddPartDefinition adds a part definition to the manager.
+// AddPartDefinition はパーツ定義をマネージャーに追加します。
 func (gdm *GameDataManager) AddPartDefinition(pd *PartDefinition) error {
 	if pd == nil {
-		return fmt.Errorf("cannot add nil PartDefinition")
+		return fmt.Errorf("nilのPartDefinitionを追加できません")
 	}
 	if _, exists := gdm.partDefinitions[pd.ID]; exists {
-		return fmt.Errorf("PartDefinition with ID %s already exists", pd.ID)
+		return fmt.Errorf("ID %s のPartDefinitionは既に存在します", pd.ID)
 	}
 	gdm.partDefinitions[pd.ID] = pd
 	return nil
 }
 
-// GetPartDefinition retrieves a part definition by its ID.
+// GetPartDefinition はIDによってパーツ定義を取得します。
 func (gdm *GameDataManager) GetPartDefinition(id string) (*PartDefinition, bool) {
 	pd, found := gdm.partDefinitions[id]
 	return pd, found
 }
 
-// AddMedalDefinition adds a medal definition to the manager.
+// AddMedalDefinition はメダル定義をマネージャーに追加します。
 func (gdm *GameDataManager) AddMedalDefinition(md *Medal) error {
 	if md == nil {
-		return fmt.Errorf("cannot add nil MedalDefinition")
+		return fmt.Errorf("nilのMedalDefinitionを追加できません")
 	}
 	if _, exists := gdm.medalDefinitions[md.ID]; exists {
-		return fmt.Errorf("MedalDefinition with ID %s already exists", md.ID)
+		return fmt.Errorf("ID %s のMedalDefinitionは既に存在します", md.ID)
 	}
 	gdm.medalDefinitions[md.ID] = md
 	return nil
 }
 
-// GetMedalDefinition retrieves a medal definition by its ID.
+// GetMedalDefinition はIDによってメダル定義を取得します。
 func (gdm *GameDataManager) GetMedalDefinition(id string) (*Medal, bool) {
 	md, found := gdm.medalDefinitions[id]
 	return md, found
 }
 
-// GetAllPartDefinitions returns a slice of all part definitions.
-// Note: Iterating over a map doesn't guarantee order. If order is needed, store as slice or sort.
+// GetAllPartDefinitions はすべてのパーツ定義のスライスを返します。
+// 注意: マップの反復処理は順序を保証しません。順序が必要な場合は、スライスとして格納するかソートしてください。
 func (gdm *GameDataManager) GetAllPartDefinitions() []*PartDefinition {
 	defs := make([]*PartDefinition, 0, len(gdm.partDefinitions))
 	for _, pd := range gdm.partDefinitions {
 		defs = append(defs, pd)
 	}
-	// Add sorting here if consistent order is required for UI
+	// UIで一貫した順序が必要な場合は、ここでソートを追加
 	return defs
 }
 
-// GetAllMedalDefinitions returns a slice of all medal definitions.
+// GetAllMedalDefinitions はすべてのメダル定義のスライスを返します。
 func (gdm *GameDataManager) GetAllMedalDefinitions() []*Medal {
 	defs := make([]*Medal, 0, len(gdm.medalDefinitions))
 	for _, md := range gdm.medalDefinitions {
 		defs = append(defs, md)
 	}
-	// Add sorting here if consistent order is required for UI
+	// UIで一貫した順序が必要な場合は、ここでソートを追加
 	return defs
 }
 
-// Global instance of GameDataManager (or it could be passed around, e.g. via SharedResources)
-// For simplicity in this refactoring phase, a global instance can be used.
-// Consider dependency injection for a larger application.
+// GameDataManagerのグローバルインスタンス（またはSharedResourcesなどを介して渡すことも可能）
+// このリファクタリングフェーズの簡潔さのために、グローバルインスタンスを使用できます。
+// より大きなアプリケーションでは、依存性注入を検討してください。
 var GlobalGameDataManager = NewGameDataManager()

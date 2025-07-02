@@ -44,12 +44,12 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 	}
 
 	if bs.partInfoProvider == nil {
-		log.Println("Error: createActionModalUI - partInfoProvider is nil")
-		// partInfoProvider がないとパーツリストを取得できないため、モーダルを生成せずに終了するなどのエラーハンドリングが必要
+		log.Println("エラー: createActionModalUI - partInfoProvider がnilです。")
+		// partInfoProvider がないとパーツリストを取得できないため、モーダルを生成せずに終了するなどのエラーハンドリングが必要です。
 		panel.AddChild(widget.NewText(
 			widget.TextOpts.Text("エラー:パーツ情報取得不可", bs.resources.Font, c.Colors.White),
 		))
-		// overlayにpanelを追加しているので、このままでは空のモーダルが表示される。より適切なハンドリングを検討。
+		// overlayにpanelを追加しているので、このままでは空のモーダルが表示されます。より適切なハンドリングを検討してください。
 		return overlay
 	}
 	availableParts := bs.partInfoProvider.GetAvailableAttackParts(actingEntry)
@@ -59,18 +59,18 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		))
 	}
 
-	for _, available := range availableParts { // available is of type AvailablePart { PartDef *PartDefinition, Slot PartSlotKey }
-		partDef := available.PartDef // Use PartDef
+	for _, available := range availableParts { // available は AvailablePart { PartDef *PartDefinition, Slot PartSlotKey } 型です
+		partDef := available.PartDef
 		slotKey := available.Slot
 		if partDef.Category == CategoryShoot {
-			targetEntity, targetSlot := playerSelectRandomTarget(bs, actingEntry) // This helper might need update if it uses part info
+			targetEntity, targetSlot := playerSelectRandomTarget(bs, actingEntry) // このヘルパーはパーツ情報を使用する場合、更新が必要になることがあります
 			bs.ui.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
 		}
 	}
 
-	for _, available := range availableParts { // available is of type AvailablePart
-		capturedPartDef := available.PartDef // Use PartDef, capture it for the handler
-		capturedSlotKey := available.Slot    // Capture slot key as well for consistency if needed by handler
+	for _, available := range availableParts { // available は AvailablePart 型です
+		capturedPartDef := available.PartDef // PartDef を使用し、ハンドラ用にキャプチャします
+		capturedSlotKey := available.Slot    // 必要に応じて一貫性を保つためにスロットキーもキャプチャします
 
 		actionButton := widget.NewButton(
 			widget.ButtonOpts.Image(buttonImage),
@@ -79,12 +79,12 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 			}),
 			widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-				// Pass PartDefinition and its original slot key to handleActionSelection
+				// PartDefinition とその元のスロットキーを handleActionSelection に渡します
 				handleActionSelection(bs, actingEntry, capturedPartDef, capturedSlotKey)
 			}),
 			widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
 				if capturedPartDef.Category == CategoryShoot {
-					if actionTarget, ok := bs.ui.actionTargetMap[capturedSlotKey]; ok { // Use capturedSlotKey
+					if actionTarget, ok := bs.ui.actionTargetMap[capturedSlotKey]; ok { // capturedSlotKey を使用
 						bs.currentTarget = actionTarget.Target
 					}
 				}
@@ -104,7 +104,7 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 			bs.ui.HideActionModal()
-			bs.playerActionPendingQueue = make([]*donburi.Entry, 0) // Clear the pending queue
+			bs.playerActionPendingQueue = make([]*donburi.Entry, 0) // 保留キューをクリア
 			bs.playerMedarotToAct = nil
 			bs.currentTarget = nil
 			bs.state = StatePlaying
@@ -117,12 +117,12 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 }
 
 func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selectedPartDef *PartDefinition, slotKey PartSlotKey) {
-	// partInfoProvider is not directly needed here if slotKey is passed and valid.
-	// However, FindPartSlot was used to get slotKey. Now slotKey is passed directly.
-	if slotKey == "" { // Should be passed a valid slotKey from createActionModalUI
-		log.Printf("Error: handleActionSelection - received empty slotKey for part %s", selectedPartDef.PartName)
+	// slotKey が渡され、有効であれば、partInfoProvider はここでは直接必要ありません。
+	// ただし、以前は FindPartSlot を使用して slotKey を取得していました。現在は slotKey が直接渡されます。
+	if slotKey == "" { // createActionModalUI から有効な slotKey が渡されるはずです
+		log.Printf("エラー: handleActionSelection - パーツ %s に対して空のスロットキーを受信しました。", selectedPartDef.PartName)
 		bs.ui.HideActionModal()
-		// Reset state as if cancelled
+		// キャンセルされたかのように状態をリセット
 		bs.playerActionPendingQueue = make([]*donburi.Entry, 0)
 		bs.playerMedarotToAct = nil
 		bs.currentTarget = nil
@@ -133,10 +133,10 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 	var successful bool
 
 	switch selectedPartDef.Category {
-	case CategoryShoot: // Use selectedPartDef
-		actionTarget, ok := bs.ui.actionTargetMap[slotKey] // slotKey is now directly available
+	case CategoryShoot:
+		actionTarget, ok := bs.ui.actionTargetMap[slotKey] // slotKey は直接利用可能になりました
 		if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
-			bs.enqueueMessage("ターゲットがいません！", func() { // This will change state to StateMessage
+			bs.enqueueMessage("ターゲットがいません！", func() { // これにより状態が StateMessage に変わります
 				bs.playerMedarotToAct = nil
 				bs.currentTarget = nil
 				bs.state = StatePlaying
@@ -144,42 +144,42 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 			bs.ui.HideActionModal()
 			return
 		}
-		// Pass bs.world, &bs.resources.Config, and bs.partInfoProvider to StartCharge
+		// StartCharge に bs.world、&bs.resources.Config、bs.partInfoProvider を渡します
 		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, bs.world, &bs.resources.Config, bs.partInfoProvider)
-	case CategoryMelee: // Use selectedPartDef
-		// Pass bs.world, &bs.resources.Config, and bs.partInfoProvider to StartCharge
+	case CategoryMelee:
+		// StartCharge に bs.world、&bs.resources.Config、bs.partInfoProvider を渡します
 		successful = StartCharge(actingEntry, slotKey, nil, "", bs.world, &bs.resources.Config, bs.partInfoProvider)
 	default:
-		log.Printf("未対応のパーツカテゴリです: %s", selectedPartDef.Category) // Use selectedPartDef
+		log.Printf("未対応のパーツカテゴリです: %s", selectedPartDef.Category)
 		successful = false
 	}
 
 	if successful {
-		bs.ui.HideActionModal() // Hide current modal first
-		bs.currentTarget = nil  // Clear target indicator
+		bs.ui.HideActionModal() // まず現在のモーダルを非表示にします
+		bs.currentTarget = nil  // ターゲットインジケーターをクリアします
 
-		// Dequeue the current medarot
+		// 現在のメダロットをデキューします
 		if len(bs.playerActionPendingQueue) > 0 && bs.playerActionPendingQueue[0] == actingEntry {
 			bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
 		}
 
 		if len(bs.playerActionPendingQueue) > 0 {
-			// There are more players waiting, set up for the next one
-			bs.playerMedarotToAct = bs.playerActionPendingQueue[0] // Already set by BattleScene's update loop, but good to be explicit
-			bs.state = StatePlayerActionSelect                     // Ensure state is correct for modal display next frame
-			// UI should re-create the modal for the new playerMedarotToAct in the next Update cycle of BattleScene
+			// 他にも待機中のプレイヤーがいるため、次のプレイヤーの準備をします
+			bs.playerMedarotToAct = bs.playerActionPendingQueue[0] // BattleScene の更新ループで既に設定されていますが、明示的に記述
+			bs.state = StatePlayerActionSelect                     // 次のフレームでモーダルが表示されるように状態を正しく設定します
+			// UI は BattleScene の次の更新サイクルで新しい playerMedarotToAct のモーダルを再作成する必要があります
 		} else {
-			// No more players in the queue
+			// キューに他のプレイヤーがいません
 			bs.playerMedarotToAct = nil
 			bs.state = StatePlaying
 		}
 	} else {
-		// Action was not successful (e.g., part broken, no target)
+		// アクションは成功しませんでした（例：パーツ破損、ターゲットなし）
 		log.Printf("エラー: %s の行動選択に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 		bs.ui.HideActionModal()
-		// If action failed, treat as if this player's turn is done for now regarding the queue.
-		// This logic might need refinement: should it try next player or reset queue?
-		// For now, similar to successful action, try to proceed with queue.
+		// アクションが失敗した場合、このプレイヤーのキューに関するターンは一旦終了したものとして扱います。
+		// このロジックは改善が必要かもしれません：次のプレイヤーを試すべきか、キューをリセットすべきか？
+		// 現状では、成功したアクションと同様にキューを進めようとします。
 		if len(bs.playerActionPendingQueue) > 0 && bs.playerActionPendingQueue[0] == actingEntry {
 			bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
 		}
