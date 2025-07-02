@@ -30,11 +30,11 @@ type CustomizeScene struct {
 	playerMedarots            []*MedarotData
 	currentTargetMedarotIndex int
 
-	medalList     []Medal
-	headPartsList []*Part
-	rArmPartsList []*Part
-	lArmPartsList []*Part
-	legsPartsList []*Part
+	medalList     []*Medal          // Changed to slice of pointers to match GameDataManager
+	headPartsList []*PartDefinition // Changed to PartDefinition
+	rArmPartsList []*PartDefinition // Changed to PartDefinition
+	lArmPartsList []*PartDefinition // Changed to PartDefinition
+	legsPartsList []*PartDefinition // Changed to PartDefinition
 
 	currentMedalIndex int
 	currentHeadIndex  int
@@ -75,28 +75,29 @@ func NewCustomizeScene(res *SharedResources) *CustomizeScene {
 }
 
 func (cs *CustomizeScene) setupPartLists() {
-	cs.medalList = cs.resources.GameData.Medals
+	cs.medalList = GlobalGameDataManager.GetAllMedalDefinitions()
+	// Sort medals if necessary, e.g., by ID for consistent order
+	sort.Slice(cs.medalList, func(i, j int) bool { return cs.medalList[i].ID < cs.medalList[j].ID })
 
-	allParts := []*Part{}
-	for _, p := range cs.resources.GameData.AllParts {
-		allParts = append(allParts, p)
-	}
-	sort.Slice(allParts, func(i, j int) bool { return allParts[i].ID < allParts[j].ID })
+	allPartDefs := GlobalGameDataManager.GetAllPartDefinitions()
+	// Sort all parts if necessary, e.g., by ID
+	sort.Slice(allPartDefs, func(i, j int) bool { return allPartDefs[i].ID < allPartDefs[j].ID })
 
-	cs.headPartsList = nil
-	cs.rArmPartsList = nil
-	cs.lArmPartsList = nil
-	cs.legsPartsList = nil
-	for _, p := range allParts {
-		switch p.Type {
+	cs.headPartsList = []*PartDefinition{}
+	cs.rArmPartsList = []*PartDefinition{}
+	cs.lArmPartsList = []*PartDefinition{}
+	cs.legsPartsList = []*PartDefinition{}
+
+	for _, pDef := range allPartDefs {
+		switch pDef.Type {
 		case PartTypeHead:
-			cs.headPartsList = append(cs.headPartsList, p)
+			cs.headPartsList = append(cs.headPartsList, pDef)
 		case PartTypeRArm:
-			cs.rArmPartsList = append(cs.rArmPartsList, p)
+			cs.rArmPartsList = append(cs.rArmPartsList, pDef)
 		case PartTypeLArm:
-			cs.lArmPartsList = append(cs.lArmPartsList, p)
+			cs.lArmPartsList = append(cs.lArmPartsList, pDef)
 		case PartTypeLegs:
-			cs.legsPartsList = append(cs.legsPartsList, p)
+			cs.legsPartsList = append(cs.legsPartsList, pDef)
 		}
 	}
 }
@@ -203,11 +204,11 @@ func (cs *CustomizeScene) selectMedarot(index int) {
 func (cs *CustomizeScene) refreshUIForSelectedMedarot() {
 	target := cs.playerMedarots[cs.currentTargetMedarotIndex]
 
-	cs.currentMedalIndex = findIndexByID(cs.medalList, target.MedalID, func(m Medal) string { return m.ID })
-	cs.currentHeadIndex = findIndexByID(cs.headPartsList, target.HeadID, func(p *Part) string { return p.ID })
-	cs.currentRArmIndex = findIndexByID(cs.rArmPartsList, target.RightArmID, func(p *Part) string { return p.ID })
-	cs.currentLArmIndex = findIndexByID(cs.lArmPartsList, target.LeftArmID, func(p *Part) string { return p.ID })
-	cs.currentLegsIndex = findIndexByID(cs.legsPartsList, target.LegsID, func(p *Part) string { return p.ID })
+	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *Medal) string { return m.ID })
+	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *PartDefinition) string { return p.ID })
+	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *PartDefinition) string { return p.ID })
+	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *PartDefinition) string { return p.ID })
+	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *PartDefinition) string { return p.ID })
 
 	cs.medalNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryMedal)
 	cs.headNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryHead)
@@ -334,21 +335,23 @@ func (cs *CustomizeScene) changeSelection(label CustomizeCategory, direction int
 
 func (cs *CustomizeScene) updateStatus(id string) {
 	var sb strings.Builder
-	if part, ok := cs.resources.GameData.AllParts[id]; ok {
-		sb.WriteString(fmt.Sprintf("Name: %s\n", part.PartName))
-		sb.WriteString(fmt.Sprintf("Type: %s\n", part.Type))
-		sb.WriteString(fmt.Sprintf("Category: %s\n", part.Category))
-		sb.WriteString(fmt.Sprintf("Trait: %s\n\n", part.Trait))
-		sb.WriteString(fmt.Sprintf("Armor: %d\n", part.Armor))
-		sb.WriteString(fmt.Sprintf("Power: %d\n", part.Power))
-		sb.WriteString(fmt.Sprintf("Accuracy: %d\n", part.Accuracy))
-		sb.WriteString(fmt.Sprintf("Charge: %d\n", part.Charge))
-		sb.WriteString(fmt.Sprintf("Cooldown: %d\n", part.Cooldown))
-		if part.Type == PartTypeLegs {
-			sb.WriteString(fmt.Sprintf("\nPropulsion: %d\n", part.Propulsion))
-			sb.WriteString(fmt.Sprintf("Mobility: %d\n", part.Mobility))
+	if partDef, found := GlobalGameDataManager.GetPartDefinition(id); found {
+		sb.WriteString(fmt.Sprintf("Name: %s\n", partDef.PartName))
+		sb.WriteString(fmt.Sprintf("Type: %s\n", partDef.Type))
+		sb.WriteString(fmt.Sprintf("Category: %s\n", partDef.Category))
+		sb.WriteString(fmt.Sprintf("Trait: %s\n\n", partDef.Trait))
+		sb.WriteString(fmt.Sprintf("MaxArmor: %d\n", partDef.MaxArmor)) // Changed Armor to MaxArmor
+		sb.WriteString(fmt.Sprintf("Power: %d\n", partDef.Power))
+		sb.WriteString(fmt.Sprintf("Accuracy: %d\n", partDef.Accuracy))
+		sb.WriteString(fmt.Sprintf("Charge: %d\n", partDef.Charge))
+		sb.WriteString(fmt.Sprintf("Cooldown: %d\n", partDef.Cooldown))
+		if partDef.Type == PartTypeLegs {
+			sb.WriteString(fmt.Sprintf("\nPropulsion: %d\n", partDef.Propulsion))
+			sb.WriteString(fmt.Sprintf("Mobility: %d\n", partDef.Mobility))
+			sb.WriteString(fmt.Sprintf("Stability: %d\n", partDef.Stability)) // Added Stability
+			sb.WriteString(fmt.Sprintf("Defense: %d\n", partDef.Defense))   // Added Defense for legs
 		}
-	} else if medal, ok := findMedalDataByID(cs.resources.GameData.Medals, id); ok {
+	} else if medal, found := GlobalGameDataManager.GetMedalDefinition(id); found { // Use GameDataManager
 		sb.WriteString(fmt.Sprintf("Name: %s\n", medal.Name))
 		sb.WriteString(fmt.Sprintf("Personality: %s\n\n", medal.Personality))
 		sb.WriteString(fmt.Sprintf("Skill Level: %d\n", medal.SkillLevel))
@@ -368,44 +371,46 @@ func (cs *CustomizeScene) Draw(screen *ebiten.Image) {
 	cs.ui.Draw(screen)
 }
 
-func findIndexByID[T any](slice []T, id string, getID func(T) string) int {
+// findIndexByIDGeneric is a generic function to find an index in a slice.
+func findIndexByIDGeneric[T any](slice []T, id string, getID func(elem T) string) int {
 	for i, v := range slice {
 		if getID(v) == id {
 			return i
 		}
 	}
-	return 0
+	return 0 // Or -1 if not found is preferred
 }
 
-func findMedalDataByID(medals []Medal, id string) (*Medal, bool) {
-	for i := range medals {
-		if medals[i].ID == id {
-			return &medals[i], true
-		}
-	}
-	return nil, false
-}
+// findMedalDataByID is no longer needed, use GlobalGameDataManager.GetMedalDefinition
+// func findMedalDataByID(medals []Medal, id string) (*Medal, bool) {
+// 	for i := range medals {
+// 		if medals[i].ID == id {
+// 			return &medals[i], true
+// 		}
+// 	}
+// 	return nil, false
+// }
 
 func (cs *CustomizeScene) getCurrentID(label CustomizeCategory) string {
 	switch label {
 	case CustomizeCategoryMedal:
-		if len(cs.medalList) > 0 {
+		if len(cs.medalList) > 0 && cs.currentMedalIndex < len(cs.medalList) {
 			return cs.medalList[cs.currentMedalIndex].ID
 		}
 	case CustomizeCategoryHead:
-		if len(cs.headPartsList) > 0 {
+		if len(cs.headPartsList) > 0 && cs.currentHeadIndex < len(cs.headPartsList) {
 			return cs.headPartsList[cs.currentHeadIndex].ID
 		}
 	case CustomizeCategoryRArm:
-		if len(cs.rArmPartsList) > 0 {
+		if len(cs.rArmPartsList) > 0 && cs.currentRArmIndex < len(cs.rArmPartsList) {
 			return cs.rArmPartsList[cs.currentRArmIndex].ID
 		}
 	case CustomizeCategoryLArm:
-		if len(cs.lArmPartsList) > 0 {
+		if len(cs.lArmPartsList) > 0 && cs.currentLArmIndex < len(cs.lArmPartsList) {
 			return cs.lArmPartsList[cs.currentLArmIndex].ID
 		}
 	case CustomizeCategoryLegs:
-		if len(cs.legsPartsList) > 0 {
+		if len(cs.legsPartsList) > 0 && cs.currentLegsIndex < len(cs.legsPartsList) {
 			return cs.legsPartsList[cs.currentLegsIndex].ID
 		}
 	}
@@ -415,23 +420,23 @@ func (cs *CustomizeScene) getCurrentID(label CustomizeCategory) string {
 func (cs *CustomizeScene) getCurrentName(label CustomizeCategory) string {
 	switch label {
 	case CustomizeCategoryMedal:
-		if len(cs.medalList) > 0 {
+		if len(cs.medalList) > 0 && cs.currentMedalIndex < len(cs.medalList) {
 			return cs.medalList[cs.currentMedalIndex].Name
 		}
 	case CustomizeCategoryHead:
-		if len(cs.headPartsList) > 0 {
+		if len(cs.headPartsList) > 0 && cs.currentHeadIndex < len(cs.headPartsList) {
 			return cs.headPartsList[cs.currentHeadIndex].PartName
 		}
 	case CustomizeCategoryRArm:
-		if len(cs.rArmPartsList) > 0 {
+		if len(cs.rArmPartsList) > 0 && cs.currentRArmIndex < len(cs.rArmPartsList) {
 			return cs.rArmPartsList[cs.currentRArmIndex].PartName
 		}
 	case CustomizeCategoryLArm:
-		if len(cs.lArmPartsList) > 0 {
+		if len(cs.lArmPartsList) > 0 && cs.currentLArmIndex < len(cs.lArmPartsList) {
 			return cs.lArmPartsList[cs.currentLArmIndex].PartName
 		}
 	case CustomizeCategoryLegs:
-		if len(cs.legsPartsList) > 0 {
+		if len(cs.legsPartsList) > 0 && cs.currentLegsIndex < len(cs.legsPartsList) {
 			return cs.legsPartsList[cs.currentLegsIndex].PartName
 		}
 	}

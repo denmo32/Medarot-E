@@ -35,13 +35,15 @@ func UpdateGaugeSystem(world donburi.World) {
 				ChangeState(entry, StateTypeIdle) // world を渡す必要があれば ChangeState のシグネチャ変更も検討
 				// バーサーク特性の場合、クールダウン終了時に効果をリセット
 				actionComp := ActionComponent.Get(entry)
-				if actionComp.SelectedPartKey != "" { // 選択パーツキーが存在するか確認
-					// PartsComponent と ActionComponent は entry から取得可能
-					parts := PartsComponent.Get(entry)
-					if parts != nil && parts.Map != nil { // nilチェックを追加
-						part := parts.Map[actionComp.SelectedPartKey]
-						if part != nil && part.Trait == TraitBerserk {
-							ResetAllEffects(world) // ResetAllEffects は world を引数に取る
+				if actionComp.SelectedPartKey != "" {
+					partsComp := PartsComponent.Get(entry) // This is *PartsComponentData
+					if partsComp != nil && partsComp.Map != nil {
+						if partInst, ok := partsComp.Map[actionComp.SelectedPartKey]; ok && partInst != nil {
+							if partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID); defFound {
+								if partDef.Trait == TraitBerserk {
+									ResetAllEffects(world)
+								}
+							}
 						}
 					}
 				}

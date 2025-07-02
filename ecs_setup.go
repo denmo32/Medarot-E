@@ -88,10 +88,14 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 
 		// Set Targeting Strategy based on medal personality
 		var strategy TargetingStrategyFunc
-		switch medal.Personality {
-		case "クラッシャー":
-			strategy = selectCrusherTarget
-		case "ハンター":
+		// medalDef should be used here as 'medal' variable is the one from the loop, not the one from GlobalGameDataManager
+		// However, the 'medal' variable in this scope *is* the one retrieved or fallen back to.
+		// The issue was that 'medal' was of type *Medal, and we need to ensure it's not nil.
+		if medalDef != nil { // medalDef is the variable holding the found or fallback medal
+			switch medalDef.Personality { // Corrected to use medalDef
+			case "クラッシャー":
+				strategy = selectCrusherTarget
+			case "ハンター":
 			strategy = selectHunterTarget
 		case "ジョーカー":
 			strategy = selectRandomTargetPartAI

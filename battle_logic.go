@@ -156,7 +156,7 @@ func (dc *DamageCalculator) GenerateActionLog(attacker *donburi.Entry, target *d
 	}
 
 	targetPartNameStr := "(不明部位)"
-	targetPartWasBrokenStr := ""
+	// targetPartWasBrokenStr := "" // Removed: Unused variable
 	if targetPartDef != nil {
 		targetPartNameStr = targetPartDef.PartName
 		// To check if the part *became* broken, we'd need the PartInstanceData here,
@@ -318,7 +318,7 @@ func (hc *HitCalculator) CalculateDefense(target *donburi.Entry, defensePartDef 
 	}
 
 	roll := rand.Intn(100)
-	log.Printf("防御判定: %s (%s) | 防御成功率: %.1f, ロール: %d", SettingsComponent.Get(target).Name, defensePart.PartName, chance, roll)
+	log.Printf("防御判定: %s (%s) | 防御成功率: %.1f, ロール: %d", SettingsComponent.Get(target).Name, defensePartDef.PartName, chance, roll)
 	return roll < int(chance)
 }
 

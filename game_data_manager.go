@@ -53,6 +53,28 @@ func (gdm *GameDataManager) GetMedalDefinition(id string) (*Medal, bool) {
 	return md, found
 }
 
+// GetAllPartDefinitions returns a slice of all part definitions.
+// Note: Iterating over a map doesn't guarantee order. If order is needed, store as slice or sort.
+func (gdm *GameDataManager) GetAllPartDefinitions() []*PartDefinition {
+	defs := make([]*PartDefinition, 0, len(gdm.partDefinitions))
+	for _, pd := range gdm.partDefinitions {
+		defs = append(defs, pd)
+	}
+	// Add sorting here if consistent order is required for UI
+	return defs
+}
+
+// GetAllMedalDefinitions returns a slice of all medal definitions.
+func (gdm *GameDataManager) GetAllMedalDefinitions() []*Medal {
+	defs := make([]*Medal, 0, len(gdm.medalDefinitions))
+	for _, md := range gdm.medalDefinitions {
+		defs = append(defs, md)
+	}
+	// Add sorting here if consistent order is required for UI
+	return defs
+}
+
+
 // Global instance of GameDataManager (or it could be passed around, e.g. via SharedResources)
 // For simplicity in this refactoring phase, a global instance can be used.
 // Consider dependency injection for a larger application.
