@@ -350,26 +350,36 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstance
 	partsMap := partsComp.Map // map[PartSlotKey]*PartInstanceData
 
 	var bestPartInstance *PartInstanceData
-	var otherPartInstances []*PartInstanceData
+	var armParts []*PartInstanceData
+	var headPart *PartInstanceData
 
-	for slot, partInst := range partsMap {
-		if !partInst.IsBroken && slot != PartSlotLegs && slot != PartSlotHead {
-			otherPartInstances = append(otherPartInstances, partInst)
+	for _, partInst := range partsMap {
+		if partInst.IsBroken {
+			continue
+		}
+		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+		if !defFound {
+			log.Printf("SelectDefensePart: PartDefinition not found for ID %s", partInst.DefinitionID)
+			continue
+		}
+
+		switch partDef.Type {
+		case PartTypeRArm, PartTypeLArm:
+			armParts = append(armParts, partInst)
+		case PartTypeHead:
+			headPart = partInst // Assuming only one head part
 		}
 	}
 
-	if len(otherPartInstances) > 0 {
-		sort.Slice(otherPartInstances, func(i, j int) bool {
-			// Compare current armor of instances
-			return otherPartInstances[i].CurrentArmor > otherPartInstances[j].CurrentArmor
+	if len(armParts) > 0 {
+		sort.Slice(armParts, func(i, j int) bool {
+			return armParts[i].CurrentArmor > armParts[j].CurrentArmor
 		})
-		bestPartInstance = otherPartInstances[0]
-	} else {
-		// If no arm parts are available, try head
-		if headInst, ok := partsMap[PartSlotHead]; ok && headInst != nil && !headInst.IsBroken {
-			bestPartInstance = headInst
-		}
+		bestPartInstance = armParts[0]
+	} else if headPart != nil && !headPart.IsBroken { // Ensure head part itself isn't broken (already checked above but good for clarity)
+		bestPartInstance = headPart
 	}
+	// If no suitable arm or head part is found, bestPartInstance will remain nil.
 	return bestPartInstance
 }
 

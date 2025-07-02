@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings" // Added for log message checking
 
 	"github.com/yohamta/donburi"
 )
@@ -101,7 +102,7 @@ func executeActionLogic(
 	targetingResult := handler.ResolveTarget(entry, world, action, targetSelector, partInfoProvider)
 	if !targetingResult.Success {
 		result.LogMessage = targetingResult.LogMessage
-		result.TargetEntry = targetingResult.TargetEntity // Handler might set target even on failure
+		result.TargetEntry = targetingResult.TargetEntity
 		RemoveActionModifiersSystem(entry)
 		return result
 	}
@@ -130,22 +131,20 @@ func executeActionLogic(
 				RemoveActionModifiersSystem(entry)
 				return result
 			}
-		} else { // Target has no PartsComponent
+		} else {
 			result.LogMessage = fmt.Sprintf("%sは%sを狙ったが、ターゲットにパーツコンポーネントがありません。", settings.Name, SettingsComponent.Get(targetEntry).Name)
 			RemoveActionModifiersSystem(entry)
 			return result
 		}
 	}
 
-	// If it's an offensive action but no valid target part instance was resolved (e.g. target has no parts, or melee couldn't pick one)
-    if (actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee) && targetEntry != nil && intendedTargetPartInstance == nil {
-        result.LogMessage = fmt.Sprintf("%s は %s を攻撃しようとしましたが、有効な対象部位がありませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name)
-        RemoveActionModifiersSystem(entry)
-        return result
-    }
+	if (actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee) && targetEntry != nil && intendedTargetPartInstance == nil {
+		result.LogMessage = fmt.Sprintf("%s は %s を攻撃しようとしましたが、有効な対象部位がありませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name)
+		RemoveActionModifiersSystem(entry)
+		return result
+	}
 
-
-	var didHit bool = true // Assume hit for non-targeted/non-offensive actions
+	var didHit bool = true
 	if targetEntry != nil && (actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee) {
 		didHit = hitCalculator.CalculateHit(entry, targetEntry, actingPartDef)
 	}
@@ -160,10 +159,8 @@ func executeActionLogic(
 		return result
 	}
 
-	// Proceed only if it's an offensive action that hit, or a non-offensive action
 	if actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee {
 		if targetEntry == nil || intendedTargetPartInstance == nil {
-			// This should ideally be caught by earlier checks if it's an offensive action
 			result.LogMessage = fmt.Sprintf("%s の攻撃は対象または対象パーツが不明です (内部エラー)。", settings.Name)
 			RemoveActionModifiersSystem(entry)
 			return result
@@ -171,20 +168,57 @@ func executeActionLogic(
 
 		damage, isCritical := damageCalculator.CalculateDamage(entry, actingPartDef)
 		result.IsCritical = isCritical
-		// originalDamage := damage // For defense log, if re-enabled
+		originalDamage := damage
 
-		// --- Simplified Damage Application (Defense Logic Bypassed for now) ---
+		var finalDamageDealt int
+		var actualHitPartInstance *PartInstanceData = intendedTargetPartInstance
+		var actualHitPartDef *PartDefinition = intendedTargetPartDef
+
 		result.ActionIsDefended = false
-		damageCalculator.ApplyDamage(targetEntry, intendedTargetPartInstance, damage)
-		result.DamageDealt = damage // Since no defense, damage dealt is full pre-defense damage
-		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
-		result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, intendedTargetPartDef, result.DamageDealt, isCritical, true)
-		if result.TargetPartBroken {
-			result.LogMessage += " パーツを破壊した！"
+		defensePartInstance := targetSelector.SelectDefensePart(targetEntry)
+
+		if defensePartInstance != nil && defensePartInstance != intendedTargetPartInstance {
+			defensePartDef, defFound := GlobalGameDataManager.GetPartDefinition(defensePartInstance.DefinitionID)
+			if defFound && hitCalculator.CalculateDefense(targetEntry, defensePartDef) {
+				result.ActionIsDefended = true
+				actualHitPartInstance = defensePartInstance
+				actualHitPartDef = defensePartDef
+
+				finalDamageAfterDefense := originalDamage - defensePartDef.Defense
+				if finalDamageAfterDefense < 0 {
+					finalDamageAfterDefense = 0
+				}
+				finalDamageDealt = finalDamageAfterDefense
+				damageCalculator.ApplyDamage(targetEntry, actualHitPartInstance, finalDamageDealt)
+				result.LogMessage = damageCalculator.GenerateActionLogDefense(targetEntry, actualHitPartDef, finalDamageDealt, originalDamage, isCritical)
+			}
 		}
 
-	} else { // Non-offensive actions (e.g., SUPPORT, DEFENSE if they had handlers)
-		if result.LogMessage == "" { // If handler didn't set a log (e.g. for future SUPPORT/DEFENSE actions)
+		if !result.ActionIsDefended {
+			actualHitPartInstance = intendedTargetPartInstance
+            actualHitPartDef = intendedTargetPartDef
+			if actualHitPartInstance != nil {
+				damageCalculator.ApplyDamage(targetEntry, actualHitPartInstance, originalDamage)
+				finalDamageDealt = originalDamage
+				result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, actualHitPartDef, finalDamageDealt, isCritical, true)
+			} else {
+				finalDamageDealt = 0
+				result.LogMessage = fmt.Sprintf("%s の攻撃は対象パーツ特定に失敗しました (防御後)。", settings.Name)
+			}
+		}
+		result.DamageDealt = finalDamageDealt
+		if actualHitPartInstance != nil {
+			result.TargetPartBroken = actualHitPartInstance.IsBroken
+			if result.TargetPartBroken {
+				if result.ActionIsDefended {
+					if !strings.Contains(result.LogMessage, "しかし、パーツは破壊された！") { result.LogMessage += " しかし、パーツは破壊された！" }
+				} else {
+					if !strings.Contains(result.LogMessage, "パーツを破壊した！") { result.LogMessage += " パーツを破壊した！" }
+				}
+			}
+		}
+	} else {
+		if result.LogMessage == "" {
 			result.LogMessage = fmt.Sprintf("%s は %s を実行した。", settings.Name, actingPartDef.PartName)
 		}
 	}
@@ -194,12 +228,8 @@ func executeActionLogic(
 		ResetAllEffects(world)
 	}
 
-	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
-		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
-	}
-	if entry.HasComponent(ActingWithAimTraitTagComponent) {
-		entry.RemoveComponent(ActingWithAimTraitTagComponent)
-	}
+	if entry.HasComponent(ActingWithBerserkTraitTagComponent) { entry.RemoveComponent(ActingWithBerserkTraitTagComponent) }
+	if entry.HasComponent(ActingWithAimTraitTagComponent) { entry.RemoveComponent(ActingWithAimTraitTagComponent) }
 	RemoveActionModifiersSystem(entry)
 	return result
 }
@@ -220,12 +250,11 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 		log.Printf("Error: StartCooldownSystem - actingPartInstance not found for key %s", actionComp.SelectedPartKey)
 	}
 
-	// Reset effects if not Berserk (based on part definition's trait)
 	if actingPartDef != nil && actingPartDef.Trait != TraitBerserk {
 		ResetAllEffects(world)
 	}
 
-	baseSeconds := 1.0 // Default cooldown
+	baseSeconds := 1.0
 	if actingPartDef != nil {
 		baseSeconds = float64(actingPartDef.Cooldown)
 	}
@@ -242,8 +271,6 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
 
-	// Trait tags and ActionModifierComponent should have been removed by executeActionLogic's end.
-	// Adding a safeguard removal here as well.
 	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
 	}
@@ -284,7 +311,6 @@ func StartCharge(
 	action.TargetEntity = target
 	action.TargetPartSlot = targetPartSlot
 
-	// Add Trait tags first
 	switch actingPartDef.Trait {
 	case TraitBerserk:
 		donburi.Add(entry, ActingWithBerserkTraitTagComponent, &ActingWithBerserkTraitTag{})
@@ -327,7 +353,7 @@ func StartCharge(
 	if partInfoProvider != nil {
 		legsInstance := partsComp.Map[PartSlotLegs]
 		if legsInstance != nil && !legsInstance.IsBroken {
-			propulsion = partInfoProvider.GetOverallPropulsion(entry) // This already uses definition via GameDataManager
+			propulsion = partInfoProvider.GetOverallPropulsion(entry)
 		}
 	} else {
 		log.Println("Warning: StartCharge - partInfoProvider is nil")
