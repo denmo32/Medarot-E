@@ -19,15 +19,12 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			SettingsComponent,
 			PartsComponent,
 			MedalComponent,
-			// ★★★ 削除
-			// StateComponent,
 			IdleStateComponent, // ★★★ 追加 ★★★
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
 			TargetingStrategyComponent,
 			AIPartSelectionStrategyComponent, // Added AIPartSelectionStrategyComponent
-			// EffectsComponent,
 		))
 		SettingsComponent.SetValue(entry, Settings{
 			ID:        loadout.ID,
@@ -55,71 +52,55 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 				}
 			} else {
 				log.Printf("Warning: Part definition not found for ID %s. Using placeholder.", partID)
-				// Ensure a placeholder PartDefinition exists in GameDataManager or handle appropriately
-				// For now, creating a PartInstanceData that signifies a missing/broken part.
 				partsInstanceMap[slot] = &PartInstanceData{
-					DefinitionID: "placeholder_" + string(slot), // Needs a unique placeholder ID scheme
+					DefinitionID: "placeholder_" + string(slot),
 					CurrentArmor: 0,
 					IsBroken:     true,
 				}
 			}
 		}
-		PartsComponent.SetValue(entry, PartsComponentData{Map: partsInstanceMap}) // Use PartsComponentData
+		PartsComponent.SetValue(entry, PartsComponentData{Map: partsInstanceMap})
 
 		medalDef, medalFound := GlobalGameDataManager.GetMedalDefinition(loadout.MedalID)
 		if medalFound {
-			MedalComponent.SetValue(entry, *medalDef) // Store the actual Medal definition
+			MedalComponent.SetValue(entry, *medalDef)
 		} else {
 			log.Printf("Warning: Medal definition not found for ID %s. Using fallback.", loadout.MedalID)
 			fallbackMedal := Medal{ID: "fallback", Name: "フォールバック", Personality: "ジョーカー", SkillLevel: 1}
 			MedalComponent.SetValue(entry, fallbackMedal)
+			medalDef = &fallbackMedal // Ensure medalDef is not nil for the switch below
 		}
-		// ★★★ 削除
-		// StateComponent.SetValue(entry, State{State: StateIdle})
+
 		GaugeComponent.SetValue(entry, Gauge{})
-		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""}) // TargetPartSlotを初期化
+		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""})
 		LogComponent.SetValue(entry, Log{})
 
-		// ★★★ EffectsComponentの初期値を設定 ★★★
-		// EffectsComponent.SetValue(entry, Effects{
-		//	EvasionRateMultiplier: 1.0, // 通常は1.0 (100%)
-		//	DefenseRateMultiplier: 1.0, // 通常は1.0 (100%)
-		// })
-
-		// Set Targeting Strategy based on medal personality
 		var strategy TargetingStrategyFunc
-		// medalDef should be used here as 'medal' variable is the one from the loop, not the one from GlobalGameDataManager
-		// However, the 'medal' variable in this scope *is* the one retrieved or fallen back to.
-		// The issue was that 'medal' was of type *Medal, and we need to ensure it's not nil.
-		if medalDef != nil { // medalDef is the variable holding the found or fallback medal
-			switch medalDef.Personality { // Corrected to use medalDef
-			case "クラッシャー":
-				strategy = selectCrusherTarget
-			case "ハンター":
+		// medalDef is guaranteed to be non-nil here due to the fallback logic above
+		switch medalDef.Personality {
+		case "クラッシャー":
+			strategy = selectCrusherTarget
+		case "ハンター":
 			strategy = selectHunterTarget
 		case "ジョーカー":
 			strategy = selectRandomTargetPartAI
-		default: // デフォルトや不明な性格の場合
-			strategy = selectLeaderPart // Default to targeting leader or a fallback like random
+		default:
+			strategy = selectLeaderPart
 		}
 		TargetingStrategyComponent.SetValue(entry, TargetingStrategyComponentData{Strategy: strategy})
 
-		// Set default AI Part Selection Strategy for non-player entities
 		if loadout.Team != playerTeam { // Only for AI
-			// Default strategy, can be customized later based on AI type or medal
 			partSelectionStrategy := SelectFirstAvailablePart
-			// Example: if medal.Personality == "Aggressive" { partSelectionStrategy = SelectHighestPowerPart }
+			// Example: if medalDef.Personality == "Aggressive" { partSelectionStrategy = SelectHighestPowerPart }
 			AIPartSelectionStrategyComponent.SetValue(entry, AIPartSelectionStrategyComponentData{Strategy: partSelectionStrategy})
 		}
 
-		// プレイヤーチームならPlayerControlタグを追加
 		if loadout.Team == playerTeam {
-			// 修正: 第3引数を追加
 			donburi.Add(entry, PlayerControlComponent, &PlayerControl{})
 		}
 	}
 	log.Printf("%d体のメダロットエンティティを生成しました。", len(gameData.Medarots))
-} // Added missing closing brace for CreateMedarotEntities
+}
 
 func FindLeader(world donburi.World, teamID TeamID) *donburi.Entry {
 	var leaderEntry *donburi.Entry
