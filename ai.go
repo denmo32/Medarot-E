@@ -57,7 +57,8 @@ func aiSelectAction(
 		return
 	}
 
-	if selectedPartDef.Category == CategoryShoot { // Use selectedPartDef.Category
+	switch selectedPartDef.Category {
+	case CategoryShoot: // Use selectedPartDef.Category
 		var targetEntry *donburi.Entry
 		var targetPartSlot PartSlotKey
 
@@ -86,10 +87,10 @@ func aiSelectAction(
 		// StartCharge のシグネチャ変更に対応
 		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, gameConfig, partInfoProvider)
 
-	} else if selectedPartDef.Category == CategoryMelee { // Use selectedPartDef.Category
+	case CategoryMelee: // Use selectedPartDef.Category
 		// StartCharge のシグネチャ変更に対応
 		StartCharge(entry, slotKey, nil, "", world, gameConfig, partInfoProvider)
-	} else {
+	default:
 		// Log with selectedPartDef.Category if it's not SHOOT or MELEE but still somehow selected
 		// Or if it's a category that doesn't lead to StartCharge (e.g. SUPPORT, DEFENSE if they had strategies)
 		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
@@ -104,12 +105,7 @@ type targetablePart struct {
 }
 
 // getAllTargetableParts はAIがターゲット可能な全パーツのインスタンスと定義のリストを返します。
-func getAllTargetableParts(
-	world donburi.World, // world を追加 (未使用だが一貫性のため)
-	actingEntry *donburi.Entry,
-	targetSelector *TargetSelector,
-	includeHead bool,
-) []targetablePart {
+func getAllTargetableParts(actingEntry *donburi.Entry, targetSelector *TargetSelector, includeHead bool) []targetablePart {
 	var allParts []targetablePart
 	if targetSelector == nil {
 		log.Println("Error: getAllTargetableParts - targetSelector is nil")
@@ -154,9 +150,9 @@ func selectCrusherTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider, // getAllTargetableParts が必要とする可能性を考慮 (現状は未使用)
 ) (*donburi.Entry, PartSlotKey) {
-	targetParts := getAllTargetableParts(world, actingEntry, targetSelector, false) // 脚部以外、頭部以外
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, false) // 脚部以外、頭部以外
 	if len(targetParts) == 0 {
-		targetParts = getAllTargetableParts(world, actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
+		targetParts = getAllTargetableParts(actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	}
 	if len(targetParts) == 0 {
 		return nil, ""
@@ -177,9 +173,9 @@ func selectHunterTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider, // getAllTargetableParts が必要とする可能性を考慮 (現状は未使用)
 ) (*donburi.Entry, PartSlotKey) {
-	targetParts := getAllTargetableParts(world, actingEntry, targetSelector, false) // 脚部以外、頭部以外
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, false) // 脚部以外、頭部以外
 	if len(targetParts) == 0 {
-		targetParts = getAllTargetableParts(world, actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
+		targetParts = getAllTargetableParts(actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	}
 	if len(targetParts) == 0 {
 		return nil, ""
@@ -201,7 +197,7 @@ func selectRandomTargetPartAI(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider, // Added to match TargetingStrategyFunc, though not directly used here
 ) (*donburi.Entry, PartSlotKey) {
-	allEnemyParts := getAllTargetableParts(world, actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
+	allEnemyParts := getAllTargetableParts(actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
 	if len(allEnemyParts) == 0 {
 		return nil, ""
 	}

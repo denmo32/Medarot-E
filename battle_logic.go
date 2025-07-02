@@ -105,7 +105,9 @@ func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, partDef *Pa
 	// The ApplyActionModifiersSystem currently adds AIM crit bonus if ActingWithAimTraitTag is present.
 	// Let's assume medal.SkillLevel*2 is a base, and modifiers.CriticalRateBonus contains trait/other bonuses.
 	criticalChance := medal.SkillLevel*2 + criticalRateBonus
-	if criticalChance < 0 { criticalChance = 0 } // Ensure non-negative chance
+	if criticalChance < 0 {
+		criticalChance = 0
+	} // Ensure non-negative chance
 
 	if rand.Intn(100) < criticalChance {
 		critMultiplierToUse := dc.config.Balance.Damage.CriticalMultiplier

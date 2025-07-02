@@ -58,7 +58,7 @@ const (
 	TraitStrike  Trait = "殴る"
 	TraitBerserk Trait = "我武者羅"
 	TraitNormal  Trait = "撃つ"
-	TraitNone    Trait = "NONE"   // NONE はそのまま
+	TraitNone    Trait = "NONE" // NONE はそのまま
 )
 
 const (
@@ -269,7 +269,6 @@ type PartInstanceData struct {
 	IsBroken     bool
 	// Other dynamic states like temporary buffs/debuffs specific to this instance could go here
 }
-
 
 type Medal struct {
 	ID          string

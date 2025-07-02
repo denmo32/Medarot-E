@@ -196,24 +196,21 @@ func executeActionLogic(
 
 		if !result.ActionIsDefended {
 			actualHitPartInstance = intendedTargetPartInstance
-            actualHitPartDef = intendedTargetPartDef
-			if actualHitPartInstance != nil {
-				damageCalculator.ApplyDamage(targetEntry, actualHitPartInstance, originalDamage)
-				finalDamageDealt = originalDamage
-				result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, actualHitPartDef, finalDamageDealt, isCritical, true)
-			} else {
-				finalDamageDealt = 0
-				result.LogMessage = fmt.Sprintf("%s の攻撃は対象パーツ特定に失敗しました (防御後)。", settings.Name)
-			}
+			actualHitPartDef = intendedTargetPartDef
+			damageCalculator.ApplyDamage(targetEntry, actualHitPartInstance, originalDamage)
+			finalDamageDealt = originalDamage
+			result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, actualHitPartDef, finalDamageDealt, isCritical, true)
 		}
 		result.DamageDealt = finalDamageDealt
-		if actualHitPartInstance != nil {
-			result.TargetPartBroken = actualHitPartInstance.IsBroken
-			if result.TargetPartBroken {
-				if result.ActionIsDefended {
-					if !strings.Contains(result.LogMessage, "しかし、パーツは破壊された！") { result.LogMessage += " しかし、パーツは破壊された！" }
-				} else {
-					if !strings.Contains(result.LogMessage, "パーツを破壊した！") { result.LogMessage += " パーツを破壊した！" }
+		result.TargetPartBroken = actualHitPartInstance.IsBroken
+		if result.TargetPartBroken {
+			if result.ActionIsDefended {
+				if !strings.Contains(result.LogMessage, "しかし、パーツは破壊された！") {
+					result.LogMessage += " しかし、パーツは破壊された！"
+				}
+			} else {
+				if !strings.Contains(result.LogMessage, "パーツを破壊した！") {
+					result.LogMessage += " パーツを破壊した！"
 				}
 			}
 		}
@@ -228,8 +225,12 @@ func executeActionLogic(
 		ResetAllEffects(world)
 	}
 
-	if entry.HasComponent(ActingWithBerserkTraitTagComponent) { entry.RemoveComponent(ActingWithBerserkTraitTagComponent) }
-	if entry.HasComponent(ActingWithAimTraitTagComponent) { entry.RemoveComponent(ActingWithAimTraitTagComponent) }
+	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
+		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
+	}
+	if entry.HasComponent(ActingWithAimTraitTagComponent) {
+		entry.RemoveComponent(ActingWithAimTraitTagComponent)
+	}
 	RemoveActionModifiersSystem(entry)
 	return result
 }
@@ -323,8 +324,12 @@ func StartCharge(
 	if actingPartDef.Category == CategoryShoot {
 		if target == nil || target.HasComponent(BrokenStateComponent) {
 			log.Printf("%s: [SHOOT] ターゲットが存在しないか破壊されています。", settings.Name)
-			if entry.HasComponent(ActingWithBerserkTraitTagComponent) { entry.RemoveComponent(ActingWithBerserkTraitTagComponent) }
-			if entry.HasComponent(ActingWithAimTraitTagComponent) { entry.RemoveComponent(ActingWithAimTraitTagComponent) }
+			if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
+				entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
+			}
+			if entry.HasComponent(ActingWithAimTraitTagComponent) {
+				entry.RemoveComponent(ActingWithAimTraitTagComponent)
+			}
 			return false
 		}
 		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, actingPartDef.PartName, SettingsComponent.Get(target).Name, targetPartSlot)

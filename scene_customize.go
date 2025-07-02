@@ -349,7 +349,7 @@ func (cs *CustomizeScene) updateStatus(id string) {
 			sb.WriteString(fmt.Sprintf("\nPropulsion: %d\n", partDef.Propulsion))
 			sb.WriteString(fmt.Sprintf("Mobility: %d\n", partDef.Mobility))
 			sb.WriteString(fmt.Sprintf("Stability: %d\n", partDef.Stability)) // Added Stability
-			sb.WriteString(fmt.Sprintf("Defense: %d\n", partDef.Defense))   // Added Defense for legs
+			sb.WriteString(fmt.Sprintf("Defense: %d\n", partDef.Defense))     // Added Defense for legs
 		}
 	} else if medal, found := GlobalGameDataManager.GetMedalDefinition(id); found { // Use GameDataManager
 		sb.WriteString(fmt.Sprintf("Name: %s\n", medal.Name))

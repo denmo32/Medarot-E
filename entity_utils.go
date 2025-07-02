@@ -37,7 +37,6 @@ func ChangeState(entry *donburi.Entry, newStateType StateType) {
 		log.Printf("%s のステートが変更されました: %v", SettingsComponent.Get(entry).Name, newStateType)
 	}
 
-
 	gauge := GaugeComponent.Get(entry)
 	// action := ActionComponent.Get(entry) // Removed: No longer used directly in ChangeState
 

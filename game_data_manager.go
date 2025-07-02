@@ -74,7 +74,6 @@ func (gdm *GameDataManager) GetAllMedalDefinitions() []*Medal {
 	return defs
 }
 
-
 // Global instance of GameDataManager (or it could be passed around, e.g. via SharedResources)
 // For simplicity in this refactoring phase, a global instance can be used.
 // Consider dependency injection for a larger application.

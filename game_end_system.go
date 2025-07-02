@@ -49,7 +49,7 @@ func CheckGameEndSystem(world donburi.World) GameEndResult {
 	// 2. Team1のリーダーの頭部が破壊されている
 	// 3. Team2の関数可能な機体が0 (これはTeam1の勝利条件なのでここでは見ない)
 	// 4. Team1の関数可能な機体が0 (リーダー健在でも他の機体が全滅)
-	if team1Leader == nil || (team1Leader != nil && PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken) || team1FuncCount == 0 {
+	if team1Leader == nil || (PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken) || team1FuncCount == 0 {
 		winner = Team2
 		isGameOver = true
 		if team1Leader != nil && PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken {
@@ -67,7 +67,7 @@ func CheckGameEndSystem(world donburi.World) GameEndResult {
 	// 3. Team1の関数可能な機体が0 (これはTeam2の勝利条件なのでここでは見ない)
 	// 4. Team2の関数可能な機体が0 (リーダー健在でも他の機体が全滅)
 	if !isGameOver { // Team1がまだ敗北していない場合のみTeam2の敗北をチェック
-		if team2Leader == nil || (team2Leader != nil && PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken) || team2FuncCount == 0 {
+		if team2Leader == nil || PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken || team2FuncCount == 0 {
 			winner = Team1
 			isGameOver = true
 			if team2Leader != nil && PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken {

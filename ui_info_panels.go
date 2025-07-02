@@ -16,7 +16,7 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 	c := bs.resources.Config.UI
 	settings := SettingsComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry) // This is *PartsComponentData
-	partsMap := partsComp.Map             // map[PartSlotKey]*PartInstanceData
+	partsMap := partsComp.Map              // map[PartSlotKey]*PartInstanceData
 
 	panelContainer := widget.NewContainer(
 		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{50, 50, 70, 200})),
@@ -214,7 +214,6 @@ func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config
 				textColor = c.Colors.HPCritical
 			}
 		}
-
 
 		partUI.hpText.Label = fmt.Sprintf("%d / %d", currentArmor, maxArmor)
 		partUI.hpText.Color = textColor

@@ -1,10 +1,11 @@
 package main
 
 import (
+	"log"
+
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/yohamta/donburi"
-	"log"
 )
 
 type UI struct {
@@ -76,10 +77,6 @@ func (u *UI) ShowActionModal(bs *BattleScene, actingEntry *donburi.Entry) {
 	u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
 
 	modal := createActionModalUI(bs, actingEntry)
-	if modal == nil {
-		bs.state = StatePlaying
-		return
-	}
 	u.actionModal = modal
 	u.ebitenui.Container.AddChild(u.actionModal)
 	log.Println("Action modal shown.")

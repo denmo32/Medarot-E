@@ -66,7 +66,6 @@ func ApplyActionModifiersSystem(
 		// modifiers.CriticalRateBonus += medalComp.SkillLevel * 2 // Example factor
 	}
 
-
 	// Add or update the ActionModifierComponent on the entity
 	if actingEntry.HasComponent(ActionModifierComponent) {
 		ActionModifierComponent.SetValue(actingEntry, modifiers)

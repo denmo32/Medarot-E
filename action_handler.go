@@ -109,7 +109,6 @@ func (h *MeleeActionHandler) ResolveTarget(
 		return HandlerTargetingResult{TargetEntity: closestEnemy, Success: false, LogMessage: settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。"}
 	}
 
-
 	return HandlerTargetingResult{
 		TargetEntity:   closestEnemy,
 		TargetPartSlot: targetPartSlot,

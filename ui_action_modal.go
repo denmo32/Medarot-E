@@ -70,7 +70,7 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 
 	for _, available := range availableParts { // available is of type AvailablePart
 		capturedPartDef := available.PartDef // Use PartDef, capture it for the handler
-		capturedSlotKey := available.Slot // Capture slot key as well for consistency if needed by handler
+		capturedSlotKey := available.Slot    // Capture slot key as well for consistency if needed by handler
 
 		actionButton := widget.NewButton(
 			widget.ButtonOpts.Image(buttonImage),
@@ -132,7 +132,8 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 
 	var successful bool
 
-	if selectedPartDef.Category == CategoryShoot { // Use selectedPartDef
+	switch selectedPartDef.Category {
+	case CategoryShoot: // Use selectedPartDef
 		actionTarget, ok := bs.ui.actionTargetMap[slotKey] // slotKey is now directly available
 		if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
 			bs.enqueueMessage("ターゲットがいません！", func() { // This will change state to StateMessage
@@ -145,17 +146,17 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 		}
 		// Pass bs.world, &bs.resources.Config, and bs.partInfoProvider to StartCharge
 		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, bs.world, &bs.resources.Config, bs.partInfoProvider)
-	} else if selectedPartDef.Category == CategoryMelee { // Use selectedPartDef
+	case CategoryMelee: // Use selectedPartDef
 		// Pass bs.world, &bs.resources.Config, and bs.partInfoProvider to StartCharge
 		successful = StartCharge(actingEntry, slotKey, nil, "", bs.world, &bs.resources.Config, bs.partInfoProvider)
-	} else {
+	default:
 		log.Printf("未対応のパーツカテゴリです: %s", selectedPartDef.Category) // Use selectedPartDef
 		successful = false
 	}
 
 	if successful {
 		bs.ui.HideActionModal() // Hide current modal first
-		bs.currentTarget = nil    // Clear target indicator
+		bs.currentTarget = nil  // Clear target indicator
 
 		// Dequeue the current medarot
 		if len(bs.playerActionPendingQueue) > 0 && bs.playerActionPendingQueue[0] == actingEntry {

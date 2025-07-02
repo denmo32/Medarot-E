@@ -113,10 +113,12 @@ type TargetingStrategyComponentData struct {
 
 // ActingWithBerserkTraitTag indicates the entity is currently performing an action with a BERSERK trait part.
 type ActingWithBerserkTraitTag struct{}
+
 var ActingWithBerserkTraitTagComponent = donburi.NewComponentType[ActingWithBerserkTraitTag]()
 
 // ActingWithAimTraitTag indicates the entity is currently performing an action with an AIM trait part.
 type ActingWithAimTraitTag struct{}
+
 var ActingWithAimTraitTagComponent = donburi.NewComponentType[ActingWithAimTraitTag]()
 
 // Potentially others: ActingWithStrikeTraitTag, etc.
@@ -127,32 +129,34 @@ var ActingWithAimTraitTagComponent = donburi.NewComponentType[ActingWithAimTrait
 
 // JustBecameIdleTag indicates the entity has just transitioned to the Idle state.
 type JustBecameIdleTag struct{}
+
 var JustBecameIdleTagComponent = donburi.NewComponentType[JustBecameIdleTag]()
 
 // JustBecameBrokenTag indicates the entity has just transitioned to the Broken state.
 type JustBecameBrokenTag struct{}
-var JustBecameBrokenTagComponent = donburi.NewComponentType[JustBecameBrokenTag]()
 
+var JustBecameBrokenTagComponent = donburi.NewComponentType[JustBecameBrokenTag]()
 
 // --- Action Modifier Component ---
 // Temporarily added to an entity before action calculation (hit/damage)
 // to aggregate all modifiers from traits, skills, buffs, debuffs, etc.
 type ActionModifierComponentData struct {
 	// Critical Hit Modifiers
-	CriticalRateBonus      int     // e.g., +10 for +10%
-	CriticalMultiplier     float64 // If a trait changes the base crit multiplier, default 0 to use system base
+	CriticalRateBonus  int     // e.g., +10 for +10%
+	CriticalMultiplier float64 // If a trait changes the base crit multiplier, default 0 to use system base
 
 	// Power/Damage Modifiers
-	PowerAdditiveBonus     int     // e.g., +20 Power
-	PowerMultiplierBonus   float64 // e.g., 1.5 for +50% Power (applied after additive)
-	DamageAdditiveBonus    int     // Flat damage bonus applied at the very end
-	DamageMultiplierBonus  float64 // Overall damage multiplier (e.g., from buffs/debuffs)
+	PowerAdditiveBonus    int     // e.g., +20 Power
+	PowerMultiplierBonus  float64 // e.g., 1.5 for +50% Power (applied after additive)
+	DamageAdditiveBonus   int     // Flat damage bonus applied at the very end
+	DamageMultiplierBonus float64 // Overall damage multiplier (e.g., from buffs/debuffs)
 
 	// Accuracy/Evasion Modifiers
-	AccuracyAdditiveBonus int     // e.g., +10 Accuracy
+	AccuracyAdditiveBonus int // e.g., +10 Accuracy
 	// EvasionAdditiveBonus  int     // For target's evasion, usually handled by debuffs on target
 	// AccuracyMultiplier    float64 // e.g., 1.1 for +10%
 }
+
 var ActionModifierComponent = donburi.NewComponentType[ActionModifierComponentData]()
 
 // --- AI Part Selection Strategy Component ---
@@ -171,4 +175,5 @@ type AIPartSelectionStrategyFunc func(
 type AIPartSelectionStrategyComponentData struct {
 	Strategy AIPartSelectionStrategyFunc
 }
+
 var AIPartSelectionStrategyComponent = donburi.NewComponentType[AIPartSelectionStrategyComponentData]()

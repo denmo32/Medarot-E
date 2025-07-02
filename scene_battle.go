@@ -13,18 +13,17 @@ import (
 
 // BattleScene は戦闘シーンのすべてを管理します
 type BattleScene struct {
-	resources           *SharedResources
-	world               donburi.World
-	tickCount           int
-	debugMode           bool
-	state               GameState
-	playerTeam          TeamID
+	resources  *SharedResources
+	world      donburi.World
+	tickCount  int
+	debugMode  bool
+	state      GameState
+	playerTeam TeamID
 	// actionQueue         []*donburi.Entry // Removed: Will be managed as a world resource
-	ui                  *UI
-	message             string
-	postMessageCallback func()
-	winner              TeamID // Initialized to TeamNone
-	restartRequested    bool
+	ui                       *UI
+	message                  string
+	postMessageCallback      func()
+	winner                   TeamID // Initialized to TeamNone
 	playerMedarotToAct       *donburi.Entry
 	playerActionPendingQueue []*donburi.Entry // Queue for player medarots waiting for action selection
 	currentTarget            *donburi.Entry
@@ -43,12 +42,12 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	world := donburi.NewWorld()
 
 	bs := &BattleScene{
-		resources:          res,
-		world:              world,
-		tickCount:          0,
-		debugMode:          true,
-		state:              StatePlaying,
-		playerTeam:         Team1,
+		resources:  res,
+		world:      world,
+		tickCount:  0,
+		debugMode:  true,
+		state:      StatePlaying,
+		playerTeam: Team1,
 		// actionQueue:        make([]*donburi.Entry, 0), // Removed
 		playerMedarotToAct:       nil,
 		playerActionPendingQueue: make([]*donburi.Entry, 0), // Initialize the new queue
@@ -144,7 +143,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 				bs.damageCalculator,
 				bs.hitCalculator,
 				bs.targetSelector,
-			&bs.resources.Config, // Pass gameConfig
+				&bs.resources.Config, // Pass gameConfig
 			)
 			if err != nil {
 				// Handle error appropriately
@@ -158,7 +157,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 						logComp.LastActionLog = result.LogMessage
 					}
 					bs.attackingEntity = result.ActingEntry // For UI indication
-					bs.targetedEntity = result.TargetEntry   // For UI indication
+					bs.targetedEntity = result.TargetEntry  // For UI indication
 
 					// Enqueue message and set callback for cooldown
 					bs.enqueueMessage(result.LogMessage, func() {
