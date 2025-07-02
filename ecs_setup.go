@@ -119,7 +119,8 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		}
 	}
 	log.Printf("%d体のメダロットエンティティを生成しました。", len(gameData.Medarots))
-}
+} // Added missing closing brace for CreateMedarotEntities
+
 func FindLeader(world donburi.World, teamID TeamID) *donburi.Entry {
 	var leaderEntry *donburi.Entry
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
