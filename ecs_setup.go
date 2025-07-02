@@ -120,18 +120,6 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 	}
 	log.Printf("%d体のメダロットエンティティを生成しました。", len(gameData.Medarots))
 }
-
-// findMedalByID is no longer needed as medal definitions are in GameDataManager.
-// func findMedalByID(allMedals []Medal, id string) *Medal {
-// 	for _, medal := range allMedals {
-// 		if medal.ID == id {
-// 			newMedal := medal
-// 			return &newMedal
-// 		}
-// 	}
-// 	return nil
-// }
-
 func FindLeader(world donburi.World, teamID TeamID) *donburi.Entry {
 	var leaderEntry *donburi.Entry
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
