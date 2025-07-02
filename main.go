@@ -45,16 +45,30 @@ func main() {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	gameData, err := LoadAllGameData()
+	// Load static definitions into GameDataManager
+	if err := LoadAllStaticGameData(); err != nil {
+		log.Fatalf("Failed to load static game data: %v", err)
+	}
+
+	// Load medarot loadouts
+	medarotLoadouts, err := LoadMedarotLoadouts("data/medarots.csv")
 	if err != nil {
-		log.Fatalf("Failed to load game data: %v", err)
+		log.Fatalf("Failed to load medarot loadouts: %v", err)
 	}
-	if gameData == nil {
-		log.Fatal("Game data is nil after loading.")
+
+	// Prepare GameData struct (now only contains Medarots, or could be passed directly)
+	gameData := &GameData{
+		Medarots: medarotLoadouts,
 	}
+	// if gameData == nil { // This check might be less relevant if GameData is simplified
+	// 	log.Fatal("Game data is nil after loading.")
+	// }
 
 	config := LoadConfig()
 
+	// NewGame now expects a *GameData that might only contain Medarots,
+	// or its signature could be changed to accept []MedarotData directly.
+	// For now, assuming NewGame still takes *GameData.
 	game := NewGame(gameData, config, fontFace)
 	if game == nil {
 		log.Fatal("Failed to create new game instance.")

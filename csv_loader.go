@@ -25,63 +25,73 @@ func parseBool(s string) bool {
 	return strings.ToLower(strings.TrimSpace(s)) == "true"
 }
 
-func LoadMedals(filePath string) ([]Medal, error) {
+// LoadMedals loads medal definitions from CSV and stores them in GameDataManager.
+func LoadMedals(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 	reader := csv.NewReader(file)
-	reader.Read()
+	_, err = reader.Read() // Skip header
+	if err != nil {
+		return fmt.Errorf("failed to read header from %s: %w", filePath, err)
+	}
 
-	var medals []Medal
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
+			fmt.Printf("Error reading record from %s: %v\n", filePath, err)
 			continue
 		}
-		medals = append(medals, Medal{
+		if len(record) < 7 { // Basic check for enough columns for Medal
+			fmt.Printf("Skipping malformed record in %s (not enough columns): %v\n", filePath, record)
+			continue
+		}
+		medal := Medal{
 			ID:          record[0],
 			Name:        record[1],
 			Personality: record[2],
-			SkillLevel:  parseInt(record[6], 1),
-		})
+			// Assuming Medaforce (record[3]), Attribute (record[4]), skill_shoot (record[5]) might exist
+			SkillLevel: parseInt(record[6], 1), // Assuming skill_fight is at index 6 as per original parseInt
+		}
+		if err := GlobalGameDataManager.AddMedalDefinition(&medal); err != nil {
+			fmt.Printf("Error adding medal definition %s: %v\n", medal.ID, err)
+		}
 	}
-	return medals, nil
+	return nil
 }
 
-// LoadParts のインデックスをCSVの列に完全に合わせる
-func LoadParts(filePath string) (map[string]*Part, error) {
+// LoadParts loads part definitions from CSV and stores them in GameDataManager.
+func LoadParts(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 	reader := csv.NewReader(file)
 	reader.Read() // Skip header
 
-	partsMap := make(map[string]*Part)
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
-		// ★★★ 修正点1: 列数を15に更新 ★★★
-		if err != nil || len(record) < 15 {
+		if err != nil || len(record) < 15 { // Ensure record has enough columns
+			fmt.Printf("Skipping malformed record in %s: %v (err: %v)\n", filePath, record, err)
 			continue
 		}
-		armor := parseInt(record[6], 1)
-		part := &Part{
+		maxArmor := parseInt(record[6], 1) // MaxArmor is from CSV
+		partDef := &PartDefinition{
 			ID:         record[0],
 			PartName:   record[1],
 			Type:       PartType(record[2]),
 			Category:   PartCategory(record[3]),
 			Trait:      Trait(record[4]),
-			Armor:      armor,
-			MaxArmor:   armor,
+			MaxArmor:   maxArmor, // Use MaxArmor from definition
 			Power:      parseInt(record[7], 0),
 			Charge:     parseInt(record[8], 1),
 			Cooldown:   parseInt(record[9], 1),
@@ -89,15 +99,18 @@ func LoadParts(filePath string) (map[string]*Part, error) {
 			Accuracy:   parseInt(record[11], 0),
 			Mobility:   parseInt(record[12], 0),
 			Propulsion: parseInt(record[13], 0),
-			// ★★★ 修正点2: 新しいstability列(インデックス14)を読み込む ★★★
-			Stability: parseInt(record[14], 0),
-			IsBroken:  false,
+			Stability:  parseInt(record[14], 0),
+			// WeaponType could be record[5] if needed
 		}
-		partsMap[part.ID] = part
+		if err := GlobalGameDataManager.AddPartDefinition(partDef); err != nil {
+			fmt.Printf("Error adding part definition %s: %v\n", partDef.ID, err)
+		}
 	}
-	return partsMap, nil
+	return nil // Data is loaded into GlobalGameDataManager
 }
 
+// LoadMedarotLoadouts loads only the medarot setup data.
+// Part and Medal definitions should be loaded separately into GameDataManager.
 func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -105,7 +118,10 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 	}
 	defer file.Close()
 	reader := csv.NewReader(file)
-	reader.Read()
+	_, err = reader.Read() // Skip header
+	if err != nil {
+		return nil, fmt.Errorf("failed to read header from %s: %w", filePath, err)
+	}
 
 	var medarots []MedarotData
 	for {
@@ -113,7 +129,12 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 		if err == io.EOF {
 			break
 		}
-		if err != nil || len(record) < 10 {
+		if err != nil {
+			fmt.Printf("Error reading record from %s: %v\n", filePath, err)
+			continue
+		}
+		if len(record) < 10 {
+			fmt.Printf("Skipping malformed record in %s (not enough columns): %v\n", filePath, record)
 			continue
 		}
 		medarot := MedarotData{
@@ -133,26 +154,18 @@ func LoadMedarotLoadouts(filePath string) ([]MedarotData, error) {
 	return medarots, nil
 }
 
-func LoadAllGameData() (*GameData, error) {
-	gameData := &GameData{}
-	var err error
-
-	gameData.Medals, err = LoadMedals("data/medals.csv")
-	if err != nil {
-		return nil, fmt.Errorf("medals.csvの読み込みに失敗: %w", err)
+// LoadAllStaticGameData loads all static definitions (parts, medals) into GameDataManager.
+// It should be called once at the start of the game.
+// MedarotLoadouts are typically loaded by the caller of this function if needed,
+// or by the game scene that requires them.
+func LoadAllStaticGameData() error {
+	if err := LoadMedals("data/medals.csv"); err != nil {
+		return fmt.Errorf("medals.csvの読み込みに失敗: %w", err)
 	}
-
-	gameData.AllParts, err = LoadParts("data/parts.csv")
-	if err != nil {
-		return nil, fmt.Errorf("parts.csvの読み込みに失敗: %w", err)
+	if err := LoadParts("data/parts.csv"); err != nil {
+		return fmt.Errorf("parts.csvの読み込みに失敗: %w", err)
 	}
-
-	gameData.Medarots, err = LoadMedarotLoadouts("data/medarots.csv")
-	if err != nil {
-		return nil, fmt.Errorf("medarots.csvの読み込みに失敗: %w", err)
-	}
-
-	return gameData, nil
+	return nil
 }
 
 // SaveMedarotLoadouts は、現在のメダロットの構成をCSVファイルに保存します。
