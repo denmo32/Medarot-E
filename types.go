@@ -41,24 +41,24 @@ const (
 	PartSlotLegs     PartSlotKey = "legs"
 )
 const (
-	PartTypeHead PartType = "HEAD"
-	PartTypeRArm PartType = "R_ARM"
-	PartTypeLArm PartType = "L_ARM"
-	PartTypeLegs PartType = "LEG"
+	PartTypeHead PartType = "頭部"
+	PartTypeRArm PartType = "右腕"
+	PartTypeLArm PartType = "左腕"
+	PartTypeLegs PartType = "脚部"
 )
 const (
-	CategoryShoot   PartCategory = "SHOOT"
-	CategoryMelee   PartCategory = "FIGHT"
-	CategorySupport PartCategory = "SUPPORT"
-	CategoryDefense PartCategory = "DEFENSE"
-	CategoryNone    PartCategory = "NONE"
+	CategoryShoot   PartCategory = "射撃"
+	CategoryMelee   PartCategory = "格闘" // CSVの FIGHT に対応
+	CategorySupport PartCategory = "支援"
+	CategoryDefense PartCategory = "防御"
+	CategoryNone    PartCategory = "NONE" // NONE はそのまま
 )
 const (
-	TraitAim     Trait = "AIM"
-	TraitStrike  Trait = "STRIKE"
-	TraitBerserk Trait = "BERSERK"
-	TraitNormal  Trait = "NORMAL"
-	TraitNone    Trait = "NONE"
+	TraitAim     Trait = "狙い撃ち"
+	TraitStrike  Trait = "殴る"
+	TraitBerserk Trait = "我武者羅"
+	TraitNormal  Trait = "撃つ"
+	TraitNone    Trait = "NONE"   // NONE はそのまま
 )
 
 const (
