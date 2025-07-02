@@ -36,29 +36,44 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			IsLeader:  loadout.IsLeader,
 			DrawIndex: loadout.DrawIndex,
 		})
-		partsMap := make(map[PartSlotKey]*Part)
+
+		partsInstanceMap := make(map[PartSlotKey]*PartInstanceData)
 		partIDMap := map[PartSlotKey]string{
 			PartSlotHead:     loadout.HeadID,
 			PartSlotRightArm: loadout.RightArmID,
 			PartSlotLeftArm:  loadout.LeftArmID,
 			PartSlotLegs:     loadout.LegsID,
 		}
+
 		for slot, partID := range partIDMap {
-			if p, exists := gameData.AllParts[partID]; exists {
-				newPart := *p
-				newPart.IsBroken = false
-				partsMap[slot] = &newPart
+			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partID)
+			if defFound {
+				partsInstanceMap[slot] = &PartInstanceData{
+					DefinitionID: partDef.ID,
+					CurrentArmor: partDef.MaxArmor,
+					IsBroken:     false,
+				}
 			} else {
-				placeholderPart := &Part{ID: "placeholder", PartName: "なし", IsBroken: true}
-				partsMap[slot] = placeholderPart
+				log.Printf("Warning: Part definition not found for ID %s. Using placeholder.", partID)
+				// Ensure a placeholder PartDefinition exists in GameDataManager or handle appropriately
+				// For now, creating a PartInstanceData that signifies a missing/broken part.
+				partsInstanceMap[slot] = &PartInstanceData{
+					DefinitionID: "placeholder_" + string(slot), // Needs a unique placeholder ID scheme
+					CurrentArmor: 0,
+					IsBroken:     true,
+				}
 			}
 		}
-		PartsComponent.SetValue(entry, Parts{Map: partsMap})
-		medal := findMedalByID(gameData.Medals, loadout.MedalID)
-		if medal == nil {
-			medal = &Medal{ID: "fallback", Name: "フォールバック", SkillLevel: 1}
+		PartsComponent.SetValue(entry, PartsComponentData{Map: partsInstanceMap}) // Use PartsComponentData
+
+		medalDef, medalFound := GlobalGameDataManager.GetMedalDefinition(loadout.MedalID)
+		if medalFound {
+			MedalComponent.SetValue(entry, *medalDef) // Store the actual Medal definition
+		} else {
+			log.Printf("Warning: Medal definition not found for ID %s. Using fallback.", loadout.MedalID)
+			fallbackMedal := Medal{ID: "fallback", Name: "フォールバック", Personality: "ジョーカー", SkillLevel: 1}
+			MedalComponent.SetValue(entry, fallbackMedal)
 		}
-		MedalComponent.SetValue(entry, *medal)
 		// ★★★ 削除
 		// StateComponent.SetValue(entry, State{State: StateIdle})
 		GaugeComponent.SetValue(entry, Gauge{})
@@ -102,17 +117,17 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 	log.Printf("%d体のメダロットエンティティを生成しました。", len(gameData.Medarots))
 }
 
-// ( ... findMedalByID, FindLeader は変更なし ... )
+// findMedalByID is no longer needed as medal definitions are in GameDataManager.
+// func findMedalByID(allMedals []Medal, id string) *Medal {
+// 	for _, medal := range allMedals {
+// 		if medal.ID == id {
+// 			newMedal := medal
+// 			return &newMedal
+// 		}
+// 	}
+// 	return nil
+// }
 
-func findMedalByID(allMedals []Medal, id string) *Medal {
-	for _, medal := range allMedals {
-		if medal.ID == id {
-			newMedal := medal
-			return &newMedal
-		}
-	}
-	return nil
-}
 func FindLeader(world donburi.World, teamID TeamID) *donburi.Entry {
 	var leaderEntry *donburi.Entry
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {

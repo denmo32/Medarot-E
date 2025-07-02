@@ -18,19 +18,16 @@ type ActionResult struct {
 	DamageDealt      int  // 実際に与えたダメージ
 	TargetPartBroken bool // ターゲットパーツが破壊されたか
 	ActionIsDefended bool // 攻撃が防御されたか
-	// ActionSuccess bool // ActionDidHit で代替可能か検討
 }
 
 // UpdateActionQueueSystem は行動準備完了キューを処理します。
-// このシステムは BattleScene に直接依存しません。
-// 戻り値として、行動結果のリストとエラーを返します。
 func UpdateActionQueueSystem(
 	world donburi.World,
 	partInfoProvider *PartInfoProvider,
-	damageCalculator *DamageCalculator, // ExecuteActionから移動したため追加
-	hitCalculator *HitCalculator, // ExecuteActionから移動したため追加
-	targetSelector *TargetSelector, // ExecuteActionから移動したため追加
-	gameConfig *Config, // Added to pass to executeActionLogic
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	gameConfig *Config,
 ) ([]ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
@@ -39,12 +36,12 @@ func UpdateActionQueueSystem(
 
 	results := []ActionResult{}
 
-	// 行動順序を推進力に基づいてソート
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
-		if partInfoProvider == nil {
-			log.Println("Warning: UpdateActionQueueSystem - partInfoProvider is nil, using default propulsion.")
+		if partInfoProvider == nil { // Should not happen in normal flow
+			log.Println("UpdateActionQueueSystem: partInfoProvider is nil during sort")
 			return false
 		}
+		// Propulsion for sorting should come from leg part definition
 		propI := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
 		propJ := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
 		return propI > propJ
@@ -52,19 +49,14 @@ func UpdateActionQueueSystem(
 
 	if len(actionQueueComp.Queue) > 0 {
 		actingEntry := actionQueueComp.Queue[0]
-		actionQueueComp.Queue = actionQueueComp.Queue[1:] // キューから取り出し
+		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
 		actionResult := executeActionLogic(actingEntry, world, damageCalculator, hitCalculator, targetSelector, partInfoProvider, gameConfig)
 		results = append(results, actionResult)
-
-		// StartCooldown の呼び出しは BattleScene 側で行うか、ここで完了イベントを生成する
-		// BattleScene (呼び出し側) で actionResult を見て判断する
 	}
 	return results, nil
 }
 
-// executeActionLogic は元々 systems.go の ExecuteAction にあったロジックです。
-// BattleScene への依存をなくし、必要な情報を引数で受け取り、詳細な ActionResult を返します。
 func executeActionLogic(
 	entry *donburi.Entry,
 	world donburi.World,
@@ -72,175 +64,174 @@ func executeActionLogic(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
-	gameConfig *Config, // Added to pass to ApplyActionModifiersSystem
+	gameConfig *Config,
 ) ActionResult {
 	action := ActionComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
-	actingPart := PartsComponent.Get(entry).Map[action.SelectedPartKey]
+	partsComp := PartsComponent.Get(entry)
+	actingPartInstance := partsComp.Map[action.SelectedPartKey]
 
-	// Apply action modifiers before any calculations
-	ApplyActionModifiersSystem(world, entry, gameConfig, partInfoProvider)
+	result := ActionResult{ActingEntry: entry}
 
-	result := ActionResult{
-		ActingEntry: entry,
+	if actingPartInstance == nil {
+		log.Printf("Error: executeActionLogic - actingPartInstance is nil for %s, part key %s", settings.Name, action.SelectedPartKey)
+		result.LogMessage = fmt.Sprintf("%sは行動パーツの取得に失敗しました。", settings.Name)
+		return result
+	}
+	actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
+	if !defFound {
+		log.Printf("Error: executeActionLogic - PartDefinition not found for ID %s (entity: %s)", actingPartInstance.DefinitionID, settings.Name)
+		result.LogMessage = fmt.Sprintf("%sはパーツ定義(%s)の取得に失敗しました。", settings.Name, actingPartInstance.DefinitionID)
+		return result
 	}
 
-	var targetEntry *donburi.Entry
-	// var intendedTargetPart *Part // This will be determined by the handler or from its result
+	ApplyActionModifiersSystem(world, entry, gameConfig, partInfoProvider)
 
-	// --- Target Resolution using ActionHandler ---
-	handler := GetActionHandlerForCategory(actingPart.Category)
+	var targetEntry *donburi.Entry
+	var intendedTargetPartInstance *PartInstanceData
+	var intendedTargetPartDef *PartDefinition
+
+	handler := GetActionHandlerForCategory(actingPartDef.Category)
 	if handler == nil {
-		result.LogMessage = fmt.Sprintf("%sは行動カテゴリ '%s' の処理に失敗した（対応ハンドラなし）。", settings.Name, actingPart.Category)
-		RemoveActionModifiersSystem(entry) // Clean up modifiers if action fails early
+		result.LogMessage = fmt.Sprintf("%sのパーツカテゴリ '%s' に対応する行動ハンドラがありません。", settings.Name, actingPartDef.Category)
+		RemoveActionModifiersSystem(entry)
 		return result
 	}
 
 	targetingResult := handler.ResolveTarget(entry, world, action, targetSelector, partInfoProvider)
 	if !targetingResult.Success {
 		result.LogMessage = targetingResult.LogMessage
-		// If ResolveTarget provides a target entity even on failure (e.g. part broken on valid entity), set it.
-		result.TargetEntry = targetingResult.TargetEntity
-		RemoveActionModifiersSystem(entry) // Clean up modifiers
-		return result
-	}
-
-	targetEntry = targetingResult.TargetEntity
-	// intendedTargetPart is implicitly defined by targetingResult.TargetPartSlot for SHOOT,
-	// or resolved to a specific Part for MELEE by the handler.
-	// For damage application, we'll need the actual Part struct.
-	var intendedTargetPart *Part
-	if targetEntry != nil && targetingResult.TargetPartSlot != "" {
-		intendedTargetPart = PartsComponent.Get(targetEntry).Map[targetingResult.TargetPartSlot]
-		if intendedTargetPart == nil || intendedTargetPart.IsBroken { // Double check after handler
-			result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、パーツは存在しないか既に破壊されていた(Handler後チェック)。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot)
-			result.TargetEntry = targetEntry
-			RemoveActionModifiersSystem(entry)
-			return result
-		}
-	} else if actingPart.Category != CategoryShoot && targetEntry != nil {
-		// For non-shoot actions that might not use TargetPartSlot directly from handler in this specific way,
-		// ensure intendedTargetPart is set if applicable (e.g. Melee handler might have picked one).
-		// This part might need refinement based on how handlers for other categories (SUPPORT, DEFENSE) work.
-		// For Melee, the handler's LogMessage implies a part was chosen. We need to ensure 'intendedTargetPart' is the one.
-		// The current MeleeActionHandler.ResolveTarget returns a valid TargetPartSlot for a valid Part.
-		// So, the above block should cover it.
-	}
-
-
-	if targetEntry == nil && (actingPart.Category == CategoryShoot || actingPart.Category == CategoryMelee) {
-		// If it's an attack category but no target was resolved by the handler (e.g. Melee found no enemies)
-		result.LogMessage = targetingResult.LogMessage // Use handler's log
-		if result.LogMessage == "" { // Fallback if handler didn't set one
-			result.LogMessage = fmt.Sprintf("%sは攻撃対象を見つけられませんでした。", settings.Name)
-		}
+		result.TargetEntry = targetingResult.TargetEntity // Handler might set target even on failure
 		RemoveActionModifiersSystem(entry)
 		return result
 	}
+	targetEntry = targetingResult.TargetEntity
 	result.TargetEntry = targetEntry
 
+	if targetEntry != nil && targetingResult.TargetPartSlot != "" {
+		targetPartsComp := PartsComponent.Get(targetEntry)
+		if targetPartsComp != nil {
+			intendedTargetPartInstance = targetPartsComp.Map[targetingResult.TargetPartSlot]
+			if intendedTargetPartInstance != nil {
+				var tDefFound bool
+				intendedTargetPartDef, tDefFound = GlobalGameDataManager.GetPartDefinition(intendedTargetPartInstance.DefinitionID)
+				if !tDefFound {
+					result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、ターゲットパーツ定義(%s)が見つかりませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot, intendedTargetPartInstance.DefinitionID)
+					RemoveActionModifiersSystem(entry)
+					return result
+				}
+				if intendedTargetPartInstance.IsBroken {
+					result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、パーツは既に破壊されていました。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot)
+					RemoveActionModifiersSystem(entry)
+					return result
+				}
+			} else {
+				result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、ターゲットパーツインスタンスが見つかりませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot)
+				RemoveActionModifiersSystem(entry)
+				return result
+			}
+		} else { // Target has no PartsComponent
+			result.LogMessage = fmt.Sprintf("%sは%sを狙ったが、ターゲットにパーツコンポーネントがありません。", settings.Name, SettingsComponent.Get(targetEntry).Name)
+			RemoveActionModifiersSystem(entry)
+			return result
+		}
+	}
 
-	// --- 命中判定 ---
-	// Note: For actions that don't require a target (e.g. self-buffs), targetEntry might be nil.
-	// Hit calculation should only proceed if there's a target and it's an offensive action.
-	// This logic might need to be part of the ActionHandler or an earlier check.
-	var didHit bool = true // Assume hit for non-targeted actions or if no hit calc is needed
-	if targetEntry != nil && (actingPart.Category == CategoryShoot || actingPart.Category == CategoryMelee) {
-		didHit = hitCalculator.CalculateHit(entry, targetEntry, actingPart)
+	// If it's an offensive action but no valid target part instance was resolved (e.g. target has no parts, or melee couldn't pick one)
+    if (actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee) && targetEntry != nil && intendedTargetPartInstance == nil {
+        result.LogMessage = fmt.Sprintf("%s は %s を攻撃しようとしましたが、有効な対象部位がありませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name)
+        RemoveActionModifiersSystem(entry)
+        return result
+    }
+
+
+	var didHit bool = true // Assume hit for non-targeted/non-offensive actions
+	if targetEntry != nil && (actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee) {
+		didHit = hitCalculator.CalculateHit(entry, targetEntry, actingPartDef)
 	}
 	result.ActionDidHit = didHit
 
 	if !didHit {
 		result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, nil, 0, false, false)
-		if actingPart.Trait == TraitBerserk {
+		if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 			ResetAllEffects(world)
 		}
+		RemoveActionModifiersSystem(entry)
 		return result
 	}
 
-	// --- ダメージ計算 ---
-	damage, isCritical := damageCalculator.CalculateDamage(entry, actingPart)
-	result.IsCritical = isCritical
-	originalDamage := damage
-
-	// --- 防御判定とダメージ適用 ---
-	var finalDamageDealt int
-	var actualTargetPart *Part // 実際にダメージを受けたパーツ
-
-	defensePart := targetSelector.SelectDefensePart(targetEntry)
-	// isDefended := false // result.ActionIsDefended を直接使用
-	result.ActionIsDefended = false
-	if defensePart != nil && defensePart != intendedTargetPart && hitCalculator.CalculateDefense(targetEntry, defensePart) {
-		// 防御成功 (狙ったパーツと防御パーツが異なる場合)
-		// もし狙ったパーツが防御可能な腕や頭で、それが選択された場合、それは「防御」ではなく通常の被弾として扱う
-		// ここでは、防御行動として別のパーツが使われた場合を想定
-		result.ActionIsDefended = true
-		actualTargetPart = defensePart
-		finalDamageAfterDefense := damage - defensePart.Defense
-		if finalDamageAfterDefense < 0 {
-			finalDamageAfterDefense = 0
+	// Proceed only if it's an offensive action that hit, or a non-offensive action
+	if actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee {
+		if targetEntry == nil || intendedTargetPartInstance == nil {
+			// This should ideally be caught by earlier checks if it's an offensive action
+			result.LogMessage = fmt.Sprintf("%s の攻撃は対象または対象パーツが不明です (内部エラー)。", settings.Name)
+			RemoveActionModifiersSystem(entry)
+			return result
 		}
-		finalDamageDealt = finalDamageAfterDefense
-		damageCalculator.ApplyDamage(targetEntry, defensePart, finalDamageDealt)
-		result.LogMessage = damageCalculator.GenerateActionLogDefense(targetEntry, defensePart, finalDamageDealt, originalDamage, isCritical)
-	} else {
-		// 防御失敗、防御パーツなし、または狙ったパーツ自身で受ける場合
-		actualTargetPart = intendedTargetPart
-		finalDamageDealt = damage
-		damageCalculator.ApplyDamage(targetEntry, intendedTargetPart, finalDamageDealt)
-		result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, intendedTargetPart, finalDamageDealt, isCritical, true)
-	}
-	result.DamageDealt = finalDamageDealt
-	if actualTargetPart != nil { // actualTargetPart が nil になるケースは現状ないはずだが念のため
-		result.TargetPartBroken = actualTargetPart.IsBroken
+
+		damage, isCritical := damageCalculator.CalculateDamage(entry, actingPartDef)
+		result.IsCritical = isCritical
+		// originalDamage := damage // For defense log, if re-enabled
+
+		// --- Simplified Damage Application (Defense Logic Bypassed for now) ---
+		result.ActionIsDefended = false
+		damageCalculator.ApplyDamage(targetEntry, intendedTargetPartInstance, damage)
+		result.DamageDealt = damage // Since no defense, damage dealt is full pre-defense damage
+		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
+		result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, intendedTargetPartDef, result.DamageDealt, isCritical, true)
+		if result.TargetPartBroken {
+			result.LogMessage += " パーツを破壊した！"
+		}
+
+	} else { // Non-offensive actions (e.g., SUPPORT, DEFENSE if they had handlers)
+		if result.LogMessage == "" { // If handler didn't set a log (e.g. for future SUPPORT/DEFENSE actions)
+			result.LogMessage = fmt.Sprintf("%s は %s を実行した。", settings.Name, actingPartDef.PartName)
+		}
 	}
 
-	// Trait-specific effects post-action
 	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 		log.Printf("%s がBERSERK特性効果（行動後全効果リセット）を発動。", settings.Name)
 		ResetAllEffects(world)
 	}
-	// Add other post-action trait effects here if any
 
-	// Ensure trait tags are removed after action execution, regardless of cooldown.
-	// This is a safeguard, primary removal is in StartCooldownSystem.
 	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
-		// log.Printf("%s のBERSERK特性タグをexecuteActionLogicで解除(念のため)。", SettingsComponent.Get(entry).Name)
 	}
 	if entry.HasComponent(ActingWithAimTraitTagComponent) {
 		entry.RemoveComponent(ActingWithAimTraitTagComponent)
-		// log.Printf("%s のAIM特性タグをexecuteActionLogi で解除(念のため)。", SettingsComponent.Get(entry).Name)
 	}
-
-	RemoveActionModifiersSystem(entry) // Remove modifiers after action is fully resolved
-
+	RemoveActionModifiersSystem(entry)
 	return result
 }
 
 // StartCooldownSystem はクールダウン状態を開始します。
-// この関数は BattleScene に直接依存しません。
-// systems.go から移動し、シグネチャを変更。
 func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *Config) {
 	actionComp := ActionComponent.Get(entry)
-	partEntity := PartsComponent.Get(entry)
-	var part *Part
-	if partEntity != nil && partEntity.Map != nil && actionComp.SelectedPartKey != "" {
-		part = partEntity.Map[actionComp.SelectedPartKey]
+	partsComp := PartsComponent.Get(entry)
+	var actingPartDef *PartDefinition
+
+	if actingPartInstance, ok := partsComp.Map[actionComp.SelectedPartKey]; ok {
+		if def, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID); defFound {
+			actingPartDef = def
+		} else {
+			log.Printf("Error: StartCooldownSystem - PartDefinition not found for ID %s", actingPartInstance.DefinitionID)
+		}
+	} else {
+		log.Printf("Error: StartCooldownSystem - actingPartInstance not found for key %s", actionComp.SelectedPartKey)
 	}
 
-	if part != nil && part.Trait != TraitBerserk {
-		ResetAllEffects(world) // ResetAllEffects は world を引数に取る
+	// Reset effects if not Berserk (based on part definition's trait)
+	if actingPartDef != nil && actingPartDef.Trait != TraitBerserk {
+		ResetAllEffects(world)
 	}
 
-	baseSeconds := 1.0
-	if part != nil {
-		baseSeconds = float64(part.Cooldown)
+	baseSeconds := 1.0 // Default cooldown
+	if actingPartDef != nil {
+		baseSeconds = float64(actingPartDef.Cooldown)
 	}
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
-	// gameConfig を使用
 	totalTicks := (baseSeconds * 60.0) / gameConfig.Balance.Time.GameSpeedMultiplier
 
 	gauge := GaugeComponent.Get(entry)
@@ -251,23 +242,20 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
 
-	// Remove Trait tags
+	// Trait tags and ActionModifierComponent should have been removed by executeActionLogic's end.
+	// Adding a safeguard removal here as well.
 	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
-		log.Printf("%s のBERSERK特性タグを解除。", SettingsComponent.Get(entry).Name)
 	}
 	if entry.HasComponent(ActingWithAimTraitTagComponent) {
 		entry.RemoveComponent(ActingWithAimTraitTagComponent)
-		log.Printf("%s のAIM特性タグを解除。", SettingsComponent.Get(entry).Name)
 	}
-	RemoveActionModifiersSystem(entry) // Ensure modifiers are removed when cooldown starts
+	RemoveActionModifiersSystem(entry)
 
-	ChangeState(entry, StateTypeCooldown) // ChangeState is in entity_utils.go
+	ChangeState(entry, StateTypeCooldown)
 }
 
 // StartCharge はチャージ状態を開始します。
-// BattleScene への依存をなくし、必要な情報を引数で受け取ります。
-// 元は systems.go にありましたが、行動の開始処理としてこちらに移動しました。
 func StartCharge(
 	entry *donburi.Entry,
 	partKey PartSlotKey,
@@ -277,12 +265,17 @@ func StartCharge(
 	gameConfig *Config,
 	partInfoProvider *PartInfoProvider,
 ) bool {
-	parts := PartsComponent.Get(entry)
+	partsComp := PartsComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
-	part := parts.Map[partKey]
+	actingPartInstance := partsComp.Map[partKey]
 
-	if part == nil || part.IsBroken {
-		log.Printf("%s: 選択されたパーツ %s は存在しないか破壊されています。", settings.Name, partKey)
+	if actingPartInstance == nil || actingPartInstance.IsBroken {
+		log.Printf("%s: 選択されたパーツ %s (%s) は存在しないか破壊されています。", settings.Name, partKey, actingPartInstance.DefinitionID)
+		return false
+	}
+	actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
+	if !defFound {
+		log.Printf("%s: パーツ定義(%s)が見つかりません。", settings.Name, actingPartInstance.DefinitionID)
 		return false
 	}
 
@@ -291,84 +284,68 @@ func StartCharge(
 	action.TargetEntity = target
 	action.TargetPartSlot = targetPartSlot
 
-	if part.Category == CategoryShoot {
-		if target == nil || target.HasComponent(BrokenStateComponent) {
-			log.Printf("%s: [SHOOT] ターゲットが存在しないか破壊されています。", settings.Name)
-			return false
-		}
-		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, part.PartName, SettingsComponent.Get(target).Name, targetPartSlot)
-	} else {
-		log.Printf("%sは%sで攻撃準備！", settings.Name, part.PartName)
+	// Add Trait tags first
+	switch actingPartDef.Trait {
+	case TraitBerserk:
+		donburi.Add(entry, ActingWithBerserkTraitTagComponent, &ActingWithBerserkTraitTag{})
+		log.Printf("%s の行動にBERSERK特性タグを付与。", settings.Name)
+	case TraitAim:
+		donburi.Add(entry, ActingWithAimTraitTagComponent, &ActingWithAimTraitTag{})
+		log.Printf("%s の行動にAIM特性タグを付与。", settings.Name)
 	}
 
-	// Apply debuffs based on traits and category at the start of charge
+	if actingPartDef.Category == CategoryShoot {
+		if target == nil || target.HasComponent(BrokenStateComponent) {
+			log.Printf("%s: [SHOOT] ターゲットが存在しないか破壊されています。", settings.Name)
+			if entry.HasComponent(ActingWithBerserkTraitTagComponent) { entry.RemoveComponent(ActingWithBerserkTraitTagComponent) }
+			if entry.HasComponent(ActingWithAimTraitTagComponent) { entry.RemoveComponent(ActingWithAimTraitTagComponent) }
+			return false
+		}
+		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, actingPartDef.PartName, SettingsComponent.Get(target).Name, targetPartSlot)
+	} else {
+		log.Printf("%sは%sで攻撃準備！", settings.Name, actingPartDef.PartName)
+	}
+
 	if target != nil {
 		balanceConfig := &gameConfig.Balance
-		// BERSERK trait effect (on charge start)
 		if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 			log.Printf("%s がBERSERK特性効果（チャージ時デバフ）を発動。", settings.Name)
-			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
-				Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff,
-			})
-			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{
-				Multiplier: balanceConfig.Effects.Berserk.EvasionRateDebuff,
-			})
+			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff})
+			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Berserk.EvasionRateDebuff})
 		}
-
-		// AIM trait effect (on charge start, for SHOOT category)
-		if part.Category == CategoryShoot && entry.HasComponent(ActingWithAimTraitTagComponent) {
+		if actingPartDef.Category == CategoryShoot && entry.HasComponent(ActingWithAimTraitTagComponent) {
 			log.Printf("%s がAIM特性効果（チャージ時デバフ）を発動。", settings.Name)
-			// Note: If Berserk also adds EvasionDebuff, this might overwrite or be redundant.
-			// Assuming donburi.Add overwrites if component already exists.
-			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{
-				Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff,
-			})
+			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff})
 		}
-
-		// MELEE category specific debuff (separate from traits)
-		if part.Category == CategoryMelee {
+		if actingPartDef.Category == CategoryMelee {
 			log.Printf("%s がMELEEカテゴリ効果（チャージ時デバフ）を発動。", settings.Name)
-			// If Berserk also adds DefenseDebuff, this might overwrite.
-			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{
-				Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff,
-			})
+			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff})
 		}
 	}
 
 	propulsion := 1
 	if partInfoProvider != nil {
-		legs := parts.Map[PartSlotLegs]
-		if legs != nil && !legs.IsBroken {
-			propulsion = partInfoProvider.GetOverallPropulsion(entry)
+		legsInstance := partsComp.Map[PartSlotLegs]
+		if legsInstance != nil && !legsInstance.IsBroken {
+			propulsion = partInfoProvider.GetOverallPropulsion(entry) // This already uses definition via GameDataManager
 		}
 	} else {
 		log.Println("Warning: StartCharge - partInfoProvider is nil")
 	}
 
-	baseSeconds := float64(part.Charge)
+	baseSeconds := float64(actingPartDef.Charge)
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
-
 	balanceConfig := &gameConfig.Balance
 	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
 	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
+
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
 	if gauge.TotalDuration < 1 {
 		gauge.TotalDuration = 1
 	}
-
-	// Add Trait tags based on the part used
-	switch part.Trait {
-	case TraitBerserk:
-		donburi.Add(entry, ActingWithBerserkTraitTagComponent, &ActingWithBerserkTraitTag{})
-		log.Printf("%s の行動にBERSERK特性タグを付与。", SettingsComponent.Get(entry).Name)
-	case TraitAim:
-		donburi.Add(entry, ActingWithAimTraitTagComponent, &ActingWithAimTraitTag{})
-		log.Printf("%s の行動にAIM特性タグを付与。", SettingsComponent.Get(entry).Name)
-	}
-
-	ChangeState(entry, StateTypeCharging) // ChangeState is in entity_utils.go
+	ChangeState(entry, StateTypeCharging)
 	return true
 }

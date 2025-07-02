@@ -15,7 +15,8 @@ import (
 func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPanelUI {
 	c := bs.resources.Config.UI
 	settings := SettingsComponent.Get(entry)
-	parts := PartsComponent.Get(entry).Map
+	partsComp := PartsComponent.Get(entry) // This is *PartsComponentData
+	partsMap := partsComp.Map             // map[PartSlotKey]*PartInstanceData
 
 	panelContainer := widget.NewContainer(
 		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{50, 50, 70, 200})),
@@ -50,10 +51,14 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 
 	partSlots := make(map[PartSlotKey]*infoPanelPartUI)
 	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
-		part := parts[slotKey]
+		partInst, instFound := partsMap[slotKey]
 		partName := "---"
-		if part != nil {
-			partName = part.PartName
+		if instFound && partInst != nil {
+			if partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID); defFound {
+				partName = partDef.PartName
+			} else {
+				partName = "(定義なし)"
+			}
 		}
 
 		partContainer := widget.NewContainer(
@@ -144,8 +149,12 @@ func updateAllInfoPanels(bs *BattleScene) {
 
 func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config) {
 	c := config.UI
-	settings := SettingsComponent.Get(entry)
-	partsMap := PartsComponent.Get(entry).Map
+	// settings := SettingsComponent.Get(entry) // Already available via entry in updateAllInfoPanels context
+	partsComp := PartsComponent.Get(entry)
+	if partsComp == nil {
+		return // No parts component, nothing to update for parts
+	}
+	partsMap := partsComp.Map // map[PartSlotKey]*PartInstanceData
 
 	var stateStr string
 	if entry.HasComponent(IdleStateComponent) {
@@ -161,6 +170,9 @@ func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config
 	}
 	ui.stateText.Label = stateStr
 
+	// Leader color update was here, ensure settings is available or passed if needed for this.
+	// Assuming settings is still accessible via entry if this function is called from updateAllInfoPanels.
+	settings := SettingsComponent.Get(entry) // Re-get settings if not passed or available in wider scope
 	if settings.IsLeader {
 		ui.nameText.Color = c.Colors.Leader
 	} else {
@@ -168,24 +180,41 @@ func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config
 	}
 
 	for slotKey, partUI := range ui.partSlots {
-		part := partsMap[slotKey]
-		if part == nil {
+		partInst, instFound := partsMap[slotKey]
+		if !instFound || partInst == nil {
+			// Optionally clear or hide this part's UI elements if it's missing
+			partUI.partNameText.Label = "---"
+			partUI.hpText.Label = "0/0"
+			partUI.hpBar.SetCurrent(0)
 			continue
 		}
 
-		currentArmor := part.Armor
-		maxArmor := part.MaxArmor
+		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+		if !defFound {
+			partUI.partNameText.Label = "(定義なし)"
+			partUI.hpText.Label = fmt.Sprintf("%d / ?", partInst.CurrentArmor)
+			partUI.hpBar.SetCurrent(0) // Or some indication of error/unknown max
+			continue
+		}
+
+		currentArmor := partInst.CurrentArmor
+		maxArmor := partDef.MaxArmor // MaxArmor from PartDefinition
 		textColor := c.Colors.White
 		hpPercentage := 0.0
 		if maxArmor > 0 {
 			hpPercentage = float64(currentArmor) / float64(maxArmor)
 		}
 
-		if part.IsBroken {
+		if partInst.IsBroken { // IsBroken from PartInstanceData
 			textColor = c.Colors.Broken
-		} else if hpPercentage < 0.3 {
-			textColor = c.Colors.HPCritical
+			partUI.partNameText.Label = partDef.PartName + " (壊)" // Indicate broken part name
+		} else {
+			partUI.partNameText.Label = partDef.PartName
+			if hpPercentage < 0.3 {
+				textColor = c.Colors.HPCritical
+			}
 		}
+
 
 		partUI.hpText.Label = fmt.Sprintf("%d / %d", currentArmor, maxArmor)
 		partUI.hpText.Color = textColor

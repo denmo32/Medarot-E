@@ -167,9 +167,9 @@ type UIConfig struct {
 }
 
 type GameData struct {
-	Medals   []Medal
-	AllParts map[string]*Part
-	Medarots []MedarotData
+	// Medals   []Medal // Removed: Medal definitions will be in GameDataManager
+	// AllParts map[string]*Part // Removed: Part definitions will be in GameDataManager
+	Medarots []MedarotData // Only Medarot loadouts remain here, or this struct could be removed too
 }
 
 type MedarotData struct {
@@ -242,6 +242,34 @@ type Part struct {
 	Stability  int
 	IsBroken   bool
 }
+
+// PartDefinition holds the static, unchanging data for a part, loaded from CSV.
+type PartDefinition struct {
+	ID         string
+	PartName   string
+	Type       PartType
+	Category   PartCategory
+	Trait      Trait
+	MaxArmor   int // MaxArmor is part of definition
+	Power      int
+	Accuracy   int
+	Charge     int
+	Cooldown   int
+	Propulsion int
+	Mobility   int
+	Defense    int
+	Stability  int
+	// WeaponType string // If needed from CSV, add here
+}
+
+// PartInstanceData (renamed from Part) holds the dynamic state of a part instance in battle.
+type PartInstanceData struct {
+	DefinitionID string // ID to look up PartDefinition
+	CurrentArmor int
+	IsBroken     bool
+	// Other dynamic states like temporary buffs/debuffs specific to this instance could go here
+}
+
 
 type Medal struct {
 	ID          string

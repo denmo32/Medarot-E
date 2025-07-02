@@ -33,13 +33,13 @@ func aiSelectAction(
 
 	// TODO: AIのパーツ選択ロジックをより高度化する（現在は常に最初のパーツを選択） -> Strategyパターンで対応
 	var slotKey PartSlotKey
-	var selectedPart *Part
+	var selectedPartDef *PartDefinition // Changed to selectedPartDef
 
 	foundPartSelectionStrategy := false
 	if entry.HasComponent(AIPartSelectionStrategyComponent) {
 		partStrategyComp := AIPartSelectionStrategyComponent.Get(entry)
 		if partStrategyComp.Strategy != nil {
-			slotKey, selectedPart = partStrategyComp.Strategy(entry, availableParts, world, partInfoProvider, targetSelector)
+			slotKey, selectedPartDef = partStrategyComp.Strategy(entry, availableParts, world, partInfoProvider, targetSelector)
 			foundPartSelectionStrategy = true
 		}
 	}
@@ -48,16 +48,16 @@ func aiSelectAction(
 		log.Printf("%s: AIエラー - AIPartSelectionStrategyComponentが見つからないか有効なStrategyがないため、デフォルトのパーツ選択(最初のパーツ)を使用。", settings.Name)
 		if len(availableParts) > 0 {
 			slotKey = availableParts[0].Slot
-			selectedPart = availableParts[0].Part
+			selectedPartDef = availableParts[0].PartDef // Use PartDef from AvailablePart
 		}
 	}
 
-	if selectedPart == nil {
+	if selectedPartDef == nil { // Check selectedPartDef
 		log.Printf("%s: AIは戦略に基づいて選択できるパーツがありませんでした。", settings.Name)
 		return
 	}
 
-	if selectedPart.Category == CategoryShoot {
+	if selectedPartDef.Category == CategoryShoot { // Use selectedPartDef.Category
 		var targetEntry *donburi.Entry
 		var targetPartSlot PartSlotKey
 
@@ -86,11 +86,13 @@ func aiSelectAction(
 		// StartCharge のシグネチャ変更に対応
 		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, gameConfig, partInfoProvider)
 
-	} else if selectedPart.Category == CategoryMelee {
+	} else if selectedPartDef.Category == CategoryMelee { // Use selectedPartDef.Category
 		// StartCharge のシグネチャ変更に対応
 		StartCharge(entry, slotKey, nil, "", world, gameConfig, partInfoProvider)
 	} else {
-		log.Printf("%s: AIはパーツカテゴリ '%s' の行動を決定できませんでした。", settings.Name, selectedPart.Category)
+		// Log with selectedPartDef.Category if it's not SHOOT or MELEE but still somehow selected
+		// Or if it's a category that doesn't lead to StartCharge (e.g. SUPPORT, DEFENSE if they had strategies)
+		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
 	}
 }
 
@@ -234,56 +236,54 @@ func SelectFirstAvailablePart(
 	world donburi.World,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *Part) {
+) (PartSlotKey, *PartDefinition) { // Return PartDefinition
 	if len(availableParts) > 0 {
-		return availableParts[0].Slot, availableParts[0].Part
+		// availableParts now holds AvailablePart which has PartDef (*PartDefinition)
+		return availableParts[0].Slot, availableParts[0].PartDef
 	}
 	return "", nil // No part selected
 }
 
 // SelectHighestPowerPart selects the part with the highest power among available parts.
-// (Skeleton for future implementation)
 func SelectHighestPowerPart(
 	actingEntry *donburi.Entry,
-	availableParts []AvailablePart,
+	availableParts []AvailablePart, // This is []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey}
 	world donburi.World,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *Part) {
+) (PartSlotKey, *PartDefinition) { // Return PartDefinition
 	if len(availableParts) == 0 {
 		return "", nil
 	}
-	bestPart := availableParts[0].Part
+	bestPartDef := availableParts[0].PartDef
 	bestSlot := availableParts[0].Slot
 	for _, ap := range availableParts[1:] {
-		if ap.Part.Power > bestPart.Power {
-			bestPart = ap.Part
+		if ap.PartDef.Power > bestPartDef.Power {
+			bestPartDef = ap.PartDef
 			bestSlot = ap.Slot
 		}
 	}
-	return bestSlot, bestPart
+	return bestSlot, bestPartDef
 }
 
 // SelectFastestChargePart selects the part with the lowest charge time.
-// (Skeleton for future implementation)
 func SelectFastestChargePart(
 	actingEntry *donburi.Entry,
-	availableParts []AvailablePart,
+	availableParts []AvailablePart, // This is []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey}
 	world donburi.World,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *Part) {
+) (PartSlotKey, *PartDefinition) { // Return PartDefinition
 	if len(availableParts) == 0 {
 		return "", nil
 	}
-	bestPart := availableParts[0].Part
+	bestPartDef := availableParts[0].PartDef
 	bestSlot := availableParts[0].Slot
-	// Assuming lower charge value is better
 	for _, ap := range availableParts[1:] {
-		if ap.Part.Charge < bestPart.Charge { // Lower charge time is faster
-			bestPart = ap.Part
+		if ap.PartDef.Charge < bestPartDef.Charge { // Lower charge time is faster
+			bestPartDef = ap.PartDef
 			bestSlot = ap.Slot
 		}
 	}
-	return bestSlot, bestPart
+	return bestSlot, bestPartDef
 }

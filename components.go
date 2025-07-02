@@ -8,7 +8,7 @@ import (
 // 各Componentにユニークな型情報を持たせる
 var (
 	SettingsComponent      = donburi.NewComponentType[Settings]()
-	PartsComponent         = donburi.NewComponentType[Parts]()
+	PartsComponent         = donburi.NewComponentType[PartsComponentData]() // Changed from Parts
 	MedalComponent         = donburi.NewComponentType[Medal]()
 	GaugeComponent         = donburi.NewComponentType[Gauge]()
 	ActionComponent        = donburi.NewComponentType[Action]()
@@ -40,9 +40,9 @@ type Settings struct {
 	DrawIndex int // 描画順やY座標の決定に使用
 }
 
-// Parts はメダロットのパーツ一式を保持する
-type Parts struct {
-	Map map[PartSlotKey]*Part
+// Parts (now PartsComponentData) はメダロットのパーツ一式を保持する
+type PartsComponentData struct {
+	Map map[PartSlotKey]*PartInstanceData // Changed from *Part to *PartInstanceData
 }
 
 // 新しい状態タグコンポーネント
@@ -165,7 +165,7 @@ type AIPartSelectionStrategyFunc func(
 	world donburi.World, // For more complex strategies needing world access
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *Part) // Returns selected part's slot key and the part itself
+) (PartSlotKey, *PartDefinition) // Returns selected part's slot key and its definition
 
 // AIPartSelectionStrategyComponentData holds the part selection strategy for an AI entity.
 type AIPartSelectionStrategyComponentData struct {
