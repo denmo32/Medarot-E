@@ -91,19 +91,10 @@ type EvasionDebuff struct {
 
 // --- AIターゲティング戦略コンポーネント ---
 
-// TargetingStrategyFunc はターゲティング戦略の関数シグネチャを定義します。
-// ワールド（エンティティのクエリ用）、行動するAIエンティティ、
-// targetSelectorヘルパー、および潜在的にpartInfoProviderへのアクセスが必要です。
-type TargetingStrategyFunc func(
-	world donburi.World,
-	actingEntry *donburi.Entry,
-	targetSelector *TargetSelector,
-	partInfoProvider *PartInfoProvider,
-) (*donburi.Entry, PartSlotKey) // ターゲットエンティティとターゲットパーツスロットを返します。
-
 // TargetingStrategyComponentData はAIエンティティのターゲティング戦略を保持します。
+// StrategyフィールドはTargetingStrategyインターフェースを実装した構造体のポインタを保持します。
 type TargetingStrategyComponentData struct {
-	Strategy TargetingStrategyFunc
+	Strategy TargetingStrategy
 }
 
 // --- 特性効果タグコンポーネント ---
