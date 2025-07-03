@@ -37,10 +37,14 @@ func handleEnterIdle(entry *donburi.Entry) {
 		gauge.CurrentGauge = 0
 	}
 	// 選択されていたアクションをクリア
-	if action := ActionComponent.Get(entry); action != nil {
-		action.SelectedPartKey = ""
-		action.TargetEntity = nil
-		action.TargetPartSlot = ""
+	if entry.HasComponent(ActionIntentComponent) {
+		intent := ActionIntentComponent.Get(entry)
+		intent.SelectedPartKey = ""
+	}
+	if entry.HasComponent(TargetComponent) {
+		target := TargetComponent.Get(entry)
+		target.TargetEntity = nil
+		target.TargetPartSlot = ""
 	}
 }
 

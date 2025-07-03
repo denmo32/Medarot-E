@@ -37,7 +37,6 @@ func UpdateActionQueueSystem(
 			log.Println("UpdateActionQueueSystem: ソート中にbattleLogicまたはpartInfoProviderがnilです")
 			return false
 		}
-		// ソートのための推進力は脚部パーツ定義から取得する必要があります
 		propI := battleLogic.PartInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
 		propJ := battleLogic.PartInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
 		return propI > propJ
@@ -98,18 +97,18 @@ func executeAction(
 
 // StartCooldownSystem はクールダウン状態を開始します。
 func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *Config) {
-	actionComp := ActionComponent.Get(entry)
+	intent := ActionIntentComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 	var actingPartDef *PartDefinition
 
-	if actingPartInstance, ok := partsComp.Map[actionComp.SelectedPartKey]; ok {
+	if actingPartInstance, ok := partsComp.Map[intent.SelectedPartKey]; ok {
 		if def, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID); defFound {
 			actingPartDef = def
 		} else {
 			log.Printf("エラー: StartCooldownSystem - ID %s のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID)
 		}
 	} else {
-		log.Printf("エラー: StartCooldownSystem - キー %s の行動パーツインスタンスが見つかりません。", actionComp.SelectedPartKey)
+		log.Printf("エラー: StartCooldownSystem - キー %s の行動パーツインスタンスが見つかりません。", intent.SelectedPartKey)
 	}
 
 	if actingPartDef != nil && actingPartDef.Trait != TraitBerserk {
@@ -148,18 +147,23 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 func StartCharge(
 	entry *donburi.Entry,
 	partKey PartSlotKey,
-	target *donburi.Entry,
+	targetEntry *donburi.Entry,
 	targetPartSlot PartSlotKey,
 	world donburi.World,
 	gameConfig *Config,
 	partInfoProvider *PartInfoProvider,
 ) bool {
+	state := StateComponent.Get(entry)
+	if state.Current != StateTypeIdle {
+		return false // アイドル状態でない場合は開始できない
+	}
+
 	partsComp := PartsComponent.Get(entry)
 	settings := SettingsComponent.Get(entry)
 	actingPartInstance := partsComp.Map[partKey]
 
 	if actingPartInstance == nil || actingPartInstance.IsBroken {
-		log.Printf("%s: 選択されたパーツ %s (%s) は存在しないか破壊されています。", settings.Name, partKey, actingPartInstance.DefinitionID)
+		log.Printf("%s: 選択されたパーツ %s は存在しないか破壊されています。", settings.Name, partKey)
 		return false
 	}
 	actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
@@ -168,10 +172,12 @@ func StartCharge(
 		return false
 	}
 
-	action := ActionComponent.Get(entry)
-	action.SelectedPartKey = partKey
-	action.TargetEntity = target
-	action.TargetPartSlot = targetPartSlot
+	intent := ActionIntentComponent.Get(entry)
+	intent.SelectedPartKey = partKey
+
+	target := TargetComponent.Get(entry)
+	target.TargetEntity = targetEntry
+	target.TargetPartSlot = targetPartSlot
 
 	switch actingPartDef.Trait {
 	case TraitBerserk:
@@ -183,7 +189,7 @@ func StartCharge(
 	}
 
 	if actingPartDef.Category == CategoryShoot {
-		if target == nil || StateComponent.Get(target).Current == StateTypeBroken {
+		if targetEntry == nil || StateComponent.Get(targetEntry).Current == StateTypeBroken {
 			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 				entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
@@ -193,25 +199,25 @@ func StartCharge(
 			}
 			return false
 		}
-		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, actingPartDef.PartName, SettingsComponent.Get(target).Name, targetPartSlot)
+		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, actingPartDef.PartName, SettingsComponent.Get(targetEntry).Name, targetPartSlot)
 	} else {
 		log.Printf("%sは%sで攻撃準備！", settings.Name, actingPartDef.PartName)
 	}
 
-	if target != nil {
+	if targetEntry != nil {
 		balanceConfig := &gameConfig.Balance
 		if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 			log.Printf("%s がBERSERK特性効果（チャージ時デバフ）を発動。", settings.Name)
-			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff})
-			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Berserk.EvasionRateDebuff})
+			donburi.Add(targetEntry, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff})
+			donburi.Add(targetEntry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Berserk.EvasionRateDebuff})
 		}
 		if actingPartDef.Category == CategoryShoot && entry.HasComponent(ActingWithAimTraitTagComponent) {
 			log.Printf("%s がAIM特性効果（チャージ時デバフ）を発動。", settings.Name)
-			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff})
+			donburi.Add(targetEntry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff})
 		}
 		if actingPartDef.Category == CategoryMelee {
 			log.Printf("%s が格闘カテゴリ効果（チャージ時デバフ）を発動。", settings.Name)
-			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff})
+			donburi.Add(targetEntry, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff})
 		}
 	}
 

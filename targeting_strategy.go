@@ -293,17 +293,20 @@ func (s *CounterStrategy) SelectTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 ) (*donburi.Entry, PartSlotKey) {
-	if history := TargetHistoryComponent.Get(actingEntry); history != nil && history.LastAttacker != nil {
-		lastAttacker := history.LastAttacker
-		// 攻撃者がまだ有効で、破壊されていないことを確認
-		if lastAttacker.Valid() && StateComponent.Get(lastAttacker).Current != StateTypeBroken {
-			// 攻撃者のランダムなパーツを狙う
-			targetPart := targetSelector.SelectRandomPartToDamage(lastAttacker)
-			if targetPart != nil {
-				slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
-				if slotKey != "" {
-					log.Printf("AI戦略 [カウンター]: %s が最後に攻撃してきた %s を狙います。", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(lastAttacker).Name)
-					return lastAttacker, slotKey
+	if actingEntry.HasComponent(AIComponent) {
+		ai := AIComponent.Get(actingEntry)
+		if ai.TargetHistory.LastAttacker != nil {
+			lastAttacker := ai.TargetHistory.LastAttacker
+			// 攻撃者がまだ有効で、破壊されていないことを確認
+			if lastAttacker.Valid() && StateComponent.Get(lastAttacker).Current != StateTypeBroken {
+				// 攻撃者のランダムなパーツを狙う
+				targetPart := targetSelector.SelectRandomPartToDamage(lastAttacker)
+				if targetPart != nil {
+					slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
+					if slotKey != "" {
+						log.Printf("AI戦略 [カウンター]: %s が最後に攻撃してきた %s を狙います。", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(lastAttacker).Name)
+						return lastAttacker, slotKey
+					}
 				}
 			}
 		}
@@ -326,15 +329,18 @@ func (s *GuardStrategy) SelectTarget(
 	leader := FindLeader(world, settings.Team)
 
 	if leader != nil && leader != actingEntry { // リーダーがいて、自分自身ではない場合
-		if history := TargetHistoryComponent.Get(leader); history != nil && history.LastAttacker != nil {
-			lastAttacker := history.LastAttacker
-			if lastAttacker.Valid() && StateComponent.Get(lastAttacker).Current != StateTypeBroken {
-				targetPart := targetSelector.SelectRandomPartToDamage(lastAttacker)
-				if targetPart != nil {
-					slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
-					if slotKey != "" {
-						log.Printf("AI戦略 [ガード]: %s がリーダーを攻撃した %s を狙います。", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(lastAttacker).Name)
-						return lastAttacker, slotKey
+		if leader.HasComponent(AIComponent) {
+			ai := AIComponent.Get(leader)
+			if ai.TargetHistory.LastAttacker != nil {
+				lastAttacker := ai.TargetHistory.LastAttacker
+				if lastAttacker.Valid() && StateComponent.Get(lastAttacker).Current != StateTypeBroken {
+					targetPart := targetSelector.SelectRandomPartToDamage(lastAttacker)
+					if targetPart != nil {
+						slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
+						if slotKey != "" {
+							log.Printf("AI戦略 [ガード]: %s がリーダーを攻撃した %s を狙います。", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(lastAttacker).Name)
+							return lastAttacker, slotKey
+						}
 					}
 				}
 			}
@@ -354,16 +360,19 @@ func (s *FocusStrategy) SelectTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 ) (*donburi.Entry, PartSlotKey) {
-	if history := LastActionHistoryComponent.Get(actingEntry); history != nil && history.LastHitTarget != nil && history.LastHitPartSlot != "" {
-		lastTarget := history.LastHitTarget
-		lastSlot := history.LastHitPartSlot
+	if actingEntry.HasComponent(AIComponent) {
+		ai := AIComponent.Get(actingEntry)
+		if ai.LastActionHistory.LastHitTarget != nil && ai.LastActionHistory.LastHitPartSlot != "" {
+			lastTarget := ai.LastActionHistory.LastHitTarget
+			lastSlot := ai.LastActionHistory.LastHitPartSlot
 
-		// ターゲットが有効で、そのパーツがまだ破壊されていないか確認
-		if lastTarget.Valid() && StateComponent.Get(lastTarget).Current != StateTypeBroken {
-			if parts := PartsComponent.Get(lastTarget); parts != nil {
-				if partInst, ok := parts.Map[lastSlot]; ok && !partInst.IsBroken {
-					log.Printf("AI戦略 [フォーカス]: %s が前回攻撃した %s の %s を再度狙います。", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(lastTarget).Name, lastSlot)
-					return lastTarget, lastSlot
+			// ターゲットが有効で、そのパーツがまだ破壊されていないか確認
+			if lastTarget.Valid() && StateComponent.Get(lastTarget).Current != StateTypeBroken {
+				if parts := PartsComponent.Get(lastTarget); parts != nil {
+					if partInst, ok := parts.Map[lastSlot]; ok && !partInst.IsBroken {
+						log.Printf("AI戦略 [フォーカス]: %s が前回攻撃した %s の %s を再度狙います。", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(lastTarget).Name, lastSlot)
+						return lastTarget, lastSlot
+					}
 				}
 			}
 		}
@@ -397,14 +406,17 @@ func (s *AssistStrategy) SelectTarget(
 
 		teammateSettings := SettingsComponent.Get(teammate)
 		if teammateSettings.Team == actingSettings.Team {
-			if history := LastActionHistoryComponent.Get(teammate); history != nil && history.LastHitTarget != nil && history.LastHitPartSlot != "" {
-				lastTarget := history.LastHitTarget
-				lastSlot := history.LastHitPartSlot
-				if lastTarget.Valid() && StateComponent.Get(lastTarget).Current != StateTypeBroken {
-					if parts := PartsComponent.Get(lastTarget); parts != nil {
-						if partInst, ok := parts.Map[lastSlot]; ok && !partInst.IsBroken {
-							assistTarget = lastTarget
-							assistSlot = lastSlot
+			if teammate.HasComponent(AIComponent) {
+				ai := AIComponent.Get(teammate)
+				if ai.LastActionHistory.LastHitTarget != nil && ai.LastActionHistory.LastHitPartSlot != "" {
+					lastTarget := ai.LastActionHistory.LastHitTarget
+					lastSlot := ai.LastActionHistory.LastHitPartSlot
+					if lastTarget.Valid() && StateComponent.Get(lastTarget).Current != StateTypeBroken {
+						if parts := PartsComponent.Get(lastTarget); parts != nil {
+							if partInst, ok := parts.Map[lastSlot]; ok && !partInst.IsBroken {
+								assistTarget = lastTarget
+								assistSlot = lastSlot
+							}
 						}
 					}
 				}

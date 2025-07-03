@@ -17,12 +17,9 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			MedalComponent,
 			StateComponent,
 			GaugeComponent,
-			ActionComponent,
 			LogComponent,
-			TargetHistoryComponent,
-			LastActionHistoryComponent,
-			TargetingStrategyComponent,
-			AIPartSelectionStrategyComponent,
+			ActionIntentComponent,
+			TargetComponent,
 		))
 		SettingsComponent.SetValue(entry, Settings{
 			ID:        loadout.ID,
@@ -61,45 +58,48 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			log.Fatalf("エラー: ID %s のメダル定義が見つかりません。", loadout.MedalID)
 		}
 
-		StateComponent.SetValue(entry, StateComponentData{Current: StateTypeIdle})
+		StateComponent.SetValue(entry, State{Current: StateTypeIdle, StateEnterAt: 0})
 		GaugeComponent.SetValue(entry, Gauge{})
-		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""})
 		LogComponent.SetValue(entry, Log{})
-		TargetHistoryComponent.SetValue(entry, TargetHistoryComponentData{})
-		LastActionHistoryComponent.SetValue(entry, LastActionHistoryComponentData{})
-
-		var strategy TargetingStrategy
-		// 上記のフォールバックロジックにより、medalDefはここでnilでないことが保証されます
-		switch medalDef.Personality {
-		case "アシスト":
-			strategy = &AssistStrategy{}
-		case "クラッシャー":
-			strategy = &CrusherStrategy{}
-		case "カウンター":
-			strategy = &CounterStrategy{}
-		case "チェイス":
-			strategy = &ChaseStrategy{}
-		case "デュエル":
-			strategy = &DuelStrategy{}
-		case "フォーカス":
-			strategy = &FocusStrategy{}
-		case "ガード":
-			strategy = &GuardStrategy{}
-		case "ハンター":
-			strategy = &HunterStrategy{}
-		case "インターセプト":
-			strategy = &InterceptStrategy{}
-		case "ジョーカー":
-			strategy = &JokerStrategy{}
-		default:
-			strategy = &LeaderStrategy{} // デフォルトはリーダー狙い
-		}
-		TargetingStrategyComponent.SetValue(entry, TargetingStrategyComponentData{Strategy: strategy})
+		ActionIntentComponent.SetValue(entry, ActionIntent{})
+		TargetComponent.SetValue(entry, Target{})
 
 		if loadout.Team != playerTeam { // AIのみ
+			var strategy TargetingStrategy
+			switch medalDef.Personality {
+			case "アシスト":
+				strategy = &AssistStrategy{}
+			case "クラッシャー":
+				strategy = &CrusherStrategy{}
+			case "カウンター":
+				strategy = &CounterStrategy{}
+			case "チェイス":
+				strategy = &ChaseStrategy{}
+			case "デュエル":
+				strategy = &DuelStrategy{}
+			case "フォーカス":
+				strategy = &FocusStrategy{}
+			case "ガード":
+				strategy = &GuardStrategy{}
+			case "ハンター":
+				strategy = &HunterStrategy{}
+			case "インターセプト":
+				strategy = &InterceptStrategy{}
+			case "ジョーカー":
+				strategy = &JokerStrategy{}
+			default:
+				strategy = &LeaderStrategy{} // デフォルトはリーダー狙い
+			}
+
 			partSelectionStrategy := SelectFirstAvailablePart
 			// 例: if medalDef.Personality == "Aggressive" { partSelectionStrategy = SelectHighestPowerPart }
-			AIPartSelectionStrategyComponent.SetValue(entry, AIPartSelectionStrategyComponentData{Strategy: partSelectionStrategy})
+
+			donburi.Add(entry, AIComponent, &AI{
+				TargetingStrategy:     strategy,
+				PartSelectionStrategy: partSelectionStrategy,
+				TargetHistory:         TargetHistoryData{},
+				LastActionHistory:     LastActionHistoryData{},
+			})
 		}
 
 		if loadout.Team == playerTeam {

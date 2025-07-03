@@ -11,15 +11,16 @@ type ActionHandler interface {
 	// targetSelector: ターゲットを見つけるためのヘルパー。
 	// partInfoProvider: 一部のターゲットロジックで必要になる場合があります。
 	// result: ターゲット情報を格納するためのActionResultへのポインタ。
-	// 成功した場合はtrue、失敗した場合はfalseを返します。失敗した場合、result.LogMessageに理由が設定されます。
+	// 成功した場合は (ターゲットエンティティ, ターゲットパーツスロット, true) を返します。
+	// 失敗した場合は (nil, "", false) を返し、result.LogMessageに理由が設定されます。
 	ResolveTarget(
 		actingEntry *donburi.Entry,
 		world donburi.World,
-		actionComp *Action, // ActionComponent.Get(actingEntry)
+		intent *ActionIntent,
 		targetSelector *TargetSelector,
-		partInfoProvider *PartInfoProvider, // 一部のターゲットロジックで必要になる場合があります
+		partInfoProvider *PartInfoProvider,
 		result *ActionResult,
-	) bool
+	) (*donburi.Entry, PartSlotKey, bool)
 
 	// CanExecute (オプション): 行動実行が可能かどうかの事前チェック。
 	// (例: 射撃なら弾数があるか、など。今回はスコープ外とする可能性あり)
@@ -40,35 +41,35 @@ type ShootActionHandler struct{}
 func (h *ShootActionHandler) ResolveTarget(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	actionComp *Action,
+	intent *ActionIntent,
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 	result *ActionResult,
-) bool {
+) (*donburi.Entry, PartSlotKey, bool) {
 	settings := SettingsComponent.Get(actingEntry)
-	// 射撃の場合、ターゲットエンティティとパーツスロットは通常、事前に選択されているべきです
-	// (プレイヤーまたはAIの初期ターゲティング戦略によって)。
-	if actionComp.TargetEntity == nil || actionComp.TargetPartSlot == "" {
+	// 射撃の場合、ターゲットは事前にPlayerInputSystemまたはAIInputSystemによってTargetComponentに設定されているはずです。
+	target := TargetComponent.Get(actingEntry)
+	if target.TargetEntity == nil || target.TargetPartSlot == "" {
 		result.LogMessage = settings.Name + "は射撃ターゲットが未選択です。"
-		return false
+		return nil, "", false
 	}
-	targetEntry := actionComp.TargetEntity
-	targetPartSlot := actionComp.TargetPartSlot
+	targetEntry := target.TargetEntity
+	targetPartSlot := target.TargetPartSlot
 	result.TargetEntry = targetEntry // 失敗時もターゲット情報をログに残すために設定
 
 	if StateComponent.Get(targetEntry).Current == StateTypeBroken {
 		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(targetEntry).Name + ")を狙ったが、既に行動不能だった！"
-		return false
+		return nil, "", false
 	}
 	targetParts := PartsComponent.Get(targetEntry)
 	if targetParts.Map[targetPartSlot] == nil || targetParts.Map[targetPartSlot].IsBroken {
 		result.LogMessage = settings.Name + "は" + SettingsComponent.Get(targetEntry).Name + "の" + string(targetPartSlot) + "を狙ったが、パーツは既に破壊されていた！"
-		return false
+		return targetEntry, targetPartSlot, false
 	}
 
 	result.TargetPartSlot = targetPartSlot
 	result.LogMessage = settings.Name + "は" + SettingsComponent.Get(targetEntry).Name + "の" + string(targetPartSlot) + "を狙う！"
-	return true
+	return targetEntry, targetPartSlot, true
 }
 
 // MeleeActionHandler は格闘カテゴリのパーツのアクションを処理します。
@@ -77,40 +78,40 @@ type MeleeActionHandler struct{}
 func (h *MeleeActionHandler) ResolveTarget(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	actionComp *Action, // 格闘はActionComponentで事前に選択されたターゲットを無視する場合があります
+	intent *ActionIntent,
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 	result *ActionResult,
-) bool {
+) (*donburi.Entry, PartSlotKey, bool) {
 	settings := SettingsComponent.Get(actingEntry)
 	closestEnemy := targetSelector.FindClosestEnemy(actingEntry)
 	if closestEnemy == nil {
 		result.LogMessage = settings.Name + "は格闘攻撃しようとしたが、相手がいなかった。"
-		return false
+		return nil, "", false
 	}
 	result.TargetEntry = closestEnemy // 失敗時もターゲット情報をログに残すために設定
 
 	if StateComponent.Get(closestEnemy).Current == StateTypeBroken { // FindClosestEnemyでフィルタリングされるべきだが、念のため確認
 		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(closestEnemy).Name + ")を狙ったが、既に行動不能だった！"
-		return false
+		return closestEnemy, "", false
 	}
 
 	targetPart := targetSelector.SelectRandomPartToDamage(closestEnemy)
 	if targetPart == nil {
 		result.LogMessage = settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "を狙ったが、攻撃できる部位がなかった！"
-		return false
+		return closestEnemy, "", false
 	}
 	// Part構造体からPartSlotKeyを取得するにはFindPartSlotが必要です
 	targetPartSlot := partInfoProvider.FindPartSlot(closestEnemy, targetPart)
 	if targetPartSlot == "" {
 		// SelectRandomPartToDamageがエンティティから有効なパーツを返せば、これは理想的には起こりません
 		result.LogMessage = settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。"
-		return false
+		return closestEnemy, "", false
 	}
 
 	result.TargetPartSlot = targetPartSlot
 	result.LogMessage = settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "の" + string(targetPartSlot) + "に格闘攻撃！"
-	return true
+	return closestEnemy, targetPartSlot, true
 }
 
 // ハンドラのグローバルインスタンス（またはファクトリ/レジストリを使用することもできます）

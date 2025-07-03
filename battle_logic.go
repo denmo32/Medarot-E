@@ -172,8 +172,8 @@ func (dc *DamageCalculator) GenerateActionLog(attacker *donburi.Entry, target *d
 	targetSettings := SettingsComponent.Get(target)
 
 	if !didHit {
-		actionComp := ActionComponent.Get(attacker)
-		actingPartInst := PartsComponent.Get(attacker).Map[actionComp.SelectedPartKey]
+		intent := ActionIntentComponent.Get(attacker)
+		actingPartInst := PartsComponent.Get(attacker).Map[intent.SelectedPartKey]
 		var actingPartName string
 		if actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID); defFound {
 			actingPartName = actingPartDef.PartName

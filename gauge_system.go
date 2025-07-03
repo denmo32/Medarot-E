@@ -35,11 +35,11 @@ func UpdateGaugeSystem(world donburi.World) {
 			} else if state.Current == StateTypeCooldown {
 				ChangeState(entry, StateTypeIdle)
 				// バーサーク特性の場合、クールダウン終了時に効果をリセットします。
-				actionComp := ActionComponent.Get(entry)
-				if actionComp.SelectedPartKey != "" {
+				intent := ActionIntentComponent.Get(entry)
+				if intent.SelectedPartKey != "" {
 					partsComp := PartsComponent.Get(entry)
 					if partsComp != nil && partsComp.Map != nil {
-						if partInst, ok := partsComp.Map[actionComp.SelectedPartKey]; ok && partInst != nil {
+						if partInst, ok := partsComp.Map[intent.SelectedPartKey]; ok && partInst != nil {
 							if partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID); defFound {
 								if partDef.Trait == TraitBerserk {
 									ResetAllEffects(world)

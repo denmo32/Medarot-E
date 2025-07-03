@@ -28,21 +28,18 @@ func aiSelectAction(
 		return
 	}
 
-	// TODO: AIのパーツ選択ロジックをより高度化する（現在は常に最初のパーツを選択） -> Strategyパターンで対応
 	var slotKey PartSlotKey
 	var selectedPartDef *PartDefinition
 
-	foundPartSelectionStrategy := false
-	if entry.HasComponent(AIPartSelectionStrategyComponent) {
-		partStrategyComp := AIPartSelectionStrategyComponent.Get(entry)
-		if partStrategyComp.Strategy != nil {
-			slotKey, selectedPartDef = partStrategyComp.Strategy(entry, availableParts, world, partInfoProvider, targetSelector)
-			foundPartSelectionStrategy = true
+	if entry.HasComponent(AIComponent) {
+		ai := AIComponent.Get(entry)
+		if ai.PartSelectionStrategy != nil {
+			slotKey, selectedPartDef = ai.PartSelectionStrategy(entry, availableParts, world, partInfoProvider, targetSelector)
 		}
 	}
 
-	if !foundPartSelectionStrategy {
-		log.Printf("%s: AIエラー - AIPartSelectionStrategyComponentが見つからないか有効なStrategyがないため、デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
+	if selectedPartDef == nil {
+		log.Printf("%s: AIエラー - 有効なパーツ選択戦略が見つからないか、戦略によってパーツが選択されませんでした。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
 		if len(availableParts) > 0 {
 			slotKey = availableParts[0].Slot
 			selectedPartDef = availableParts[0].PartDef
@@ -58,17 +55,16 @@ func aiSelectAction(
 	case CategoryShoot:
 		var targetEntry *donburi.Entry
 		var targetPartSlot PartSlotKey
-		var found bool
-		if entry.HasComponent(TargetingStrategyComponent) {
-			sComp := TargetingStrategyComponent.Get(entry)
-			if sComp.Strategy != nil { // Strategyはインターフェース型
-				targetEntry, targetPartSlot = sComp.Strategy.SelectTarget(world, entry, targetSelector, partInfoProvider)
-				found = true
+
+		if entry.HasComponent(AIComponent) {
+			ai := AIComponent.Get(entry)
+			if ai.TargetingStrategy != nil {
+				targetEntry, targetPartSlot = ai.TargetingStrategy.SelectTarget(world, entry, targetSelector, partInfoProvider)
 			}
 		}
 
-		if !found {
-			log.Printf("%s: AIエラー - TargetingStrategyComponentが見つからないか、Strategyがnilです。デフォルトのターゲット選択を使用します。", settings.Name)
+		if targetEntry == nil {
+			log.Printf("%s: AIエラー - 有効なターゲット戦略が見つからないか、戦略によってターゲットが見つかりませんでした。デフォルトのターゲット選択を使用します。", settings.Name)
 			// フォールバックとしてLeaderStrategyを直接インスタンス化して使用
 			targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, targetSelector, partInfoProvider)
 		}

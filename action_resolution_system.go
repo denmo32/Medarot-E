@@ -8,13 +8,13 @@ import (
 // ResolveActionSystem はアクションのターゲットを解決し、ActionContextを準備します。
 // 成功した場合は true を、解決に失敗した場合は false を返します。
 func ResolveActionSystem(ctx *ActionContext) bool {
-	action := ActionComponent.Get(ctx.ActingEntry)
+	intent := ActionIntentComponent.Get(ctx.ActingEntry)
 	settings := SettingsComponent.Get(ctx.ActingEntry)
 	partsComp := PartsComponent.Get(ctx.ActingEntry)
-	actingPartInstance := partsComp.Map[action.SelectedPartKey]
+	actingPartInstance := partsComp.Map[intent.SelectedPartKey]
 
 	if actingPartInstance == nil {
-		log.Printf("エラー: ResolveActionSystem - %s の行動パーツインスタンスがnilです。パーツキー: %s", settings.Name, action.SelectedPartKey)
+		log.Printf("エラー: ResolveActionSystem - %s の行動パーツインスタンスがnilです。パーツキー: %s", settings.Name, intent.SelectedPartKey)
 		ctx.ActionResult.LogMessage = fmt.Sprintf("%sは行動パーツの取得に失敗しました。", settings.Name)
 		return false
 	}
@@ -37,12 +37,19 @@ func ResolveActionSystem(ctx *ActionContext) bool {
 	}
 	ctx.ActionHandler = handler
 
-	if !handler.ResolveTarget(ctx.ActingEntry, ctx.World, action, ctx.TargetSelector, ctx.PartInfoProvider, ctx.ActionResult) {
-		// 失敗した場合、LogMessageとTargetEntryはハンドラによってresultに設定されています
+	targetEntry, targetPartSlot, success := handler.ResolveTarget(ctx.ActingEntry, ctx.World, intent, ctx.TargetSelector, ctx.PartInfoProvider, ctx.ActionResult)
+	if !success {
+		// 失敗した場合、LogMessageはハンドラによってresultに設定されています
 		return false
 	}
-	ctx.TargetEntry = ctx.ActionResult.TargetEntry // コンテキストにターゲット情報を設定
-	ctx.TargetPartSlot = ctx.ActionResult.TargetPartSlot
+
+	// ターゲット情報をTargetComponentに保存
+	target := TargetComponent.Get(ctx.ActingEntry)
+	target.TargetEntity = targetEntry
+	target.TargetPartSlot = targetPartSlot
+
+	ctx.TargetEntry = targetEntry
+	ctx.TargetPartSlot = targetPartSlot
 
 	// ターゲット情報の検証
 	if ctx.TargetEntry != nil && ctx.TargetPartSlot != "" {

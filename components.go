@@ -11,18 +11,29 @@ var (
 	PartsComponent         = donburi.NewComponentType[PartsComponentData]()
 	MedalComponent         = donburi.NewComponentType[Medal]()
 	GaugeComponent         = donburi.NewComponentType[Gauge]()
-	ActionComponent        = donburi.NewComponentType[Action]()
 	LogComponent           = donburi.NewComponentType[Log]()
 	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
 	// EffectsComponent       = donburi.NewComponentType[Effects]() // 現在未使用
 
+	// --- Action Components ---
+	ActionIntentComponent = donburi.NewComponentType[ActionIntent]()
+	TargetComponent       = donburi.NewComponentType[Target]()
+
+	// --- State Components ---
+	StateComponent = donburi.NewComponentType[State]()
+
+	// --- AI Components ---
+	AIComponent = donburi.NewComponentType[AI]()
+
+	// --- Debuff Components ---
 	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
 	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
 
-	StateComponent             = donburi.NewComponentType[StateComponentData]()
-	TargetHistoryComponent     = donburi.NewComponentType[TargetHistoryComponentData]()
-	LastActionHistoryComponent = donburi.NewComponentType[LastActionHistoryComponentData]()
-	TargetingStrategyComponent = donburi.NewComponentType[TargetingStrategyComponentData]()
+	// --- Deprecated / To be removed ---
+	// ActionComponent        = donburi.NewComponentType[Action]()
+	// TargetHistoryComponent     = donburi.NewComponentType[TargetHistoryComponentData]()
+	// LastActionHistoryComponent = donburi.NewComponentType[LastActionHistoryComponentData]()
+	// TargetingStrategyComponent = donburi.NewComponentType[TargetingStrategyComponentData]()
 )
 
 // --- コンポーネントの構造体定義 ---
@@ -52,9 +63,10 @@ const (
 	StateTypeBroken
 )
 
-// StateComponentData はエンティティの現在の状態を保持します。
-type StateComponentData struct {
-	Current StateType
+// State はエンティティの現在の状態と関連データを保持します。
+type State struct {
+	Current      StateType
+	StateEnterAt int // この状態に遷移したゲームティック
 }
 
 // Gauge はチャージやクールダウンの進行状況を保持します。
@@ -64,11 +76,17 @@ type Gauge struct {
 	CurrentGauge    float64 // 0-100
 }
 
-// Action は選択された行動とターゲットを保持します。
-type Action struct {
+// ActionIntent は、AIまたはプレイヤーによって決定された行動の「意図」を表します。
+// これは、ターゲットがまだ解決されていない段階です。
+type ActionIntent struct {
 	SelectedPartKey PartSlotKey
-	TargetPartSlot  PartSlotKey
-	TargetEntity    *donburi.Entry
+}
+
+// Target は、行動の対象となるエンティティとパーツを表します。
+// TargetingSystemによってActionIntentが解決された後に設定されます。
+type Target struct {
+	TargetEntity   *donburi.Entry
+	TargetPartSlot PartSlotKey
 }
 
 // Log は最後に行われた行動の結果を保持します。
@@ -97,10 +115,14 @@ type EvasionDebuff struct {
 
 // --- AIターゲティング戦略コンポーネント ---
 
-// TargetingStrategyComponentData はAIエンティティのターゲティング戦略を保持します。
-// StrategyフィールドはTargetingStrategyインターフェースを実装した構造体のポインタを保持します。
-type TargetingStrategyComponentData struct {
-	Strategy TargetingStrategy
+// --- AI関連コンポーネント ---
+
+// AI はAI制御エンティティのすべてのデータを集約します。
+type AI struct {
+	TargetingStrategy     TargetingStrategy
+	PartSelectionStrategy AIPartSelectionStrategyFunc
+	TargetHistory         TargetHistoryData
+	LastActionHistory     LastActionHistoryData
 }
 
 // --- 特性効果タグコンポーネント ---
@@ -159,20 +181,17 @@ type AIPartSelectionStrategyComponentData struct {
 	Strategy AIPartSelectionStrategyFunc
 }
 
-var AIPartSelectionStrategyComponent = donburi.NewComponentType[AIPartSelectionStrategyComponentData]()
+// var AIPartSelectionStrategyComponent = donburi.NewComponentType[AIPartSelectionStrategyComponentData]()
 
 // --- 履歴データコンポーネント ---
 
-// TargetHistoryComponentData は、このエンティティを最後に攻撃したエンティティを記録します。
-// [カウンター] や [ガード] 性格のAIが使用します。
-type TargetHistoryComponentData struct {
+// TargetHistoryData は、このエンティティを最後に攻撃したエンティティを記録します。
+type TargetHistoryData struct {
 	LastAttacker *donburi.Entry
 }
 
-// LastActionHistoryComponentData は、このエンティティが最後に攻撃を成功させたターゲットとパーツを記録します。
-// [フォーカス] や [アシスト] 性格のAIが使用します。
-type LastActionHistoryComponentData struct {
-	// LastSuccessfulHitTick int // 将来的に「直近」を判断するためにタイムスタンプを記録することも可能
+// LastActionHistoryData は、このエンティティが最後に攻撃を成功させたターゲットとパーツを記録します。
+type LastActionHistoryData struct {
 	LastHitTarget   *donburi.Entry
 	LastHitPartSlot PartSlotKey
 }

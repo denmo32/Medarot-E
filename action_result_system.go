@@ -25,15 +25,15 @@ func GenerateActionResultSystem(ctx *ActionContext) {
 		}
 
 		// --- 履歴コンポーネントの更新 ---
-		if ctx.TargetEntry.HasComponent(TargetHistoryComponent) {
-			targetHistory := TargetHistoryComponent.Get(ctx.TargetEntry)
-			targetHistory.LastAttacker = ctx.ActingEntry
+		if ctx.TargetEntry.HasComponent(AIComponent) {
+			ai := AIComponent.Get(ctx.TargetEntry)
+			ai.TargetHistory.LastAttacker = ctx.ActingEntry
 			log.Printf("履歴更新: %s の LastAttacker を %s に設定", SettingsComponent.Get(ctx.TargetEntry).Name, settings.Name)
 		}
-		if ctx.ActingEntry.HasComponent(LastActionHistoryComponent) {
-			lastActionHistory := LastActionHistoryComponent.Get(ctx.ActingEntry)
-			lastActionHistory.LastHitTarget = ctx.TargetEntry
-			lastActionHistory.LastHitPartSlot = ctx.ActualHitPartSlot
+		if ctx.ActingEntry.HasComponent(AIComponent) {
+			ai := AIComponent.Get(ctx.ActingEntry)
+			ai.LastActionHistory.LastHitTarget = ctx.TargetEntry
+			ai.LastActionHistory.LastHitPartSlot = ctx.ActualHitPartSlot
 			log.Printf("履歴更新: %s の LastHit を %s の %s に設定", settings.Name, SettingsComponent.Get(ctx.TargetEntry).Name, ctx.ActualHitPartSlot)
 		}
 	} else { // 非攻撃アクションの場合

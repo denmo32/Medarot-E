@@ -44,13 +44,13 @@ ECSアーキテクチャの主要な要素です。データ（Component）、�
 
 *   `components.go`
     *   役割: **[データ]** の定義。ECSの「C（コンポーネント）」。
-    *   内容: エンティティを構成する部品（`Settings`, `PartsComponentData`, `Gauge`など）や、状態を示すタグ（`IdleStateComponent`, `DefenseDebuffComponent`, `ActingWithBerserkTraitTagComponent`, `JustBecameIdleTagComponent`など）、AI戦略コンポーネント（`TargetingStrategyComponentData`, `AIPartSelectionStrategyComponentData`）、戦闘計算修飾コンポーネント（`ActionModifierComponentData`）のデータ構造をすべて定義します。新しいデータ、状態、エンティティに持たせる特性を追加したい場合は、まずこのファイルを編集します。
+    *   内容: エンティティを構成する部品（`Settings`, `PartsComponentData`, `Gauge`など）、状態を示すタグ（`DefenseDebuffComponent`, `ActingWithBerserkTraitTagComponent`など）、行動の意図（`ActionIntent`）、ターゲット情報（`Target`）、AI関連データ（`AI`）、戦闘計算修飾コンポーネント（`ActionModifierComponentData`）のデータ構造をすべて定義します。新しいデータ、状態、エンティティに持たせる特性を追加したい場合は、まずこのファイルを編集します。
 *   `action_queue_component.go`
     *   役割: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
     *   内容: `ActionQueueComponentData` 構造体（行動するエンティティのキューを持つ）と、それに関連するComponentType、取得・初期化用関数を定義します。ワールドに一つ存在する専用エンティティがこのコンポーネントを持ちます。行動実行の順序制御に関わるデータを変更する場合に編集します。
 *   `ecs_setup.go`
     *   役割: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
-    *   内容: CSVから読み込んだデータをもとに、戦闘に参加する全メダロットのエンティティと、その初期状態に必要な各種コンポーネント（`Settings`, `Parts`, `Medal`, AI戦略コンポーネント等）を作成・設定します。新しいコンポーネントをエンティティの初期状態に追加する場合や、初期設定ロジックを変更する場合に編集します。
+    *   内容: CSVから読み込んだデータをもとに、戦闘に参加する全メダロットのエンティティと、その初期状態に必要な各種コンポーネント（`Settings`, `Parts`, `Medal`, `AIComponent`、`ActionIntentComponent`、`TargetComponent`等）を作成・設定します。新しいコンポーネントをエンティティの初期状態に追加する場合や、初期設定ロジックを変更する場合に編集します。
 *   `systems.go`
     *   役割: **[ロジック/振る舞い]** ECSの「S（システム）」のうち、現在は使用されていないファイル。
     *   内容: かつては多くの戦闘ロジックを含んでいましたが、リファクタリングにより主要な戦闘システムはそれぞれ専用のファイルに移管されました。
@@ -59,7 +59,7 @@ ECSアーキテクチャの主要な要素です。データ（Component）、�
 *   `action_handler.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の行動処理戦略。`ActionHandler` インターフェースとその実装を定義します。
 *   `game_end_system.go`: **[ロジック/振る舞い]** ゲーム終了条件判定システム。`CheckGameEndSystem` を定義します。
 *   `gauge_system.go`: **[ロジック/振る舞い]** チャージゲージおよびクールダウンゲージの進行管理システム。`UpdateGaugeSystem` を定義します。
-*   `state_effect_system.go`: **[ロジック/振る舞い]** 状態遷移時の副作用処理システム。`ProcessStateEffectsSystem` を定義します。
+*   `state_change_systems.go`: **[ロジック/振る舞い]** 状態遷移時の副作用処理システム。`ProcessStateChangeSystem` を定義します。
 
 Game Logic & AI (戦闘ルールと思考)
 ---------------------------------
@@ -71,7 +71,7 @@ Game Logic & AI (戦闘ルールと思考)
     *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
 *   `ai.go`
     *   役割: 敵（AI）の思考ルーチン。
-    *   内容: `aiSelectAction`（AIの行動全体を決定するエントリーポイント）、性格別のターゲット選択戦略（`selectCrusherTarget`など）やパーツ選択戦略（`SelectHighestPowerPart`など）の関数群を定義します。Strategyパターンにより、これらの戦略は`ecs_setup.go`でAIエンティティに動的に割り当てられます。
+    *   内容: `aiSelectAction`（AIの行動全体を決定するエントリーポイント）を定義します。性格別のターゲット選択戦略やパーツ選択戦略は`AIComponent`内にカプセル化され、`ecs_setup.go`でAIエンティティに動的に割り当てられます。
 *   `ai_input_system.go`: **[ロジック/振る舞い]** AIの入力処理システム。`UpdateAIInputSystem` を定義します。
 *   `player_actions.go`: プレイヤーの行動選択に関連するヘルパー関数（例：ランダムターゲット選択）。
 *   `player_input_system.go`: **[ロジック/振る舞い]** プレイヤーの入力処理システム。`UpdatePlayerInputSystem` を定義します。
