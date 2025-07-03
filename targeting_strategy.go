@@ -164,3 +164,118 @@ func (s *LeaderStrategy) SelectTarget(
 	// リーダーを狙えない場合はランダムにフォールバック
 	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider)
 }
+
+// ChaseStrategy は最も推進力の高い脚部パーツを狙います。
+type ChaseStrategy struct{}
+
+func (s *ChaseStrategy) SelectTarget(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider,
+) (*donburi.Entry, PartSlotKey) {
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, true)
+	if len(targetParts) == 0 {
+		return nil, ""
+	}
+
+	var legParts []targetablePart
+	for _, p := range targetParts {
+		if p.partDef.Type == PartTypeLegs {
+			legParts = append(legParts, p)
+		}
+	}
+
+	if len(legParts) > 0 {
+		sort.Slice(legParts, func(i, j int) bool {
+			return legParts[i].partDef.Propulsion > legParts[j].partDef.Propulsion
+		})
+		// 最も推進力の高い脚部が複数ある場合、その中からランダムに選ぶ
+		maxPropulsion := legParts[0].partDef.Propulsion
+		var candidates []targetablePart
+		for _, p := range legParts {
+			if p.partDef.Propulsion == maxPropulsion {
+				candidates = append(candidates, p)
+			}
+		}
+		selected := candidates[rand.Intn(len(candidates))]
+		return selected.entity, selected.slot
+	}
+
+	// 脚部が全破壊の場合、左腕→右腕→頭部の順で狙う
+	// このロジックは単純化のため、ランダムな非脚部パーツを狙うことで代替します
+	var otherParts []targetablePart
+	for _, p := range targetParts {
+		if p.partDef.Type != PartTypeLegs {
+			otherParts = append(otherParts, p)
+		}
+	}
+	if len(otherParts) > 0 {
+		selected := otherParts[rand.Intn(len(otherParts))]
+		return selected.entity, selected.slot
+	}
+
+	// フォールバック
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider)
+}
+
+// DuelStrategy は攻撃系腕パーツ（射撃/格闘）を優先して狙います。
+type DuelStrategy struct{}
+
+func (s *DuelStrategy) SelectTarget(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider,
+) (*donburi.Entry, PartSlotKey) {
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, true)
+	if len(targetParts) == 0 {
+		return nil, ""
+	}
+
+	var attackArmParts []targetablePart
+	for _, p := range targetParts {
+		if (p.partDef.Type == PartTypeLArm || p.partDef.Type == PartTypeRArm) &&
+			(p.partDef.Category == CategoryShoot || p.partDef.Category == CategoryMelee) {
+			attackArmParts = append(attackArmParts, p)
+		}
+	}
+
+	if len(attackArmParts) > 0 {
+		selected := attackArmParts[rand.Intn(len(attackArmParts))]
+		return selected.entity, selected.slot
+	}
+
+	// 攻撃系腕パーツがない場合、ランダムなパーツを狙う
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider)
+}
+
+// InterceptStrategy は非攻撃系パーツ（射撃/格闘以外）を優先して狙います。
+type InterceptStrategy struct{}
+
+func (s *InterceptStrategy) SelectTarget(
+	world donburi.World,
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider,
+) (*donburi.Entry, PartSlotKey) {
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, true)
+	if len(targetParts) == 0 {
+		return nil, ""
+	}
+
+	var nonAttackParts []targetablePart
+	for _, p := range targetParts {
+		if p.partDef.Category != CategoryShoot && p.partDef.Category != CategoryMelee {
+			nonAttackParts = append(nonAttackParts, p)
+		}
+	}
+
+	if len(nonAttackParts) > 0 {
+		selected := nonAttackParts[rand.Intn(len(nonAttackParts))]
+		return selected.entity, selected.slot
+	}
+
+	// 非攻撃系パーツがない場合、ランダムなパーツを狙う
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider)
+}
