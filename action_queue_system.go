@@ -13,6 +13,7 @@ import (
 type ActionResult struct {
 	ActingEntry      *donburi.Entry
 	TargetEntry      *donburi.Entry
+	TargetPartSlot   PartSlotKey // ターゲットのパーツスロット
 	LogMessage       string
 	ActionDidHit     bool // 命中したかどうか
 	IsCritical       bool // クリティカルだったか
@@ -24,27 +25,23 @@ type ActionResult struct {
 // UpdateActionQueueSystem は行動準備完了キューを処理します。
 func UpdateActionQueueSystem(
 	world donburi.World,
-	partInfoProvider *PartInfoProvider,
-	damageCalculator *DamageCalculator,
-	hitCalculator *HitCalculator,
-	targetSelector *TargetSelector,
+	battleLogic *BattleLogic,
 	gameConfig *Config,
 ) ([]ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
 		return nil, nil
 	}
-
 	results := []ActionResult{}
 
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
-		if partInfoProvider == nil { // 通常のフローでは起こりません
-			log.Println("UpdateActionQueueSystem: ソート中にpartInfoProviderがnilです")
+		if battleLogic == nil || battleLogic.PartInfoProvider == nil {
+			log.Println("UpdateActionQueueSystem: ソート中にbattleLogicまたはpartInfoProviderがnilです")
 			return false
 		}
 		// ソートのための推進力は脚部パーツ定義から取得する必要があります
-		propI := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
-		propJ := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
+		propI := battleLogic.PartInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
+		propJ := battleLogic.PartInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
 		return propI > propJ
 	})
 
@@ -52,7 +49,7 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
-		actionResult := executeActionLogic(actingEntry, world, damageCalculator, hitCalculator, targetSelector, partInfoProvider, gameConfig)
+		actionResult := executeActionLogic(actingEntry, world, battleLogic.DamageCalculator, battleLogic.HitCalculator, battleLogic.TargetSelector, battleLogic.PartInfoProvider, gameConfig)
 		results = append(results, actionResult)
 	}
 	return results, nil
@@ -99,35 +96,32 @@ func executeActionLogic(
 		return result
 	}
 
-	targetingResult := handler.ResolveTarget(entry, world, action, targetSelector, partInfoProvider)
-	if !targetingResult.Success {
-		result.LogMessage = targetingResult.LogMessage
-		result.TargetEntry = targetingResult.TargetEntity
+	if !handler.ResolveTarget(entry, world, action, targetSelector, partInfoProvider, &result) {
+		// 失敗した場合、LogMessageとTargetEntryはハンドラによってresultに設定されています
 		RemoveActionModifiersSystem(entry)
 		return result
 	}
-	targetEntry = targetingResult.TargetEntity
-	result.TargetEntry = targetEntry
+	targetEntry = result.TargetEntry // ローカル変数に設定
 
-	if targetEntry != nil && targetingResult.TargetPartSlot != "" {
+	if targetEntry != nil && result.TargetPartSlot != "" {
 		targetPartsComp := PartsComponent.Get(targetEntry)
 		if targetPartsComp != nil {
-			intendedTargetPartInstance = targetPartsComp.Map[targetingResult.TargetPartSlot]
+			intendedTargetPartInstance = targetPartsComp.Map[result.TargetPartSlot]
 			if intendedTargetPartInstance != nil {
 				var tDefFound bool
 				intendedTargetPartDef, tDefFound = GlobalGameDataManager.GetPartDefinition(intendedTargetPartInstance.DefinitionID)
-				if !tDefFound {
-					result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、ターゲットパーツ定義(%s)が見つかりませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot, intendedTargetPartInstance.DefinitionID)
+				if !tDefFound { // このチェックはハンドラ側でも行われるべきかもしれませんが、二重チェックとして残します
+					result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、ターゲットパーツ定義(%s)が見つかりませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name, result.TargetPartSlot, intendedTargetPartInstance.DefinitionID)
 					RemoveActionModifiersSystem(entry)
 					return result
 				}
-				if intendedTargetPartInstance.IsBroken {
-					result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、パーツは既に破壊されていました。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot)
+				if intendedTargetPartInstance.IsBroken { // 同上
+					result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、パーツは既に破壊されていました。", settings.Name, SettingsComponent.Get(targetEntry).Name, result.TargetPartSlot)
 					RemoveActionModifiersSystem(entry)
 					return result
 				}
 			} else {
-				result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、ターゲットパーツインスタンスが見つかりませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name, targetingResult.TargetPartSlot)
+				result.LogMessage = fmt.Sprintf("%sは%sの%sを狙ったが、ターゲットパーツインスタンスが見つかりませんでした。", settings.Name, SettingsComponent.Get(targetEntry).Name, result.TargetPartSlot)
 				RemoveActionModifiersSystem(entry)
 				return result
 			}

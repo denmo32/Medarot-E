@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"math/rand"
+
 	// "sort"
 
 	"github.com/yohamta/donburi"
@@ -10,13 +11,17 @@ import (
 	// "github.com/yohamta/donburi/query"
 )
 
-// playerSelectRandomTarget はプレイヤー専用の、ランダムな敵パーツをターゲットとして選択する関数です。
-func playerSelectRandomTarget(bs *BattleScene, actingEntry *donburi.Entry) (*donburi.Entry, PartSlotKey) {
-	if bs.targetSelector == nil {
-		log.Println("エラー: playerSelectRandomTarget - bs.targetSelector がnilです。")
+// playerSelectRandomTargetPart はプレイヤー専用の、ランダムな敵の有効なパーツをターゲットとして選択する関数です。
+func playerSelectRandomTargetPart(
+	actingEntry *donburi.Entry,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider, // 将来の拡張に備えて追加
+) (*donburi.Entry, PartSlotKey) {
+	if targetSelector == nil {
+		log.Println("エラー: playerSelectRandomTargetPart - targetSelector がnilです。")
 		return nil, ""
 	}
-	candidates := bs.targetSelector.GetTargetableEnemies(actingEntry)
+	candidates := targetSelector.GetTargetableEnemies(actingEntry)
 	if len(candidates) == 0 {
 		return nil, ""
 	}

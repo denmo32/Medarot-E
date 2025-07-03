@@ -43,8 +43,8 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		Pressed: image.NewNineSliceColor(color.RGBA{100, 100, 100, 255}),
 	}
 
-	if bs.partInfoProvider == nil {
-		log.Println("エラー: createActionModalUI - partInfoProvider がnilです。")
+	if bs.battleLogic == nil || bs.battleLogic.PartInfoProvider == nil {
+		log.Println("エラー: createActionModalUI - battleLogic または partInfoProvider がnilです。")
 		// partInfoProvider がないとパーツリストを取得できないため、モーダルを生成せずに終了するなどのエラーハンドリングが必要です。
 		panel.AddChild(widget.NewText(
 			widget.TextOpts.Text("エラー:パーツ情報取得不可", bs.resources.Font, c.Colors.White),
@@ -52,7 +52,7 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		// overlayにpanelを追加しているので、このままでは空のモーダルが表示されます。より適切なハンドリングを検討してください。
 		return overlay
 	}
-	availableParts := bs.partInfoProvider.GetAvailableAttackParts(actingEntry)
+	availableParts := bs.battleLogic.PartInfoProvider.GetAvailableAttackParts(actingEntry)
 	if len(availableParts) == 0 {
 		panel.AddChild(widget.NewText(
 			widget.TextOpts.Text("利用可能なパーツがありません。", bs.resources.Font, c.Colors.White),
@@ -63,7 +63,7 @@ func createActionModalUI(bs *BattleScene, actingEntry *donburi.Entry) widget.Pre
 		partDef := available.PartDef
 		slotKey := available.Slot
 		if partDef.Category == CategoryShoot {
-			targetEntity, targetSlot := playerSelectRandomTarget(bs, actingEntry) // このヘルパーはパーツ情報を使用する場合、更新が必要になることがあります
+			targetEntity, targetSlot := playerSelectRandomTargetPart(actingEntry, bs.battleLogic.TargetSelector, bs.battleLogic.PartInfoProvider)
 			bs.ui.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
 		}
 	}
@@ -145,10 +145,10 @@ func handleActionSelection(bs *BattleScene, actingEntry *donburi.Entry, selected
 			return
 		}
 		// StartCharge に bs.world、&bs.resources.Config、bs.partInfoProvider を渡します
-		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, bs.world, &bs.resources.Config, bs.partInfoProvider)
+		successful = StartCharge(actingEntry, slotKey, actionTarget.Target, actionTarget.Slot, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
 	case CategoryMelee:
 		// StartCharge に bs.world、&bs.resources.Config、bs.partInfoProvider を渡します
-		successful = StartCharge(actingEntry, slotKey, nil, "", bs.world, &bs.resources.Config, bs.partInfoProvider)
+		successful = StartCharge(actingEntry, slotKey, nil, "", bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
 	default:
 		log.Printf("未対応のパーツカテゴリです: %s", selectedPartDef.Category)
 		successful = false

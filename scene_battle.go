@@ -27,11 +27,7 @@ type BattleScene struct {
 	attackingEntity          *donburi.Entry
 	targetedEntity           *donburi.Entry
 
-	// リファクタリングで追加されたヘルパー
-	damageCalculator *DamageCalculator
-	hitCalculator    *HitCalculator
-	targetSelector   *TargetSelector
-	partInfoProvider *PartInfoProvider
+	battleLogic *BattleLogic
 }
 
 // NewBattleScene は新しい戦闘シーンを初期化します
@@ -50,37 +46,10 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		attackingEntity:          nil,
 		targetedEntity:           nil,
 		currentTarget:            nil,
-		winner:                   TeamNone, // 勝者をTeamNoneで初期化
-		// ヘルパーは後で初期化します
+		winner:                   TeamNone,
 	}
 
-	// ヘルパー構造体の初期化
-	bs.partInfoProvider = NewPartInfoProvider(bs.world, &bs.resources.Config)
-	bs.damageCalculator = NewDamageCalculator(bs.world, &bs.resources.Config)
-	bs.hitCalculator = NewHitCalculator(bs.world, &bs.resources.Config)
-	bs.targetSelector = NewTargetSelector(bs.world, &bs.resources.Config)
-
-	// 依存性の注入
-	// DamageCalculatorへの依存性設定
-	if bs.damageCalculator != nil && bs.partInfoProvider != nil {
-		bs.damageCalculator.SetPartInfoProvider(bs.partInfoProvider)
-	} else {
-		fmt.Println("エラー: NewBattleScene のセットアップ中に DamageCalculator または PartInfoProvider がnilです。")
-	}
-
-	// HitCalculatorへの依存性設定
-	if bs.hitCalculator != nil && bs.partInfoProvider != nil {
-		bs.hitCalculator.SetPartInfoProvider(bs.partInfoProvider)
-	} else {
-		fmt.Println("エラー: NewBattleScene のセットアップ中に HitCalculator または PartInfoProvider がnilです。")
-	}
-
-	// TargetSelectorへの依存性設定
-	if bs.targetSelector != nil && bs.partInfoProvider != nil {
-		bs.targetSelector.SetPartInfoProvider(bs.partInfoProvider)
-	} else {
-		fmt.Println("エラー: NewBattleScene のセットアップ中に TargetSelector または PartInfoProvider がnilです。")
-	}
+	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config)
 
 	// ActionQueueComponent を持つワールド状態エンティティが存在することを確認します。
 	// これにより、エンティティと ActionQueueComponentData が存在しない場合に作成されます。
@@ -103,7 +72,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		// 現在プレイヤーがアクションを選択しておらず、かつ保留キューが空の場合に限り入力を処理します。
 		// これは、複数ユニットのプレイヤーアクションシーケンスの途中ではないことを意味します。
 		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 {
-			UpdateAIInputSystem(bs.world, bs.partInfoProvider, bs.targetSelector, &bs.resources.Config)
+			UpdateAIInputSystem(bs.world, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector, &bs.resources.Config)
 
 			playerInputResult := UpdatePlayerInputSystem(bs.world)
 			if len(playerInputResult.PlayerMedarotsToAct) > 0 {
@@ -133,10 +102,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		if bs.state == StatePlaying { // 状態が PlayerActionSelect に変更された可能性があるため、再確認
 			actionResults, err := UpdateActionQueueSystem(
 				bs.world,
-				bs.partInfoProvider,
-				bs.damageCalculator,
-				bs.hitCalculator,
-				bs.targetSelector,
+				bs.battleLogic,
 				&bs.resources.Config, // gameConfig を渡す
 			)
 			if err != nil {

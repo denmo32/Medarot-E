@@ -33,14 +33,14 @@ Scene (各画面の実装)
     *   役割: すべてのシーンが満たすべき共通のルール（インターフェース）を定義します。
     *   内容: `Update`, `Draw` メソッドの型定義や、シーン間で共有するリソース（`SharedResources`）を定義します。
 *   `scene_title.go`: タイトル画面の実装。
-*   `scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）、UI、ゲーム状態（StatePlaying, StateGameOverなど）を管理し、各戦闘システムを適切なタイミングで呼び出します。戦闘の進行ロジックの多くは、各種戦闘システムファイルに移譲されています。
+*   `scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）、UI、ゲーム状態（StatePlaying, StateGameOverなど）を管理します。戦闘のコアロジックは`BattleLogic`構造体に集約されており、`BattleScene`はそれを介してダメージ計算やターゲット選択を行います。また、各戦闘システム（ゲージ進行、行動キュー処理など）を適切なタイミングで呼び出します。
 *   `scene_customize.go`: メダロットのカスタマイズ画面の実装。
 *   `scene_placeholder.go`: 未実装画面などのための、汎用的なプレースホルダー画面。
 
 ECS (エンティティ・コンポーネント・システム)
 ---------------------------------------
 
-ECSアーキテクチャの主要な要素です。
+ECSアーキテクチャの主要な要素です。データ（Component）、振る舞い（System）、そしてそれらの入れ物（Entity）を分離して管理します。
 
 *   `components.go`
     *   役割: **[データ]** の定義。ECSの「C（コンポーネント）」。
@@ -53,7 +53,7 @@ ECSアーキテクチャの主要な要素です。
     *   内容: CSVから読み込んだデータをもとに、戦闘に参加する全メダロットのエンティティと、その初期状態に必要な各種コンポーネント（`Settings`, `Parts`, `Medal`, AI戦略コンポーネント等）を作成・設定します。新しいコンポーネントをエンティティの初期状態に追加する場合や、初期設定ロジックを変更する場合に編集します。
 *   `systems.go`
     *   役割: **[ロジック/振る舞い]** ECSの「S（システム）」のうち、現在は使用されていないファイル。
-    *   内容: かつては多くの戦闘ロジックを含んでいましたが、リファクタリングにより主要な戦闘システムはそれぞれ専用のファイルに移管されました。このファイルは現在、具体的な処理を持っていません。
+    *   内容: かつては多くの戦闘ロジックを含んでいましたが、リファクタリングにより主要な戦闘システムはそれぞれ専用のファイルに移管されました。
 *   `action_modifier_system.go`: **[ロジック/振る舞い]** 行動実行時の戦闘計算修飾システム。`ApplyActionModifiersSystem` と `RemoveActionModifiersSystem` を定義します。
 *   `action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューの処理と、実際のアクション実行ロジック。`UpdateActionQueueSystem`, `executeActionLogic`, `StartCooldownSystem`, `StartCharge` を定義します。
 *   `action_handler.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の行動処理戦略。`ActionHandler` インターフェースとその実装を定義します。
@@ -68,12 +68,12 @@ Game Logic & AI (戦闘ルールと思考)
 
 *   `battle_logic.go`
     *   役割: 戦闘中のコアな計算ロジック（Calculator群）。
-    *   内容: `DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider` を定義します。これらは、具体的な計算式や選択アルゴリズムを実装し、アクション修飾システムやアクション実行ロジックから利用されます。
+    *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
 *   `ai.go`
     *   役割: 敵（AI）の思考ルーチン。
-    *   内容: `aiSelectAction`（AIの行動全体を決定するエントリーポイント）、性格別ターゲット選択戦略関数群、パーツ選択戦略関数群を定義します。
+    *   内容: `aiSelectAction`（AIの行動全体を決定するエントリーポイント）、性格別のターゲット選択戦略（`selectCrusherTarget`など）やパーツ選択戦略（`SelectHighestPowerPart`など）の関数群を定義します。Strategyパターンにより、これらの戦略は`ecs_setup.go`でAIエンティティに動的に割り当てられます。
 *   `ai_input_system.go`: **[ロジック/振る舞い]** AIの入力処理システム。`UpdateAIInputSystem` を定義します。
-*   `player_actions.go`: プレイヤーの行動選択に関連するヘルパー関数。
+*   `player_actions.go`: プレイヤーの行動選択に関連するヘルパー関数（例：ランダムターゲット選択）。
 *   `player_input_system.go`: **[ロジック/振る舞い]** プレイヤーの入力処理システム。`UpdatePlayerInputSystem` を定義します。
 
 UI (ユーザーインターフェース)
@@ -107,5 +107,4 @@ Data & Utilities (データ定義と補助機能)
 
 **今後の検討事項**
 
-*   `action_handler.go`: `HandlerTargetingResult` 構造体 (旧 `ActionResult`) を、`action_queue_system.go` で定義されている `ActionResult` と共通化することを検討。両者で類似の情報を扱っているため、一元管理することでコードの重複を減らし、整合性を保ちやすくなります。
-*   `ai.go`: AIのパーツ選択ロジックについて、現在は基本的な戦略（利用可能な最初のパーツを選択など）が実装されていますが、より高度な判断（例：相手の状況に応じたパーツ選択、メダルの性格に基づいた戦略的なパーツ選択など）を導入するために、Strategyパターンなどを活用した拡張を検討。
+*   `ai.go`: AIの行動決定ロジックは、現在性格に基づいた戦略の組み合わせで動作していますが、今後はより複雑な状況判断（例：相手のパーツの特性や残弾数を考慮する、複数の敵の状況を比較して最適なターゲットを選ぶなど）を組み込むことで、さらに高度化する可能性があります。

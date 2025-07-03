@@ -182,11 +182,11 @@ func (bf *BattlefieldWidget) UpdatePositions() {
 	offsetY := float32(rect.Min.Y)
 
 	for _, icon := range bf.medarotIcons {
-		if bf.scene.partInfoProvider == nil {
-			log.Println("Error: BattlefieldWidget.UpdatePositions - partInfoProvider is nil")
+		if bf.scene.battleLogic == nil || bf.scene.battleLogic.PartInfoProvider == nil {
+			log.Println("Error: BattlefieldWidget.UpdatePositions - battleLogic or PartInfoProvider is nil")
 			continue
 		}
-		x := bf.scene.partInfoProvider.CalculateIconXPosition(icon.entry, width)
+		x := bf.scene.battleLogic.PartInfoProvider.CalculateIconXPosition(icon.entry, width)
 		settings := SettingsComponent.Get(icon.entry)
 		y := (height / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 		icon.xPos = offsetX + x

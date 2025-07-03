@@ -47,12 +47,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 					IsBroken:     false,
 				}
 			} else {
-				log.Printf("警告: ID %s のパーツ定義が見つかりません。プレースホルダーを使用します。", partID)
-				partsInstanceMap[slot] = &PartInstanceData{
-					DefinitionID: "placeholder_" + string(slot),
-					CurrentArmor: 0,
-					IsBroken:     true,
-				}
+				log.Fatalf("エラー: ID %s のパーツ定義が見つかりません。", partID)
 			}
 		}
 		PartsComponent.SetValue(entry, PartsComponentData{Map: partsInstanceMap})
@@ -61,10 +56,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		if medalFound {
 			MedalComponent.SetValue(entry, *medalDef)
 		} else {
-			log.Printf("警告: ID %s のメダル定義が見つかりません。フォールバックを使用します。", loadout.MedalID)
-			fallbackMedal := Medal{ID: "fallback", Name: "フォールバック", Personality: "ジョーカー", SkillLevel: 1}
-			MedalComponent.SetValue(entry, fallbackMedal)
-			medalDef = &fallbackMedal // switch文のために medalDef がnilでないことを保証
+			log.Fatalf("エラー: ID %s のメダル定義が見つかりません。", loadout.MedalID)
 		}
 
 		GaugeComponent.SetValue(entry, Gauge{})
