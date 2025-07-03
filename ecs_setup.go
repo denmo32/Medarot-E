@@ -19,6 +19,8 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
+			TargetHistoryComponent,
+			LastActionHistoryComponent,
 			TargetingStrategyComponent,
 			AIPartSelectionStrategyComponent,
 		))
@@ -62,18 +64,34 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		GaugeComponent.SetValue(entry, Gauge{})
 		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""})
 		LogComponent.SetValue(entry, Log{})
+		TargetHistoryComponent.SetValue(entry, TargetHistoryComponentData{})
+		LastActionHistoryComponent.SetValue(entry, LastActionHistoryComponentData{})
 
 		var strategy TargetingStrategy
 		// 上記のフォールバックロジックにより、medalDefはここでnilでないことが保証されます
 		switch medalDef.Personality {
+		case "アシスト":
+			strategy = &AssistStrategy{}
 		case "クラッシャー":
 			strategy = &CrusherStrategy{}
+		case "カウンター":
+			strategy = &CounterStrategy{}
+		case "チェイス":
+			strategy = &ChaseStrategy{}
+		case "デュエル":
+			strategy = &DuelStrategy{}
+		case "フォーカス":
+			strategy = &FocusStrategy{}
+		case "ガード":
+			strategy = &GuardStrategy{}
 		case "ハンター":
 			strategy = &HunterStrategy{}
+		case "インターセプト":
+			strategy = &InterceptStrategy{}
 		case "ジョーカー":
 			strategy = &JokerStrategy{}
 		default:
-			strategy = &LeaderStrategy{}
+			strategy = &LeaderStrategy{} // デフォルトはリーダー狙い
 		}
 		TargetingStrategyComponent.SetValue(entry, TargetingStrategyComponentData{Strategy: strategy})
 

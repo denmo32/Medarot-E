@@ -25,6 +25,8 @@ var (
 	CooldownStateComponent = donburi.NewComponentType[CooldownState]()
 	BrokenStateComponent   = donburi.NewComponentType[BrokenState]()
 
+	TargetHistoryComponent     = donburi.NewComponentType[TargetHistoryComponentData]()
+	LastActionHistoryComponent = donburi.NewComponentType[LastActionHistoryComponentData]()
 	TargetingStrategyComponent = donburi.NewComponentType[TargetingStrategyComponentData]()
 )
 
@@ -162,3 +164,19 @@ type AIPartSelectionStrategyComponentData struct {
 }
 
 var AIPartSelectionStrategyComponent = donburi.NewComponentType[AIPartSelectionStrategyComponentData]()
+
+// --- 履歴データコンポーネント ---
+
+// TargetHistoryComponentData は、このエンティティを最後に攻撃したエンティティを記録します。
+// [カウンター] や [ガード] 性格のAIが使用します。
+type TargetHistoryComponentData struct {
+	LastAttacker *donburi.Entry
+}
+
+// LastActionHistoryComponentData は、このエンティティが最後に攻撃を成功させたターゲットとパーツを記録します。
+// [フォーカス] や [アシスト] 性格のAIが使用します。
+type LastActionHistoryComponentData struct {
+	// LastSuccessfulHitTick int // 将来的に「直近」を判断するためにタイムスタンプを記録することも可能
+	LastHitTarget   *donburi.Entry
+	LastHitPartSlot PartSlotKey
+}

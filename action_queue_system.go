@@ -166,6 +166,7 @@ func executeActionLogic(
 
 		var finalDamageDealt int
 		var actualHitPartInstance *PartInstanceData = intendedTargetPartInstance
+		var actualHitPartSlot PartSlotKey = result.TargetPartSlot
 		var actualHitPartDef *PartDefinition = intendedTargetPartDef
 
 		result.ActionIsDefended = false
@@ -177,6 +178,7 @@ func executeActionLogic(
 				result.ActionIsDefended = true
 				actualHitPartInstance = defensePartInstance
 				actualHitPartDef = defensePartDef
+				actualHitPartSlot = partInfoProvider.FindPartSlot(targetEntry, actualHitPartInstance)
 
 				finalDamageAfterDefense := originalDamage - defensePartDef.Defense
 				if finalDamageAfterDefense < 0 {
@@ -191,6 +193,7 @@ func executeActionLogic(
 		if !result.ActionIsDefended {
 			actualHitPartInstance = intendedTargetPartInstance
 			actualHitPartDef = intendedTargetPartDef
+			actualHitPartSlot = result.TargetPartSlot
 			damageCalculator.ApplyDamage(targetEntry, actualHitPartInstance, originalDamage)
 			finalDamageDealt = originalDamage
 			result.LogMessage = damageCalculator.GenerateActionLog(entry, targetEntry, actualHitPartDef, finalDamageDealt, isCritical, true)
@@ -207,6 +210,19 @@ func executeActionLogic(
 					result.LogMessage += " パーツを破壊した！"
 				}
 			}
+		}
+
+		// --- 履歴コンポーネントの更新 ---
+		if targetEntry.HasComponent(TargetHistoryComponent) {
+			targetHistory := TargetHistoryComponent.Get(targetEntry)
+			targetHistory.LastAttacker = entry
+			log.Printf("履歴更新: %s の LastAttacker を %s に設定", SettingsComponent.Get(targetEntry).Name, settings.Name)
+		}
+		if entry.HasComponent(LastActionHistoryComponent) {
+			lastActionHistory := LastActionHistoryComponent.Get(entry)
+			lastActionHistory.LastHitTarget = targetEntry
+			lastActionHistory.LastHitPartSlot = actualHitPartSlot
+			log.Printf("履歴更新: %s の LastHit を %s の %s に設定", settings.Name, SettingsComponent.Get(targetEntry).Name, actualHitPartSlot)
 		}
 	} else {
 		if result.LogMessage == "" {
