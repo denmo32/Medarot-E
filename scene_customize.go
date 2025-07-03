@@ -30,11 +30,11 @@ type CustomizeScene struct {
 	playerMedarots            []*MedarotData
 	currentTargetMedarotIndex int
 
-	medalList     []*Medal          // Changed to slice of pointers to match GameDataManager
-	headPartsList []*PartDefinition // Changed to PartDefinition
-	rArmPartsList []*PartDefinition // Changed to PartDefinition
-	lArmPartsList []*PartDefinition // Changed to PartDefinition
-	legsPartsList []*PartDefinition // Changed to PartDefinition
+	medalList     []*Medal
+	headPartsList []*PartDefinition
+	rArmPartsList []*PartDefinition
+	lArmPartsList []*PartDefinition
+	legsPartsList []*PartDefinition
 
 	currentMedalIndex int
 	currentHeadIndex  int
@@ -141,7 +141,6 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 	)
 	leftPanel.AddChild(medarotSelectionContainer)
 
-	// ★★★ このブロックで Image を設定 ★★★
 	buttonImage := &widget.ButtonImage{
 		Idle:    image.NewNineSliceColor(cs.resources.Config.UI.Colors.Gray),
 		Hover:   image.NewNineSliceColor(color.NRGBA{180, 180, 180, 255}),
@@ -150,7 +149,7 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 	for i := 0; i < len(cs.playerMedarots); i++ {
 		idx := i
 		button := widget.NewButton(
-			widget.ButtonOpts.Image(buttonImage), // ★★★ Image設定を追加 ★★★
+			widget.ButtonOpts.Image(buttonImage),
 			widget.ButtonOpts.Text(fmt.Sprintf("機体%d", idx+1), cs.resources.Font, &widget.ButtonTextColor{Idle: color.White}),
 			widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
@@ -340,7 +339,7 @@ func (cs *CustomizeScene) updateStatus(id string) {
 		sb.WriteString(fmt.Sprintf("Type: %s\n", partDef.Type))
 		sb.WriteString(fmt.Sprintf("Category: %s\n", partDef.Category))
 		sb.WriteString(fmt.Sprintf("Trait: %s\n\n", partDef.Trait))
-		sb.WriteString(fmt.Sprintf("MaxArmor: %d\n", partDef.MaxArmor)) // Changed Armor to MaxArmor
+		sb.WriteString(fmt.Sprintf("MaxArmor: %d\n", partDef.MaxArmor))
 		sb.WriteString(fmt.Sprintf("Power: %d\n", partDef.Power))
 		sb.WriteString(fmt.Sprintf("Accuracy: %d\n", partDef.Accuracy))
 		sb.WriteString(fmt.Sprintf("Charge: %d\n", partDef.Charge))
@@ -371,25 +370,15 @@ func (cs *CustomizeScene) Draw(screen *ebiten.Image) {
 	cs.ui.Draw(screen)
 }
 
-// findIndexByIDGeneric is a generic function to find an index in a slice.
+// findIndexByIDGeneric はスライス内のインデックスを見つけるためのジェネリック関数です。
 func findIndexByIDGeneric[T any](slice []T, id string, getID func(elem T) string) int {
 	for i, v := range slice {
 		if getID(v) == id {
 			return i
 		}
 	}
-	return 0 // Or -1 if not found is preferred
+	return 0 // 見つからない場合は0（または-1が望ましい場合もあります）
 }
-
-// findMedalDataByID is no longer needed, use GlobalGameDataManager.GetMedalDefinition
-// func findMedalDataByID(medals []Medal, id string) (*Medal, bool) {
-// 	for i := range medals {
-// 		if medals[i].ID == id {
-// 			return &medals[i], true
-// 		}
-// 	}
-// 	return nil, false
-// }
 
 func (cs *CustomizeScene) getCurrentID(label CustomizeCategory) string {
 	switch label {

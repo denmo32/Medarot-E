@@ -2,30 +2,27 @@ package main
 
 import (
 	"fmt"
-	// "reflect" // No longer needed here as actionQueueResourceType is used
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
-	// "github.com/yohamta/donburi/resource" // Removed
 )
 
 // BattleScene は戦闘シーンのすべてを管理します
 type BattleScene struct {
-	resources  *SharedResources
-	world      donburi.World
-	tickCount  int
-	debugMode  bool
-	state      GameState
-	playerTeam TeamID
-	// actionQueue         []*donburi.Entry // Removed: Will be managed as a world resource
+	resources                *SharedResources
+	world                    donburi.World
+	tickCount                int
+	debugMode                bool
+	state                    GameState
+	playerTeam               TeamID
 	ui                       *UI
 	message                  string
 	postMessageCallback      func()
-	winner                   TeamID // Initialized to TeamNone
+	winner                   TeamID // TeamNone で初期化されます
 	playerMedarotToAct       *donburi.Entry
-	playerActionPendingQueue []*donburi.Entry // Queue for player medarots waiting for action selection
+	playerActionPendingQueue []*donburi.Entry // プレイヤーメダロットの行動選択待ちキュー
 	currentTarget            *donburi.Entry
 	attackingEntity          *donburi.Entry
 	targetedEntity           *donburi.Entry
@@ -42,20 +39,19 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	world := donburi.NewWorld()
 
 	bs := &BattleScene{
-		resources:  res,
-		world:      world,
-		tickCount:  0,
-		debugMode:  true,
-		state:      StatePlaying,
-		playerTeam: Team1,
-		// actionQueue:        make([]*donburi.Entry, 0), // Removed
+		resources:                res,
+		world:                    world,
+		tickCount:                0,
+		debugMode:                true,
+		state:                    StatePlaying,
+		playerTeam:               Team1,
 		playerMedarotToAct:       nil,
-		playerActionPendingQueue: make([]*donburi.Entry, 0), // Initialize the new queue
+		playerActionPendingQueue: make([]*donburi.Entry, 0), // 新しいキューを初期化
 		attackingEntity:          nil,
 		targetedEntity:           nil,
 		currentTarget:            nil,
-		winner:                   TeamNone, // Initialize winner to TeamNone
-		// ヘルパーは後で初期化
+		winner:                   TeamNone, // 勝者をTeamNoneで初期化
+		// ヘルパーは後で初期化します
 	}
 
 	// ヘルパー構造体の初期化
@@ -69,30 +65,29 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	if bs.damageCalculator != nil && bs.partInfoProvider != nil {
 		bs.damageCalculator.SetPartInfoProvider(bs.partInfoProvider)
 	} else {
-		fmt.Println("Error: DamageCalculator or PartInfoProvider is nil during NewBattleScene setup.")
+		fmt.Println("エラー: NewBattleScene のセットアップ中に DamageCalculator または PartInfoProvider がnilです。")
 	}
 
 	// HitCalculatorへの依存性設定
 	if bs.hitCalculator != nil && bs.partInfoProvider != nil {
 		bs.hitCalculator.SetPartInfoProvider(bs.partInfoProvider)
 	} else {
-		fmt.Println("Error: HitCalculator or PartInfoProvider is nil during NewBattleScene setup.")
+		fmt.Println("エラー: NewBattleScene のセットアップ中に HitCalculator または PartInfoProvider がnilです。")
 	}
 
 	// TargetSelectorへの依存性設定
 	if bs.targetSelector != nil && bs.partInfoProvider != nil {
 		bs.targetSelector.SetPartInfoProvider(bs.partInfoProvider)
 	} else {
-		fmt.Println("Error: TargetSelector or PartInfoProvider is nil during NewBattleScene setup.")
+		fmt.Println("エラー: NewBattleScene のセットアップ中に TargetSelector または PartInfoProvider がnilです。")
 	}
 
-	// Ensure the world state entity with ActionQueueComponent exists.
-	// This will create the entity and the ActionQueueComponentData if they don't exist.
+	// ActionQueueComponent を持つワールド状態エンティティが存在することを確認します。
+	// これにより、エンティティと ActionQueueComponentData が存在しない場合に作成されます。
 	EnsureActionQueueEntity(bs.world)
-	// RegisterStateChangeEventHandlers(bs.world) // Removed: Event system replaced with tag polling system
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
-	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも良い
+	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも問題ありません
 
 	return bs
 }
@@ -105,49 +100,48 @@ func (bs *BattleScene) Update() (SceneType, error) {
 	case StatePlaying:
 		bs.tickCount++
 
-		// Process inputs if no player is currently selecting an action AND the pending queue is empty.
-		// This means we are not in the middle of a multi-unit player action sequence.
+		// 現在プレイヤーがアクションを選択しておらず、かつ保留キューが空の場合に限り入力を処理します。
+		// これは、複数ユニットのプレイヤーアクションシーケンスの途中ではないことを意味します。
 		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 {
 			UpdateAIInputSystem(bs.world, bs.partInfoProvider, bs.targetSelector, &bs.resources.Config)
 
 			playerInputResult := UpdatePlayerInputSystem(bs.world)
 			if len(playerInputResult.PlayerMedarotsToAct) > 0 {
 				bs.playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
-				// Don't set playerMedarotToAct or change state here yet,
-				// let the logic below handle picking from the queue.
+				// ここではまだ playerMedarotToAct を設定したり状態を変更したりせず、
+				// 以下のロジックでキューから選択するようにします。
 			}
 		}
 
-		// If there are players in the pending queue and no one is currently acting (modal not shown yet for current one)
+		// 保留キューにプレイヤーがいて、現在誰も行動していない場合（現在のユニットのモーダルがまだ表示されていない場合）
 		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) > 0 {
 			bs.playerMedarotToAct = bs.playerActionPendingQueue[0]
-			// bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:] // Dequeueing happens after selection in handleActionSelection
 			bs.state = StatePlayerActionSelect
 		}
 
-		// Update gauges only if no player action is pending (neither currently selecting nor in queue)
-		// AND the main action execution queue is also empty.
-		actionQueueComp := GetActionQueueComponent(bs.world) // Get the action queue component
+		// プレイヤーのアクションが保留されておらず（現在選択中でもキュー内でもない）、
+		// かつメインのアクション実行キューも空の場合にのみゲージを更新します。
+		actionQueueComp := GetActionQueueComponent(bs.world) // アクションキューコンポーネントを取得
 		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
 			UpdateGaugeSystem(bs.world)
 		}
 
-		// If still in StatePlaying (e.g. AI might have queued an action, or no input was needed, and no player pending),
-		// process the action queue. This needs to happen regardless of shouldSkipGaugeUpdateThisFrame
-		// because AI actions or previously queued player actions should still execute.
-		// However, if state changed to PlayerActionSelect, this part might be skipped or handled differently.
-		if bs.state == StatePlaying { // Re-check state as it might have changed to PlayerActionSelect
+		// まだ StatePlaying の場合（例：AIがアクションをキューに入れたか、入力が不要だった、プレイヤーの保留がない）、
+		// アクションキューを処理します。これは shouldSkipGaugeUpdateThisFrame に関係なく実行する必要があります。
+		// なぜなら、AIのアクションや以前にキューに入れられたプレイヤーのアクションは実行されるべきだからです。
+		// ただし、状態が PlayerActionSelect に変更された場合、この部分はスキップされるか、異なる方法で処理される可能性があります。
+		if bs.state == StatePlaying { // 状態が PlayerActionSelect に変更された可能性があるため、再確認
 			actionResults, err := UpdateActionQueueSystem(
 				bs.world,
 				bs.partInfoProvider,
 				bs.damageCalculator,
 				bs.hitCalculator,
 				bs.targetSelector,
-				&bs.resources.Config, // Pass gameConfig
+				&bs.resources.Config, // gameConfig を渡す
 			)
 			if err != nil {
-				// Handle error appropriately
-				fmt.Println("Error processing action queue system:", err)
+				// エラーを適切に処理
+				fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
 			}
 
 			for _, result := range actionResults {
@@ -156,30 +150,29 @@ func (bs *BattleScene) Update() (SceneType, error) {
 					if logComp != nil {
 						logComp.LastActionLog = result.LogMessage
 					}
-					bs.attackingEntity = result.ActingEntry // For UI indication
-					bs.targetedEntity = result.TargetEntry  // For UI indication
+					bs.attackingEntity = result.ActingEntry // UI表示用
+					bs.targetedEntity = result.TargetEntry  // UI表示用
 
-					// Enqueue message and set callback for cooldown
+					// メッセージをキューに入れ、クールダウンのコールバックを設定
 					bs.enqueueMessage(result.LogMessage, func() {
-						// Check validity and state again before starting cooldown
+						// クールダウンを開始する前に、有効性と状態を再度確認
 						if result.ActingEntry.Valid() && !result.ActingEntry.HasComponent(BrokenStateComponent) {
-							// Call StartCooldownSystem (moved from systems.go)
 							StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config)
 						}
-						bs.attackingEntity = nil // Clear after action processed
-						bs.targetedEntity = nil  // Clear after action processed
+						bs.attackingEntity = nil // アクション処理後にクリア
+						bs.targetedEntity = nil  // アクション処理後にクリア
 					})
-					// If a message was enqueued, state changes to StateMessage, so we might want to break/return early
-					// to avoid further processing in StatePlaying this frame.
+					// メッセージがキューに入れられた場合、状態が StateMessage に変わるため、
+					// このフレームでの StatePlaying でのさらなる処理を避けるために、早期に break/return することがあります。
 					if bs.state == StateMessage {
-						break // Exit the actionResults loop as state has changed
+						break // 状態が変更されたため、actionResults ループを終了
 					}
 				}
 			}
 		}
 
-		// Check for game end only if still in StatePlaying and no message is being shown
-		// (as enqueueMessage from actionResults could change state to StateMessage)
+		// まだ StatePlaying で、かつメッセージが表示されていない場合にのみゲーム終了を確認
+		// (actionResults からの enqueueMessage が状態を StateMessage に変更する可能性があるため)
 		if bs.state == StatePlaying {
 			gameEndResult := CheckGameEndSystem(bs.world)
 			if gameEndResult.IsGameOver {
@@ -192,21 +185,21 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		if bs.ui.battlefieldWidget != nil {
 			bs.ui.battlefieldWidget.UpdatePositions()
 		}
-		ProcessStateEffectsSystem(bs.world) // Process state change side effects at the end of StatePlaying
+		ProcessStateEffectsSystem(bs.world) // StatePlaying の最後に状態変化の副作用を処理
 	case StatePlayerActionSelect:
-		// Ensure battlefield icons are updated while player is selecting action
+		// プレイヤーがアクションを選択している間、バトルフィールドのアイコンが更新されるようにします
 		if bs.ui.battlefieldWidget != nil {
 			bs.ui.battlefieldWidget.UpdatePositions()
 		}
-		// If action modal is not yet shown and a player unit needs to act, show it.
+		// アクションモーダルがまだ表示されておらず、プレイヤーユニットが行動する必要がある場合は表示します。
 		if bs.ui.actionModal == nil && bs.playerMedarotToAct != nil {
-			// Ensure the selected medarot is still valid and in Idle state
+			// 選択されたメダロットがまだ有効でアイドル状態であることを確認します
 			if bs.playerMedarotToAct.Valid() && bs.playerMedarotToAct.HasComponent(IdleStateComponent) {
 				bs.ui.ShowActionModal(bs, bs.playerMedarotToAct)
 			} else {
-				// Medarot is no longer valid or not in Idle state, reset.
+				// メダロットが有効でなくなったか、アイドル状態でないためリセットします。
 				bs.playerMedarotToAct = nil
-				bs.state = StatePlaying // Go back to playing state to re-evaluate
+				bs.state = StatePlaying // 再評価のためにプレイング状態に戻ります
 			}
 		}
 	case StateMessage:
@@ -217,15 +210,13 @@ func (bs *BattleScene) Update() (SceneType, error) {
 				bs.postMessageCallback = nil
 			}
 
-			// Determine next state based on whether a winner was declared
-			if bs.winner != TeamNone { // If a winner was set (game was over)
+			// 勝者が宣言されたかどうかに基づいて次の状態を決定します
+			if bs.winner != TeamNone { // 勝者が設定された場合（ゲームオーバー）
 				bs.state = StateGameOver
 			} else {
 				bs.state = StatePlaying
-				// Input systems (AI/Player) will be called in the next StatePlaying iteration
-				// if bs.playerMedarotToAct is nil.
+				// bs.playerMedarotToAct が nil の場合、次の StatePlaying イテレーションで入力システム（AI/プレイヤー）が呼び出されます。
 			}
-			// SystemProcessIdleMedarots(bs) // Removed: Handled by StatePlaying logic
 		}
 	case StateGameOver:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {

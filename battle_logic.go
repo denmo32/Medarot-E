@@ -18,7 +18,7 @@ import (
 type DamageCalculator struct {
 	world            donburi.World
 	config           *Config
-	partInfoProvider *PartInfoProvider // 後で初期化
+	partInfoProvider *PartInfoProvider
 }
 
 // NewDamageCalculator は新しい DamageCalculator のインスタンスを生成します。
@@ -330,7 +330,7 @@ func (hc *HitCalculator) CalculateDefense(target *donburi.Entry, defensePartDef 
 type TargetSelector struct {
 	world            donburi.World
 	config           *Config
-	partInfoProvider *PartInfoProvider // 後で初期化
+	partInfoProvider *PartInfoProvider
 }
 
 // NewTargetSelector は新しい TargetSelector のインスタンスを生成します。

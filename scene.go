@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text/v2" // ★★★ 不足していたimportを追加 ★★★
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 // SceneType はゲーム全体のシーンの種類を定義します

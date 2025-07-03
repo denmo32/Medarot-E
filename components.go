@@ -5,18 +5,17 @@ import (
 )
 
 // --- Componentの型定義 ---
-// 各Componentにユニークな型情報を持たせる
+// 各コンポーネントにユニークな型情報を持たせます。
 var (
 	SettingsComponent      = donburi.NewComponentType[Settings]()
-	PartsComponent         = donburi.NewComponentType[PartsComponentData]() // Changed from Parts
+	PartsComponent         = donburi.NewComponentType[PartsComponentData]()
 	MedalComponent         = donburi.NewComponentType[Medal]()
 	GaugeComponent         = donburi.NewComponentType[Gauge]()
 	ActionComponent        = donburi.NewComponentType[Action]()
 	LogComponent           = donburi.NewComponentType[Log]()
 	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
-	// EffectsComponent       = donburi.NewComponentType[Effects]()
+	// EffectsComponent       = donburi.NewComponentType[Effects]() // 現在未使用
 
-	// ★★★ 以下を新しく追加 ★★★
 	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
 	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
 
@@ -26,152 +25,147 @@ var (
 	CooldownStateComponent = donburi.NewComponentType[CooldownState]()
 	BrokenStateComponent   = donburi.NewComponentType[BrokenState]()
 
-	// For AI Targeting Strategy
 	TargetingStrategyComponent = donburi.NewComponentType[TargetingStrategyComponentData]()
 )
 
-// --- Componentの構造体定義 ---
-// Settings はメダロットの不変的な設定を保持する
+// --- コンポーネントの構造体定義 ---
+
+// Settings はメダロットの不変的な設定を保持します。
 type Settings struct {
 	ID        string
 	Name      string
 	Team      TeamID
 	IsLeader  bool
-	DrawIndex int // 描画順やY座標の決定に使用
+	DrawIndex int // 描画順やY座標の決定に使用されます。
 }
 
-// Parts (now PartsComponentData) はメダロットのパーツ一式を保持する
+// PartsComponentData はメダロットのパーツ一式を保持します。
 type PartsComponentData struct {
-	Map map[PartSlotKey]*PartInstanceData // Changed from *Part to *PartInstanceData
+	Map map[PartSlotKey]*PartInstanceData
 }
 
-// 新しい状態タグコンポーネント
+// 状態タグコンポーネント
 type IdleState struct{}
 type ChargingState struct{}
 type ReadyState struct{}
 type CooldownState struct{}
 type BrokenState struct{}
 
-// Gauge はチャージやクールダウンの進行状況を保持する
+// Gauge はチャージやクールダウンの進行状況を保持します。
 type Gauge struct {
 	ProgressCounter float64
 	TotalDuration   float64
 	CurrentGauge    float64 // 0-100
 }
 
-// Action は選択された行動とターゲットを保持する
+// Action は選択された行動とターゲットを保持します。
 type Action struct {
 	SelectedPartKey PartSlotKey
 	TargetPartSlot  PartSlotKey
 	TargetEntity    *donburi.Entry
 }
 
-// Log は最後に行われた行動の結果を保持する
+// Log は最後に行われた行動の結果を保持します。
 type Log struct {
 	LastActionLog string
 }
 
-// PlayerControl はプレイヤーが操作するエンティティであることを示すタグ
+// PlayerControl はプレイヤーが操作するエンティティであることを示すタグコンポーネントです。
 type PlayerControl struct{}
 
-// Effects はメダロットにかかっている一時的な効果（バフ・デバフ）を管理します
+// Effects はメダロットにかかっている一時的な効果（バフ・デバフ）を管理します。 (現在未使用)
 // type Effects struct {
 //	EvasionRateMultiplier float64 // 回避率の倍率 (例: 0.5で半減)
 //	DefenseRateMultiplier float64 // 防御率の倍率 (例: 0.5で半減)
 //}
 
-// ★★★ 以下を新しく追加 ★★★
-// 防御率デバフ効果
+// DefenseDebuff は防御力デバフ効果を表します。
 type DefenseDebuff struct {
 	Multiplier float64 // 防御率に乗算される値 (例: 0.5)
 }
 
-// 回避率デバフ効果
+// EvasionDebuff は回避力デバフ効果を表します。
 type EvasionDebuff struct {
 	Multiplier float64 // 回避率に乗算される値 (例: 0.5)
 }
 
-// --- AI Targeting Strategy Component ---
+// --- AIターゲティング戦略コンポーネント ---
 
-// TargetingStrategyFunc defines the function signature for a targeting strategy.
-// It needs access to the world (for querying entities), the acting AI entity,
-// the targetSelector helper, and potentially partInfoProvider.
+// TargetingStrategyFunc はターゲティング戦略の関数シグネチャを定義します。
+// ワールド（エンティティのクエリ用）、行動するAIエンティティ、
+// targetSelectorヘルパー、および潜在的にpartInfoProviderへのアクセスが必要です。
 type TargetingStrategyFunc func(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	targetSelector *TargetSelector, // from battle_logic.go
-	partInfoProvider *PartInfoProvider, // from battle_logic.go
-) (*donburi.Entry, PartSlotKey) // Returns target entity and target part slot
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider,
+) (*donburi.Entry, PartSlotKey) // ターゲットエンティティとターゲットパーツスロットを返します。
 
-// TargetingStrategyComponentData holds the targeting strategy for an AI entity.
+// TargetingStrategyComponentData はAIエンティティのターゲティング戦略を保持します。
 type TargetingStrategyComponentData struct {
 	Strategy TargetingStrategyFunc
 }
 
-// --- Trait Effect Tag Components ---
-// These are added to an entity when a part with a specific trait is being used for an action.
+// --- 特性効果タグコンポーネント ---
+// これらは、特定の特性を持つパーツがアクションに使用されているときにエンティティに追加されます。
 
-// ActingWithBerserkTraitTag indicates the entity is currently performing an action with a BERSERK trait part.
+// ActingWithBerserkTraitTag は、エンティティが現在BERSERK特性パーツでアクションを実行していることを示します。
 type ActingWithBerserkTraitTag struct{}
 
 var ActingWithBerserkTraitTagComponent = donburi.NewComponentType[ActingWithBerserkTraitTag]()
 
-// ActingWithAimTraitTag indicates the entity is currently performing an action with an AIM trait part.
+// ActingWithAimTraitTag は、エンティティが現在AIM特性パーツでアクションを実行していることを示します。
 type ActingWithAimTraitTag struct{}
 
 var ActingWithAimTraitTagComponent = donburi.NewComponentType[ActingWithAimTraitTag]()
 
-// Potentially others: ActingWithStrikeTraitTag, etc.
+// --- 一時的な状態変化タグ ---
+// これらのタグは、エンティティが特定の状態に遷移したときに追加され、
+// 通常、その状態変化の副作用を処理した後にシステムによって削除されます。
 
-// --- Temporary State Change Tags ---
-// These tags are added when an entity transitions to a specific state,
-// and are typically removed by a system after processing the side effects of that state change.
-
-// JustBecameIdleTag indicates the entity has just transitioned to the Idle state.
+// JustBecameIdleTag は、エンティティがアイドル状態に遷移したばかりであることを示します。
 type JustBecameIdleTag struct{}
 
 var JustBecameIdleTagComponent = donburi.NewComponentType[JustBecameIdleTag]()
 
-// JustBecameBrokenTag indicates the entity has just transitioned to the Broken state.
+// JustBecameBrokenTag は、エンティティが破壊状態に遷移したばかりであることを示します。
 type JustBecameBrokenTag struct{}
 
 var JustBecameBrokenTagComponent = donburi.NewComponentType[JustBecameBrokenTag]()
 
-// --- Action Modifier Component ---
-// Temporarily added to an entity before action calculation (hit/damage)
-// to aggregate all modifiers from traits, skills, buffs, debuffs, etc.
+// --- アクション修飾コンポーネント ---
+// アクション計算（ヒット/ダメージ）の前にエンティティに一時的に追加され、
+// 特性、スキル、バフ、デバフなどからのすべての修飾子を集約します。
 type ActionModifierComponentData struct {
-	// Critical Hit Modifiers
-	CriticalRateBonus  int     // e.g., +10 for +10%
-	CriticalMultiplier float64 // If a trait changes the base crit multiplier, default 0 to use system base
-
-	// Power/Damage Modifiers
-	PowerAdditiveBonus    int     // e.g., +20 Power
-	PowerMultiplierBonus  float64 // e.g., 1.5 for +50% Power (applied after additive)
-	DamageAdditiveBonus   int     // Flat damage bonus applied at the very end
-	DamageMultiplierBonus float64 // Overall damage multiplier (e.g., from buffs/debuffs)
-
-	// Accuracy/Evasion Modifiers
-	AccuracyAdditiveBonus int // e.g., +10 Accuracy
-	// EvasionAdditiveBonus  int     // For target's evasion, usually handled by debuffs on target
-	// AccuracyMultiplier    float64 // e.g., 1.1 for +10%
+	// クリティカルヒット修飾子
+	CriticalRateBonus  int     // 例: +10 で +10%
+	CriticalMultiplier float64 // 特性が基本クリティカル乗数を変更する場合。デフォルト0でシステムの基本値を使用
+	// 威力/ダメージ修飾子
+	PowerAdditiveBonus    int     // 例: +20 威力
+	PowerMultiplierBonus  float64 // 例: 1.5 で +50% 威力 (加算後に適用)
+	DamageAdditiveBonus   int     // 最後に適用される固定ダメージボーナス
+	DamageMultiplierBonus float64 // 全体的なダメージ乗数 (例: バフ/デバフから)
+	// 命中/回避修飾子
+	AccuracyAdditiveBonus int // 例: +10 命中
+	// EvasionAdditiveBonus  int     // ターゲットの回避用、通常はターゲットのデバフで処理
+	// AccuracyMultiplier    float64 // 例: 1.1 で +10%
 }
 
 var ActionModifierComponent = donburi.NewComponentType[ActionModifierComponentData]()
 
-// --- AI Part Selection Strategy Component ---
+// --- AIパーツ選択戦略コンポーネント ---
 
-// AIPartSelectionStrategyFunc defines the function signature for an AI part selection strategy.
-// It takes the acting AI entity and a list of available parts, and returns the chosen part and its slot.
+// AIPartSelectionStrategyFunc はAIパーツ選択戦略の関数シグネチャを定義します。
+// 行動するAIエンティティと利用可能なパーツのリストを受け取り、選択されたパーツとそのスロットを返します。
 type AIPartSelectionStrategyFunc func(
 	actingEntry *donburi.Entry,
-	availableParts []AvailablePart, // AvailablePart is defined in battle_logic.go
-	world donburi.World, // For more complex strategies needing world access
+	availableParts []AvailablePart,
+	world donburi.World, // より複雑な戦略でワールドアクセスが必要な場合
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-) (PartSlotKey, *PartDefinition) // Returns selected part's slot key and its definition
+) (PartSlotKey, *PartDefinition) // 選択されたパーツのスロットキーとその定義を返します。
 
-// AIPartSelectionStrategyComponentData holds the part selection strategy for an AI entity.
+// AIPartSelectionStrategyComponentData はAIエンティティのパーツ選択戦略を保持します。
 type AIPartSelectionStrategyComponentData struct {
 	Strategy AIPartSelectionStrategyFunc
 }

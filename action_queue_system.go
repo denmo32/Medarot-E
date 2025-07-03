@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings" // Added for log message checking
+	"strings"
 
 	"github.com/yohamta/donburi"
 )
 
-// ActionResult holds the detailed result of an action execution.
+// ActionResult はアクション実行の詳細な結果を保持します。
 type ActionResult struct {
 	ActingEntry      *donburi.Entry
 	TargetEntry      *donburi.Entry
@@ -38,11 +38,11 @@ func UpdateActionQueueSystem(
 	results := []ActionResult{}
 
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
-		if partInfoProvider == nil { // Should not happen in normal flow
-			log.Println("UpdateActionQueueSystem: partInfoProvider is nil during sort")
+		if partInfoProvider == nil { // 通常のフローでは起こりません
+			log.Println("UpdateActionQueueSystem: ソート中にpartInfoProviderがnilです")
 			return false
 		}
-		// Propulsion for sorting should come from leg part definition
+		// ソートのための推進力は脚部パーツ定義から取得する必要があります
 		propI := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
 		propJ := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
 		return propI > propJ
@@ -75,13 +75,13 @@ func executeActionLogic(
 	result := ActionResult{ActingEntry: entry}
 
 	if actingPartInstance == nil {
-		log.Printf("Error: executeActionLogic - actingPartInstance is nil for %s, part key %s", settings.Name, action.SelectedPartKey)
+		log.Printf("エラー: executeActionLogic - %s の行動パーツインスタンスがnilです。パーツキー: %s", settings.Name, action.SelectedPartKey)
 		result.LogMessage = fmt.Sprintf("%sは行動パーツの取得に失敗しました。", settings.Name)
 		return result
 	}
 	actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
 	if !defFound {
-		log.Printf("Error: executeActionLogic - PartDefinition not found for ID %s (entity: %s)", actingPartInstance.DefinitionID, settings.Name)
+		log.Printf("エラー: executeActionLogic - ID %s (エンティティ: %s) のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID, settings.Name)
 		result.LogMessage = fmt.Sprintf("%sはパーツ定義(%s)の取得に失敗しました。", settings.Name, actingPartInstance.DefinitionID)
 		return result
 	}
@@ -245,10 +245,10 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 		if def, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID); defFound {
 			actingPartDef = def
 		} else {
-			log.Printf("Error: StartCooldownSystem - PartDefinition not found for ID %s", actingPartInstance.DefinitionID)
+			log.Printf("エラー: StartCooldownSystem - ID %s のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID)
 		}
 	} else {
-		log.Printf("Error: StartCooldownSystem - actingPartInstance not found for key %s", actionComp.SelectedPartKey)
+		log.Printf("エラー: StartCooldownSystem - キー %s の行動パーツインスタンスが見つかりません。", actionComp.SelectedPartKey)
 	}
 
 	if actingPartDef != nil && actingPartDef.Trait != TraitBerserk {
@@ -323,7 +323,7 @@ func StartCharge(
 
 	if actingPartDef.Category == CategoryShoot {
 		if target == nil || target.HasComponent(BrokenStateComponent) {
-			log.Printf("%s: [SHOOT] ターゲットが存在しないか破壊されています。", settings.Name)
+			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 				entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
 			}
@@ -349,7 +349,7 @@ func StartCharge(
 			donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff})
 		}
 		if actingPartDef.Category == CategoryMelee {
-			log.Printf("%s がMELEEカテゴリ効果（チャージ時デバフ）を発動。", settings.Name)
+			log.Printf("%s が格闘カテゴリ効果（チャージ時デバフ）を発動。", settings.Name)
 			donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff})
 		}
 	}
@@ -361,7 +361,7 @@ func StartCharge(
 			propulsion = partInfoProvider.GetOverallPropulsion(entry)
 		}
 	} else {
-		log.Println("Warning: StartCharge - partInfoProvider is nil")
+		log.Println("警告: StartCharge - partInfoProviderがnilです。")
 	}
 
 	baseSeconds := float64(actingPartDef.Charge)

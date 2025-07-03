@@ -8,23 +8,19 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// PlayerControlComponent の型定義がこうなっていることを想定
-// type PlayerControl struct{}
-// var PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
-
-// CreateMedarotEntities はゲームデータからECSのエンティティを生成する
+// CreateMedarotEntities はゲームデータからECSのエンティティを生成します。
 func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam TeamID) {
 	for _, loadout := range gameData.Medarots {
 		entry := world.Entry(world.Create(
 			SettingsComponent,
 			PartsComponent,
 			MedalComponent,
-			IdleStateComponent, // ★★★ 追加 ★★★
+			IdleStateComponent,
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
 			TargetingStrategyComponent,
-			AIPartSelectionStrategyComponent, // Added AIPartSelectionStrategyComponent
+			AIPartSelectionStrategyComponent,
 		))
 		SettingsComponent.SetValue(entry, Settings{
 			ID:        loadout.ID,
@@ -51,7 +47,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 					IsBroken:     false,
 				}
 			} else {
-				log.Printf("Warning: Part definition not found for ID %s. Using placeholder.", partID)
+				log.Printf("警告: ID %s のパーツ定義が見つかりません。プレースホルダーを使用します。", partID)
 				partsInstanceMap[slot] = &PartInstanceData{
 					DefinitionID: "placeholder_" + string(slot),
 					CurrentArmor: 0,
@@ -65,10 +61,10 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		if medalFound {
 			MedalComponent.SetValue(entry, *medalDef)
 		} else {
-			log.Printf("Warning: Medal definition not found for ID %s. Using fallback.", loadout.MedalID)
+			log.Printf("警告: ID %s のメダル定義が見つかりません。フォールバックを使用します。", loadout.MedalID)
 			fallbackMedal := Medal{ID: "fallback", Name: "フォールバック", Personality: "ジョーカー", SkillLevel: 1}
 			MedalComponent.SetValue(entry, fallbackMedal)
-			medalDef = &fallbackMedal // Ensure medalDef is not nil for the switch below
+			medalDef = &fallbackMedal // switch文のために medalDef がnilでないことを保証
 		}
 
 		GaugeComponent.SetValue(entry, Gauge{})
@@ -76,7 +72,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		LogComponent.SetValue(entry, Log{})
 
 		var strategy TargetingStrategyFunc
-		// medalDef is guaranteed to be non-nil here due to the fallback logic above
+		// 上記のフォールバックロジックにより、medalDefはここでnilでないことが保証されます
 		switch medalDef.Personality {
 		case "クラッシャー":
 			strategy = selectCrusherTarget
@@ -89,9 +85,9 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		}
 		TargetingStrategyComponent.SetValue(entry, TargetingStrategyComponentData{Strategy: strategy})
 
-		if loadout.Team != playerTeam { // Only for AI
+		if loadout.Team != playerTeam { // AIのみ
 			partSelectionStrategy := SelectFirstAvailablePart
-			// Example: if medalDef.Personality == "Aggressive" { partSelectionStrategy = SelectHighestPowerPart }
+			// 例: if medalDef.Personality == "Aggressive" { partSelectionStrategy = SelectHighestPowerPart }
 			AIPartSelectionStrategyComponent.SetValue(entry, AIPartSelectionStrategyComponentData{Strategy: partSelectionStrategy})
 		}
 

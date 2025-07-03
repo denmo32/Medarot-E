@@ -6,67 +6,67 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// ApplyActionModifiersSystem calculates and applies temporary action modifiers
-// to an acting entity based on its traits, medal, etc.
-// This system should be called before hit/damage calculations.
+// ApplyActionModifiersSystem は、行動エンティティの特性やメダルなどに基づいて、
+// 一時的なアクション修飾子を計算して適用します。
+// このシステムは、命中/ダメージ計算の前に呼び出す必要があります。
 func ApplyActionModifiersSystem(
-	world donburi.World, // World might be needed if effects depend on global state or other entities
+	world donburi.World, // ワールドは、エフェクトがグローバルな状態や他のエンティティに依存する場合に必要になることがあります
 	actingEntry *donburi.Entry,
-	gameConfig *Config, // For accessing balance numbers
-	partInfoProvider *PartInfoProvider, // For things like propulsion for Berserk
+	gameConfig *Config, // バランス数値へのアクセス用
+	partInfoProvider *PartInfoProvider, // バーサークの推進力などのため
 ) {
 	if actingEntry == nil || !actingEntry.Valid() {
 		return
 	}
 
 	modifiers := ActionModifierComponentData{
-		// Initialize with defaults or neutral values
+		// デフォルト値または中立値で初期化
 		CriticalRateBonus:     0,
-		CriticalMultiplier:    0, // 0 means use gameConfig.Balance.Damage.CriticalMultiplier
+		CriticalMultiplier:    0, // 0 は gameConfig.Balance.Damage.CriticalMultiplier を使用することを意味します
 		PowerAdditiveBonus:    0,
-		PowerMultiplierBonus:  1.0, // Multiplier starts at 1.0 (no change)
+		PowerMultiplierBonus:  1.0, // 乗数は1.0から開始（変更なし）
 		DamageAdditiveBonus:   0,
 		DamageMultiplierBonus: 1.0,
 		AccuracyAdditiveBonus: 0,
 	}
 
-	settings := SettingsComponent.Get(actingEntry) // For logging
+	settings := SettingsComponent.Get(actingEntry) // ログ用
 
-	// Apply modifiers from Traits
+	// 特性からの修飾子を適用
 	if actingEntry.HasComponent(ActingWithAimTraitTagComponent) {
-		// AIM trait specific for SHOOT category parts, but tag is added if part has AIM.
-		// The check for SHOOT category for AIM's crit bonus is usually in DamageCalculator.
-		// Here, we just apply the bonus if the AIM tag is present.
-		// The config holds the actual bonus value.
+		// AIM特性は射撃カテゴリパーツに特有ですが、パーツにAIMがあればタグが追加されます。
+		// AIMのクリティカルボーナスに対する射撃カテゴリのチェックは、通常DamageCalculatorで行われます。
+		// ここでは、AIMタグが存在すればボーナスを適用するだけです。
+		// 設定ファイルが実際のボーナス値を保持します。
 		modifiers.CriticalRateBonus += gameConfig.Balance.Effects.Aim.CriticalRateBonus
 		log.Printf("%s: AIM特性によりクリティカル率ボーナス+%d適用", settings.Name, gameConfig.Balance.Effects.Aim.CriticalRateBonus)
 	}
 
 	if actingEntry.HasComponent(ActingWithBerserkTraitTagComponent) {
-		// BERSERK trait: adds propulsion to power.
-		// This is an additive power bonus.
+		// BERSERK特性: 推進力を威力に加算します。
+		// これは加算的な威力ボーナスです。
 		if partInfoProvider != nil {
 			propulsion := partInfoProvider.GetOverallPropulsion(actingEntry)
 			powerBonusFromPropulsion := float64(propulsion) * gameConfig.Balance.Factors.BerserkPowerPropulsionFactor
-			modifiers.PowerAdditiveBonus += int(powerBonusFromPropulsion) // Assuming BerserkPowerPropulsionFactor results in an int-scale bonus
+			modifiers.PowerAdditiveBonus += int(powerBonusFromPropulsion) // BerserkPowerPropulsionFactorが整数スケールのボーナスになると仮定
 			log.Printf("%s: BERSERK特性により推進力(%d)から威力ボーナス+%d適用", settings.Name, propulsion, int(powerBonusFromPropulsion))
 		}
 	}
 
-	// Apply modifiers from MedalComponent (example: skill level affecting power or crit)
+	// MedalComponentからの修飾子を適用（例：スキルレベルが威力やクリティカルに影響）
 	if medalComp := MedalComponent.Get(actingEntry); medalComp != nil {
-		// Example: Medal skill level adds to power (already in DamageCalculator,
-		// but could be moved here if we want all modifiers centralized)
-		// For now, let's assume medal skill factor is applied later in DamageCalculator or
-		// it's an additive bonus here:
+		// 例：メダルスキルレベルが威力に加算される（既にDamageCalculatorにあるが、
+		// すべての修飾子を一元化したい場合はここに移動可能）
+		// 現状では、メダルスキル係数は後でDamageCalculatorで適用されるか、
+		// ここで加算ボーナスとして扱われると仮定します：
 		// modifiers.PowerAdditiveBonus += medalComp.SkillLevel * gameConfig.Balance.Damage.MedalSkillFactor
 		// log.Printf("%s: メダルスキルにより威力ボーナス+%d適用", settings.Name, medalComp.SkillLevel*gameConfig.Balance.Damage.MedalSkillFactor)
 
-		// Example: Medal skill level adds to critical rate (already in DamageCalculator)
-		// modifiers.CriticalRateBonus += medalComp.SkillLevel * 2 // Example factor
+		// 例：メダルスキルレベルがクリティカル率に加算される（既にDamageCalculatorにある）
+		// modifiers.CriticalRateBonus += medalComp.SkillLevel * 2 // 例の係数
 	}
 
-	// Add or update the ActionModifierComponent on the entity
+	// エンティティのActionModifierComponentを追加または更新
 	if actingEntry.HasComponent(ActionModifierComponent) {
 		ActionModifierComponent.SetValue(actingEntry, modifiers)
 	} else {
@@ -75,20 +75,20 @@ func ApplyActionModifiersSystem(
 	log.Printf("%s: ActionModifierComponent更新完了: %+v", settings.Name, modifiers)
 }
 
-// RemoveActionModifiersSystem removes the temporary ActionModifierComponent from an entity.
-// This should be called after hit/damage calculations are complete (e.g., in StartCooldownSystem or end of executeActionLogic).
+// RemoveActionModifiersSystem はエンティティから一時的なActionModifierComponentを削除します。
+// これは、命中/ダメージ計算が完了した後（例：StartCooldownSystemまたはexecuteActionLogicの最後）に呼び出す必要があります。
 func RemoveActionModifiersSystem(actingEntry *donburi.Entry) {
 	if actingEntry == nil || !actingEntry.Valid() {
 		return
 	}
 	if actingEntry.HasComponent(ActionModifierComponent) {
 		actingEntry.RemoveComponent(ActionModifierComponent)
-		// Correctly get SettingsComponent for logging
+		// ログ用にSettingsComponentを正しく取得
 		if actingEntry.HasComponent(SettingsComponent) {
 			settingsComp := SettingsComponent.Get(actingEntry)
 			log.Printf("%s: ActionModifierComponent解除", settingsComp.Name)
 		} else {
-			// Fallback log if SettingsComponent is somehow not present (should not happen for medarots)
+			// SettingsComponentが何らかの理由で存在しない場合のフォールバックログ（メダロットでは起こらないはず）
 			log.Println("ActionModifierComponent解除 (対象エンティティ名不明)")
 		}
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// GameEndResult holds the outcome of the game end check.
+// GameEndResult はゲーム終了チェックの結果を保持します。
 type GameEndResult struct {
 	IsGameOver bool
 	Winner     TeamID
@@ -18,8 +18,8 @@ type GameEndResult struct {
 // CheckGameEndSystem はゲーム終了条件をチェックします。
 // BattleScene への依存をなくし、結果を構造体で返します。
 func CheckGameEndSystem(world donburi.World) GameEndResult {
-	team1Leader := FindLeader(world, Team1) // FindLeader は ecs_setup.go
-	team2Leader := FindLeader(world, Team2) // FindLeader は ecs_setup.go
+	team1Leader := FindLeader(world, Team1) // FindLeader は ecs_setup.go にあります
+	team2Leader := FindLeader(world, Team2) // FindLeader は ecs_setup.go にあります
 
 	team1FuncCount := 0
 	team2FuncCount := 0
@@ -39,17 +39,16 @@ func CheckGameEndSystem(world donburi.World) GameEndResult {
 	var gameOverMsg string
 	isGameOver := false
 
-	// リーダーが nil の場合、そのチームのリーダーが存在しない（破壊されたとは異なる）。
+	// リーダーが nil の場合、そのチームのリーダーが存在しない（破壊されたとは異なります）。
 	// 通常、リーダーは戦闘開始時に設定されるため、nil になるのは異常か、
-	// あるいはリーダーが戦闘から除外されるような特殊なケース。
-	// ここでは、リーダーが破壊された場合と、関数可能な機体がいなくなった場合をチェック。
+	// あるいはリーダーが戦闘から除外されるような特殊なケースです。
+	// ここでは、リーダーが破壊された場合と、行動可能な機体がいなくなった場合をチェックします。
 
-	// Team1の敗北条件
-	// 1. Team1のリーダーが存在しない (nil)
-	// 2. Team1のリーダーの頭部が破壊されている
-	// 3. Team2の関数可能な機体が0 (これはTeam1の勝利条件なのでここでは見ない)
-	// 4. Team1の関数可能な機体が0 (リーダー健在でも他の機体が全滅)
-	if team1Leader == nil || (PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken) || team1FuncCount == 0 {
+	// チーム1の敗北条件：
+	// 1. チーム1のリーダーが存在しない (nil)
+	// 2. チーム1のリーダーの頭部が破壊されている
+	// 3. チーム1の行動可能な機体が0 (リーダーが健在でも他の機体が全滅)
+	if team1Leader == nil || (team1Leader != nil && PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken) || team1FuncCount == 0 {
 		winner = Team2
 		isGameOver = true
 		if team1Leader != nil && PartsComponent.Get(team1Leader).Map[PartSlotHead].IsBroken {
@@ -61,13 +60,12 @@ func CheckGameEndSystem(world donburi.World) GameEndResult {
 		}
 	}
 
-	// Team2の敗北条件 (Team1がまだ負けていない場合)
-	// 1. Team2のリーダーが存在しない (nil)
-	// 2. Team2のリーダーの頭部が破壊されている
-	// 3. Team1の関数可能な機体が0 (これはTeam2の勝利条件なのでここでは見ない)
-	// 4. Team2の関数可能な機体が0 (リーダー健在でも他の機体が全滅)
-	if !isGameOver { // Team1がまだ敗北していない場合のみTeam2の敗北をチェック
-		if team2Leader == nil || PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken || team2FuncCount == 0 {
+	// チーム2の敗北条件 (チーム1がまだ負けていない場合)：
+	// 1. チーム2のリーダーが存在しない (nil)
+	// 2. チーム2のリーダーの頭部が破壊されている
+	// 3. チーム2の行動可能な機体が0 (リーダーが健在でも他の機体が全滅)
+	if !isGameOver { // チーム1がまだ敗北していない場合のみチーム2の敗北をチェック
+		if team2Leader == nil || (team2Leader != nil && PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken) || team2FuncCount == 0 {
 			winner = Team1
 			isGameOver = true
 			if team2Leader != nil && PartsComponent.Get(team2Leader).Map[PartSlotHead].IsBroken {
