@@ -19,12 +19,7 @@ var (
 	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
 	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
 
-	IdleStateComponent     = donburi.NewComponentType[IdleState]()
-	ChargingStateComponent = donburi.NewComponentType[ChargingState]()
-	ReadyStateComponent    = donburi.NewComponentType[ReadyState]()
-	CooldownStateComponent = donburi.NewComponentType[CooldownState]()
-	BrokenStateComponent   = donburi.NewComponentType[BrokenState]()
-
+	StateComponent             = donburi.NewComponentType[StateComponentData]()
 	TargetHistoryComponent     = donburi.NewComponentType[TargetHistoryComponentData]()
 	LastActionHistoryComponent = donburi.NewComponentType[LastActionHistoryComponentData]()
 	TargetingStrategyComponent = donburi.NewComponentType[TargetingStrategyComponentData]()
@@ -46,12 +41,21 @@ type PartsComponentData struct {
 	Map map[PartSlotKey]*PartInstanceData
 }
 
-// 状態タグコンポーネント
-type IdleState struct{}
-type ChargingState struct{}
-type ReadyState struct{}
-type CooldownState struct{}
-type BrokenState struct{}
+// StateType はエンティティの状態を表すenumです。
+type StateType int
+
+const (
+	StateTypeIdle StateType = iota
+	StateTypeCharging
+	StateTypeReady
+	StateTypeCooldown
+	StateTypeBroken
+)
+
+// StateComponentData はエンティティの現在の状態を保持します。
+type StateComponentData struct {
+	Current StateType
+}
 
 // Gauge はチャージやクールダウンの進行状況を保持します。
 type Gauge struct {
@@ -112,19 +116,11 @@ type ActingWithAimTraitTag struct{}
 
 var ActingWithAimTraitTagComponent = donburi.NewComponentType[ActingWithAimTraitTag]()
 
-// --- 一時的な状態変化タグ ---
-// これらのタグは、エンティティが特定の状態に遷移したときに追加され、
-// 通常、その状態変化の副作用を処理した後にシステムによって削除されます。
+// StateChangedTag は、エンティティの状態がこのフレームで変更されたことを示す一時的なタグです。
+// 状態遷移システムがこれを処理し、フレームの終わりに削除します。
+type StateChangedTag struct{}
 
-// JustBecameIdleTag は、エンティティがアイドル状態に遷移したばかりであることを示します。
-type JustBecameIdleTag struct{}
-
-var JustBecameIdleTagComponent = donburi.NewComponentType[JustBecameIdleTag]()
-
-// JustBecameBrokenTag は、エンティティが破壊状態に遷移したばかりであることを示します。
-type JustBecameBrokenTag struct{}
-
-var JustBecameBrokenTagComponent = donburi.NewComponentType[JustBecameBrokenTag]()
+var StateChangedTagComponent = donburi.NewComponentType[StateChangedTag]()
 
 // --- アクション修飾コンポーネント ---
 // アクション計算（ヒット/ダメージ）の前にエンティティに一時的に追加され、

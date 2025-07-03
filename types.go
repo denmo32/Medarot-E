@@ -13,16 +13,8 @@ type PartSlotKey string
 type PartType string
 type PartCategory string
 type Trait string
-type StateType int
 type CustomizeCategory string
 
-const (
-	StateTypeIdle StateType = iota
-	StateTypeCharging
-	StateTypeReady
-	StateTypeCooldown
-	StateTypeBroken
-)
 const (
 	Team1    TeamID = 0
 	Team2    TeamID = 1

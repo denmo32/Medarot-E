@@ -56,7 +56,7 @@ func (h *ShootActionHandler) ResolveTarget(
 	targetPartSlot := actionComp.TargetPartSlot
 	result.TargetEntry = targetEntry // 失敗時もターゲット情報をログに残すために設定
 
-	if targetEntry.HasComponent(BrokenStateComponent) {
+	if StateComponent.Get(targetEntry).Current == StateTypeBroken {
 		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(targetEntry).Name + ")を狙ったが、既に行動不能だった！"
 		return false
 	}
@@ -90,7 +90,7 @@ func (h *MeleeActionHandler) ResolveTarget(
 	}
 	result.TargetEntry = closestEnemy // 失敗時もターゲット情報をログに残すために設定
 
-	if closestEnemy.HasComponent(BrokenStateComponent) { // FindClosestEnemyでフィルタリングされるべきだが、念のため確認
+	if StateComponent.Get(closestEnemy).Current == StateTypeBroken { // FindClosestEnemyでフィルタリングされるべきだが、念のため確認
 		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(closestEnemy).Name + ")を狙ったが、既に行動不能だった！"
 		return false
 	}

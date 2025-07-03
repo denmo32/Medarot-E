@@ -9,12 +9,15 @@ import (
 )
 
 // UpdateGaugeSystem はチャージとクールダウンのゲージ進行を更新します。
-// このシステムは BattleScene に直接依存しません。
 func UpdateGaugeSystem(world donburi.World) {
-	query.NewQuery(filter.Or(
-		filter.Contains(ChargingStateComponent),
-		filter.Contains(CooldownStateComponent),
-	)).Each(world, func(entry *donburi.Entry) {
+	query.NewQuery(filter.Contains(StateComponent)).Each(world, func(entry *donburi.Entry) {
+		state := StateComponent.Get(entry)
+
+		// チャージ中またはクールダウン中のエンティティのみを処理
+		if state.Current != StateTypeCharging && state.Current != StateTypeCooldown {
+			return
+		}
+
 		gauge := GaugeComponent.Get(entry)
 		gauge.ProgressCounter++
 		if gauge.TotalDuration > 0 {
@@ -24,15 +27,13 @@ func UpdateGaugeSystem(world donburi.World) {
 		}
 
 		if gauge.ProgressCounter >= gauge.TotalDuration {
-			if entry.HasComponent(ChargingStateComponent) {
-				// ChangeState は entity_utils.go に移動することを想定しています。
-				ChangeState(entry, StateTypeReady) // world を渡す必要があれば ChangeState のシグネチャ変更も検討します。
+			if state.Current == StateTypeCharging {
+				ChangeState(entry, StateTypeReady)
 				actionQueueComp := GetActionQueueComponent(world)
 				actionQueueComp.Queue = append(actionQueueComp.Queue, entry)
 				log.Printf("%s のチャージが完了。実行キューに追加。", SettingsComponent.Get(entry).Name)
-			} else if entry.HasComponent(CooldownStateComponent) {
-				// ChangeState は entity_utils.go に移動することを想定しています。
-				ChangeState(entry, StateTypeIdle) // world を渡す必要があれば ChangeState のシグネチャ変更も検討します。
+			} else if state.Current == StateTypeCooldown {
+				ChangeState(entry, StateTypeIdle)
 				// バーサーク特性の場合、クールダウン終了時に効果をリセットします。
 				actionComp := ActionComponent.Get(entry)
 				if actionComp.SelectedPartKey != "" {

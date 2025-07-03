@@ -122,7 +122,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 					// メッセージをキューに入れ、クールダウンのコールバックを設定
 					bs.enqueueMessage(result.LogMessage, func() {
 						// クールダウンを開始する前に、有効性と状態を再度確認
-						if result.ActingEntry.Valid() && !result.ActingEntry.HasComponent(BrokenStateComponent) {
+						if result.ActingEntry.Valid() && StateComponent.Get(result.ActingEntry).Current != StateTypeBroken {
 							StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config)
 						}
 						bs.attackingEntity = nil // アクション処理後にクリア
@@ -151,7 +151,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		if bs.ui.battlefieldWidget != nil {
 			bs.ui.battlefieldWidget.UpdatePositions()
 		}
-		ProcessStateEffectsSystem(bs.world) // StatePlaying の最後に状態変化の副作用を処理
+		ProcessStateChangeSystem(bs.world)
 	case StatePlayerActionSelect:
 		// プレイヤーがアクションを選択している間、バトルフィールドのアイコンが更新されるようにします
 		if bs.ui.battlefieldWidget != nil {
@@ -160,7 +160,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		// アクションモーダルがまだ表示されておらず、プレイヤーユニットが行動する必要がある場合は表示します。
 		if bs.ui.actionModal == nil && bs.playerMedarotToAct != nil {
 			// 選択されたメダロットがまだ有効でアイドル状態であることを確認します
-			if bs.playerMedarotToAct.Valid() && bs.playerMedarotToAct.HasComponent(IdleStateComponent) {
+			if bs.playerMedarotToAct.Valid() && StateComponent.Get(bs.playerMedarotToAct).Current == StateTypeIdle {
 				bs.ui.ShowActionModal(bs, bs.playerMedarotToAct)
 			} else {
 				// メダロットが有効でなくなったか、アイドル状態でないためリセットします。

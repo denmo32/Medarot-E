@@ -17,11 +17,10 @@ type PlayerInputSystemResult struct {
 func UpdatePlayerInputSystem(world donburi.World) PlayerInputSystemResult {
 	var playersToAct []*donburi.Entry
 
-	query.NewQuery(filter.And(
-		filter.Contains(PlayerControlComponent),
-		filter.Contains(IdleStateComponent),
-	)).Each(world, func(entry *donburi.Entry) {
-		playersToAct = append(playersToAct, entry)
+	query.NewQuery(filter.Contains(PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
+		if StateComponent.Get(entry).Current == StateTypeIdle {
+			playersToAct = append(playersToAct, entry)
+		}
 	})
 
 	// 行動順は推進力などでソートすることも可能ですが、ここでは単純に検出順とします。

@@ -35,8 +35,8 @@ func createMessageWindow(bs *BattleScene) widget.PreferredSizeLocateableWidget {
 		widget.TextOpts.Text(bs.message, bs.resources.Font, c.Colors.White), // メッセージ本文
 	))
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text("クリックして続行...", bs.resources.Font, c.Colors.Gray), // 続行を促すテキスト
-		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd),   // テキストを右下に配置
+		widget.TextOpts.Text("クリックして続行...", bs.resources.Font, c.Colors.Gray),    // 続行を促すテキスト
+		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd), // テキストを右下に配置
 	))
 
 	return root

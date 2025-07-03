@@ -24,14 +24,13 @@ func CheckGameEndSystem(world donburi.World) GameEndResult {
 	team1FuncCount := 0
 	team2FuncCount := 0
 
-	query.NewQuery(filter.And(
-		filter.Contains(SettingsComponent),
-		filter.Not(filter.Contains(BrokenStateComponent)),
-	)).Each(world, func(entry *donburi.Entry) {
-		if SettingsComponent.Get(entry).Team == Team1 {
-			team1FuncCount++
-		} else {
-			team2FuncCount++
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+		if StateComponent.Get(entry).Current != StateTypeBroken {
+			if SettingsComponent.Get(entry).Team == Team1 {
+				team1FuncCount++
+			} else {
+				team2FuncCount++
+			}
 		}
 	})
 

@@ -156,15 +156,17 @@ func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config
 	partsMap := partsComp.Map // map[PartSlotKey]*PartInstanceData
 
 	var stateStr string
-	if entry.HasComponent(IdleStateComponent) {
+	state := StateComponent.Get(entry)
+	switch state.Current {
+	case StateTypeIdle:
 		stateStr = "待機"
-	} else if entry.HasComponent(ChargingStateComponent) {
+	case StateTypeCharging:
 		stateStr = "チャージ中"
-	} else if entry.HasComponent(ReadyStateComponent) {
+	case StateTypeReady:
 		stateStr = "実行準備"
-	} else if entry.HasComponent(CooldownStateComponent) {
+	case StateTypeCooldown:
 		stateStr = "クールダウン"
-	} else if entry.HasComponent(BrokenStateComponent) {
+	case StateTypeBroken:
 		stateStr = "機能停止"
 	}
 	ui.stateText.Label = stateStr

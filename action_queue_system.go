@@ -332,7 +332,7 @@ func StartCharge(
 	}
 
 	if actingPartDef.Category == CategoryShoot {
-		if target == nil || target.HasComponent(BrokenStateComponent) {
+		if target == nil || StateComponent.Get(target).Current == StateTypeBroken {
 			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
 				entry.RemoveComponent(ActingWithBerserkTraitTagComponent)

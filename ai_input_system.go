@@ -19,10 +19,12 @@ func UpdateAIInputSystem(
 	// 例えば、ワールドリソースでゲームの状態（PlayerTurn, AITurnなど）を管理します。
 	// ここでは、単純にIdle状態の非プレイヤーエンティティを対象とします。
 
-	query.NewQuery(filter.And(
-		filter.Contains(IdleStateComponent),
+	query.NewQuery(
 		filter.Not(filter.Contains(PlayerControlComponent)), // プレイヤー制御ではないエンティティ
-	)).Each(world, func(entry *donburi.Entry) {
+	).Each(world, func(entry *donburi.Entry) {
+		if !entry.HasComponent(StateComponent) || StateComponent.Get(entry).Current != StateTypeIdle {
+			return
+		}
 		// aiSelectAction のシグネチャが (world donburi.World, actingEntry *donburi.Entry, pip *PartInfoProvider, ts *TargetSelector, conf *Config) のようになっていると仮定します。
 		// もし aiSelectAction が BattleScene 全体を必要とする場合、そのリファクタリングも必要です。
 		aiSelectAction(world, entry, partInfoProvider, targetSelector, gameConfig)

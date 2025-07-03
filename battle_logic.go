@@ -460,12 +460,10 @@ func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry) *donburi.
 func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*donburi.Entry {
 	opponentTeamID := ts.GetOpponentTeam(actingEntry)
 	candidates := []*donburi.Entry{}
-	query := query.NewQuery(filter.And(
-		filter.Contains(SettingsComponent),
-		filter.Not(filter.Contains(BrokenStateComponent)),
-	))
-
-	query.Each(ts.world, func(entry *donburi.Entry) {
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
+		if StateComponent.Get(entry).Current == StateTypeBroken {
+			return
+		}
 		settings := SettingsComponent.Get(entry)
 		if settings.Team == opponentTeamID {
 			candidates = append(candidates, entry)
@@ -596,6 +594,7 @@ func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
 func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
 	settings := SettingsComponent.Get(entry)
 	gauge := GaugeComponent.Get(entry)
+	state := StateComponent.Get(entry)
 
 	progress := float32(0)
 	if gauge.TotalDuration > 0 { // TotalDurationが0の場合のゼロ除算を避ける
@@ -608,16 +607,16 @@ func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, worldW
 	}
 
 	var xPos float32
-	if entry.HasComponent(ChargingStateComponent) {
+	switch state.Current {
+	case StateTypeCharging:
 		xPos = homeX + (execX-homeX)*progress
-	} else if entry.HasComponent(ReadyStateComponent) {
+	case StateTypeReady:
 		xPos = execX
-	} else if entry.HasComponent(CooldownStateComponent) {
-		// クールダウンは execX から homeX に戻る動き
+	case StateTypeCooldown:
 		xPos = execX - (execX-homeX)*progress
-	} else if entry.HasComponent(IdleStateComponent) || entry.HasComponent(BrokenStateComponent) {
+	case StateTypeIdle, StateTypeBroken:
 		xPos = homeX
-	} else {
+	default:
 		xPos = homeX // 不明な状態の場合はホームポジション
 	}
 	return xPos

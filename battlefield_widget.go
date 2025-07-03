@@ -90,17 +90,19 @@ func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
 	}
 
 	gauge := GaugeComponent.Get(w.entry)
+	state := StateComponent.Get(w.entry)
 
 	var stateStr string
-	if w.entry.HasComponent(IdleStateComponent) {
+	switch state.Current {
+	case StateTypeIdle:
 		stateStr = "待機"
-	} else if w.entry.HasComponent(ChargingStateComponent) {
+	case StateTypeCharging:
 		stateStr = "チャージ中"
-	} else if w.entry.HasComponent(ReadyStateComponent) {
+	case StateTypeReady:
 		stateStr = "実行準備"
-	} else if w.entry.HasComponent(CooldownStateComponent) {
+	case StateTypeCooldown:
 		stateStr = "クールダウン"
-	} else if w.entry.HasComponent(BrokenStateComponent) {
+	case StateTypeBroken:
 		stateStr = "機能停止"
 	}
 
@@ -118,7 +120,9 @@ func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
 }
 
 func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, centerY float32) {
-	if w.entry.HasComponent(BrokenStateComponent) {
+	state := StateComponent.Get(w.entry)
+	switch state.Current {
+	case StateTypeBroken:
 		lineWidth := float32(2)
 		size := float32(6)
 		vector.StrokeLine(screen, centerX-size, centerY-size,
@@ -127,13 +131,13 @@ func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, cen
 		vector.StrokeLine(screen, centerX-size, centerY+size,
 			centerX+size, centerY-size, lineWidth,
 			w.scene.resources.Config.UI.Colors.White, true)
-	} else if w.entry.HasComponent(ReadyStateComponent) {
+	case StateTypeReady:
 		if (w.scene.tickCount/30)%2 == 0 {
 			vector.StrokeCircle(screen, centerX, centerY,
 				w.scene.resources.Config.UI.Battlefield.IconRadius+5, 2,
 				w.scene.resources.Config.UI.Colors.Yellow, true)
 		}
-	} else if w.entry.HasComponent(CooldownStateComponent) || w.entry.HasComponent(ChargingStateComponent) {
+	case StateTypeCharging, StateTypeCooldown:
 		w.drawCooldownGauge(screen, centerX, centerY)
 	}
 }
@@ -161,8 +165,9 @@ func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, cent
 
 func (w *CustomIconWidget) getIconColor() color.Color {
 	settings := SettingsComponent.Get(w.entry)
+	state := StateComponent.Get(w.entry)
 
-	if w.entry.HasComponent(BrokenStateComponent) {
+	if state.Current == StateTypeBroken {
 		return w.scene.resources.Config.UI.Colors.Broken
 	}
 	if settings.Team == Team1 {

@@ -1,5 +1,5 @@
 id,name,team,is_leader,draw_index,medal_id,head_id,r_arm_id,l_arm_id,legs_id
-P-01,メタビー,0,true,0,M-04,H-001,RA-001,LA-001,L-001
+P-01,メタビー,0,true,0,M-01,H-001,RA-001,LA-001,L-001
 P-02,ブルースドッグ,0,false,1,M-03,H-004,RA-004,LA-004,L-004
 P-03,シアンドッグ,0,false,2,M-07,H-006,RA-006,LA-006,L-006
 E-01,ロクショウ,1,true,0,M-02,H-002,RA-002,LA-002,L-002

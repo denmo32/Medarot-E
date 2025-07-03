@@ -15,7 +15,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			SettingsComponent,
 			PartsComponent,
 			MedalComponent,
-			IdleStateComponent,
+			StateComponent,
 			GaugeComponent,
 			ActionComponent,
 			LogComponent,
@@ -61,6 +61,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			log.Fatalf("エラー: ID %s のメダル定義が見つかりません。", loadout.MedalID)
 		}
 
+		StateComponent.SetValue(entry, StateComponentData{Current: StateTypeIdle})
 		GaugeComponent.SetValue(entry, Gauge{})
 		ActionComponent.SetValue(entry, Action{TargetPartSlot: ""})
 		LogComponent.SetValue(entry, Log{})
