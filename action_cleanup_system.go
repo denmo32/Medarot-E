@@ -1,21 +1,25 @@
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/yohamta/donburi"
+)
 
 // CleanupActionSystem はアクション実行後のクリーンアップ処理を行います。
-func CleanupActionSystem(ctx *ActionContext) {
-	settings := SettingsComponent.Get(ctx.ActingEntry)
+func CleanupActionSystem(actingEntry *donburi.Entry, world donburi.World) {
+	settings := SettingsComponent.Get(actingEntry)
 
-	if ctx.ActingEntry.HasComponent(ActingWithBerserkTraitTagComponent) {
+	if actingEntry.HasComponent(ActingWithBerserkTraitTagComponent) {
 		log.Printf("%s がBERSERK特性効果（行動後全効果リセット）を発動。", settings.Name)
-		ResetAllEffects(ctx.World)
+		ResetAllEffects(world)
 	}
 
-	if ctx.ActingEntry.HasComponent(ActingWithBerserkTraitTagComponent) {
-		ctx.ActingEntry.RemoveComponent(ActingWithBerserkTraitTagComponent)
+	if actingEntry.HasComponent(ActingWithBerserkTraitTagComponent) {
+		actingEntry.RemoveComponent(ActingWithBerserkTraitTagComponent)
 	}
-	if ctx.ActingEntry.HasComponent(ActingWithAimTraitTagComponent) {
-		ctx.ActingEntry.RemoveComponent(ActingWithAimTraitTagComponent)
+	if actingEntry.HasComponent(ActingWithAimTraitTagComponent) {
+		actingEntry.RemoveComponent(ActingWithAimTraitTagComponent)
 	}
-	RemoveActionModifiersSystem(ctx.ActingEntry)
+	RemoveActionModifiersSystem(actingEntry)
 }

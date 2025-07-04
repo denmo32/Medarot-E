@@ -15,9 +15,11 @@ type ActionResult struct {
 	LogMessage       string
 	ActionDidHit     bool // 命中したかどうか
 	IsCritical       bool // クリティカルだったか
+	OriginalDamage   int  // 元のダメージ量
 	DamageDealt      int  // 実際に与えたダメージ
 	TargetPartBroken bool // ターゲットパーツが破壊されたか
 	ActionIsDefended bool // 攻撃が防御されたか
+	ActualHitPartSlot PartSlotKey // 実際にヒットしたパーツのスロット
 }
 
 // UpdateActionQueueSystem は行動準備完了キューを処理します。
@@ -46,53 +48,93 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
-		actionResult := executeAction(actingEntry, world, battleLogic, gameConfig)
+		deps := &ActionDependencies{
+			DamageCalculator: battleLogic.DamageCalculator,
+			HitCalculator:    battleLogic.HitCalculator,
+			TargetSelector:   battleLogic.TargetSelector,
+			PartInfoProvider: battleLogic.PartInfoProvider,
+			GameConfig:       gameConfig,
+		}
+		actionResult := executeAction(actingEntry, world, deps)
 		results = append(results, actionResult)
 	}
 	return results, nil
 }
 
+// ActionDependencies はアクション実行に必要な依存関係をまとめた構造体です。
+type ActionDependencies struct {
+	DamageCalculator *DamageCalculator
+	HitCalculator    *HitCalculator
+	TargetSelector   *TargetSelector
+	PartInfoProvider *PartInfoProvider
+	GameConfig       *Config
+}
+
 func executeAction(
-	entry *donburi.Entry,
+	actingEntry *donburi.Entry,
 	world donburi.World,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
+	deps *ActionDependencies,
 ) ActionResult {
-	ctx := &ActionContext{
-		World:            world,
-		ActingEntry:      entry,
-		ActionResult:     &ActionResult{ActingEntry: entry},
-		DamageCalculator: battleLogic.DamageCalculator,
-		HitCalculator:    battleLogic.HitCalculator,
-		TargetSelector:   battleLogic.TargetSelector,
-		PartInfoProvider: battleLogic.PartInfoProvider,
-		GameConfig:       gameConfig,
-	}
+	actionResult := ActionResult{ActingEntry: actingEntry}
 
 	// 1. アクション解決
-	if !ResolveActionSystem(ctx) {
-		CleanupActionSystem(ctx)
-		return *ctx.ActionResult
+	actingPartDef, _, intendedTargetPartInstance, intendedTargetPartDef, success := ResolveActionSystem(
+		actingEntry,
+		world,
+		&actionResult, // Pass actionResult to fill TargetEntry and TargetPartSlot
+		deps.PartInfoProvider,
+		deps.GameConfig,
+		deps.TargetSelector,
+	)
+	if !success {
+		CleanupActionSystem(actingEntry, world)
+		return actionResult
 	}
 
 	// 2. 命中判定
-	if !DetermineHitSystem(ctx) {
-		CleanupActionSystem(ctx)
-		return *ctx.ActionResult
+	didHit := DetermineHitSystem(
+		actingEntry,
+		world,
+		&actionResult, // Pass actionResult to fill ActionDidHit
+		deps.HitCalculator,
+		deps.DamageCalculator,
+		actingPartDef,
+	)
+	if !didHit {
+		CleanupActionSystem(actingEntry, world)
+		return actionResult
 	}
 
 	// 3. ダメージ適用 (攻撃アクションの場合)
-	if ctx.ActingPartDef.Category == CategoryShoot || ctx.ActingPartDef.Category == CategoryMelee {
-		ApplyDamageSystem(ctx)
+	var actualHitPartDef *PartDefinition // This will be set by ApplyDamageSystem
+	if actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee {
+		actualHitPartDef = ApplyDamageSystem(
+			actingEntry,
+			world,
+			&actionResult, // Pass actionResult to fill IsCritical, DamageDealt, TargetPartBroken, ActionIsDefended
+			deps.DamageCalculator,
+			deps.HitCalculator,
+			deps.TargetSelector,
+			deps.PartInfoProvider,
+			actingPartDef,
+			intendedTargetPartInstance,
+			intendedTargetPartDef,
+		)
 	}
 
 	// 4. アクション結果生成
-	GenerateActionResultSystem(ctx)
+	GenerateActionResultSystem(
+		actingEntry,
+		world,
+		&actionResult, // Pass actionResult to fill LogMessage
+		actingPartDef,
+		actualHitPartDef,
+	)
 
 	// 5. クリーンアップ
-	CleanupActionSystem(ctx)
+	CleanupActionSystem(actingEntry, world)
 
-	return *ctx.ActionResult
+	return actionResult
 }
 
 // StartCooldownSystem はクールダウン状態を開始します。

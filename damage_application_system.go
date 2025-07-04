@@ -1,62 +1,73 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/yohamta/donburi"
+)
 
 // ApplyDamageSystem はダメージを計算し、ターゲットに適用します。
-func ApplyDamageSystem(ctx *ActionContext) {
-	settings := SettingsComponent.Get(ctx.ActingEntry)
+func ApplyDamageSystem(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	actionResult *ActionResult,
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	partInfoProvider *PartInfoProvider,
+	actingPartDef *PartDefinition,
+	intendedTargetPartInstance *PartInstanceData,
+	intendedTargetPartDef *PartDefinition,
+) *PartDefinition {
+	settings := SettingsComponent.Get(actingEntry)
 
-	if ctx.TargetEntry == nil || ctx.IntendedTargetPartInstance == nil {
-		ctx.ActionResult.LogMessage = fmt.Sprintf("%s の攻撃は対象または対象パーツが不明です (内部エラー)。", settings.Name)
-		return
+	if actionResult.TargetEntry == nil || intendedTargetPartInstance == nil {
+		actionResult.LogMessage = fmt.Sprintf("%s の攻撃は対象または対象パーツが不明です (内部エラー)。", settings.Name)
+		return nil
 	}
 
-	damage, isCritical := ctx.DamageCalculator.CalculateDamage(ctx.ActingEntry, ctx.ActingPartDef)
-	ctx.IsCritical = isCritical
-	ctx.OriginalDamage = damage
-	ctx.ActionResult.IsCritical = isCritical
+	damage, isCritical := damageCalculator.CalculateDamage(actingEntry, actingPartDef)
+	actionResult.IsCritical = isCritical
+	actionResult.OriginalDamage = damage
 
 	var finalDamageDealt int
-	var actualHitPartInstance *PartInstanceData = ctx.IntendedTargetPartInstance
-	var actualHitPartSlot PartSlotKey = ctx.TargetPartSlot
-	var actualHitPartDef *PartDefinition = ctx.IntendedTargetPartDef
+	var actualHitPartInstance *PartInstanceData = intendedTargetPartInstance
+	var actualHitPartSlot PartSlotKey = actionResult.TargetPartSlot
+	var actualHitPartDef *PartDefinition = intendedTargetPartDef
 
-	ctx.ActionIsDefended = false
-	defensePartInstance := ctx.TargetSelector.SelectDefensePart(ctx.TargetEntry)
+	actionResult.ActionIsDefended = false
+	defensePartInstance := targetSelector.SelectDefensePart(actionResult.TargetEntry)
 
-	if defensePartInstance != nil && defensePartInstance != ctx.IntendedTargetPartInstance {
+	if defensePartInstance != nil && defensePartInstance != intendedTargetPartInstance {
 		defensePartDef, defFound := GlobalGameDataManager.GetPartDefinition(defensePartInstance.DefinitionID)
-		if defFound && ctx.HitCalculator.CalculateDefense(ctx.TargetEntry, defensePartDef) {
-			ctx.ActionIsDefended = true
+		if defFound && hitCalculator.CalculateDefense(actionResult.TargetEntry, defensePartDef) {
+			actionResult.ActionIsDefended = true
 			actualHitPartInstance = defensePartInstance
 			actualHitPartDef = defensePartDef
-			actualHitPartSlot = ctx.PartInfoProvider.FindPartSlot(ctx.TargetEntry, actualHitPartInstance)
+			actualHitPartSlot = partInfoProvider.FindPartSlot(actionResult.TargetEntry, actualHitPartInstance)
 
-			finalDamageAfterDefense := ctx.OriginalDamage - defensePartDef.Defense
+			finalDamageAfterDefense := actionResult.OriginalDamage - defensePartDef.Defense
 			if finalDamageAfterDefense < 0 {
 				finalDamageAfterDefense = 0
 			}
 			finalDamageDealt = finalDamageAfterDefense
-			ctx.DamageCalculator.ApplyDamage(ctx.TargetEntry, actualHitPartInstance, finalDamageDealt)
-			ctx.ActionResult.LogMessage = ctx.DamageCalculator.GenerateActionLogDefense(ctx.TargetEntry, actualHitPartDef, finalDamageDealt, ctx.OriginalDamage, isCritical)
+			damageCalculator.ApplyDamage(actionResult.TargetEntry, actualHitPartInstance, finalDamageDealt)
+			actionResult.LogMessage = damageCalculator.GenerateActionLogDefense(actionResult.TargetEntry, actualHitPartDef, finalDamageDealt, actionResult.OriginalDamage, isCritical)
 		}
 	}
 
-	if !ctx.ActionIsDefended {
-		actualHitPartInstance = ctx.IntendedTargetPartInstance
-		actualHitPartDef = ctx.IntendedTargetPartDef
-		actualHitPartSlot = ctx.TargetPartSlot
-		ctx.DamageCalculator.ApplyDamage(ctx.TargetEntry, actualHitPartInstance, ctx.OriginalDamage)
-		finalDamageDealt = ctx.OriginalDamage
-		// GenerateActionLog のシグネチャ変更に合わせて修正: actingPartDef, targetPartDef の順
-		ctx.ActionResult.LogMessage = ctx.DamageCalculator.GenerateActionLog(ctx.ActingEntry, ctx.TargetEntry, ctx.ActingPartDef, actualHitPartDef, finalDamageDealt, isCritical, true)
+	if !actionResult.ActionIsDefended {
+		actualHitPartInstance = intendedTargetPartInstance
+		actualHitPartDef = intendedTargetPartDef
+		actualHitPartSlot = actionResult.TargetPartSlot
+		damageCalculator.ApplyDamage(actionResult.TargetEntry, actualHitPartInstance, actionResult.OriginalDamage)
+		finalDamageDealt = actionResult.OriginalDamage
+		actionResult.LogMessage = damageCalculator.GenerateActionLog(actingEntry, actionResult.TargetEntry, actingPartDef, actualHitPartDef, finalDamageDealt, isCritical, true)
 	}
 
-	ctx.FinalDamageDealt = finalDamageDealt
-	ctx.ActualHitPartInstance = actualHitPartInstance
-	ctx.ActualHitPartSlot = actualHitPartSlot
-	ctx.ActualHitPartDef = actualHitPartDef
-	ctx.ActionResult.DamageDealt = finalDamageDealt
-	ctx.ActionResult.ActionIsDefended = ctx.ActionIsDefended
-	ctx.ActionResult.TargetPartBroken = actualHitPartInstance.IsBroken
+	actionResult.DamageDealt = finalDamageDealt
+	actionResult.TargetPartBroken = actualHitPartInstance.IsBroken
+	actionResult.ActualHitPartSlot = actualHitPartSlot
+
+	return actualHitPartDef
 }
