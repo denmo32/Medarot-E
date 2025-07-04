@@ -11,7 +11,8 @@ func DetermineHitSystem(ctx *ActionContext) bool {
 	ctx.ActionResult.ActionDidHit = didHit
 
 	if !didHit {
-		ctx.ActionResult.LogMessage = ctx.DamageCalculator.GenerateActionLog(ctx.ActingEntry, ctx.TargetEntry, nil, 0, false, false)
+		// 攻撃が外れた場合、actingPartDef を渡して skill_name を正しく表示できるようにする
+		ctx.ActionResult.LogMessage = ctx.DamageCalculator.GenerateActionLog(ctx.ActingEntry, ctx.TargetEntry, ctx.ActingPartDef, nil, 0, false, false)
 		if ctx.ActingEntry.HasComponent(ActingWithBerserkTraitTagComponent) {
 			ResetAllEffects(ctx.World)
 		}

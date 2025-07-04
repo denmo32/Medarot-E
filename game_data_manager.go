@@ -1,20 +1,35 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	// "log"
+	"path/filepath"
+)
 
-// GameDataManager はパーツやメダルなどのすべての静的ゲームデータ定義を保持します。
+// GameDataManager はパーツやメダルなどのすべての静的ゲームデータ定義とメッセージを保持します。
 type GameDataManager struct {
 	partDefinitions  map[string]*PartDefinition
 	medalDefinitions map[string]*Medal // Medal構造体は今のところ主に定義情報と仮定
+	Messages         *MessageManager   // メッセージマネージャー
 	// 他のゲームデータ定義もここに追加できます
 }
 
-// NewGameDataManager はGameDataManagerの新しいインスタンスを作成します。
-func NewGameDataManager() *GameDataManager {
-	return &GameDataManager{
+// NewGameDataManager はGameDataManagerの新しいインスタンスを作成し、初期化します。
+func NewGameDataManager(basePath string) (*GameDataManager, error) {
+	gdm := &GameDataManager{
 		partDefinitions:  make(map[string]*PartDefinition),
 		medalDefinitions: make(map[string]*Medal),
 	}
+
+	// メッセージマネージャーの初期化
+	// basePath は "data" フォルダを指すことを想定
+	messageManager, err := NewMessageManager(filepath.Join(basePath, "messages.json"))
+	if err != nil {
+		return nil, fmt.Errorf("メッセージマネージャーの初期化に失敗しました: %w", err)
+	}
+	gdm.Messages = messageManager
+
+	return gdm, nil
 }
 
 // AddPartDefinition はパーツ定義をマネージャーに追加します。
@@ -74,7 +89,5 @@ func (gdm *GameDataManager) GetAllMedalDefinitions() []*Medal {
 	return defs
 }
 
-// GameDataManagerのグローバルインスタンス（またはSharedResourcesなどを介して渡すことも可能）
-// このリファクタリングフェーズの簡潔さのために、グローバルインスタンスを使用できます。
-// より大きなアプリケーションでは、依存性注入を検討してください。
-var GlobalGameDataManager = NewGameDataManager()
+// GameDataManagerのグローバルインスタンス。main.go などで初期化されます。
+var GlobalGameDataManager *GameDataManager

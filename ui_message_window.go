@@ -34,8 +34,14 @@ func createMessageWindow(bs *BattleScene) widget.PreferredSizeLocateableWidget {
 	panel.AddChild(widget.NewText(
 		widget.TextOpts.Text(bs.message, bs.resources.Font, c.Colors.White), // メッセージ本文
 	))
+
+	continueText := "クリックして続行..." // デフォルトテキスト
+	if GlobalGameDataManager != nil && GlobalGameDataManager.Messages != nil {
+		continueText = GlobalGameDataManager.Messages.FormatMessage("ui_click_to_continue", nil)
+	}
+
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text("クリックして続行...", bs.resources.Font, c.Colors.Gray),    // 続行を促すテキスト
+		widget.TextOpts.Text(continueText, bs.resources.Font, c.Colors.Gray), // 続行を促すテキスト
 		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd), // テキストを右下に配置
 	))
 

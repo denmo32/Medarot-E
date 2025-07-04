@@ -48,7 +48,8 @@ func ApplyDamageSystem(ctx *ActionContext) {
 		actualHitPartSlot = ctx.TargetPartSlot
 		ctx.DamageCalculator.ApplyDamage(ctx.TargetEntry, actualHitPartInstance, ctx.OriginalDamage)
 		finalDamageDealt = ctx.OriginalDamage
-		ctx.ActionResult.LogMessage = ctx.DamageCalculator.GenerateActionLog(ctx.ActingEntry, ctx.TargetEntry, actualHitPartDef, finalDamageDealt, isCritical, true)
+		// GenerateActionLog のシグネチャ変更に合わせて修正: actingPartDef, targetPartDef の順
+		ctx.ActionResult.LogMessage = ctx.DamageCalculator.GenerateActionLog(ctx.ActingEntry, ctx.TargetEntry, ctx.ActingPartDef, actualHitPartDef, finalDamageDealt, isCritical, true)
 	}
 
 	ctx.FinalDamageDealt = finalDamageDealt

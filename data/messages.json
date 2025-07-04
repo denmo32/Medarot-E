@@ -1,0 +1,54 @@
+[
+  {
+    "id": "attack_hit",
+    "text": "{attacker_name}の{skill_name}！ {target_name}の{target_part_name}に{damage}のダメージ！"
+  },
+  {
+    "id": "attack_miss",
+    "text": "{attacker_name}の{skill_name}攻撃は{target_name}に外れた！"
+  },
+  {
+    "id": "critical_hit",
+    "text": "{attacker_name}の{skill_name}がクリティカルヒット！ {target_name}の{target_part_name}に{damage}のダメージ！"
+  },
+  {
+    "id": "part_broken",
+    "text": "{target_name}の{target_part_name}を破壊した！"
+  },
+  {
+    "id": "part_broken_on_defense",
+    "text": "しかし、{target_name}の{target_part_name}は破壊された！"
+  },
+  {
+    "id": "defense_success",
+    "text": "{target_name}は{defense_part_name}で防御し、ダメージを{original_damage}から{actual_damage}に抑えた！"
+  },
+  {
+    "id": "defense_success_critical",
+    "text": "{target_name}は{defense_part_name}で防御！クリティカルヒットのダメージを{original_damage}から{actual_damage}に抑えた！"
+  },
+  {
+    "id": "action_generic",
+    "text": "{actor_name}は{action_name}を実行した。"
+  },
+  {
+    "id": "ui_click_to_continue",
+    "text": "クリックして続行..."
+  },
+  {
+    "id": "log_part_broken_notification",
+    "text": "%s の %s (%s) が破壊された！"
+  },
+  {
+    "id": "log_critical_hit_details",
+    "text": "%sの攻撃がクリティカルヒット！(Chance: %d%%, Multiplier: %.2f)"
+  },
+  {
+    "id": "log_hit_roll",
+    "text": "命中判定: %s -> %s | 命中率: %.1f (%f vs %f), ロール: %d"
+  },
+  {
+    "id": "log_defense_roll",
+    "text": "防御判定: %s (%s) | 防御成功率: %.1f, ロール: %d"
+  }
+]
