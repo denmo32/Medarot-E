@@ -143,74 +143,44 @@ func updateAllInfoPanels(bs *BattleScene) {
 		if !ok {
 			return
 		}
-		updateSingleInfoPanel(entry, ui, &bs.resources.Config)
+		vm := BuildInfoPanelViewModel(entry)
+		updateSingleInfoPanel(ui, vm, &bs.resources.Config)
 	})
 }
 
-func updateSingleInfoPanel(entry *donburi.Entry, ui *infoPanelUI, config *Config) {
+func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Config) {
 	c := config.UI
-	partsComp := PartsComponent.Get(entry)
-	if partsComp == nil {
-		return // パーツコンポーネントがない場合、パーツの更新は行いません
-	}
-	partsMap := partsComp.Map // map[PartSlotKey]*PartInstanceData
 
-	var stateStr string
-	state := StateComponent.Get(entry)
-	switch state.Current {
-	case StateTypeIdle:
-		stateStr = "待機"
-	case StateTypeCharging:
-		stateStr = "チャージ中"
-	case StateTypeReady:
-		stateStr = "実行準備"
-	case StateTypeCooldown:
-		stateStr = "クールダウン"
-	case StateTypeBroken:
-		stateStr = "機能停止"
-	}
-	ui.stateText.Label = stateStr
+	ui.stateText.Label = vm.StateStr
 
-	// リーダーカラーの更新はここにありましたが、これにはsettingsが利用可能であるか、渡される必要があります。
-	// この関数が updateAllInfoPanels から呼び出される場合、settings は entry を介して引き続きアクセス可能であると仮定します。
-	settings := SettingsComponent.Get(entry) // settings が渡されないか、より広いスコープで利用できない場合は再取得します
-	if settings.IsLeader {
+	if vm.IsLeader {
 		ui.nameText.Color = c.Colors.Leader
 	} else {
 		ui.nameText.Color = c.Colors.White
 	}
 
 	for slotKey, partUI := range ui.partSlots {
-		partInst, instFound := partsMap[slotKey]
-		if !instFound || partInst == nil {
-			// 見つからない場合は、オプションでこのパーツのUI要素をクリアまたは非表示にします
+		partVM, ok := vm.Parts[slotKey]
+		if !ok {
 			partUI.partNameText.Label = "---"
 			partUI.hpText.Label = "0/0"
 			partUI.hpBar.SetCurrent(0)
 			continue
 		}
 
-		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
-		if !defFound {
-			partUI.partNameText.Label = "(定義なし)"
-			partUI.hpText.Label = fmt.Sprintf("%d / ?", partInst.CurrentArmor)
-			partUI.hpBar.SetCurrent(0) // またはエラー/不明な最大値の何らかの表示
-			continue
-		}
-
-		currentArmor := partInst.CurrentArmor
-		maxArmor := partDef.MaxArmor // PartDefinition からの MaxArmor
+		currentArmor := partVM.CurrentArmor
+		maxArmor := partVM.MaxArmor
 		textColor := c.Colors.White
 		hpPercentage := 0.0
 		if maxArmor > 0 {
 			hpPercentage = float64(currentArmor) / float64(maxArmor)
 		}
 
-		if partInst.IsBroken { // PartInstanceData からの IsBroken
+		if partVM.IsBroken {
 			textColor = c.Colors.Broken
-			partUI.partNameText.Label = partDef.PartName + " (壊)" // 破壊されたパーツ名を表示
+			partUI.partNameText.Label = partVM.PartName + " (壊)"
 		} else {
-			partUI.partNameText.Label = partDef.PartName
+			partUI.partNameText.Label = partVM.PartName
 			if hpPercentage < 0.3 {
 				textColor = c.Colors.HPCritical
 			}

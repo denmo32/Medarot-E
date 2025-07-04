@@ -53,7 +53,7 @@ ECSアーキテクチャの主要な要素です。データ（Component）、�
     *   内容: CSVから読み込んだデータをもとに、戦闘に参加する全メダロットのエンティティと、その初期状態に必要な各種コンポーネント（`Settings`, `Parts`, `Medal`, `AIComponent`、`ActionIntentComponent`、`TargetComponent`等）を作成・設定します。新しいコンポーネントをエンティティの初期状態に追加する場合や、初期設定ロジックを変更する場合に編集します。
 *   `systems.go`
     *   役割: **[ロジック/振る舞い]** ECSの「S（システム）」のうち、現在は使用されていないファイル。
-    *   内容: かつては多くの戦闘ロジックを含んでいましたが、リファクタリングにより主要な戦闘システムはそれぞれ専用のファイルに移管されました。
+    *   内容: かつては多くの戦闘ロジックを含んでいましたが、リファクタリングにより主要な戦闘システムはそれぞれ専用のファイルに移管されました。現在は、将来的な共通システムの実装のために残されています。
 *   `action_modifier_system.go`: **[ロジック/振る舞い]** 行動実行時の戦闘計算修飾システム。`ApplyActionModifiersSystem` と `RemoveActionModifiersSystem` を定義します。
 *   `action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューの処理と、実際のアクション実行ロジック。`UpdateActionQueueSystem`, `executeActionLogic`, `StartCooldownSystem`, `StartCharge` を定義します。
 *   `action_handler.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の行動処理戦略。`ActionHandler` インターフェースとその実装を定義します。
@@ -80,11 +80,23 @@ UI (ユーザーインターフェース)
 -----------------------
 
 ゲームのユーザーインターフェース関連のファイルです。
+UIはECSアーキテクチャの原則に基づき、ゲームロジックから明確に分離されるようにリファクタリングされました。
 
-*   `ui.go`: 戦闘画面UI全体のレイアウトと管理。
-*   `battlefield_widget.go`: 中央のバトルフィールド描画。
-*   `ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。
-*   `ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。
+*   `ui.go`
+    *   役割: UI全体のレイアウトと管理、およびUIの状態管理（モーダルの表示状態など）。
+    *   内容: EbitenUIのルートコンテナを構築し、各UI要素を配置します。UIイベントのハブとしても機能し、`BattleScene`に抽象化されたUIイベントを通知します。
+*   `ui_events.go`
+    *   役割: UIからゲームロジックへ通知されるイベントの定義。
+    *   内容: `PlayerActionSelectedEvent`や`PlayerActionCancelEvent`など、UIの操作によって発生するイベントの構造体を定義します。
+*   `ui_event_system.go`
+    *   役割: UIイベントを処理し、対応するゲームロジックをトリガーするシステム。
+    *   内容: `BattleScene`から受け取ったUIイベントを解釈し、`StartCharge`などのゲームシステムを呼び出します。
+*   `view_model_builder.go`
+    *   役割: ECSのデータからUI表示用のViewModelを構築するヘルパー。
+    *   内容: `InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。これにより、UIはECSの内部構造に直接依存しません。
+*   `battlefield_widget.go`: 中央のバトルフィールド描画。ViewModelを受け取って描画します。
+*   `ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。ViewModelを受け取って描画します。
+*   `ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。UIイベントを発行し、ViewModelを使用して表示します。
 *   `ui_message_window.go`: 画面下のメッセージウィンドウ。
 
 Data & Utilities (データ定義と補助機能)
@@ -93,7 +105,7 @@ Data & Utilities (データ定義と補助機能)
 プロジェクト全体で使用するデータ構造や補助的な機能です。
 
 *   `types.go`
-    *   役割: プロジェクト全体で使われる基本的な型や定数の定義。
+    *   役割: プロジェクト全体で使われる基本的な型や定数、およびUI用のViewModelの定義。
     *   内容: `TeamID`, `PartSlotKey`, `StateType` のような型定義や、`const` で定義される定数を集約します。
 *   `entity_utils.go`
     *   役割: エンティティやコンポーネント操作に関するユーティリティ関数。
@@ -108,3 +120,5 @@ Data & Utilities (データ定義と補助機能)
 **今後の検討事項**
 
 *   `ai.go`: AIの行動決定ロジックは、現在性格に基づいた戦略の組み合わせで動作していますが、今後はより複雑な状況判断（例：相手のパーツの特性や残弾数を考慮する、複数の敵の状況を比較して最適なターゲットを選ぶなど）を組み込むことで、さらに高度化する可能性があります。
+*   **UIのさらなる抽象化:** 現在のUIはまだ`BattleScene`への参照を持っていますが、将来的には`BattleScene`が`UI`インターフェースのみを知るようにすることで、より疎結合にすることが可能です。
+*   **テストカバレッジの向上:** リファクタリングされたUIロジックとViewModelのテストを追加することで、コードの堅牢性を高めます。

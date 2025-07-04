@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	"image/color"
-	"log"
 	"math"
 
 	uiimage "github.com/ebitenui/ebitenui/image"
@@ -12,34 +10,28 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 type BattlefieldWidget struct {
 	*widget.Container
-	scene        *BattleScene
-	medarotIcons []*CustomIconWidget
-	whitePixel   *ebiten.Image
+	config     *Config
+	whitePixel *ebiten.Image
+	viewModel  *BattlefieldViewModel
 }
 
 type CustomIconWidget struct {
-	entry *donburi.Entry
-	scene *BattleScene
-	xPos  float32
-	yPos  float32
-	rect  image.Rectangle
+	viewModel *IconViewModel
+	config    *Config
+	rect      image.Rectangle
 }
 
-func NewBattlefieldWidget(bs *BattleScene) *BattlefieldWidget {
+func NewBattlefieldWidget(config *Config) *BattlefieldWidget {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
 	bf := &BattlefieldWidget{
-		scene:        bs,
-		medarotIcons: make([]*CustomIconWidget, 0),
-		whitePixel:   whiteImg,
+		config:     config,
+		whitePixel: whiteImg,
 	}
 	bf.Container = widget.NewContainer(
 		widget.ContainerOpts.BackgroundImage(
@@ -47,22 +39,14 @@ func NewBattlefieldWidget(bs *BattleScene) *BattlefieldWidget {
 		),
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
 	)
-	bf.createMedarotIcons()
 	return bf
 }
 
-func (bf *BattlefieldWidget) createMedarotIcons() {
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(bf.scene.world, func(entry *donburi.Entry) {
-		icon := NewCustomIconWidget(entry, bf.scene)
-		bf.medarotIcons = append(bf.medarotIcons, icon)
-	})
-}
-
-func NewCustomIconWidget(entry *donburi.Entry, bs *BattleScene) *CustomIconWidget {
+func NewCustomIconWidget(vm *IconViewModel, config *Config) *CustomIconWidget {
 	return &CustomIconWidget{
-		entry: entry,
-		scene: bs,
-		rect:  image.Rect(0, 0, 20, 20),
+		viewModel: vm,
+		config:    config,
+		rect:      image.Rect(0, 0, 20, 20),
 	}
 }
 
@@ -70,84 +54,60 @@ func (w *CustomIconWidget) Render(screen *ebiten.Image) {
 	if w.rect.Dx() == 0 || w.rect.Dy() == 0 {
 		return
 	}
-	centerX := w.xPos
-	centerY := w.yPos
-	iconColor := w.getIconColor()
-	radius := w.scene.resources.Config.UI.Battlefield.IconRadius
+	centerX := w.viewModel.X
+	centerY := w.viewModel.Y
+	iconColor := w.viewModel.Color
+	radius := w.config.UI.Battlefield.IconRadius
 	vector.DrawFilledCircle(screen, centerX, centerY, radius, iconColor, true)
 
-	settings := SettingsComponent.Get(w.entry)
-	if settings.IsLeader {
+	if w.viewModel.IsLeader {
 		vector.StrokeCircle(screen, centerX, centerY, radius+3, 2,
-			w.scene.resources.Config.UI.Colors.Leader, true)
+			w.config.UI.Colors.Leader, true)
 	}
 	w.drawStateIndicator(screen, centerX, centerY)
 }
 
 func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
-	if !w.scene.debugMode {
+	// デバッグモードはBattleSceneで管理されるため、ここではViewModelのDebugTextを使用
+	if w.viewModel.DebugText == "" {
 		return
 	}
 
-	gauge := GaugeComponent.Get(w.entry)
-	state := StateComponent.Get(w.entry)
-
-	var stateStr string
-	switch state.Current {
-	case StateTypeIdle:
-		stateStr = "待機"
-	case StateTypeCharging:
-		stateStr = "チャージ中"
-	case StateTypeReady:
-		stateStr = "実行準備"
-	case StateTypeCooldown:
-		stateStr = "クールダウン"
-	case StateTypeBroken:
-		stateStr = "機能停止"
-	}
-
-	debugText := fmt.Sprintf(
-		"State: %s\nGauge: %.1f\nProg: %.1f / %.1f",
-		stateStr,
-		gauge.CurrentGauge,
-		gauge.ProgressCounter,
-		gauge.TotalDuration,
-	)
-
-	x := int(w.xPos + 20)
-	y := int(w.yPos - 20)
-	ebitenutil.DebugPrintAt(screen, debugText, x, y)
+	x := int(w.viewModel.X + 20)
+	y := int(w.viewModel.Y - 20)
+	ebitenutil.DebugPrintAt(screen, w.viewModel.DebugText, x, y)
 }
 
 func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, centerY float32) {
-	state := StateComponent.Get(w.entry)
-	switch state.Current {
+	switch w.viewModel.State {
 	case StateTypeBroken:
 		lineWidth := float32(2)
 		size := float32(6)
 		vector.StrokeLine(screen, centerX-size, centerY-size,
 			centerX+size, centerY+size, lineWidth,
-			w.scene.resources.Config.UI.Colors.White, true)
+			w.config.UI.Colors.White, true)
 		vector.StrokeLine(screen, centerX-size, centerY+size,
 			centerX+size, centerY-size, lineWidth,
-			w.scene.resources.Config.UI.Colors.White, true)
+			w.config.UI.Colors.White, true)
 	case StateTypeReady:
-		if (w.scene.tickCount/30)%2 == 0 {
-			vector.StrokeCircle(screen, centerX, centerY,
-				w.scene.resources.Config.UI.Battlefield.IconRadius+5, 2,
-				w.scene.resources.Config.UI.Colors.Yellow, true)
-		}
+		// tickCountはBattleSceneで管理されるため、ここではViewModelに含めない
+		// このアニメーションはBattleSceneのUpdateで制御されるべき
+		// 現状はViewModelにtickCountがないため、アニメーションは停止
+		// if (w.scene.tickCount/30)%2 == 0 {
+		// 	vector.StrokeCircle(screen, centerX, centerY,
+		// 		w.config.UI.Battlefield.IconRadius+5, 2,
+		// 		w.config.UI.Colors.Yellow, true)
+		// }
 	case StateTypeCharging, StateTypeCooldown:
 		w.drawCooldownGauge(screen, centerX, centerY)
 	}
 }
 
 func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, centerY float32) {
-	gauge := GaugeComponent.Get(w.entry)
-	radius := w.scene.resources.Config.UI.Battlefield.IconRadius + 8
-	progress := gauge.CurrentGauge / 100.0
+	radius := w.config.UI.Battlefield.IconRadius + 8
+	progress := w.viewModel.GaugeProgress
 	vector.StrokeCircle(screen, centerX, centerY, radius, 2,
-		w.scene.resources.Config.UI.Colors.Gray, true)
+		w.config.UI.Colors.Gray, true)
 	if progress > 0 {
 		steps := int(progress * 32)
 		for i := 0; i < steps; i++ {
@@ -158,80 +118,50 @@ func (w *CustomIconWidget) drawCooldownGauge(screen *ebiten.Image, centerX, cent
 			x2 := centerX + radius*float32(math.Cos(nextAngle-math.Pi/2))
 			y2 := centerY + radius*float32(math.Sin(nextAngle-math.Pi/2))
 			vector.StrokeLine(screen, x1, y1, x2, y2, 3,
-				w.scene.resources.Config.UI.Colors.Yellow, true)
+				w.config.UI.Colors.Yellow, true)
 		}
 	}
 }
 
-func (w *CustomIconWidget) getIconColor() color.Color {
-	settings := SettingsComponent.Get(w.entry)
-	state := StateComponent.Get(w.entry)
+// getIconColor はViewModelから直接色を取得するため不要になります。
+// func (w *CustomIconWidget) getIconColor() color.Color {
+// 	return w.viewModel.Color
+// }
 
-	if state.Current == StateTypeBroken {
-		return w.scene.resources.Config.UI.Colors.Broken
-	}
-	if settings.Team == Team1 {
-		return w.scene.resources.Config.UI.Colors.Team1
-	}
-	return w.scene.resources.Config.UI.Colors.Team2
-}
-
-func (bf *BattlefieldWidget) UpdatePositions() {
-	rect := bf.Container.GetWidget().Rect
-	if rect.Dx() == 0 || rect.Dy() == 0 {
-		return
-	}
-	width := float32(rect.Dx())
-	height := float32(rect.Dy())
-	offsetX := float32(rect.Min.X)
-	offsetY := float32(rect.Min.Y)
-
-	for _, icon := range bf.medarotIcons {
-		if bf.scene.battleLogic == nil || bf.scene.battleLogic.PartInfoProvider == nil {
-			log.Println("Error: BattlefieldWidget.UpdatePositions - battleLogic or PartInfoProvider is nil")
-			continue
-		}
-		x := bf.scene.battleLogic.PartInfoProvider.CalculateIconXPosition(icon.entry, width)
-		settings := SettingsComponent.Get(icon.entry)
-		y := (height / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
-		icon.xPos = offsetX + x
-		icon.yPos = offsetY + y
-		icon.rect = image.Rect(
-			int(icon.xPos-10), int(icon.yPos-10),
-			int(icon.xPos+10), int(icon.yPos+10),
-		)
-	}
+func (bf *BattlefieldWidget) SetViewModel(vm BattlefieldViewModel) {
+	bf.viewModel = &vm
 }
 
 func (bf *BattlefieldWidget) DrawIcons(screen *ebiten.Image) {
-	for _, icon := range bf.medarotIcons {
-		icon.Render(screen)
+	if bf.viewModel == nil {
+		return
+	}
+	for _, iconVM := range bf.viewModel.Icons {
+		iconWidget := NewCustomIconWidget(iconVM, bf.config)
+		iconWidget.Render(screen)
 	}
 }
 
 func (bf *BattlefieldWidget) DrawDebug(screen *ebiten.Image) {
-	for _, icon := range bf.medarotIcons {
-		icon.drawDebugInfo(screen)
+	if bf.viewModel == nil {
+		return
+	}
+	for _, iconVM := range bf.viewModel.Icons {
+		iconWidget := NewCustomIconWidget(iconVM, bf.config)
+		iconWidget.drawDebugInfo(screen)
 	}
 }
 
-func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetEntry *donburi.Entry) {
-	var targetIcon *CustomIconWidget
-	for _, icon := range bf.medarotIcons {
-		if icon.entry == targetEntry {
-			targetIcon = icon
-			break
-		}
-	}
-	if targetIcon == nil {
+func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetIconVM *IconViewModel) {
+	if targetIconVM == nil {
 		return
 	}
-	tx, ty := targetIcon.xPos, targetIcon.yPos
+	tx, ty := targetIconVM.X, targetIconVM.Y
 
-	indicatorColor := bf.scene.resources.Config.UI.Colors.Yellow
-	iconRadius := bf.scene.resources.Config.UI.Battlefield.IconRadius
-	indicatorHeight := bf.scene.resources.Config.UI.Battlefield.TargetIndicator.Height
-	indicatorWidth := bf.scene.resources.Config.UI.Battlefield.TargetIndicator.Width
+	indicatorColor := bf.config.UI.Colors.Yellow
+	iconRadius := bf.config.UI.Battlefield.IconRadius
+	indicatorHeight := bf.config.UI.Battlefield.TargetIndicator.Height
+	indicatorWidth := bf.config.UI.Battlefield.TargetIndicator.Width
 	margin := float32(5)
 
 	p1x := tx - indicatorWidth/2
@@ -271,8 +201,8 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 	offsetX := float32(rect.Min.X)
 	offsetY := float32(rect.Min.Y)
 	vector.StrokeRect(screen, offsetX, offsetY, width, height,
-		bf.scene.resources.Config.UI.Battlefield.LineWidth,
-		bf.scene.resources.Config.UI.Colors.Gray, false)
+		bf.config.UI.Battlefield.LineWidth,
+		bf.config.UI.Colors.Gray, false)
 	team1HomeX := offsetX + width*0.1
 	team2HomeX := offsetX + width*0.9
 	team1ExecX := offsetX + width*0.4
@@ -280,18 +210,18 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 	for i := 0; i < PlayersPerTeam; i++ {
 		yPos := offsetY + (height/float32(PlayersPerTeam+1))*(float32(i)+1)
 		vector.StrokeCircle(screen, team1HomeX, yPos,
-			bf.scene.resources.Config.UI.Battlefield.HomeMarkerRadius,
-			bf.scene.resources.Config.UI.Battlefield.LineWidth,
-			bf.scene.resources.Config.UI.Colors.Gray, true)
+			bf.config.UI.Battlefield.HomeMarkerRadius,
+			bf.config.UI.Battlefield.LineWidth,
+			bf.config.UI.Colors.Gray, true)
 		vector.StrokeCircle(screen, team2HomeX, yPos,
-			bf.scene.resources.Config.UI.Battlefield.HomeMarkerRadius,
-			bf.scene.resources.Config.UI.Battlefield.LineWidth,
-			bf.scene.resources.Config.UI.Colors.Gray, true)
+			bf.config.UI.Battlefield.HomeMarkerRadius,
+			bf.config.UI.Battlefield.LineWidth,
+			bf.config.UI.Colors.Gray, true)
 	}
 	vector.StrokeLine(screen, team1ExecX, offsetY, team1ExecX, offsetY+height,
-		bf.scene.resources.Config.UI.Battlefield.LineWidth,
-		bf.scene.resources.Config.UI.Colors.White, true)
+		bf.config.UI.Battlefield.LineWidth,
+		bf.config.UI.Colors.White, true)
 	vector.StrokeLine(screen, team2ExecX, offsetY, team2ExecX, offsetY+height,
-		bf.scene.resources.Config.UI.Battlefield.LineWidth,
-		bf.scene.resources.Config.UI.Colors.White, true)
+		bf.config.UI.Battlefield.LineWidth,
+		bf.config.UI.Colors.White, true)
 }

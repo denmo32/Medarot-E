@@ -604,7 +604,7 @@ func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
 
 // CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // worldWidth はバトルフィールドの表示幅です。
-func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, worldWidth float32) float32 {
+func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, battlefieldWidth float32) float32 {
 	settings := SettingsComponent.Get(entry)
 	gauge := GaugeComponent.Get(entry)
 	state := StateComponent.Get(entry)
@@ -614,9 +614,9 @@ func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, worldW
 		progress = float32(gauge.CurrentGauge / 100.0)
 	}
 
-	homeX, execX := worldWidth*0.1, worldWidth*0.4
+	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
 	if settings.Team == Team2 {
-		homeX, execX = worldWidth*0.9, worldWidth*0.6
+		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
 	}
 
 	var xPos float32

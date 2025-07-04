@@ -9,19 +9,34 @@ import (
 )
 
 type UI struct {
-	ebitenui          *ebitenui.UI
-	actionModal       widget.PreferredSizeLocateableWidget
-	messageWindow     widget.PreferredSizeLocateableWidget
-	battlefieldWidget *BattlefieldWidget
-	medarotInfoPanels map[string]*infoPanelUI
-	actionTargetMap   map[PartSlotKey]ActionTarget
+	ebitenui               *ebitenui.UI
+	actionModal            widget.PreferredSizeLocateableWidget
+	messageWindow          widget.PreferredSizeLocateableWidget
+	battlefieldWidget      *BattlefieldWidget
+	medarotInfoPanels      map[string]*infoPanelUI
+	actionTargetMap        map[PartSlotKey]ActionTarget
+	scene                  *BattleScene // イベント発行のためにシーンへの参照を保持
+
+	// UIの状態
+	playerMedarotToAct *donburi.Entry // 現在アクション選択中のプレイヤーメダロット
+	currentTarget      *donburi.Entry // 現在ターゲットとして表示されているエンティティ
+	isActionModalVisible bool           // アクションモーダルが表示されているか
+}
+
+// PostEvent はUIイベントをBattleSceneのキューに追加します。
+func (u *UI) PostEvent(event UIEvent) {
+	if u.scene != nil {
+		u.scene.uiEvents = append(u.scene.uiEvents, event)
+	}
 }
 
 // NewUI は新しいUIインスタンスを作成します。
 func NewUI(bs *BattleScene) *UI {
 	ui := &UI{
-		medarotInfoPanels: make(map[string]*infoPanelUI),
-		actionTargetMap:   make(map[PartSlotKey]ActionTarget),
+		medarotInfoPanels:    make(map[string]*infoPanelUI),
+		actionTargetMap:      make(map[PartSlotKey]ActionTarget),
+		scene:                bs, // sceneへの参照を保存
+		isActionModalVisible: false,
 	}
 	bs.ui = ui // BattleSceneにUIインスタンスを登録
 
@@ -48,7 +63,7 @@ func NewUI(bs *BattleScene) *UI {
 	)
 	mainUIContainer.AddChild(team1PanelContainer)
 
-	ui.battlefieldWidget = NewBattlefieldWidget(bs)
+	ui.battlefieldWidget = NewBattlefieldWidget(&bs.resources.Config)
 	ui.battlefieldWidget.Container.GetWidget().LayoutData = widget.GridLayoutData{}
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)
 
@@ -72,13 +87,15 @@ func NewUI(bs *BattleScene) *UI {
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (u *UI) ShowActionModal(bs *BattleScene, actingEntry *donburi.Entry) {
-	if u.actionModal != nil {
+func (u *UI) ShowActionModal(actingEntry *donburi.Entry) {
+	if u.isActionModalVisible {
 		u.HideActionModal()
 	}
+	u.playerMedarotToAct = actingEntry
+	u.isActionModalVisible = true
 	u.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップを初期化
 
-	modal := createActionModalUI(bs, actingEntry)
+	modal := createActionModalUI(u.scene, actingEntry)
 	u.actionModal = modal
 	u.ebitenui.Container.AddChild(u.actionModal)
 	log.Println("アクションモーダルを表示しました。")
@@ -86,12 +103,18 @@ func (u *UI) ShowActionModal(bs *BattleScene, actingEntry *donburi.Entry) {
 
 // HideActionModal はアクション選択モーダルを非表示にします。
 func (u *UI) HideActionModal() {
+	if !u.isActionModalVisible {
+		return
+	}
 	if u.actionModal != nil {
 		u.ebitenui.Container.RemoveChild(u.actionModal)
-		u.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップをクリア
 		u.actionModal = nil
-		log.Println("アクションモーダルを非表示にしました。")
 	}
+	u.playerMedarotToAct = nil
+	u.currentTarget = nil
+	u.isActionModalVisible = false
+	u.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップをクリア
+	log.Println("アクションモーダルを非表示にしました。")
 }
 
 // ShowMessageWindow はメッセージウィンドウを表示します。

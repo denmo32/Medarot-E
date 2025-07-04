@@ -21,13 +21,12 @@ type BattleScene struct {
 	message                  string
 	postMessageCallback      func()
 	winner                   TeamID // TeamNone で初期化されます
-	playerMedarotToAct       *donburi.Entry
 	playerActionPendingQueue []*donburi.Entry // プレイヤーメダロットの行動選択待ちキュー
-	currentTarget            *donburi.Entry
 	attackingEntity          *donburi.Entry
 	targetedEntity           *donburi.Entry
 
 	battleLogic *BattleLogic
+	uiEvents    []UIEvent
 }
 
 // NewBattleScene は新しい戦闘シーンを初期化します
@@ -41,11 +40,9 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		debugMode:                true,
 		state:                    StatePlaying,
 		playerTeam:               Team1,
-		playerMedarotToAct:       nil,
 		playerActionPendingQueue: make([]*donburi.Entry, 0), // 新しいキューを初期化
 		attackingEntity:          nil,
 		targetedEntity:           nil,
-		currentTarget:            nil,
 		winner:                   TeamNone,
 	}
 
@@ -57,6 +54,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
 	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも問題ありません
+	bs.uiEvents = make([]UIEvent, 0)
 
 	return bs
 }
@@ -65,13 +63,25 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 func (bs *BattleScene) Update() (SceneType, error) {
 	bs.ui.ebitenui.Update()
 
+	// UIイベントキューを処理します
+	for _, event := range bs.uiEvents {
+		switch e := event.(type) {
+		case PlayerActionSelectedEvent:
+			processPlayerActionSelected(bs, e)
+		case PlayerActionCancelEvent:
+			bs.ui.HideActionModal()
+			processPlayerActionCancel(bs, e)
+		}
+	}
+	bs.uiEvents = nil // イベントをクリア
+
 	switch bs.state {
 	case StatePlaying:
 		bs.tickCount++
 
 		// 現在プレイヤーがアクションを選択しておらず、かつ保留キューが空の場合に限り入力を処理します。
 		// これは、複数ユニットのプレイヤーアクションシーケンスの途中ではないことを意味します。
-		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 {
+		if !bs.ui.isActionModalVisible && len(bs.playerActionPendingQueue) == 0 {
 			UpdateAIInputSystem(bs.world, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector, &bs.resources.Config)
 
 			playerInputResult := UpdatePlayerInputSystem(bs.world)
@@ -82,16 +92,15 @@ func (bs *BattleScene) Update() (SceneType, error) {
 			}
 		}
 
-		// 保留キューにプレイヤーがいて、現在誰も行動していない場合（現在のユニットのモーダルがまだ表示されていない場合）
-		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) > 0 {
-			bs.playerMedarotToAct = bs.playerActionPendingQueue[0]
+		// 保留キューにプレイヤーがいる場合、状態をアクション選択に移行します。
+		if len(bs.playerActionPendingQueue) > 0 {
 			bs.state = StatePlayerActionSelect
 		}
 
 		// プレイヤーのアクションが保留されておらず（現在選択中でもキュー内でもない）、
 		// かつメインのアクション実行キューも空の場合にのみゲージを更新します。
 		actionQueueComp := GetActionQueueComponent(bs.world) // アクションキューコンポーネントを取得
-		if bs.playerMedarotToAct == nil && len(bs.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
+		if !bs.ui.isActionModalVisible && len(bs.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
 			UpdateGaugeSystem(bs.world)
 		}
 
@@ -137,38 +146,47 @@ func (bs *BattleScene) Update() (SceneType, error) {
 			}
 		}
 
-		// まだ StatePlaying で、かつメッセージが表示されていない場合にのみゲーム終了を確認
-		// (actionResults からの enqueueMessage が状態を StateMessage に変更する可能性があるため)
-		if bs.state == StatePlaying {
-			gameEndResult := CheckGameEndSystem(bs.world)
-			if gameEndResult.IsGameOver {
-				bs.winner = gameEndResult.Winner
-				bs.state = StateGameOver
-				bs.enqueueMessage(gameEndResult.Message, nil)
-			}
+		// ゲーム終了判定
+		gameEndResult := CheckGameEndSystem(bs.world)
+		if gameEndResult.IsGameOver {
+			bs.winner = gameEndResult.Winner
+			bs.state = StateGameOver
+			bs.enqueueMessage(gameEndResult.Message, nil)
 		}
+
+		// UIの更新
 		updateAllInfoPanels(bs)
-		if bs.ui.battlefieldWidget != nil {
-			bs.ui.battlefieldWidget.UpdatePositions()
-		}
+		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.battlefieldWidget.Container.GetWidget().Rect)
+		bs.ui.battlefieldWidget.SetViewModel(bfVM)
 		ProcessStateChangeSystem(bs.world)
+
 	case StatePlayerActionSelect:
-		// プレイヤーがアクションを選択している間、バトルフィールドのアイコンが更新されるようにします
-		if bs.ui.battlefieldWidget != nil {
-			bs.ui.battlefieldWidget.UpdatePositions()
-		}
+		// プレイヤーがアクションを選択している間、UIのみを更新し、ゲームロジックの進行は停止
+		updateAllInfoPanels(bs)
+		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.battlefieldWidget.Container.GetWidget().Rect)
+		bs.ui.battlefieldWidget.SetViewModel(bfVM)
+
 		// アクションモーダルがまだ表示されておらず、プレイヤーユニットが行動する必要がある場合は表示します。
-		if bs.ui.actionModal == nil && bs.playerMedarotToAct != nil {
+		if !bs.ui.isActionModalVisible && len(bs.playerActionPendingQueue) > 0 {
 			// 選択されたメダロットがまだ有効でアイドル状態であることを確認します
-			if bs.playerMedarotToAct.Valid() && StateComponent.Get(bs.playerMedarotToAct).Current == StateTypeIdle {
-				bs.ui.ShowActionModal(bs, bs.playerMedarotToAct)
+			actingEntry := bs.playerActionPendingQueue[0]
+			if actingEntry.Valid() && StateComponent.Get(actingEntry).Current == StateTypeIdle {
+				bs.ui.ShowActionModal(actingEntry)
 			} else {
-				// メダロットが有効でなくなったか、アイドル状態でないためリセットします。
-				bs.playerMedarotToAct = nil
-				bs.state = StatePlaying // 再評価のためにプレイング状態に戻ります
+				// メダロットが有効でなくなったか、アイドル状態でないためキューから削除します。
+				bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
+				// キューが空になったらプレイング状態に戻ります
+				if len(bs.playerActionPendingQueue) == 0 {
+					bs.state = StatePlaying
+				}
 			}
 		}
 	case StateMessage:
+		// メッセージ表示中はUIのみを更新し、ゲームロジックの進行は停止
+		updateAllInfoPanels(bs)
+		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.battlefieldWidget.Container.GetWidget().Rect)
+		bs.ui.battlefieldWidget.SetViewModel(bfVM)
+
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			bs.ui.HideMessageWindow()
 			if bs.postMessageCallback != nil {
@@ -202,15 +220,25 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 		bf.DrawBackground(screen)
 		bf.DrawIcons(screen)
 
-		var indicatorTarget *donburi.Entry
-		if bs.state == StatePlayerActionSelect && bs.currentTarget != nil {
-			indicatorTarget = bs.currentTarget
+		var indicatorTargetVM *IconViewModel
+		if bs.state == StatePlayerActionSelect && bs.ui.currentTarget != nil {
+			for _, iconVM := range bs.ui.battlefieldWidget.viewModel.Icons {
+				if iconVM.EntryID == uint32(bs.ui.currentTarget.Id()) {
+					indicatorTargetVM = iconVM
+					break
+				}
+			}
 		} else if bs.state == StateMessage && bs.targetedEntity != nil {
-			indicatorTarget = bs.targetedEntity
+			for _, iconVM := range bs.ui.battlefieldWidget.viewModel.Icons {
+				if iconVM.EntryID == uint32(bs.targetedEntity.Id()) {
+					indicatorTargetVM = iconVM
+					break
+				}
+			}
 		}
 
-		if indicatorTarget != nil {
-			bf.DrawTargetIndicator(screen, indicatorTarget)
+		if indicatorTargetVM != nil {
+			bf.DrawTargetIndicator(screen, indicatorTargetVM)
 		}
 		bf.DrawDebug(screen)
 	}
