@@ -45,7 +45,14 @@ func main() {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	// 静的ゲームデータをGameDataManagerに読み込みます。
+	// GameDataManagerを初期化します。
+	// これにはメッセージ定義の読み込みも含まれます。
+	GlobalGameDataManager, err = NewGameDataManager("data")
+	if err != nil {
+		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
+	}
+
+	// 静的ゲームデータ（パーツ、メダル）をGameDataManagerに読み込みます。
 	if err := LoadAllStaticGameData(); err != nil {
 		log.Fatalf("静的ゲームデータの読み込みに失敗しました: %v", err)
 	}

@@ -73,7 +73,9 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 		if defFound {
 			partNameForLog = partDef.PartName
 		}
-		log.Printf("%s の %s (%s) が破壊された！", settings.Name, partNameForLog, partInst.DefinitionID)
+		log.Print(GlobalGameDataManager.Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
+			"ordered_args": []interface{}{settings.Name, partNameForLog, partInst.DefinitionID},
+		}))
 
 		if defFound && partDef.Type == PartTypeHead { // Check Type from PartDefinition
 			ChangeState(entry, StateTypeBroken)
@@ -142,7 +144,9 @@ func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, partDef *Pa
 		}
 		modifiedPower *= critMultiplierToUse
 		isCritical = true
-		log.Printf("%sの攻撃がクリティカルヒット！(Chance: %d%%, Multiplier: %.2f)", SettingsComponent.Get(attacker).Name, criticalChance, critMultiplierToUse)
+		log.Print(GlobalGameDataManager.Messages.FormatMessage("log_critical_hit_details", map[string]interface{}{
+			"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, criticalChance, critMultiplierToUse},
+		}))
 	}
 
 	// Final damage calculation (includes medal skill factor as an additive bonus at the end)
@@ -167,57 +171,62 @@ func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, partDef *Pa
 
 // GenerateActionLog は行動の結果ログを生成します。
 // targetPartDef はダメージを受けたパーツの定義 (nilの場合あり)
-func (dc *DamageCalculator) GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, targetPartDef *PartDefinition, damage int, isCritical bool, didHit bool) string {
+// actingPartDef は攻撃に使用されたパーツの定義
+func (dc *DamageCalculator) GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, actingPartDef *PartDefinition, targetPartDef *PartDefinition, damage int, isCritical bool, didHit bool) string {
 	attackerSettings := SettingsComponent.Get(attacker)
 	targetSettings := SettingsComponent.Get(target)
+	skillName := "(不明なスキル)"
+	if actingPartDef != nil {
+		skillName = actingPartDef.PartName
+	}
 
 	if !didHit {
-		intent := ActionIntentComponent.Get(attacker)
-		actingPartInst := PartsComponent.Get(attacker).Map[intent.SelectedPartKey]
-		var actingPartName string
-		if actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID); defFound {
-			actingPartName = actingPartDef.PartName
-		} else {
-			actingPartName = "(不明なパーツ)"
-		}
-		return fmt.Sprintf("%sの%s攻撃は%sに外れた！", attackerSettings.Name, actingPartName, targetSettings.Name)
+		return GlobalGameDataManager.Messages.FormatMessage("attack_miss", map[string]interface{}{
+			"attacker_name": attackerSettings.Name,
+			"skill_name":    skillName,
+			"target_name":   targetSettings.Name,
+		})
 	}
 
 	targetPartNameStr := "(不明部位)"
-	// targetPartWasBrokenStr := "" // Removed: Unused variable
 	if targetPartDef != nil {
 		targetPartNameStr = targetPartDef.PartName
-		// To check if the part *became* broken, we'd need the PartInstanceData here,
-		// or this function needs to be called after ApplyDamage and passed the PartInstanceData.
-		// For now, let's assume if a PartDefinition is passed, we are logging about that part.
-		// The TargetPartBroken in ActionResult is a better source for "パーツを破壊した！"
-		// This log might need to be simplified or rely on ActionResult's data.
-		// Let's assume for now this function is for generating the core message, and "パーツを破壊した！" is appended based on ActionResult.
 	}
 
-	logMsg := fmt.Sprintf("%sの%sに%dダメージ！", targetSettings.Name, targetPartNameStr, damage)
-	if isCritical {
-		logMsg = fmt.Sprintf("%sの%sにクリティカル！ %dダメージ！", targetSettings.Name, targetPartNameStr, damage)
+	params := map[string]interface{}{
+		"attacker_name":    attackerSettings.Name,
+		"skill_name":       skillName,
+		"target_name":      targetSettings.Name,
+		"target_part_name": targetPartNameStr,
+		"damage":           damage,
 	}
-	// "パーツを破壊した！" は ActionResult.TargetPartBroken を見て呼び出し側で追加する方が正確
-	return logMsg
+
+	if isCritical {
+		return GlobalGameDataManager.Messages.FormatMessage("critical_hit", params)
+	}
+	return GlobalGameDataManager.Messages.FormatMessage("attack_hit", params)
 }
 
 // GenerateActionLogDefense は防御時のアクションログを生成します。
 // defensePartDef は防御に使用されたパーツの定義
 func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePartDef *PartDefinition, damageDealt int, originalDamage int, isCritical bool) string {
 	targetSettings := SettingsComponent.Get(target)
-	defensePartName := "(不明なパーツ)"
+	defensePartNameStr := "(不明なパーツ)"
 	if defensePartDef != nil {
-		defensePartName = defensePartDef.PartName
+		defensePartNameStr = defensePartDef.PartName
 	}
 
-	logMsg := fmt.Sprintf("%sは%sで防御し、ダメージを%dから%dに抑えた！", targetSettings.Name, defensePartName, originalDamage, damageDealt)
-	if isCritical {
-		logMsg = fmt.Sprintf("%sは%sで防御！クリティカルヒットのダメージを%dから%dに抑えた！", targetSettings.Name, defensePartName, originalDamage, damageDealt)
+	params := map[string]interface{}{
+		"target_name":       targetSettings.Name,
+		"defense_part_name": defensePartNameStr,
+		"original_damage":   originalDamage,
+		"actual_damage":     damageDealt,
 	}
-	// "しかし、パーツは破壊された！" は同様に呼び出し側で判断・追加
-	return logMsg
+
+	if isCritical {
+		return GlobalGameDataManager.Messages.FormatMessage("defense_success_critical", params)
+	}
+	return GlobalGameDataManager.Messages.FormatMessage("defense_success", params)
 }
 
 // --- HitCalculator ---
@@ -311,7 +320,9 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 	}
 
 	roll := rand.Intn(100)
-	log.Printf("命中判定: %s -> %s | 命中率: %.1f (%f vs %f), ロール: %d", SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, baseAccuracy, finalEvasion, roll)
+	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_hit_roll", map[string]interface{}{
+		"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, baseAccuracy, finalEvasion, roll},
+	}))
 	return roll < int(chance)
 }
 
@@ -346,7 +357,9 @@ func (hc *HitCalculator) CalculateDefense(target *donburi.Entry, defensePartDef 
 	}
 
 	roll := rand.Intn(100)
-	log.Printf("防御判定: %s (%s) | 防御成功率: %.1f, ロール: %d", SettingsComponent.Get(target).Name, defensePartDef.PartName, chance, roll)
+	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_defense_roll", map[string]interface{}{
+		"ordered_args": []interface{}{SettingsComponent.Get(target).Name, defensePartDef.PartName, chance, roll},
+	}))
 	return roll < int(chance)
 }
 
