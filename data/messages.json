@@ -5,7 +5,7 @@
   },
   {
     "id": "attack_miss",
-    "text": "{attacker_name}の{skill_name}攻撃は{target_name}に外れた！"
+    "text": "{attacker_name}の{skill_name}！ {target_name}は攻撃を回避！"
   },
   {
     "id": "critical_hit",
