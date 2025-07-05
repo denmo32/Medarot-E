@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+var placeholderRegex = regexp.MustCompile(`{(\w+)}`)
+
 // MessageTemplate defines the structure for a single message in the JSON file.
 type MessageTemplate struct {
 	ID   string `json:"id"`
@@ -99,8 +101,7 @@ func (mm *MessageManager) FormatMessage(id string, params map[string]interface{}
 	}
 
 	// Handle {key} style placeholders
-	re := regexp.MustCompile(`\{(\w+)\}`)
-	formattedMessage := re.ReplaceAllStringFunc(template, func(match string) string {
+	formattedMessage := placeholderRegex.ReplaceAllStringFunc(template, func(match string) string {
 		key := strings.Trim(match, "{}")
 		if val, pOk := params[key]; pOk {
 			return fmt.Sprintf("%v", val)
