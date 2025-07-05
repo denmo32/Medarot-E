@@ -502,6 +502,7 @@ func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstan
 type AvailablePart struct {
 	PartDef *PartDefinition // Changed from Part to PartDefinition
 	Slot    PartSlotKey
+	IsBroken bool // パーツが破壊されているか
 }
 
 // GetAvailableAttackParts は攻撃に使用可能なパーツの定義リストを返します。
@@ -515,7 +516,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 
 	for _, slot := range slotsToConsider {
 		partInst, ok := partsComp.Map[slot]
-		if !ok || partInst == nil || partInst.IsBroken {
+		if !ok || partInst == nil {
 			continue
 		}
 		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
@@ -525,7 +526,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 		}
 
 		if partDef.Category != CategoryNone && partDef.Category != CategorySupport && partDef.Category != CategoryDefense {
-			availableParts = append(availableParts, AvailablePart{PartDef: partDef, Slot: slot})
+			availableParts = append(availableParts, AvailablePart{PartDef: partDef, Slot: slot, IsBroken: partInst.IsBroken})
 		}
 	}
 	return availableParts

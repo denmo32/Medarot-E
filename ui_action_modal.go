@@ -66,16 +66,13 @@ func createActionModalUI(
     // ここでは、actingEntryのパーツをループして、actionTargetMapに存在するものを表示する
     var displayableParts []AvailablePart
     for slotKey, partInst := range partsComp.Map {
-        if partInst.IsBroken {
-            continue
-        }
         partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
         if !defFound {
             continue
         }
         // actionTargetMap にエントリがある、つまり ShowActionModal で選択可能と判断されたパーツのみ表示
         if _, ok := actionTargetMap[slotKey]; ok {
-            displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey})
+            displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey, IsBroken: partInst.IsBroken})
         }
     }
 
@@ -89,14 +86,14 @@ func createActionModalUI(
         partDef := available.PartDef
         slotKey := available.Slot
         
-        // canSelect のチェックは ShowActionModal で行われているため、ここでは不要
-        // actionTargetMap に存在すれば選択可能とみなす
+        buttonTextColor := &widget.ButtonTextColor{Idle: c.Colors.White}
+        if available.IsBroken {
+            buttonTextColor.Idle = c.Colors.Red // 破壊されている場合は赤色
+        }
 
         actionButton := widget.NewButton(
             widget.ButtonOpts.Image(buttonImage),
-            widget.ButtonOpts.Text(fmt.Sprintf("%s (%s)", partDef.PartName, partDef.Category), font, &widget.ButtonTextColor{
-                Idle: c.Colors.White,
-            }),
+            widget.ButtonOpts.Text(fmt.Sprintf("%s (%s)", partDef.PartName, partDef.Category), font, buttonTextColor),
             widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
             widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
                 eventChannel <- PlayerActionSelectedEvent{
@@ -118,16 +115,5 @@ func createActionModalUI(
         )
         panel.AddChild(actionButton)
     }
-    cancelButton := widget.NewButton(
-        widget.ButtonOpts.Image(buttonImage),
-        widget.ButtonOpts.Text("キャンセル", font, &widget.ButtonTextColor{
-            Idle: c.Colors.White,
-        }),
-        widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
-        widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-            eventChannel <- PlayerActionCancelEvent{ActingEntry: actingEntry}
-        }),
-    )
-    panel.AddChild(cancelButton)
     return overlay
 }

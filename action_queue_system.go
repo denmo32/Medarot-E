@@ -190,8 +190,8 @@ func StartCharge(
 	settings := SettingsComponent.Get(entry)
 	actingPartInstance := partsComp.Map[partKey]
 
-	if actingPartInstance == nil || actingPartInstance.IsBroken {
-		log.Printf("%s: 選択されたパーツ %s は存在しないか破壊されています。", settings.Name, partKey)
+	if actingPartInstance == nil {
+		log.Printf("%s: 選択されたパーツ %s は存在しません。", settings.Name, partKey)
 		return false
 	}
 	actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)

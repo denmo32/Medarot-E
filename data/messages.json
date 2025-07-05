@@ -50,5 +50,9 @@
   {
     "id": "log_defense_roll",
     "text": "防御判定: %s (%s) | 防御成功率: %.1f, ロール: %d"
+  },
+  {
+    "id": "action_part_broken",
+    "text": "{actor_name}の{part_name}は壊れていた！"
   }
 ]

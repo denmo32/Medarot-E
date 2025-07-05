@@ -32,7 +32,16 @@ func ResolveActionSystem(
 	if !defFound {
 		log.Printf("エラー: ResolveActionSystem - ID %s (エンティティ: %s) のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID, settings.Name)
 		actionResult.LogMessage = fmt.Sprintf("%sはパーツ定義(%s)の取得に失敗しました。", settings.Name, actingPartInstance.DefinitionID)
-				return nil, nil, nil, nil, false
+		return nil, nil, nil, nil, false
+	}
+
+	// 行動パーツが破壊されている場合の処理を追加
+	if actingPartInstance.IsBroken {
+		actionResult.LogMessage = GlobalGameDataManager.Messages.FormatMessage("action_part_broken", map[string]interface{}{
+			"actor_name": settings.Name,
+			"part_name":  actingPartDef.PartName,
+		})
+		return nil, nil, nil, nil, false
 	}
 
 	// ApplyActionModifiersSystem(world, actingEntry, gameConfig, partInfoProvider)
