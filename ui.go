@@ -131,7 +131,7 @@ func (u *UI) ShowActionModal(actingEntry *donburi.Entry, partInfoProvider *PartI
     u.playerMedarotToAct = actingEntry
     u.isActionModalVisible = true
     u.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップを初期化
-	modal := createActionModalUI(actingEntry, u.config, partInfoProvider, targetSelector, u.actionTargetMap, u.eventChannel, GlobalGameDataManager.Font)
+	modal := createActionModalUI(actingEntry, u.world, u.config, partInfoProvider, targetSelector, u.actionTargetMap, u.eventChannel, GlobalGameDataManager.Font)
 	u.actionModal = modal
     u.ebitenui.Container.AddChild(u.actionModal)
     log.Println("アクションモーダルを表示しました。")

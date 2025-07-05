@@ -13,12 +13,13 @@ import (
 
 func createActionModalUI(
     actingEntry *donburi.Entry,
+    world donburi.World, // Add world parameter
     config *Config,
     partInfoProvider *PartInfoProvider,
     targetSelector *TargetSelector,
     actionTargetMap map[PartSlotKey]ActionTarget,
     eventChannel chan UIEvent,
-    font text.Face, // bs *BattleScene 引数を削除し、font text.Face を追加
+    font text.Face,
 ) widget.PreferredSizeLocateableWidget {
     c := config.UI
     settings := SettingsComponent.Get(actingEntry)
@@ -68,16 +69,39 @@ func createActionModalUI(
         slotKey := available.Slot
         canSelect := true // このパーツを選択可能か
         switch partDef.Category {
-        case CategoryShoot:
-            targetEntity, targetSlot := playerSelectRandomTargetPart(actingEntry, targetSelector, partInfoProvider)
-            if targetEntity == nil || targetSlot == "" {
+        case CategoryShoot, CategoryMelee:
+            var strategy TargetingStrategy
+            medal := MedalComponent.Get(actingEntry)
+            switch medal.Personality {
+            case "アシスト":
+                strategy = &AssistStrategy{}
+            case "クラッシャー":
+                strategy = &CrusherStrategy{}
+            case "カウンター":
+                strategy = &CounterStrategy{}
+            case "チェイス":
+                strategy = &ChaseStrategy{}
+            case "デュエル":
+                strategy = &DuelStrategy{}
+            case "フォーカス":
+                strategy = &FocusStrategy{}
+            case "ガード":
+                strategy = &GuardStrategy{}
+            case "ハンター":
+                strategy = &HunterStrategy{}
+            case "インターセプト":
+                strategy = &InterceptStrategy{}
+            case "ジョーカー":
+                strategy = &JokerStrategy{}
+            default:
+                strategy = &LeaderStrategy{} // デフォルトはリーダー狙い
+            }
+            targetEntity, targetSlot := strategy.SelectTarget(world, actingEntry, targetSelector, partInfoProvider)
+            if targetEntity == nil {
                 canSelect = false // ターゲットが見つからない場合は選択不可
-                log.Printf("警告: %s の %s (射撃) はターゲットが見つからないため選択できません。", settings.Name, partDef.PartName)
+                log.Printf("警告: %s の %s (%s) はターゲットが見つからないため選択できません。", settings.Name, partDef.PartName, partDef.Category)
             }
             actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetSlot}
-        case CategoryMelee:
-            // 格闘の場合はターゲット選択が不要なので、ダミーのターゲットを設定
-            actionTargetMap[slotKey] = ActionTarget{Target: nil, Slot: ""}
         }
 
         // ログ出力を削除（未使用変数 actionTarget の削除）
