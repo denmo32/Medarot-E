@@ -35,11 +35,17 @@ func aiSelectAction(
 		ai := AIComponent.Get(entry)
 		if ai.PartSelectionStrategy != nil {
 			slotKey, selectedPartDef = ai.PartSelectionStrategy(entry, availableParts, world, partInfoProvider, targetSelector)
+		} else {
+			// 戦略が設定されていない場合のフォールバック
+			log.Printf("%s: AIエラー - PartSelectionStrategyが設定されていません。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
+			if len(availableParts) > 0 {
+				slotKey = availableParts[0].Slot
+				selectedPartDef = availableParts[0].PartDef
+			}
 		}
-	}
-
-	if selectedPartDef == nil {
-		log.Printf("%s: AIエラー - 有効なパーツ選択戦略が見つからないか、戦略によってパーツが選択されませんでした。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
+	} else {
+		// AIComponentがない場合のフォールバック
+		log.Printf("%s: AIエラー - AIComponentがありません。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
 		if len(availableParts) > 0 {
 			slotKey = availableParts[0].Slot
 			selectedPartDef = availableParts[0].PartDef
@@ -51,35 +57,34 @@ func aiSelectAction(
 		return
 	}
 
-	switch selectedPartDef.Category {
-	case CategoryShoot:
-		var targetEntry *donburi.Entry
-		var targetPartSlot PartSlotKey
+	var targetEntry *donburi.Entry
+	var targetPartSlot PartSlotKey
 
-		if entry.HasComponent(AIComponent) {
-			ai := AIComponent.Get(entry)
-			if ai.TargetingStrategy != nil {
-				targetEntry, targetPartSlot = ai.TargetingStrategy.SelectTarget(world, entry, targetSelector, partInfoProvider)
-			}
-		}
-
-		if targetEntry == nil {
-			log.Printf("%s: AIエラー - 有効なターゲット戦略が見つからないか、戦略によってターゲットが見つかりませんでした。デフォルトのターゲット選択を使用します。", settings.Name)
-			// フォールバックとしてLeaderStrategyを直接インスタンス化して使用
+	if entry.HasComponent(AIComponent) {
+		ai := AIComponent.Get(entry)
+		if ai.TargetingStrategy != nil {
+			targetEntry, targetPartSlot = ai.TargetingStrategy.SelectTarget(world, entry, targetSelector, partInfoProvider)
+		} else {
+			// 戦略が設定されていない場合のフォールバック
+			log.Printf("%s: AIエラー - TargetingStrategyが設定されていません。デフォルトのターゲット選択（リーダー）を使用します。", settings.Name)
 			targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, targetSelector, partInfoProvider)
 		}
+	} else {
+		// AIComponentがない場合のフォールバック
+		log.Printf("%s: AIエラー - AIComponentがありません。デフォルトのターゲット選択（リーダー）を使用します。", settings.Name)
+		targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, targetSelector, partInfoProvider)
+	}
 
+	if selectedPartDef.Category == CategoryShoot {
 		if targetEntry == nil {
 			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
 			return
 		}
 		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, gameConfig, partInfoProvider)
-
-	case CategoryMelee:
+	} else if selectedPartDef.Category == CategoryMelee {
+		// 格闘の場合はターゲット選択が不要なので、nilを渡す
 		StartCharge(entry, slotKey, nil, "", world, gameConfig, partInfoProvider)
-	default:
-		// 選択されたパーツが射撃でも格闘でもない場合、またはStartChargeにつながらないカテゴリの場合のログ
-		// (例: サポート、防御カテゴリで戦略があった場合など)
+	} else {
 		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
 	}
 }

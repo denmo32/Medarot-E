@@ -92,7 +92,13 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			}
 
 			partSelectionStrategy := SelectFirstAvailablePart
-			// 例: if medalDef.Personality == "Aggressive" { partSelectionStrategy = SelectHighestPowerPart }
+			switch medalDef.Personality {
+			case "ハンター":
+				partSelectionStrategy = SelectHighestPowerPart
+			case "ジョーカー":
+				partSelectionStrategy = SelectFastestChargePart
+			// 他の性格に応じた戦略を追加
+			}
 
 			donburi.Add(entry, AIComponent, &AI{
 				TargetingStrategy:     strategy,
