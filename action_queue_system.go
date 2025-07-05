@@ -48,32 +48,17 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
-		deps := &ActionDependencies{
-			DamageCalculator: battleLogic.DamageCalculator,
-			HitCalculator:    battleLogic.HitCalculator,
-			TargetSelector:   battleLogic.TargetSelector,
-			PartInfoProvider: battleLogic.PartInfoProvider,
-			GameConfig:       gameConfig,
-		}
-		actionResult := executeAction(actingEntry, world, deps)
+		actionResult := executeAction(actingEntry, world, battleLogic, gameConfig)
 		results = append(results, actionResult)
 	}
 	return results, nil
 }
 
-// ActionDependencies はアクション実行に必要な依存関係をまとめた構造体です。
-type ActionDependencies struct {
-	DamageCalculator *DamageCalculator
-	HitCalculator    *HitCalculator
-	TargetSelector   *TargetSelector
-	PartInfoProvider *PartInfoProvider
-	GameConfig       *Config
-}
-
 func executeAction(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	deps *ActionDependencies,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
 ) ActionResult {
 	actionResult := ActionResult{ActingEntry: actingEntry}
 
@@ -81,10 +66,10 @@ func executeAction(
 	actingPartDef, _, intendedTargetPartInstance, intendedTargetPartDef, success := ResolveActionSystem(
 		actingEntry,
 		world,
-		&actionResult, // Pass actionResult to fill TargetEntry and TargetPartSlot
-		deps.PartInfoProvider,
-		deps.GameConfig,
-		deps.TargetSelector,
+		&actionResult,
+		battleLogic.PartInfoProvider,
+		gameConfig,
+		battleLogic.TargetSelector,
 	)
 	if !success {
 		CleanupActionSystem(actingEntry, world)
@@ -95,9 +80,9 @@ func executeAction(
 	didHit := DetermineHitSystem(
 		actingEntry,
 		world,
-		&actionResult, // Pass actionResult to fill ActionDidHit
-		deps.HitCalculator,
-		deps.DamageCalculator,
+		&actionResult,
+		battleLogic.HitCalculator,
+		battleLogic.DamageCalculator,
 		actingPartDef,
 	)
 	if !didHit {
@@ -106,16 +91,16 @@ func executeAction(
 	}
 
 	// 3. ダメージ適用 (攻撃アクションの場合)
-	var actualHitPartDef *PartDefinition // This will be set by ApplyDamageSystem
+	var actualHitPartDef *PartDefinition
 	if actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee {
 		actualHitPartDef = ApplyDamageSystem(
 			actingEntry,
 			world,
-			&actionResult, // Pass actionResult to fill IsCritical, DamageDealt, TargetPartBroken, ActionIsDefended
-			deps.DamageCalculator,
-			deps.HitCalculator,
-			deps.TargetSelector,
-			deps.PartInfoProvider,
+			&actionResult,
+			battleLogic.DamageCalculator,
+			battleLogic.HitCalculator,
+			battleLogic.TargetSelector,
+			battleLogic.PartInfoProvider,
 			actingPartDef,
 			intendedTargetPartInstance,
 			intendedTargetPartDef,
@@ -126,7 +111,7 @@ func executeAction(
 	GenerateActionResultSystem(
 		actingEntry,
 		world,
-		&actionResult, // Pass actionResult to fill LogMessage
+		&actionResult,
 		actingPartDef,
 		actualHitPartDef,
 	)
@@ -153,10 +138,6 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 		log.Printf("エラー: StartCooldownSystem - キー %s の行動パーツインスタンスが見つかりません。", intent.SelectedPartKey)
 	}
 
-	if actingPartDef != nil && actingPartDef.Trait != TraitBerserk {
-		ResetAllEffects(world)
-	}
-
 	baseSeconds := 1.0
 	if actingPartDef != nil {
 		baseSeconds = float64(actingPartDef.Cooldown)
@@ -173,14 +154,6 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 	}
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
-
-	if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
-		entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
-	}
-	if entry.HasComponent(ActingWithAimTraitTagComponent) {
-		entry.RemoveComponent(ActingWithAimTraitTagComponent)
-	}
-	RemoveActionModifiersSystem(entry)
 
 	ChangeState(entry, StateTypeCooldown)
 }

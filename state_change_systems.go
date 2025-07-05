@@ -17,44 +17,34 @@ func ProcessStateChangeSystem(world donburi.World) {
 
 		switch state.Current {
 		case StateTypeIdle:
-			handleEnterIdle(entry)
+			// ゲージをリセット
+			if gauge := GaugeComponent.Get(entry); gauge != nil {
+				gauge.ProgressCounter = 0
+				gauge.TotalDuration = 0
+				gauge.CurrentGauge = 0
+			}
+			// 選択されていたアクションをクリア
+			if entry.HasComponent(ActionIntentComponent) {
+				intent := ActionIntentComponent.Get(entry)
+				intent.SelectedPartKey = ""
+			}
+			if entry.HasComponent(TargetComponent) {
+				target := TargetComponent.Get(entry)
+				target.TargetEntity = nil
+				target.TargetPartSlot = ""
+			}
 		case StateTypeBroken:
-			handleEnterBroken(entry)
+			// ゲージをリセット
+			if gauge := GaugeComponent.Get(entry); gauge != nil {
+				gauge.ProgressCounter = 0
+				gauge.TotalDuration = 0
+				gauge.CurrentGauge = 100 // 破壊されたことを示すために100%にするなど、ゲームの仕様による
+			}
+			// その他のクリーンアップ処理（例：すべてのアクションをキャンセル）
 			// 他の状態の入力処理が必要な場合は、ここに追加します。
 		}
 
 		// 処理後にタグを削除して、次のフレームで再処理されないようにします。
 		entry.RemoveComponent(StateChangedTagComponent)
 	})
-}
-
-// handleEnterIdle はエンティティがアイドル状態に入ったときのロジックを処理します。
-func handleEnterIdle(entry *donburi.Entry) {
-	// ゲージをリセット
-	if gauge := GaugeComponent.Get(entry); gauge != nil {
-		gauge.ProgressCounter = 0
-		gauge.TotalDuration = 0
-		gauge.CurrentGauge = 0
-	}
-	// 選択されていたアクションをクリア
-	if entry.HasComponent(ActionIntentComponent) {
-		intent := ActionIntentComponent.Get(entry)
-		intent.SelectedPartKey = ""
-	}
-	if entry.HasComponent(TargetComponent) {
-		target := TargetComponent.Get(entry)
-		target.TargetEntity = nil
-		target.TargetPartSlot = ""
-	}
-}
-
-// handleEnterBroken はエンティティが破壊状態に入ったときのロジックを処理します。
-func handleEnterBroken(entry *donburi.Entry) {
-	// ゲージをリセット
-	if gauge := GaugeComponent.Get(entry); gauge != nil {
-		gauge.ProgressCounter = 0
-		gauge.TotalDuration = 0
-		gauge.CurrentGauge = 100 // 破壊されたことを示すために100%にするなど、ゲームの仕様による
-	}
-	// その他のクリーンアップ処理（例：すべてのアクションをキャンセル）
 }

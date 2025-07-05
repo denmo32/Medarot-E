@@ -24,23 +24,7 @@ func ChangeState(entry *donburi.Entry, newStateType StateType) {
 		log.Printf("%s のステートが変更されました: %v -> %v", SettingsComponent.Get(entry).Name, oldStateType, newStateType)
 	}
 
-	// 新しい状態に応じた初期化処理
-	// このロジックは後で専用のシステムに移動します
-	gauge := GaugeComponent.Get(entry)
-	switch newStateType {
-	case StateTypeIdle:
-		// ゲージとアクションのリセットロジックは後で EnterIdleStateSystem に移動
-	case StateTypeCharging:
-		// チャージ開始ロジックは StartCharge にあります
-	case StateTypeReady:
-		if gauge != nil {
-			gauge.CurrentGauge = 100
-		}
-	case StateTypeCooldown:
-		// クールダウン開始ロジックは StartCooldownSystem にあります
-	case StateTypeBroken:
-		// 破壊時ロジックは後で EnterBrokenStateSystem に移動
-	}
+	
 
 	if oldStateType != newStateType {
 		// 状態が実際に変更された場合にのみタグを追加します。
