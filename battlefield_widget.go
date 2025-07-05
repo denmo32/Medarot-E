@@ -132,6 +132,32 @@ func (bf *BattlefieldWidget) SetViewModel(vm BattlefieldViewModel) {
 	bf.viewModel = &vm
 }
 
+// Draw はバトルフィールドのすべての要素を描画します。
+// targetIconVM はターゲットインジケーターを描画するためのIconViewModelです。
+func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *IconViewModel) {
+    // 背景の描画
+    bf.DrawBackground(screen)
+
+    // アイコンの描画
+    if bf.viewModel != nil {
+        for _, iconVM := range bf.viewModel.Icons {
+            iconWidget := NewCustomIconWidget(iconVM, bf.config)
+            iconWidget.Render(screen)
+        }
+
+        // デバッグ情報の描画
+        if bf.viewModel.DebugMode {
+            for _, iconVM := range bf.viewModel.Icons {
+                iconWidget := NewCustomIconWidget(iconVM, bf.config)
+                iconWidget.drawDebugInfo(screen)
+            }
+        }
+    }
+
+    // ターゲットインジケーターの描画
+    bf.DrawTargetIndicator(screen, targetIconVM)
+}
+
 func (bf *BattlefieldWidget) DrawIcons(screen *ebiten.Image) {
 	if bf.viewModel == nil {
 		return

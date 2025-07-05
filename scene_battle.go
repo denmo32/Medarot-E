@@ -182,7 +182,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 			// 選択されたメダロットがまだ有効でアイドル状態であることを確認します
 			actingEntry := bs.playerActionPendingQueue[0]
 			if actingEntry.Valid() && StateComponent.Get(actingEntry).Current == StateTypeIdle {
-				bs.ui.ShowActionModal(actingEntry, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector)
+				bs.ui.ShowActionModal(actingEntry)
 			} else {
 				// メダロットが有効でなくなったか、アイドル状態でないためキューから削除します。
 				bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]

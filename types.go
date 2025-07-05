@@ -224,8 +224,6 @@ type UIConfig struct {
 }
 
 type GameData struct {
-	// Medals   []Medal // 廃止: メダル定義は GameDataManager にあります
-	// AllParts map[string]*Part // 廃止: パーツ定義は GameDataManager にあります
 	Medarots []MedarotData // ここにはメダロットのロードアウトのみが残ります。この構造体も廃止可能です
 }
 
@@ -240,68 +238,6 @@ type MedarotData struct {
 	LeftArmID  string
 	LegsID     string
 	DrawIndex  int
-}
-
-// PartData はパーツの静的データを表します。(現在はPartDefinitionに統合)
-type PartData struct {
-	ID         string
-	Name       string
-	Type       PartType
-	Category   PartCategory
-	Trait      Trait
-	Armor      int
-	Power      int
-	Accuracy   int
-	Charge     int
-	Cooldown   int
-	Propulsion int
-	Mobility   int
-}
-
-// MedalData はメダルの静的データを表します。(現在はMedalに統合)
-type MedalData struct {
-	ID         string
-	Name       string
-	SkillLevel int
-}
-
-// Medarot は戦闘中のメダロットの状態を表します。(現在はコンポーネントベースのアプローチに移行)
-type Medarot struct {
-	ID                string
-	Name              string
-	Team              TeamID
-	Medal             *Medal
-	Parts             map[PartSlotKey]*Part
-	IsLeader          bool
-	Gauge             float64
-	SelectedPartKey   PartSlotKey
-	TargetedMedarot   *Medarot
-	LastActionLog     string
-	IsEvasionDisabled bool
-	IsDefenseDisabled bool
-	DrawIndex         int
-	ProgressCounter   float64
-	TotalDuration     float64
-}
-
-// Part は戦闘中のパーツの状態を表します。(現在はPartInstanceDataに移行)
-type Part struct {
-	ID         string
-	PartName   string
-	Type       PartType
-	Category   PartCategory
-	Trait      Trait
-	Armor      int
-	MaxArmor   int
-	Power      int
-	Accuracy   int
-	Charge     int
-	Cooldown   int
-	Propulsion int
-	Mobility   int
-	Defense    int
-	Stability  int
-	IsBroken   bool
 }
 
 // PartDefinition はCSVからロードされるパーツの静的で不変のデータを保持します。
@@ -426,7 +362,7 @@ func (e ClearCurrentTargetEvent) isUIEvent() {}
 type UIInterface interface {
 	Update()
 	Draw(screen *ebiten.Image)
-	ShowActionModal(actingEntry *donburi.Entry, partInfoProvider *PartInfoProvider, targetSelector *TargetSelector)
+	ShowActionModal(actingEntry *donburi.Entry)
 	HideActionModal()
 	ShowMessageWindow(message string)
 	HideMessageWindow()

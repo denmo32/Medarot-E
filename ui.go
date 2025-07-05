@@ -12,7 +12,6 @@ import (
     "github.com/ebitenui/ebitenui/widget"
     "github.com/hajimehoshi/ebiten/v2"
     "github.com/hajimehoshi/ebiten/v2/text/v2"
-    "github.com/hajimehoshi/ebiten/v2/vector"
     "github.com/yohamta/donburi"
 )
 
@@ -124,15 +123,72 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, partI
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (u *UI) ShowActionModal(actingEntry *donburi.Entry, partInfoProvider *PartInfoProvider, targetSelector *TargetSelector) {
+func (u *UI) ShowActionModal(actingEntry *donburi.Entry) { // partInfoProvider, targetSelector はUI構造体のフィールドとして利用
     if u.isActionModalVisible {
         u.HideActionModal()
     }
     u.playerMedarotToAct = actingEntry
     u.isActionModalVisible = true
-    u.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップを初期化
-	modal := createActionModalUI(actingEntry, u.world, u.config, partInfoProvider, targetSelector, u.actionTargetMap, u.eventChannel, GlobalGameDataManager.Font)
-	u.actionModal = modal
+
+    // ここでAIのターゲット選択ロジックを実行し、actionTargetMapを構築する
+    u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
+    if u.partInfoProvider == nil {
+        log.Println("エラー: UI.ShowActionModal - partInfoProvider がnilです。")
+        // エラー処理、例えばモーダルを表示しない、またはエラーメッセージを表示するなど
+        return
+    }
+
+    availableParts := u.partInfoProvider.GetAvailableAttackParts(actingEntry)
+
+    for _, available := range availableParts {
+        partDef := available.PartDef
+        slotKey := available.Slot
+        
+        // AI戦略に基づいてターゲットを決定
+        var targetEntity *donburi.Entry
+        var targetPartSlot PartSlotKey
+
+        // 射撃または格闘カテゴリの場合のみターゲット選択を行う
+        if partDef.Category == CategoryShoot || partDef.Category == CategoryMelee {
+            var strategy TargetingStrategy
+            medal := MedalComponent.Get(actingEntry)
+            // メダルの性格に基づいて戦略を選択 (ui_action_modal.go から移動)
+            switch medal.Personality {
+            case "アシスト":
+                strategy = &AssistStrategy{}
+            case "クラッシャー":
+                strategy = &CrusherStrategy{}
+            case "カウンター":
+                strategy = &CounterStrategy{}
+            case "チェイス":
+                strategy = &ChaseStrategy{}
+            case "デュエル":
+                strategy = &DuelStrategy{}
+            case "フォーカス":
+                strategy = &FocusStrategy{}
+            case "ガード":
+                strategy = &GuardStrategy{}
+            case "ハンター":
+                strategy = &HunterStrategy{}
+            case "インターセプト":
+                strategy = &InterceptStrategy{}
+            case "ジョーカー":
+                strategy = &JokerStrategy{}
+            default:
+                strategy = &LeaderStrategy{} // デフォルトはリーダー狙い
+            }
+            
+            // ターゲット選択ロジックを実行
+            targetEntity, targetPartSlot = strategy.SelectTarget(u.world, actingEntry, u.targetSelector, u.partInfoProvider)
+        }
+
+        // ターゲット情報をマップに格納
+        u.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
+    }
+
+    // createActionModalUI には計算済みの actionTargetMap を渡す
+    modal := createActionModalUI(actingEntry, u.config, u.actionTargetMap, u.eventChannel, GlobalGameDataManager.Font)
+    u.actionModal = modal
     u.ebitenui.Container.AddChild(u.actionModal)
     log.Println("アクションモーダルを表示しました。")
 }
@@ -193,56 +249,14 @@ func (u *UI) Update() {
 
 func (u *UI) Draw(screen *ebiten.Image) {
     u.ebitenui.Draw(screen)
-    rect := u.GetBattlefieldWidgetRect()
-    if rect.Dx() == 0 || rect.Dy() == 0 {
-        return
-    }
-    width := float32(rect.Dx())
-    height := float32(rect.Dy())
-    offsetX := float32(rect.Min.X)
-    offsetY := float32(rect.Min.Y)
-    vector.StrokeRect(screen, offsetX, offsetY, width, height,
-        u.config.UI.Battlefield.LineWidth,
-        u.config.UI.Colors.Gray, false)
-    team1HomeX := offsetX + width*0.1
-    team2HomeX := offsetX + width*0.9
-    team1ExecX := offsetX + width*0.4
-    team2ExecX := offsetX + width*0.6
-    for i := 0; i < PlayersPerTeam; i++ {
-        yPos := offsetY + (height/float32(PlayersPerTeam+1))*(float32(i)+1)
-        vector.StrokeCircle(screen, team1HomeX, yPos,
-            u.config.UI.Battlefield.HomeMarkerRadius,
-            u.config.UI.Battlefield.LineWidth,
-            u.config.UI.Colors.Gray, true)
-        vector.StrokeCircle(screen, team2HomeX, yPos,
-            u.config.UI.Battlefield.HomeMarkerRadius,
-            u.config.UI.Battlefield.LineWidth,
-            u.config.UI.Colors.Gray, true)
-    }
-    vector.StrokeLine(screen, team1ExecX, offsetY, team1ExecX, offsetY+height,
-        u.config.UI.Battlefield.LineWidth,
-        u.config.UI.Colors.White, true)
-    vector.StrokeLine(screen, team2ExecX, offsetY, team2ExecX, offsetY+height,
-        u.config.UI.Battlefield.LineWidth,
-        u.config.UI.Colors.White, true)
-    // Draw Icons
-    if u.battlefieldWidget.viewModel == nil {
-        return
-    }
-    for _, iconVM := range u.battlefieldWidget.viewModel.Icons {
-        iconWidget := NewCustomIconWidget(iconVM, u.config)
-        iconWidget.Render(screen)
-    }
-    // Draw Debug Info
-    if u.battlefieldWidget.viewModel.DebugMode { // Use DebugMode from ViewModel
-        for _, iconVM := range u.battlefieldWidget.viewModel.Icons {
-            iconWidget := NewCustomIconWidget(iconVM, u.config)
-            iconWidget.drawDebugInfo(screen)
-        }
-    }
-    // Draw Target Indicator
+
+    // 修正: バトルフィールドの描画は BattlefieldWidget に任せる
+    // u.GetBattlefieldWidgetRect() は BattlefieldWidget の内部で利用されるため、ここでは不要
+    // u.whitePixel も BattlefieldWidget の内部で利用されるため、ここでは不要
+
+    // ターゲットインジケーターの描画に必要な IconViewModel を取得
     var indicatorTargetVM *IconViewModel
-    if u.currentTarget != nil {
+    if u.currentTarget != nil && u.battlefieldWidget.viewModel != nil {
         for _, iconVM := range u.battlefieldWidget.viewModel.Icons {
             if iconVM.EntryID == uint32(u.currentTarget.Id()) {
                 indicatorTargetVM = iconVM
@@ -250,38 +264,9 @@ func (u *UI) Draw(screen *ebiten.Image) {
             }
         }
     }
-    if indicatorTargetVM != nil {
-        tx, ty := indicatorTargetVM.X, indicatorTargetVM.Y
-        indicatorColor := u.config.UI.Colors.Yellow
-        iconRadius := u.config.UI.Battlefield.IconRadius
-        indicatorHeight := u.config.UI.Battlefield.TargetIndicator.Height
-        indicatorWidth := u.config.UI.Battlefield.TargetIndicator.Width
-        margin := float32(5)
-        p1x := tx - indicatorWidth/2
-        p1y := ty - iconRadius - margin - indicatorHeight
-        p2x := tx + indicatorWidth/2
-        p2y := p1y
-        p3x := tx
-        p3y := ty - iconRadius - margin
-        vertices := []ebiten.Vertex{
-            {DstX: p1x, DstY: p1y},
-            {DstX: p2x, DstY: p2y},
-            {DstX: p3x, DstY: p3y},
-        }
-        r, g, b, a := indicatorColor.RGBA()
-        cr := float32(r) / 65535
-        cg := float32(g) / 65535
-        cb := float32(b) / 65535
-        ca := float32(a) / 65535
-        for i := range vertices {
-            vertices[i].ColorR = cr
-            vertices[i].ColorG = cg
-            vertices[i].ColorB = cb
-            vertices[i].ColorA = ca
-        }
-        indices := []uint16{0, 1, 2}
-        screen.DrawTriangles(vertices, indices, u.whitePixel, &ebiten.DrawTrianglesOptions{})
-    }
+
+    // BattlefieldWidget の Draw メソッドを呼び出す
+    u.battlefieldWidget.Draw(screen, indicatorTargetVM)
 }
 
 func (u *UI) GetBattlefieldWidgetRect() image.Rectangle {
