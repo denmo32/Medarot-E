@@ -1,9 +1,11 @@
 package main
 
 import (
+	"image"
 	"image/color"
 
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )
 
@@ -307,6 +309,7 @@ type PartViewModel struct {
 // BattlefieldViewModel は、バトルフィールド全体の描画に必要なデータを保持します。
 type BattlefieldViewModel struct {
 	Icons []*IconViewModel
+	DebugMode bool
 }
 
 // IconViewModel は、個々のメダロットアイコンの描画に必要なデータを保持します。
@@ -318,4 +321,56 @@ type IconViewModel struct {
 	State         StateType
 	GaugeProgress float64 // 0.0 to 1.0
 	DebugText     string
+}
+
+// UIEvent は、UIから発行されるすべてのイベントを示すマーカーインターフェースです。
+type UIEvent interface {
+	isUIEvent()
+}
+
+// PlayerActionSelectedEvent は、プレイヤーが使用するパーツを選択したときに発行されます。
+type PlayerActionSelectedEvent struct {
+	ActingEntry     *donburi.Entry
+	SelectedPartDef *PartDefinition
+	SelectedSlotKey PartSlotKey
+}
+
+func (e PlayerActionSelectedEvent) isUIEvent() {}
+
+// PlayerActionCancelEvent は、プレイヤーが行動選択をキャンセルしたときに発行されます。
+type PlayerActionCancelEvent struct {
+	ActingEntry *donburi.Entry
+}
+
+func (e PlayerActionCancelEvent) isUIEvent() {}
+
+// SetCurrentTargetEvent は、UIがターゲットエンティティを設定するよう要求するときに発行されます。
+type SetCurrentTargetEvent struct {
+	Target *donburi.Entry
+}
+
+func (e SetCurrentTargetEvent) isUIEvent() {}
+
+// ClearCurrentTargetEvent は、UIが現在のターゲットをクリアするよう要求するときに発行されます。
+type ClearCurrentTargetEvent struct{}
+
+func (e ClearCurrentTargetEvent) isUIEvent() {}
+
+// UIInterface defines the interface for the game's user interface.
+// BattleScene will interact with the UI through this interface.
+type UIInterface interface {
+	Update()
+	Draw(screen *ebiten.Image)
+	ShowActionModal(actingEntry *donburi.Entry, partInfoProvider *PartInfoProvider, targetSelector *TargetSelector)
+	HideActionModal()
+	ShowMessageWindow(message string)
+	HideMessageWindow()
+	SetBattlefieldViewModel(vm BattlefieldViewModel)
+	UpdateInfoPanels(world donburi.World, config *Config)
+	PostEvent(event UIEvent) // This will be implemented by the concrete UI struct
+	IsActionModalVisible() bool
+	GetActionTargetMap() map[PartSlotKey]ActionTarget
+	SetCurrentTarget(entry *donburi.Entry)
+	ClearCurrentTarget()
+	GetBattlefieldWidgetRect() image.Rectangle
 }

@@ -5,10 +5,11 @@ import (
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-func createMessageWindow(bs *BattleScene) widget.PreferredSizeLocateableWidget {
-	c := bs.resources.Config.UI
+func createMessageWindow(message string, config *Config, font text.Face) widget.PreferredSizeLocateableWidget {
+	c := config.UI
 
 	root := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout(
@@ -32,7 +33,7 @@ func createMessageWindow(bs *BattleScene) widget.PreferredSizeLocateableWidget {
 	root.AddChild(panel)
 
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(bs.message, bs.resources.Font, c.Colors.White), // メッセージ本文
+		widget.TextOpts.Text(message, font, c.Colors.White), // メッセージ本文
 	))
 
 	continueText := "クリックして続行..." // デフォルトテキスト
@@ -41,7 +42,7 @@ func createMessageWindow(bs *BattleScene) widget.PreferredSizeLocateableWidget {
 	}
 
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(continueText, bs.resources.Font, c.Colors.Gray), // 続行を促すテキスト
+		widget.TextOpts.Text(continueText, font, c.Colors.Gray), // 続行を促すテキスト
 		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd), // テキストを右下に配置
 	))
 

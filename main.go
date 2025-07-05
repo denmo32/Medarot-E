@@ -1,34 +1,14 @@
 package main
 
 import (
-	"bytes"
-	_ "embed"
 	"log"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	// "github.com/hajimehoshi/ebiten/v2/text/v2"
 )
-
-//go:embed MPLUS1p-Regular.ttf
-var mplusFontData []byte
-
-// loadFont はEbitenUIが要求する text.Face を返します。
-func loadFont() (text.Face, error) {
-	s, err := text.NewGoTextFaceSource(bytes.NewReader(mplusFontData))
-	if err != nil {
-		return nil, err
-	}
-
-	face := &text.GoTextFace{
-		Source: s,
-		Size:   12,
-	}
-	log.Println("カスタムフォント（text/v2）の読み込みに成功しました。")
-	return face, nil
-}
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -47,7 +27,7 @@ func main() {
 
 	// GameDataManagerを初期化します。
 	// これにはメッセージ定義の読み込みも含まれます。
-	GlobalGameDataManager, err = NewGameDataManager("data")
+	GlobalGameDataManager, err = NewGameDataManager("data", fontFace)
 	if err != nil {
 		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
 	}

@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	// "log"
 	"path/filepath"
+
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 // GameDataManager はパーツやメダルなどのすべての静的ゲームデータ定義とメッセージを保持します。
@@ -11,14 +12,16 @@ type GameDataManager struct {
 	partDefinitions  map[string]*PartDefinition
 	medalDefinitions map[string]*Medal // Medal構造体は今のところ主に定義情報と仮定
 	Messages         *MessageManager   // メッセージマネージャー
+	Font             text.Face         // UIで使用するフォント
 	// 他のゲームデータ定義もここに追加できます
 }
 
 // NewGameDataManager はGameDataManagerの新しいインスタンスを作成し、初期化します。
-func NewGameDataManager(basePath string) (*GameDataManager, error) {
+func NewGameDataManager(basePath string, font text.Face) (*GameDataManager, error) {
 	gdm := &GameDataManager{
 		partDefinitions:  make(map[string]*PartDefinition),
 		medalDefinitions: make(map[string]*Medal),
+		Font:             font,
 	}
 
 	// メッセージマネージャーの初期化

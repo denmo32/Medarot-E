@@ -17,7 +17,7 @@ type BattleScene struct {
 	debugMode                bool
 	state                    GameState
 	playerTeam               TeamID
-	ui                       *UI
+	ui                       UIInterface
 	message                  string
 	postMessageCallback      func()
 	winner                   TeamID // TeamNone で初期化されます
@@ -26,7 +26,7 @@ type BattleScene struct {
 	targetedEntity           *donburi.Entry
 
 	battleLogic *BattleLogic
-	uiEvents    []UIEvent
+	uiEventChannel chan UIEvent
 }
 
 // NewBattleScene は新しい戦闘シーンを初期化します
@@ -53,27 +53,36 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	EnsureActionQueueEntity(bs.world)
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
-	bs.ui = NewUI(bs) // UIの初期化はヘルパーの後でも問題ありません
-	bs.uiEvents = make([]UIEvent, 0)
+	bs.uiEventChannel = make(chan UIEvent, 10) // バッファ付きチャネル
+	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector)
 
 	return bs
 }
 
 // Update は戦闘シーンのロジックを更新します
 func (bs *BattleScene) Update() (SceneType, error) {
-	bs.ui.ebitenui.Update()
+	bs.ui.Update()
 
-	// UIイベントキューを処理します
-	for _, event := range bs.uiEvents {
+	// UIイベントチャネルを処理します
+	select {
+	case event := <-bs.uiEventChannel:
 		switch e := event.(type) {
 		case PlayerActionSelectedEvent:
-			processPlayerActionSelected(bs, e)
+			bs.playerActionPendingQueue, bs.state, bs.targetedEntity, bs.attackingEntity, bs.message, bs.postMessageCallback = processPlayerActionSelected(
+				bs.world, &bs.resources.Config, bs.battleLogic, bs.playerActionPendingQueue, bs.ui, e)
+			if bs.message != "" {
+				bs.enqueueMessage(bs.message, bs.postMessageCallback)
+			}
 		case PlayerActionCancelEvent:
-			bs.ui.HideActionModal()
-			processPlayerActionCancel(bs, e)
+			bs.playerActionPendingQueue, bs.state = processPlayerActionCancel(bs.playerActionPendingQueue, bs.ui, e)
+		case SetCurrentTargetEvent:
+			bs.ui.SetCurrentTarget(e.Target)
+		case ClearCurrentTargetEvent:
+			bs.ui.ClearCurrentTarget()
 		}
+	default:
+		// イベントがない場合は何もしない
 	}
-	bs.uiEvents = nil // イベントをクリア
 
 	switch bs.state {
 	case StatePlaying:
@@ -81,7 +90,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 
 		// 現在プレイヤーがアクションを選択しておらず、かつ保留キューが空の場合に限り入力を処理します。
 		// これは、複数ユニットのプレイヤーアクションシーケンスの途中ではないことを意味します。
-		if !bs.ui.isActionModalVisible && len(bs.playerActionPendingQueue) == 0 {
+		if !bs.ui.IsActionModalVisible() && len(bs.playerActionPendingQueue) == 0 {
 			UpdateAIInputSystem(bs.world, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector, &bs.resources.Config)
 
 			playerInputResult := UpdatePlayerInputSystem(bs.world)
@@ -100,7 +109,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		// プレイヤーのアクションが保留されておらず（現在選択中でもキュー内でもない）、
 		// かつメインのアクション実行キューも空の場合にのみゲージを更新します。
 		actionQueueComp := GetActionQueueComponent(bs.world) // アクションキューコンポーネントを取得
-		if !bs.ui.isActionModalVisible && len(bs.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
+		if !bs.ui.IsActionModalVisible() && len(bs.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
 			UpdateGaugeSystem(bs.world)
 		}
 
@@ -127,6 +136,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 					}
 					bs.attackingEntity = result.ActingEntry // UI表示用
 					bs.targetedEntity = result.TargetEntry  // UI表示用
+					bs.ui.SetCurrentTarget(result.TargetEntry)
 
 					// メッセージをキューに入れ、クールダウンのコールバックを設定
 					bs.enqueueMessage(result.LogMessage, func() {
@@ -136,6 +146,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 						}
 						bs.attackingEntity = nil // アクション処理後にクリア
 						bs.targetedEntity = nil  // アクション処理後にクリア
+						bs.ui.ClearCurrentTarget()
 					})
 					// メッセージがキューに入れられた場合、状態が StateMessage に変わるため、
 					// このフレームでの StatePlaying でのさらなる処理を避けるために、早期に break/return することがあります。
@@ -155,23 +166,23 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		}
 
 		// UIの更新
-		updateAllInfoPanels(bs)
-		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.battlefieldWidget.Container.GetWidget().Rect)
-		bs.ui.battlefieldWidget.SetViewModel(bfVM)
+		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
+		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+		bs.ui.SetBattlefieldViewModel(bfVM)
 		ProcessStateChangeSystem(bs.world)
 
 	case StatePlayerActionSelect:
 		// プレイヤーがアクションを選択している間、UIのみを更新し、ゲームロジックの進行は停止
-		updateAllInfoPanels(bs)
-		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.battlefieldWidget.Container.GetWidget().Rect)
-		bs.ui.battlefieldWidget.SetViewModel(bfVM)
+		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
+		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+		bs.ui.SetBattlefieldViewModel(bfVM)
 
 		// アクションモーダルがまだ表示されておらず、プレイヤーユニットが行動する必要がある場合は表示します。
-		if !bs.ui.isActionModalVisible && len(bs.playerActionPendingQueue) > 0 {
+		if !bs.ui.IsActionModalVisible() && len(bs.playerActionPendingQueue) > 0 {
 			// 選択されたメダロットがまだ有効でアイドル状態であることを確認します
 			actingEntry := bs.playerActionPendingQueue[0]
 			if actingEntry.Valid() && StateComponent.Get(actingEntry).Current == StateTypeIdle {
-				bs.ui.ShowActionModal(actingEntry)
+				bs.ui.ShowActionModal(actingEntry, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector)
 			} else {
 				// メダロットが有効でなくなったか、アイドル状態でないためキューから削除します。
 				bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
@@ -183,9 +194,9 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		}
 	case StateMessage:
 		// メッセージ表示中はUIのみを更新し、ゲームロジックの進行は停止
-		updateAllInfoPanels(bs)
-		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.battlefieldWidget.Container.GetWidget().Rect)
-		bs.ui.battlefieldWidget.SetViewModel(bfVM)
+		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
+		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+		bs.ui.SetBattlefieldViewModel(bfVM)
 
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			bs.ui.HideMessageWindow()
@@ -213,35 +224,8 @@ func (bs *BattleScene) Update() (SceneType, error) {
 // Draw は戦闘シーンを描画します
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)
-	bs.ui.ebitenui.Draw(screen)
+	bs.ui.Draw(screen)
 
-	bf := bs.ui.battlefieldWidget
-	if bf != nil {
-		bf.DrawBackground(screen)
-		bf.DrawIcons(screen)
-
-		var indicatorTargetVM *IconViewModel
-		if bs.state == StatePlayerActionSelect && bs.ui.currentTarget != nil {
-			for _, iconVM := range bs.ui.battlefieldWidget.viewModel.Icons {
-				if iconVM.EntryID == uint32(bs.ui.currentTarget.Id()) {
-					indicatorTargetVM = iconVM
-					break
-				}
-			}
-		} else if bs.state == StateMessage && bs.targetedEntity != nil {
-			for _, iconVM := range bs.ui.battlefieldWidget.viewModel.Icons {
-				if iconVM.EntryID == uint32(bs.targetedEntity.Id()) {
-					indicatorTargetVM = iconVM
-					break
-				}
-			}
-		}
-
-		if indicatorTargetVM != nil {
-			bf.DrawTargetIndicator(screen, indicatorTargetVM)
-		}
-		bf.DrawDebug(screen)
-	}
 	if bs.debugMode {
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f\nState: %s",
 			ebiten.ActualTPS(), ebiten.ActualFPS(), bs.state))
@@ -253,5 +237,5 @@ func (bs *BattleScene) enqueueMessage(msg string, callback func()) {
 	bs.message = msg
 	bs.postMessageCallback = callback
 	bs.state = StateMessage
-	bs.ui.ShowMessageWindow(bs)
+	bs.ui.ShowMessageWindow(bs.message)
 }

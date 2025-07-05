@@ -63,6 +63,7 @@ func BuildInfoPanelViewModel(entry *donburi.Entry) InfoPanelViewModel {
 func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoProvider, config *Config, debugMode bool, battlefieldRect image.Rectangle) BattlefieldViewModel {
 	vm := BattlefieldViewModel{
 		Icons: []*IconViewModel{},
+		DebugMode: debugMode,
 	}
 
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {

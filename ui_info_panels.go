@@ -7,13 +7,14 @@ import (
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
 
-func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPanelUI {
-	c := bs.resources.Config.UI
+func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi.Entry) *infoPanelUI {
+	c := config.UI
 	settings := SettingsComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry) // This is *PartsComponentData
 	partsMap := partsComp.Map              // map[PartSlotKey]*PartInstanceData
@@ -37,12 +38,12 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 	panelContainer.AddChild(headerContainer)
 
 	nameText := widget.NewText(
-		widget.TextOpts.Text(settings.Name, bs.resources.Font, c.Colors.White),
+		widget.TextOpts.Text(settings.Name, font, c.Colors.White),
 	)
 	headerContainer.AddChild(nameText)
 
 	stateText := widget.NewText(
-		widget.TextOpts.Text("待機", bs.resources.Font, c.Colors.Yellow),
+		widget.TextOpts.Text("待機", font, c.Colors.Yellow),
 		widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{
 			HorizontalPosition: widget.GridLayoutPositionEnd,
 		})),
@@ -70,7 +71,7 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 		panelContainer.AddChild(partContainer)
 
 		partNameText := widget.NewText(
-			widget.TextOpts.Text(partName, bs.resources.Font, c.Colors.White),
+			widget.TextOpts.Text(partName, font, c.Colors.White),
 		)
 		partContainer.AddChild(partNameText)
 
@@ -90,7 +91,7 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 		partContainer.AddChild(hpBar)
 
 		hpText := widget.NewText(
-			widget.TextOpts.Text("0/0", bs.resources.Font, c.Colors.White),
+			widget.TextOpts.Text("0/0", font, c.Colors.White),
 		)
 		partContainer.AddChild(hpText)
 
@@ -109,9 +110,9 @@ func createSingleMedarotInfoPanel(bs *BattleScene, entry *donburi.Entry) *infoPa
 	}
 }
 
-func setupInfoPanels(bs *BattleScene, team1Container, team2Container *widget.Container) {
+func setupInfoPanels(world donburi.World, config *Config, font text.Face, medarotInfoPanels map[string]*infoPanelUI, team1Container, team2Container *widget.Container) {
 	var entries []*donburi.Entry
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(bs.world, func(entry *donburi.Entry) {
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		entries = append(entries, entry)
 	})
 
@@ -126,8 +127,8 @@ func setupInfoPanels(bs *BattleScene, team1Container, team2Container *widget.Con
 
 	for _, entry := range entries {
 		settings := SettingsComponent.Get(entry)
-		panelUI := createSingleMedarotInfoPanel(bs, entry)
-		bs.ui.medarotInfoPanels[settings.ID] = panelUI
+		panelUI := createSingleMedarotInfoPanel(config, font, entry)
+		medarotInfoPanels[settings.ID] = panelUI
 		if settings.Team == Team1 {
 			team1Container.AddChild(panelUI.rootContainer)
 		} else {
@@ -136,15 +137,15 @@ func setupInfoPanels(bs *BattleScene, team1Container, team2Container *widget.Con
 	}
 }
 
-func updateAllInfoPanels(bs *BattleScene) {
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(bs.world, func(entry *donburi.Entry) {
+func updateAllInfoPanels(world donburi.World, config *Config, medarotInfoPanels map[string]*infoPanelUI) {
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)
-		ui, ok := bs.ui.medarotInfoPanels[settings.ID]
+		ui, ok := medarotInfoPanels[settings.ID]
 		if !ok {
 			return
 		}
 		vm := BuildInfoPanelViewModel(entry)
-		updateSingleInfoPanel(ui, vm, &bs.resources.Config)
+		updateSingleInfoPanel(ui, vm, config)
 	})
 }
 

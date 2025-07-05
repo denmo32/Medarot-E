@@ -263,14 +263,14 @@ func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label
 
 	leftButton := widget.NewButton(
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("◀", res.Font, textColor),
+		widget.ButtonOpts.Text("◀", cs.resources.Font, textColor),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) { cs.changeSelection(label, -1) }),
 	)
 	rowContainer.AddChild(leftButton)
 
 	nameButton := widget.NewButton(
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("", res.Font, textColor),
+		widget.ButtonOpts.Text("", cs.resources.Font, textColor),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 			currentID := cs.getCurrentID(label)
@@ -281,7 +281,7 @@ func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label
 
 	rightButton := widget.NewButton(
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("▶", res.Font, textColor),
+		widget.ButtonOpts.Text("▶", cs.resources.Font, textColor),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) { cs.changeSelection(label, 1) }),
 	)
 	rowContainer.AddChild(rightButton)
