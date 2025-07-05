@@ -123,7 +123,7 @@ func executeAction(
 }
 
 // StartCooldownSystem はクールダウン状態を開始します。
-func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *Config) {
+func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *Config, partInfoProvider *PartInfoProvider) {
 	intent := ActionIntentComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 	var actingPartDef *PartDefinition
@@ -145,7 +145,20 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
-	totalTicks := (baseSeconds * 60.0) / gameConfig.Balance.Time.GameSpeedMultiplier
+
+	propulsion := 1
+	if partInfoProvider != nil {
+		legsInstance := partsComp.Map[PartSlotLegs]
+		if legsInstance != nil && !legsInstance.IsBroken {
+			propulsion = partInfoProvider.GetOverallPropulsion(entry)
+		}
+	} else {
+		log.Println("警告: StartCooldownSystem - partInfoProviderがnilです。")
+	}
+
+	balanceConfig := &gameConfig.Balance
+	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
+	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
 
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks

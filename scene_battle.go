@@ -142,7 +142,7 @@ func (bs *BattleScene) Update() (SceneType, error) {
 					bs.enqueueMessage(result.LogMessage, func() {
 						// クールダウンを開始する前に、有効性と状態を再度確認
 						if result.ActingEntry.Valid() && StateComponent.Get(result.ActingEntry).Current != StateTypeBroken {
-							StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config)
+							StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
 						}
 						bs.attackingEntity = nil // アクション処理後にクリア
 						bs.targetedEntity = nil  // アクション処理後にクリア
