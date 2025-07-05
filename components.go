@@ -125,18 +125,7 @@ type AI struct {
 	LastActionHistory     LastActionHistoryData
 }
 
-// --- 特性効果タグコンポーネント ---
-// これらは、特定の特性を持つパーツがアクションに使用されているときにエンティティに追加されます。
-
-// ActingWithBerserkTraitTag は、エンティティが現在BERSERK特性パーツでアクションを実行していることを示します。
-type ActingWithBerserkTraitTag struct{}
-
-var ActingWithBerserkTraitTagComponent = donburi.NewComponentType[ActingWithBerserkTraitTag]()
-
-// ActingWithAimTraitTag は、エンティティが現在AIM特性パーツでアクションを実行していることを示します。
-type ActingWithAimTraitTag struct{}
-
-var ActingWithAimTraitTagComponent = donburi.NewComponentType[ActingWithAimTraitTag]()
+// --- 特性効果タグコンポーネント --- (リファクタリングにより不要に)
 
 // StateChangedTag は、エンティティの状態がこのフレームで変更されたことを示す一時的なタグです。
 // 状態遷移システムがこれを処理し、フレームの終わりに削除します。
@@ -144,25 +133,7 @@ type StateChangedTag struct{}
 
 var StateChangedTagComponent = donburi.NewComponentType[StateChangedTag]()
 
-// --- アクション修飾コンポーネント ---
-// アクション計算（ヒット/ダメージ）の前にエンティティに一時的に追加され、
-// 特性、スキル、バフ、デバフなどからのすべての修飾子を集約します。
-type ActionModifierComponentData struct {
-	// クリティカルヒット修飾子
-	CriticalRateBonus  int     // 例: +10 で +10%
-	CriticalMultiplier float64 // 特性が基本クリティカル乗数を変更する場合。デフォルト0でシステムの基本値を使用
-	// 威力/ダメージ修飾子
-	PowerAdditiveBonus    int     // 例: +20 威力
-	PowerMultiplierBonus  float64 // 例: 1.5 で +50% 威力 (加算後に適用)
-	DamageAdditiveBonus   int     // 最後に適用される固定ダメージボーナス
-	DamageMultiplierBonus float64 // 全体的なダメージ乗数 (例: バフ/デバフから)
-	// 命中/回避修飾子
-	AccuracyAdditiveBonus int // 例: +10 命中
-	// EvasionAdditiveBonus  int     // ターゲットの回避用、通常はターゲットのデバフで処理
-	// AccuracyMultiplier    float64 // 例: 1.1 で +10%
-}
 
-var ActionModifierComponent = donburi.NewComponentType[ActionModifierComponentData]()
 
 // --- AIパーツ選択戦略コンポーネント ---
 

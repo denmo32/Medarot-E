@@ -194,46 +194,31 @@ func StartCharge(
 	target.TargetEntity = targetEntry
 	target.TargetPartSlot = targetPartSlot
 
-	switch actingPartDef.Trait {
-	case TraitBerserk:
-		donburi.Add(entry, ActingWithBerserkTraitTagComponent, &ActingWithBerserkTraitTag{})
-		log.Printf("%s の行動にBERSERK特性タグを付与。", settings.Name)
-	case TraitAim:
-		donburi.Add(entry, ActingWithAimTraitTagComponent, &ActingWithAimTraitTag{})
-		log.Printf("%s の行動にAIM特性タグを付与。", settings.Name)
+	// 1. 計算式の取得
+	formula, ok := FormulaManager[actingPartDef.Trait]
+	if !ok {
+		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。", actingPartDef.Trait)
+	} else {
+		// 2. 計算式に基づいて自身にデバフを適用
+		for _, debuff := range formula.UserDebuffs {
+			log.Printf("%s が %s 特性効果（チャージ時デバフ）を発動。", settings.Name, formula.ID)
+			switch debuff.Type {
+			case DebuffTypeEvasion:
+				donburi.Add(entry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: debuff.Multiplier})
+			case DebuffTypeDefense:
+				donburi.Add(entry, DefenseDebuffComponent, &DefenseDebuff{Multiplier: debuff.Multiplier})
+			}
+		}
 	}
 
 	if actingPartDef.Category == CategoryShoot {
 		if targetEntry == nil || StateComponent.Get(targetEntry).Current == StateTypeBroken {
 			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
-			if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
-				entry.RemoveComponent(ActingWithBerserkTraitTagComponent)
-			}
-			if entry.HasComponent(ActingWithAimTraitTagComponent) {
-				entry.RemoveComponent(ActingWithAimTraitTagComponent)
-			}
 			return false
 		}
 		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, actingPartDef.PartName, SettingsComponent.Get(targetEntry).Name, targetPartSlot)
 	} else {
 		log.Printf("%sは%sで攻撃準備！", settings.Name, actingPartDef.PartName)
-	}
-
-	if targetEntry != nil {
-		balanceConfig := &gameConfig.Balance
-		if entry.HasComponent(ActingWithBerserkTraitTagComponent) {
-			log.Printf("%s がBERSERK特性効果（チャージ時デバフ）を発動。", settings.Name)
-			donburi.Add(targetEntry, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Berserk.DefenseRateDebuff})
-			donburi.Add(targetEntry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Berserk.EvasionRateDebuff})
-		}
-		if actingPartDef.Category == CategoryShoot && entry.HasComponent(ActingWithAimTraitTagComponent) {
-			log.Printf("%s がAIM特性効果（チャージ時デバフ）を発動。", settings.Name)
-			donburi.Add(targetEntry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: balanceConfig.Effects.Aim.EvasionRateDebuff})
-		}
-		if actingPartDef.Category == CategoryMelee {
-			log.Printf("%s が格闘カテゴリ効果（チャージ時デバフ）を発動。", settings.Name)
-			donburi.Add(targetEntry, DefenseDebuffComponent, &DefenseDebuff{Multiplier: balanceConfig.Effects.Melee.DefenseRateDebuff})
-		}
 	}
 
 	propulsion := 1
@@ -246,11 +231,12 @@ func StartCharge(
 		log.Println("警告: StartCharge - partInfoProviderがnilです。")
 	}
 
+	balanceConfig := &gameConfig.Balance
 	baseSeconds := float64(actingPartDef.Charge)
 	if baseSeconds <= 0 {
 		baseSeconds = 0.1
 	}
-	balanceConfig := &gameConfig.Balance
+	// balanceConfig := &gameConfig.Balance // ここが重複していた
 	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
 	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
 

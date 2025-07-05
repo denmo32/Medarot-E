@@ -32,15 +32,16 @@ func ResolveActionSystem(
 	if !defFound {
 		log.Printf("エラー: ResolveActionSystem - ID %s (エンティティ: %s) のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID, settings.Name)
 		actionResult.LogMessage = fmt.Sprintf("%sはパーツ定義(%s)の取得に失敗しました。", settings.Name, actingPartInstance.DefinitionID)
-		return nil, nil, nil, nil, false
+				return nil, nil, nil, nil, false
 	}
 
-	ApplyActionModifiersSystem(world, actingEntry, gameConfig, partInfoProvider)
+	// ApplyActionModifiersSystem(world, actingEntry, gameConfig, partInfoProvider)
 
+	
 	handler := GetActionHandlerForCategory(actingPartDef.Category)
 	if handler == nil {
 		actionResult.LogMessage = fmt.Sprintf("%sのパーツカテゴリ '%s' に対応する行動ハンドラがありません。", settings.Name, actingPartDef.Category)
-		return nil, nil, nil, nil, false
+				return nil, nil, nil, nil, false
 	}
 
 	targetEntry, targetPartSlot, success := handler.ResolveTarget(actingEntry, world, intent, targetSelector, partInfoProvider, actionResult)

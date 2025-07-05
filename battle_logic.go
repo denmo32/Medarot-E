@@ -83,90 +83,119 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 	}
 }
 
-// CalculateDamage は ActionModifierComponent を考慮してダメージを計算します。
-func (dc *DamageCalculator) CalculateDamage(attacker *donburi.Entry, partDef *PartDefinition) (int, bool) {
-	// attackerLegs instance for stability
-	var attackerLegsInstance *PartInstanceData
-	if partsComp := PartsComponent.Get(attacker); partsComp != nil {
-		attackerLegsInstance = partsComp.Map[PartSlotLegs]
+// getParameterValue は指定されたパラメータの値を取得するヘルパー関数です。
+func (pip *PartInfoProvider) getParameterValue(entry *donburi.Entry, param PartParameter) float64 {
+	legsDef, found := pip.GetLegsPartDefinition(entry)
+	if !found {
+		return 0
 	}
+	switch param {
+	case Mobility:
+		return float64(legsDef.Mobility)
+	case Propulsion:
+		return float64(legsDef.Propulsion)
+	case Stability:
+		return float64(legsDef.Stability)
+	case Defense:
+		return float64(legsDef.Defense)
+	default:
+		return 0
+	}
+}
 
-	attackerStability := 0
-	if attackerLegsInstance != nil && !attackerLegsInstance.IsBroken { // Check instance for broken state
-		// Stability comes from leg's definition
-		if legsDef, found := GlobalGameDataManager.GetPartDefinition(attackerLegsInstance.DefinitionID); found {
-			attackerStability = legsDef.Stability
+// GetSuccessRate はエンティティの成功度を計算します。
+func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
+	successRate := float64(actingPartDef.Accuracy)
+
+	// 特性によるボーナスを加算
+	formula, ok := FormulaManager[actingPartDef.Trait]
+	if ok {
+		for _, bonus := range formula.SuccessRateBonuses {
+			successRate += pip.getParameterValue(entry, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
+	return successRate
+}
 
-	// Get modifiers if available
-	var powerAdditiveBonus int
-	var powerMultiplierBonus float64 = 1.0
-	var criticalRateBonus int
-	var customCriticalMultiplier float64 = 0 // 0 means use default
-
-	if attacker.HasComponent(ActionModifierComponent) {
-		modifiers := ActionModifierComponent.Get(attacker)
-		powerAdditiveBonus = modifiers.PowerAdditiveBonus
-		powerMultiplierBonus = modifiers.PowerMultiplierBonus
-		criticalRateBonus = modifiers.CriticalRateBonus
-		customCriticalMultiplier = modifiers.CriticalMultiplier
-		// Note: DamageAdditiveBonus and DamageMultiplierBonus are applied at the very end if used.
+// GetEvasionRate はエンティティの回避度を計算します。
+func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
+	evasion := 0.0
+	legsDef, found := pip.GetLegsPartDefinition(entry)
+	if found {
+		evasion = float64(legsDef.Mobility)
 	}
 
-	// Base power calculation
-	basePower := float64(partDef.Power) // Use partDef for Power
-	// Apply additive power bonuses (from traits like Berserk via ActionModifierComponent, and stability)
-	modifiedPower := basePower + float64(powerAdditiveBonus) + float64(attackerStability)*dc.config.Balance.Factors.PowerStabilityFactor
-	// Apply multiplicative power bonuses
-	modifiedPower *= powerMultiplierBonus
+	// デバフの影響を適用
+	if entry.HasComponent(EvasionDebuffComponent) {
+		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
+	}
+	return evasion
+}
 
-	// Critical Hit Calculation
-	medal := MedalComponent.Get(attacker)
+// GetDefenseRate はエンティティの防御度を計算します。
+func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
+	defense := 0.0
+	legsDef, found := pip.GetLegsPartDefinition(entry)
+	if found {
+		defense = float64(legsDef.Defense)
+	}
+
+	// デバフの影響を適用
+	if entry.HasComponent(DefenseDebuffComponent) {
+		defense *= DefenseDebuffComponent.Get(entry).Multiplier
+	}
+	return defense
+}
+
+// CalculateDamage はActionFormulaに基づいてダメージを計算します。
+func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition) (int, bool) {
+	// 1. 計算式の取得
+	formula, ok := FormulaManager[actingPartDef.Trait]
+	if !ok {
+		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。デフォルトを使用します。", actingPartDef.Trait)
+		formula = FormulaManager[TraitNormal]
+	}
+
+	// 2. 基本パラメータの取得
+	successRate := dc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
+	power := float64(actingPartDef.Power)
+	evasion := dc.partInfoProvider.GetEvasionRate(target)
+	// defense := dc.partInfoProvider.GetDefenseRate(target) // 自動防御で処理するため削除
+
+	// クリティカル判定
 	isCritical := false
-	// Base critical chance from medal skill level
-	// Original: criticalChance := medal.SkillLevel*2 + criticalBonus
-	// criticalBonus from AIM trait is now in modifiers.CriticalRateBonus
-	// The original switch for part.Category (Melee crit bonus) is not yet in modifiers.
-	// For now, let's assume all crit bonuses are aggregated into modifiers.CriticalRateBonus by ApplyActionModifiersSystem
-	// or this part needs ApplyActionModifiersSystem to be aware of part.Category for AIM.
-	// The ApplyActionModifiersSystem currently adds AIM crit bonus if ActingWithAimTraitTag is present.
-	// Let's assume medal.SkillLevel*2 is a base, and modifiers.CriticalRateBonus contains trait/other bonuses.
-	criticalChance := medal.SkillLevel*2 + criticalRateBonus
-	if criticalChance < 0 {
-		criticalChance = 0
-	} // Ensure non-negative chance
+	criticalChance := dc.config.Balance.Damage.Critical.BaseChance + (successRate * dc.config.Balance.Damage.Critical.SuccessRateFactor) + formula.CriticalRateBonus
 
-	if rand.Intn(100) < criticalChance {
-		critMultiplierToUse := dc.config.Balance.Damage.CriticalMultiplier
-		if customCriticalMultiplier > 0 { // If a custom multiplier is set by a trait/effect
-			critMultiplierToUse = customCriticalMultiplier
-		}
-		modifiedPower *= critMultiplierToUse
+	// クリティカル率の上下限を適用
+	if criticalChance < dc.config.Balance.Damage.Critical.MinChance {
+		criticalChance = dc.config.Balance.Damage.Critical.MinChance
+	}
+	if criticalChance > dc.config.Balance.Damage.Critical.MaxChance {
+		criticalChance = dc.config.Balance.Damage.Critical.MaxChance
+	}
+
+	if rand.Intn(100) < int(criticalChance) {
 		isCritical = true
-		log.Print(GlobalGameDataManager.Messages.FormatMessage("log_critical_hit_details", map[string]interface{}{
-			"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, criticalChance, critMultiplierToUse},
-		}))
+		log.Printf("%s の攻撃がクリティカル！ (確率: %.1f%%)", SettingsComponent.Get(attacker).Name, criticalChance)
+		// クリティカル時は回避度と防御度を0にする
+		evasion = 0
+		// defense = 0
 	}
 
-	// Final damage calculation (includes medal skill factor as an additive bonus at the end)
-	// Original: finalDamage := baseDamage + float64(medal.SkillLevel*dc.config.Balance.Damage.MedalSkillFactor)
-	// This MedalSkillFactor should ideally also be part of ActionModifierComponent.DamageAdditiveBonus or PowerAdditiveBonus.
-	// For now, keeping it separate as per original logic, applied after critical.
-	finalDamage := modifiedPower + float64(medal.SkillLevel*dc.config.Balance.Damage.MedalSkillFactor)
+	// 5. 最終ダメージ計算
+	damage := (successRate - evasion) / dc.config.Balance.Damage.DamageAdjustmentFactor + power
+	// 乱数(±10%)
+	randomFactor := 1.0 + (rand.Float64()*0.2 - 0.1)
+	damage *= randomFactor
 
-	// Apply final overall damage multipliers if any (e.g. from global buffs/debuffs)
-	if attacker.HasComponent(ActionModifierComponent) {
-		modifiers := ActionModifierComponent.Get(attacker)
-		finalDamage *= modifiers.DamageMultiplierBonus
-		finalDamage += float64(modifiers.DamageAdditiveBonus)
+	if damage < 1 {
+		damage = 1
 	}
 
-	if finalDamage < 0 {
-		finalDamage = 0
-	}
+		log.Printf("ダメージ計算 (%s): (%.1f - %.1f) / %.1f + %.1f * %.2f = %d (Crit: %t)",
+		formula.ID, successRate, evasion, dc.config.Balance.Damage.DamageAdjustmentFactor, power, randomFactor, int(damage), isCritical)
 
-	return int(finalDamage), isCritical
+	return int(damage), isCritical
 }
 
 // GenerateActionLog は行動の結果ログを生成します。
@@ -250,117 +279,54 @@ func (hc *HitCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
 
 // CalculateHit は新しいルールに基づいて命中判定を行います。
 func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition) bool {
-	// Attacker stability
-	var attackerLegsInstance *PartInstanceData
-	if partsComp := PartsComponent.Get(attacker); partsComp != nil {
-		attackerLegsInstance = partsComp.Map[PartSlotLegs]
-	}
-	attackerStability := 0
-	if attackerLegsInstance != nil && !attackerLegsInstance.IsBroken {
-		if legsDef, found := GlobalGameDataManager.GetPartDefinition(attackerLegsInstance.DefinitionID); found {
-			attackerStability = legsDef.Stability
-		}
-	}
+	// 攻撃側の成功度
+	successRate := hc.partInfoProvider.GetSuccessRate(attacker, partDef)
 
-	// Get modifiers if available
-	var accuracyAdditiveBonus int = 0
-	if attacker.HasComponent(ActionModifierComponent) {
-		modifiers := ActionModifierComponent.Get(attacker)
-		accuracyAdditiveBonus = modifiers.AccuracyAdditiveBonus
-	}
+	// 防御側の回避度
+	evasion := hc.partInfoProvider.GetEvasionRate(target)
 
-	baseAccuracy := float64(partDef.Accuracy) + float64(attackerStability)*hc.config.Balance.Factors.AccuracyStabilityFactor + float64(accuracyAdditiveBonus)
+	// 命中確率 = 基準値 + (成功度 - 回避度)
+	chance := hc.config.Balance.Hit.BaseChance + (successRate - evasion)
 
-	// Original category-based accuracy bonus
-	if hc.partInfoProvider == nil {
-		log.Println("Error: HitCalculator.partInfoProvider is not initialized for category bonus")
-	} else {
-		switch partDef.Category { // Use partDef for Category
-		case CategoryMelee:
-			baseAccuracy += float64(hc.partInfoProvider.GetOverallMobility(attacker)) * hc.config.Balance.Factors.MeleeAccuracyMobilityFactor
-		case CategoryShoot:
-			// No specific bonus
-		}
+	// 確率の上下限を適用
+	if chance < hc.config.Balance.Hit.MinChance {
+		chance = hc.config.Balance.Hit.MinChance
 	}
-
-	// Target stability for evasion
-	var targetLegsInstance *PartInstanceData
-	if partsComp := PartsComponent.Get(target); partsComp != nil {
-		targetLegsInstance = partsComp.Map[PartSlotLegs]
-	}
-	targetStability := 0
-	if targetLegsInstance != nil && !targetLegsInstance.IsBroken {
-		if legsDef, found := GlobalGameDataManager.GetPartDefinition(targetLegsInstance.DefinitionID); found {
-			targetStability = legsDef.Stability
-		}
-	}
-
-	// Target evasion calculation (mobility also needs to come from PartDefinition of target's legs)
-	// This part of the logic for GetOverallMobility needs to be checked/updated if it relied on *Part
-	baseEvasion := 0.0
-	if hc.partInfoProvider == nil {
-		log.Println("Error: HitCalculator.partInfoProvider is not initialized for target evasion")
-	} else {
-		// GetOverallMobility should use PartDefinition for calculation
-		baseEvasion = float64(hc.partInfoProvider.GetOverallMobility(target)) + float64(targetStability)*hc.config.Balance.Factors.EvasionStabilityFactor
-	}
-
-	finalEvasion := baseEvasion
-	if target.HasComponent(EvasionDebuffComponent) {
-		debuff := EvasionDebuffComponent.Get(target)
-		finalEvasion *= debuff.Multiplier
-	}
-
-	chance := 50 + baseAccuracy - finalEvasion
-	if chance < 5 {
-		chance = 5
-	}
-	if chance > 95 {
-		chance = 95
+	if chance > hc.config.Balance.Hit.MaxChance {
+		chance = hc.config.Balance.Hit.MaxChance
 	}
 
 	roll := rand.Intn(100)
 	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_hit_roll", map[string]interface{}{
-		"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, baseAccuracy, finalEvasion, roll},
+		"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, successRate, evasion, roll},
 	}))
-	return roll < int(chance)
+	return float64(roll) < chance
 }
 
 // CalculateDefense は防御の成否を判定します。
-// defensePartDef は防御に使用されるパーツの定義です。
-func (hc *HitCalculator) CalculateDefense(target *donburi.Entry, defensePartDef *PartDefinition) bool {
-	// Target stability
-	var targetLegsInstance *PartInstanceData
-	if partsComp := PartsComponent.Get(target); partsComp != nil {
-		targetLegsInstance = partsComp.Map[PartSlotLegs]
-	}
-	targetStability := 0
-	if targetLegsInstance != nil && !targetLegsInstance.IsBroken {
-		if legsDef, found := GlobalGameDataManager.GetPartDefinition(targetLegsInstance.DefinitionID); found {
-			targetStability = legsDef.Stability
-		}
-	}
+func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition) bool {
+	// 攻撃側の成功度
+	successRate := hc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
 
-	baseDefense := float64(defensePartDef.Defense) + float64(targetStability)*hc.config.Balance.Factors.DefenseStabilityFactor
-	finalDefense := baseDefense
-	if target.HasComponent(DefenseDebuffComponent) {
-		debuff := DefenseDebuffComponent.Get(target)
-		finalDefense *= debuff.Multiplier
-	}
+	// 防御側の防御度
+	defenseRate := hc.partInfoProvider.GetDefenseRate(target)
 
-	chance := 10 + finalDefense
-	if chance < 5 {
-		chance = 5
+	// 防御成功確率 = 基準値 + (防御度 - 成功度)
+	chance := hc.config.Balance.Defense.BaseChance + (defenseRate - successRate)
+
+	// 確率の上下限を適用
+	if chance < hc.config.Balance.Defense.MinChance {
+		chance = hc.config.Balance.Defense.MinChance
 	}
-	if chance > 95 {
-		chance = 95
+	if chance > hc.config.Balance.Defense.MaxChance {
+		chance = hc.config.Balance.Defense.MaxChance
 	}
 
 	roll := rand.Intn(100)
 	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_defense_roll", map[string]interface{}{
-		"ordered_args": []interface{}{SettingsComponent.Get(target).Name, defensePartDef.PartName, chance, roll},
+		"ordered_args": []interface{}{SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll},
 	}))
-	return roll < int(chance)
+	return float64(roll) < chance
 }
 
 // --- TargetSelector ---
@@ -600,6 +566,19 @@ func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
 		return 1
 	}
 	return legsDef.Mobility
+}
+
+// GetLegsPartDefinition はエンティティの脚部パーツの定義を取得します。
+func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*PartDefinition, bool) {
+	partsComp := PartsComponent.Get(entry)
+	if partsComp == nil {
+		return nil, false
+	}
+	legsInstance, ok := partsComp.Map[PartSlotLegs]
+	if !ok || legsInstance == nil || legsInstance.IsBroken {
+		return nil, false
+	}
+	return GlobalGameDataManager.GetPartDefinition(legsInstance.DefinitionID)
 }
 
 // CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。

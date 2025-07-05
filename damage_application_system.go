@@ -22,11 +22,12 @@ func ApplyDamageSystem(
 	settings := SettingsComponent.Get(actingEntry)
 
 	if actionResult.TargetEntry == nil || intendedTargetPartInstance == nil {
-		actionResult.LogMessage = fmt.Sprintf("%s の攻撃は対象または対象パーツが不明です (内部エラー)。", settings.Name)
+				actionResult.LogMessage = fmt.Sprintf("%s の攻撃は対象または対象パーツが不明です (内部エラー)。", settings.Name)
 		return nil
 	}
 
-	damage, isCritical := damageCalculator.CalculateDamage(actingEntry, actingPartDef)
+	// 新しい計算式でダメージを計算
+	damage, isCritical := damageCalculator.CalculateDamage(actingEntry, actionResult.TargetEntry, actingPartDef)
 	actionResult.IsCritical = isCritical
 	actionResult.OriginalDamage = damage
 
@@ -36,30 +37,22 @@ func ApplyDamageSystem(
 	var actualHitPartDef *PartDefinition = intendedTargetPartDef
 
 	actionResult.ActionIsDefended = false
-	defensePartInstance := targetSelector.SelectDefensePart(actionResult.TargetEntry)
 
-	if defensePartInstance != nil && defensePartInstance != intendedTargetPartInstance {
-		defensePartDef, defFound := GlobalGameDataManager.GetPartDefinition(defensePartInstance.DefinitionID)
-		if defFound && hitCalculator.CalculateDefense(actionResult.TargetEntry, defensePartDef) {
-			actionResult.ActionIsDefended = true
-			actualHitPartInstance = defensePartInstance
-			actualHitPartDef = defensePartDef
-			actualHitPartSlot = partInfoProvider.FindPartSlot(actionResult.TargetEntry, actualHitPartInstance)
-
-			finalDamageAfterDefense := actionResult.OriginalDamage - defensePartDef.Defense
-			if finalDamageAfterDefense < 0 {
-				finalDamageAfterDefense = 0
-			}
-			finalDamageDealt = finalDamageAfterDefense
-			damageCalculator.ApplyDamage(actionResult.TargetEntry, actualHitPartInstance, finalDamageDealt)
-			actionResult.LogMessage = damageCalculator.GenerateActionLogDefense(actionResult.TargetEntry, actualHitPartDef, finalDamageDealt, actionResult.OriginalDamage, isCritical)
+	// 自動防御の判定
+	// 脚部パーツのDefense値が0より大きい場合のみ防御判定を行う
+	defensePartDef, defFound := partInfoProvider.GetLegsPartDefinition(actionResult.TargetEntry)
+	if defFound && defensePartDef.Defense > 0 && hitCalculator.CalculateDefense(actingEntry, actionResult.TargetEntry, actingPartDef) {
+		actionResult.ActionIsDefended = true
+		// 防御成功時、防御度に応じたダメージ軽減を行う
+		defenseRate := partInfoProvider.GetDefenseRate(actionResult.TargetEntry)
+		finalDamageDealt = int(float64(actionResult.OriginalDamage) - defenseRate)
+		if finalDamageDealt < 1 {
+			finalDamageDealt = 1
 		}
-	}
-
-	if !actionResult.ActionIsDefended {
-		actualHitPartInstance = intendedTargetPartInstance
-		actualHitPartDef = intendedTargetPartDef
-		actualHitPartSlot = actionResult.TargetPartSlot
+		damageCalculator.ApplyDamage(actionResult.TargetEntry, actualHitPartInstance, finalDamageDealt)
+		actionResult.LogMessage = damageCalculator.GenerateActionLogDefense(actionResult.TargetEntry, defensePartDef, finalDamageDealt, actionResult.OriginalDamage, isCritical)
+	} else {
+		// 防御失敗または防御パーツがない場合、元のダメージを適用
 		damageCalculator.ApplyDamage(actionResult.TargetEntry, actualHitPartInstance, actionResult.OriginalDamage)
 		finalDamageDealt = actionResult.OriginalDamage
 		actionResult.LogMessage = damageCalculator.GenerateActionLog(actingEntry, actionResult.TargetEntry, actingPartDef, actualHitPartDef, finalDamageDealt, isCritical, true)

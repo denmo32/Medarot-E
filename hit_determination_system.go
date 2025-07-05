@@ -21,9 +21,7 @@ func DetermineHitSystem(
 	if !didHit {
 		// 攻撃が外れた場合、actingPartDef を渡して skill_name を正しく表示できるようにする
 		actionResult.LogMessage = damageCalculator.GenerateActionLog(actingEntry, actionResult.TargetEntry, actingPartDef, nil, 0, false, false)
-		if actingEntry.HasComponent(ActingWithBerserkTraitTagComponent) {
-			ResetAllEffects(world)
-		}
+		// if actingEntry.HasComponent(ActingWithBerserkTraitTagComponent) { ... } のような古いロジックは削除されました
 	}
 
 	return didHit
