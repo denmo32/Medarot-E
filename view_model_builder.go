@@ -54,69 +54,76 @@ func BuildInfoPanelViewModel(entry *donburi.Entry) InfoPanelViewModel {
 	return InfoPanelViewModel{
 		MedarotName: settings.Name,
 		StateStr:    stateStr,
-        IsLeader:    settings.IsLeader,
-        Parts:       partViewModels,
-    }
+		IsLeader:    settings.IsLeader,
+		Parts:       partViewModels,
+	}
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
 func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoProvider, config *Config, debugMode bool, battlefieldRect image.Rectangle) BattlefieldViewModel {
-    vm := BattlefieldViewModel{
-        Icons: []*IconViewModel{},
-    }
+	vm := BattlefieldViewModel{
+		Icons: []*IconViewModel{},
+	}
 
-    query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
-        settings := SettingsComponent.Get(entry)
-        state := StateComponent.Get(entry)
-        gauge := GaugeComponent.Get(entry)
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+		settings := SettingsComponent.Get(entry)
+		state := StateComponent.Get(entry)
+		gauge := GaugeComponent.Get(entry)
 
-        // バトルフィールドの描画領域を基準にX, Y座標を計算
-        bfWidth := float32(battlefieldRect.Dx())
-        bfHeight := float32(battlefieldRect.Dy())
-        offsetX := float32(battlefieldRect.Min.X)
-        offsetY := float32(battlefieldRect.Min.Y)
+		// バトルフィールドの描画領域を基準にX, Y座標を計算
+		bfWidth := float32(battlefieldRect.Dx())
+		bfHeight := float32(battlefieldRect.Dy())
+		offsetX := float32(battlefieldRect.Min.X)
+		offsetY := float32(battlefieldRect.Min.Y)
 
-        x := partInfoProvider.CalculateIconXPosition(entry, bfWidth)
-        y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
+		x := partInfoProvider.CalculateIconXPosition(entry, bfWidth)
+		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
-        // オフセットを適用
-        x += offsetX
-        y += offsetY
+		// オフセットを適用
+		x += offsetX
+		y += offsetY
 
-        var iconColor color.Color
-        if state.Current == StateTypeBroken {
-            iconColor = config.UI.Colors.Broken
-        } else if settings.Team == Team1 {
-            iconColor = config.UI.Colors.Team1
-        } else {
-            iconColor = config.UI.Colors.Team2
-        }
+		var iconColor color.Color
+		if state.Current == StateTypeBroken {
+			iconColor = config.UI.Colors.Broken
+		} else if settings.Team == Team1 {
+			iconColor = config.UI.Colors.Team1
+		} else {
+			iconColor = config.UI.Colors.Team2
+		}
 
-        var debugText string
-        if debugMode {
-            stateStr := ""
-            switch state.Current {
-            case StateTypeIdle: stateStr = "待機"
-            case StateTypeCharging: stateStr = "チャージ中"
-            case StateTypeReady: stateStr = "実行準備"
-            case StateTypeCooldown: stateStr = "クールダウン"
-            case StateTypeBroken: stateStr = "機能停止"
-            }
-            debugText = fmt.Sprintf("State: %s\nGauge: %.1f\nProg: %.1f / %.1f",
-                stateStr, gauge.CurrentGauge, gauge.ProgressCounter, gauge.TotalDuration)
-        }
+		var debugText string
+		if debugMode {
+			stateStr := ""
+			switch state.Current {
+			case StateTypeIdle:
+				stateStr = "待機"
+			case StateTypeCharging:
+				stateStr = "チャージ中"
+			case StateTypeReady:
+				stateStr = "実行準備"
+			case StateTypeCooldown:
+				stateStr = "クールダウン"
+			case StateTypeBroken:
+				stateStr = "機能停止"
+			}
+			debugText = fmt.Sprintf(`State: %s
+Gauge: %.1f
+Prog: %.1f / %.1f`,
+				stateStr, gauge.CurrentGauge, gauge.ProgressCounter, gauge.TotalDuration)
+		}
 
-        vm.Icons = append(vm.Icons, &IconViewModel{
-            EntryID:       uint32(entry.Id()),
-            X:             x,
-            Y:             y,
-            Color:         iconColor,
-            IsLeader:      settings.IsLeader,
-            State:         state.Current,
-            GaugeProgress: gauge.CurrentGauge / 100.0,
-            DebugText:     debugText,
-        })
-    })
+		vm.Icons = append(vm.Icons, &IconViewModel{
+			EntryID:       uint32(entry.Id()),
+			X:             x,
+			Y:             y,
+			Color:         iconColor,
+			IsLeader:      settings.IsLeader,
+			State:         state.Current,
+			GaugeProgress: gauge.CurrentGauge / 100.0,
+			DebugText:     debugText,
+		})
+	})
 
-    return vm
+	return vm
 }
