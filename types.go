@@ -127,6 +127,7 @@ type BalanceConfig struct {
 		PropulsionEffectRate float64
 		GameSpeedMultiplier  float64
 	}
+	HPAnimationSpeed float64 // HPゲージアニメーション速度 (1フレームあたりのHP変化量)
 	Factors struct {
 		AccuracyStabilityFactor      float64
 		EvasionStabilityFactor       float64
@@ -348,6 +349,8 @@ type infoPanelPartUI struct {
 	partNameText *widget.Text
 	hpText       *widget.Text
 	hpBar        *widget.ProgressBar
+	displayedHP  float64 // 現在表示されているHP
+	targetHP     float64 // 目標とするHP
 }
 
 // --- ViewModels ---

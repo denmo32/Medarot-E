@@ -54,9 +54,13 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
 		partInst, instFound := partsMap[slotKey]
 		partName := "---"
+		initialArmor := 0.0 // float64に変更
+		
 		if instFound && partInst != nil {
-			if partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID); defFound {
+			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+			if defFound {
 				partName = partDef.PartName
+				initialArmor = float64(partInst.CurrentArmor) // float64にキャスト
 			} else {
 				partName = "(定義なし)"
 			}
@@ -99,6 +103,8 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 			partNameText: partNameText,
 			hpText:       hpText,
 			hpBar:        hpBar,
+			displayedHP:  initialArmor, // 初期値として現在のアーマーを設定
+			targetHP:     initialArmor,  // 初期値として現在のアーマーを設定
 		}
 	}
 
@@ -166,15 +172,34 @@ func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Confi
 			partUI.partNameText.Label = "---"
 			partUI.hpText.Label = "0/0"
 			partUI.hpBar.SetCurrent(0)
+			partUI.displayedHP = 0
+			partUI.targetHP = 0
 			continue
 		}
 
-		currentArmor := partVM.CurrentArmor
+		// 目標HPを設定
+		partUI.targetHP = float64(partVM.CurrentArmor)
+
+		// 現在表示されているHPを目標HPに近づける
+		if partUI.displayedHP < partUI.targetHP {
+			partUI.displayedHP += config.Balance.HPAnimationSpeed
+			if partUI.displayedHP > partUI.targetHP {
+				partUI.displayedHP = partUI.targetHP
+			}
+		} else if partUI.displayedHP > partUI.targetHP {
+			partUI.displayedHP -= config.Balance.HPAnimationSpeed
+			if partUI.displayedHP < partUI.targetHP {
+				partUI.displayedHP = partUI.targetHP
+			}
+		}
+
+		// 表示用のHP値に基づいて計算
+		displayedArmor := int(partUI.displayedHP)
 		maxArmor := partVM.MaxArmor
 		textColor := c.Colors.White
 		hpPercentage := 0.0
 		if maxArmor > 0 {
-			hpPercentage = float64(currentArmor) / float64(maxArmor)
+			hpPercentage = partUI.displayedHP / float64(maxArmor)
 		}
 
 		if partVM.IsBroken {
@@ -187,7 +212,7 @@ func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Confi
 			}
 		}
 
-		partUI.hpText.Label = fmt.Sprintf("%d / %d", currentArmor, maxArmor)
+		partUI.hpText.Label = fmt.Sprintf("%d / %d", displayedArmor, maxArmor)
 		partUI.hpText.Color = textColor
 		partUI.partNameText.Color = textColor
 		partUI.hpBar.SetCurrent(int(hpPercentage * 100))

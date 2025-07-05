@@ -357,9 +357,9 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstance
 	partsMap := partsComp.Map // map[PartSlotKey]*PartInstanceData
 
 	var bestPartInstance *PartInstanceData
-	var armParts []*PartInstanceData
-	var headPart *PartInstanceData
+	maxArmor := -1 // Initialize with a value lower than any possible armor
 
+	// 腕部と脚部を優先して、最も装甲の高いパーツを探す
 	for _, partInst := range partsMap {
 		if partInst.IsBroken {
 			continue
@@ -371,22 +371,21 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstance
 		}
 
 		switch partDef.Type {
-		case PartTypeRArm, PartTypeLArm:
-			armParts = append(armParts, partInst)
-		case PartTypeHead:
-			headPart = partInst // Assuming only one head part
+		case PartTypeRArm, PartTypeLArm, PartTypeLegs:
+			if partInst.CurrentArmor > maxArmor {
+				maxArmor = partInst.CurrentArmor
+				bestPartInstance = partInst
+			}
 		}
 	}
 
-	if len(armParts) > 0 {
-		sort.Slice(armParts, func(i, j int) bool {
-			return armParts[i].CurrentArmor > armParts[j].CurrentArmor
-		})
-		bestPartInstance = armParts[0]
-	} else if headPart != nil && !headPart.IsBroken { // Ensure head part itself isn't broken (already checked above but good for clarity)
-		bestPartInstance = headPart
+	// 腕部と脚部が全て破壊されている場合、頭部をチェック
+	if bestPartInstance == nil {
+		if headPart, ok := partsMap[PartSlotHead]; ok && !headPart.IsBroken {
+			bestPartInstance = headPart
+		}
 	}
-	// If no suitable arm or head part is found, bestPartInstance will remain nil.
+
 	return bestPartInstance
 }
 

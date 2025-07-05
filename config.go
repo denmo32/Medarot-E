@@ -19,6 +19,7 @@ func LoadConfig() Config {
 				PropulsionEffectRate: 0.01,
 				GameSpeedMultiplier:  50,
 			},
+			HPAnimationSpeed: 1.0, // 1フレームあたりのHP変化量
 			// 各種計算式の調整係数（現在は未使用ですが、将来的な拡張のために残されています）
 			Factors: struct {
 				AccuracyStabilityFactor      float64
