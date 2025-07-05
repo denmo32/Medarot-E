@@ -50,11 +50,13 @@ func NewCustomizeScene(res *SharedResources) *CustomizeScene {
 	}
 
 	for i := range res.GameData.Medarots {
-		if res.GameData.Medarots[i].Team == Team1 {
-			cs.playerMedarots = append(cs.playerMedarots, &res.GameData.Medarots[i])
-		}
+		cs.playerMedarots = append(cs.playerMedarots, &res.GameData.Medarots[i])
 	}
 	sort.Slice(cs.playerMedarots, func(i, j int) bool {
+		// TeamID と DrawIndex の両方でソート
+		if cs.playerMedarots[i].Team != cs.playerMedarots[j].Team {
+			return cs.playerMedarots[i].Team < cs.playerMedarots[j].Team
+		}
 		return cs.playerMedarots[i].DrawIndex < cs.playerMedarots[j].DrawIndex
 	})
 
@@ -150,7 +152,7 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 		idx := i
 		button := widget.NewButton(
 			widget.ButtonOpts.Image(buttonImage),
-			widget.ButtonOpts.Text(fmt.Sprintf("機体%d", idx+1), cs.resources.Font, &widget.ButtonTextColor{Idle: color.White}),
+			widget.ButtonOpts.Text(cs.playerMedarots[idx].Name, cs.resources.Font, &widget.ButtonTextColor{Idle: color.White}),
 			widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 				cs.selectMedarot(idx)
