@@ -121,6 +121,14 @@ type Config struct {
 	UI      UIConfig
 }
 
+// ActionFormulaConfig は types.go の ActionFormula と似ていますが、設定ファイル用です
+type ActionFormulaConfig struct {
+	SuccessRateBonuses []BonusTerm
+	PowerBonuses       []BonusTerm
+	CriticalRateBonus  float64
+	UserDebuffs        []DebuffEffect
+}
+
 // BalanceConfig 構造体を新しいルールに合わせて拡張します。
 type BalanceConfig struct {
 	Time struct {
@@ -172,6 +180,7 @@ type BalanceConfig struct {
 		MinChance  float64
 		MaxChance  float64
 	}
+	Formulas map[Trait]ActionFormulaConfig // 新しく追加
 }
 
 type UIConfig struct {

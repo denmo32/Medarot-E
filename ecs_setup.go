@@ -65,44 +65,15 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		TargetComponent.SetValue(entry, Target{})
 
 		if loadout.Team != playerTeam { // AIのみ
-			var strategy TargetingStrategy
-			switch medalDef.Personality {
-			case "アシスト":
-				strategy = &AssistStrategy{}
-			case "クラッシャー":
-				strategy = &CrusherStrategy{}
-			case "カウンター":
-				strategy = &CounterStrategy{}
-			case "チェイス":
-				strategy = &ChaseStrategy{}
-			case "デュエル":
-				strategy = &DuelStrategy{}
-			case "フォーカス":
-				strategy = &FocusStrategy{}
-			case "ガード":
-				strategy = &GuardStrategy{}
-			case "ハンター":
-				strategy = &HunterStrategy{}
-			case "インターセプト":
-				strategy = &InterceptStrategy{}
-			case "ジョーカー":
-				strategy = &JokerStrategy{}
-			default:
-				strategy = &LeaderStrategy{} // デフォルトはリーダー狙い
-			}
-
-			partSelectionStrategy := SelectFirstAvailablePart
-			switch medalDef.Personality {
-			case "ハンター":
-				partSelectionStrategy = SelectHighestPowerPart
-			case "ジョーカー":
-				partSelectionStrategy = SelectFastestChargePart
-			// 他の性格に応じた戦略を追加
+			personality, ok := PersonalityRegistry[medalDef.Personality]
+			if !ok {
+				log.Printf("警告: 性格 '%s' がレジストリに見つかりません。デフォルトを使用します。", medalDef.Personality)
+				personality = PersonalityRegistry["リーダー"] // デフォルトの性格
 			}
 
 			donburi.Add(entry, AIComponent, &AI{
-				TargetingStrategy:     strategy,
-				PartSelectionStrategy: partSelectionStrategy,
+				TargetingStrategy:     personality.TargetingStrategy,
+				PartSelectionStrategy: personality.PartSelectionStrategy,
 				TargetHistory:         TargetHistoryData{},
 				LastActionHistory:     LastActionHistoryData{},
 			})

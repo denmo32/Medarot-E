@@ -9,7 +9,7 @@ func LoadConfig() Config {
 	screenWidth := 1280
 	screenHeight := 720
 
-	return Config{
+	cfg := Config{
 		Balance: BalanceConfig{
 			// 時間に関する設定
 			Time: struct {
@@ -215,4 +215,36 @@ func LoadConfig() Config {
 			},
 		},
 	}
+
+	cfg.Balance.Formulas = map[Trait]ActionFormulaConfig{
+		TraitNormal: {
+			SuccessRateBonuses: []BonusTerm{},
+			PowerBonuses:       []BonusTerm{},
+			CriticalRateBonus:  0.0,
+			UserDebuffs:        []DebuffEffect{},
+		},
+		TraitAim: {
+			SuccessRateBonuses: []BonusTerm{{SourceParam: Stability, Multiplier: 1.0}},
+			PowerBonuses:       []BonusTerm{},
+			CriticalRateBonus:  50.0,
+			UserDebuffs:        []DebuffEffect{{Type: DebuffTypeEvasion, Multiplier: 0.5}},
+		},
+		TraitStrike: {
+			SuccessRateBonuses: []BonusTerm{{SourceParam: Mobility, Multiplier: 1.0}},
+			PowerBonuses:       []BonusTerm{},
+			CriticalRateBonus:  10.0,
+			UserDebuffs:        []DebuffEffect{{Type: DebuffTypeDefense, Multiplier: 0.5}},
+		},
+		TraitBerserk: {
+			SuccessRateBonuses: []BonusTerm{{SourceParam: Mobility, Multiplier: 1.0}},
+			PowerBonuses:       []BonusTerm{{SourceParam: Propulsion, Multiplier: 1.0}},
+			CriticalRateBonus:  0.0,
+			UserDebuffs:        []DebuffEffect{
+				{Type: DebuffTypeEvasion, Multiplier: 0.5},
+				{Type: DebuffTypeDefense, Multiplier: 0.5},
+			},
+		},
+	}
+
+	return cfg
 }

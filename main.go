@@ -49,6 +49,7 @@ func main() {
 	}
 
 	config := LoadConfig()
+	SetupFormulaManager(&config) // この行を追加
 
 	// NewGameは*GameData（現在はMedarotsのみを格納）を期待します。
 	// 将来的には[]MedarotDataを直接受け取るようにシグネチャが変更される可能性があります。
