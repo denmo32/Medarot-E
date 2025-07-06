@@ -362,7 +362,7 @@ func (e ClearCurrentTargetEvent) isUIEvent() {}
 type UIInterface interface {
 	Update()
 	Draw(screen *ebiten.Image)
-	ShowActionModal(actingEntry *donburi.Entry)
+	ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget)
 	HideActionModal()
 	ShowMessageWindow(message string)
 	HideMessageWindow()

@@ -67,7 +67,7 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, partInfoProvider *PartInfoProvider, targetSelector *TargetSelector) *UI {
+func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
     whiteImg := ebiten.NewImage(1, 1)
     whiteImg.Fill(color.White)
     ui := &UI{
@@ -77,8 +77,6 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, partI
         eventChannel:         eventChannel,
         world:                world,
         config:               config,
-        partInfoProvider:     partInfoProvider,
-        targetSelector:       targetSelector,
         whitePixel:           whiteImg,
     }
     rootContainer := widget.NewContainer(
@@ -123,70 +121,14 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, partI
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (u *UI) ShowActionModal(actingEntry *donburi.Entry) { // partInfoProvider, targetSelector はUI構造体のフィールドとして利用
+func (u *UI) ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget) {
     if u.isActionModalVisible {
         u.HideActionModal()
     }
     u.playerMedarotToAct = actingEntry
     u.isActionModalVisible = true
+    u.actionTargetMap = actionTargetMap // Set the pre-calculated map
 
-    // ここでAIのターゲット選択ロジックを実行し、actionTargetMapを構築する
-    u.actionTargetMap = make(map[PartSlotKey]ActionTarget)
-    if u.partInfoProvider == nil {
-        log.Println("エラー: UI.ShowActionModal - partInfoProvider がnilです。")
-        // エラー処理、例えばモーダルを表示しない、またはエラーメッセージを表示するなど
-        return
-    }
-
-    availableParts := u.partInfoProvider.GetAvailableAttackParts(actingEntry)
-
-    for _, available := range availableParts {
-        partDef := available.PartDef
-        slotKey := available.Slot
-        
-        // AI戦略に基づいてターゲットを決定
-        var targetEntity *donburi.Entry
-        var targetPartSlot PartSlotKey
-
-        // 射撃または格闘カテゴリの場合のみターゲット選択を行う
-        if partDef.Category == CategoryShoot || partDef.Category == CategoryMelee {
-            var strategy TargetingStrategy
-            medal := MedalComponent.Get(actingEntry)
-            // メダルの性格に基づいて戦略を選択 (ui_action_modal.go から移動)
-            switch medal.Personality {
-            case "アシスト":
-                strategy = &AssistStrategy{}
-            case "クラッシャー":
-                strategy = &CrusherStrategy{}
-            case "カウンター":
-                strategy = &CounterStrategy{}
-            case "チェイス":
-                strategy = &ChaseStrategy{}
-            case "デュエル":
-                strategy = &DuelStrategy{}
-            case "フォーカス":
-                strategy = &FocusStrategy{}
-            case "ガード":
-                strategy = &GuardStrategy{}
-            case "ハンター":
-                strategy = &HunterStrategy{}
-            case "インターセプト":
-                strategy = &InterceptStrategy{}
-            case "ジョーカー":
-                strategy = &JokerStrategy{}
-            default:
-                strategy = &LeaderStrategy{} // デフォルトはリーダー狙い
-            }
-            
-            // ターゲット選択ロジックを実行
-            targetEntity, targetPartSlot = strategy.SelectTarget(u.world, actingEntry, u.targetSelector, u.partInfoProvider)
-        }
-
-        // ターゲット情報をマップに格納
-        u.actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
-    }
-
-    // createActionModalUI には計算済みの actionTargetMap を渡す
     modal := createActionModalUI(actingEntry, u.config, u.actionTargetMap, u.eventChannel, GlobalGameDataManager.Font)
     u.actionModal = modal
     u.ebitenui.Container.AddChild(u.actionModal)

@@ -54,7 +54,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 
 	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
 	bs.uiEventChannel = make(chan UIEvent, 10) // バッファ付きチャネル
-	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector)
+	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel)
 
 	return bs
 }
@@ -68,13 +68,13 @@ func (bs *BattleScene) Update() (SceneType, error) {
 	case event := <-bs.uiEventChannel:
 		switch e := event.(type) {
 		case PlayerActionSelectedEvent:
-			bs.playerActionPendingQueue, bs.state, bs.targetedEntity, bs.attackingEntity, bs.message, bs.postMessageCallback = processPlayerActionSelected(
-				bs.world, &bs.resources.Config, bs.battleLogic, bs.playerActionPendingQueue, bs.ui, e)
+			bs.playerActionPendingQueue, bs.state, bs.message, bs.postMessageCallback = ProcessPlayerActionSelected(
+				bs.world, &bs.resources.Config, bs.battleLogic, bs.playerActionPendingQueue, bs.ui, e, bs.ui.GetActionTargetMap())
 			if bs.message != "" {
 				bs.enqueueMessage(bs.message, bs.postMessageCallback)
 			}
 		case PlayerActionCancelEvent:
-			bs.playerActionPendingQueue, bs.state = processPlayerActionCancel(bs.playerActionPendingQueue, bs.ui, e)
+			bs.playerActionPendingQueue, bs.state = ProcessPlayerActionCancel(bs.playerActionPendingQueue, bs.ui, e)
 		case SetCurrentTargetEvent:
 			bs.ui.SetCurrentTarget(e.Target)
 		case ClearCurrentTargetEvent:
@@ -182,7 +182,49 @@ func (bs *BattleScene) Update() (SceneType, error) {
 			// 選択されたメダロットがまだ有効でアイドル状態であることを確認します
 			actingEntry := bs.playerActionPendingQueue[0]
 			if actingEntry.Valid() && StateComponent.Get(actingEntry).Current == StateTypeIdle {
-				bs.ui.ShowActionModal(actingEntry)
+				// UIに渡す前に、利用可能なパーツとターゲットを計算
+				actionTargetMap := make(map[PartSlotKey]ActionTarget)
+				availableParts := bs.battleLogic.PartInfoProvider.GetAvailableAttackParts(actingEntry)
+
+				for _, available := range availableParts {
+					partDef := available.PartDef
+					slotKey := available.Slot
+
+					var targetEntity *donburi.Entry
+					var targetPartSlot PartSlotKey
+
+					if partDef.Category == CategoryShoot || partDef.Category == CategoryMelee {
+						medal := MedalComponent.Get(actingEntry)
+						var strategy TargetingStrategy
+						switch medal.Personality {
+						case "アシスト":
+							strategy = &AssistStrategy{}
+						case "クラッシャー":
+							strategy = &CrusherStrategy{}
+						case "カウンター":
+							strategy = &CounterStrategy{}
+						case "チェイス":
+							strategy = &ChaseStrategy{}
+						case "デュエル":
+							strategy = &DuelStrategy{}
+						case "フォーカス":
+							strategy = &FocusStrategy{}
+						case "ガード":
+							strategy = &GuardStrategy{}
+						case "ハンター":
+							strategy = &HunterStrategy{}
+						case "インターセプト":
+							strategy = &InterceptStrategy{}
+						case "ジョーカー":
+							strategy = &JokerStrategy{}
+						default:
+							strategy = &LeaderStrategy{}
+						}
+						targetEntity, targetPartSlot = strategy.SelectTarget(bs.world, actingEntry, bs.battleLogic.TargetSelector, bs.battleLogic.PartInfoProvider)
+					}
+					actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
+				}
+				bs.ui.ShowActionModal(actingEntry, actionTargetMap)
 			} else {
 				// メダロットが有効でなくなったか、アイドル状態でないためキューから削除します。
 				bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
