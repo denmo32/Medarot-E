@@ -54,9 +54,8 @@ ECSアーキテクチャの主要な要素です。データ（Component）、�
 *   `systems.go`
     *   役割: **[ロジック/振る舞い]** ECSの「S（システム）」のうち、現在は使用されていないファイル。
     *   内容: かつては多くの戦闘ロジックを含んでいましたが、リファクタリングにより主要な戦闘システムはそれぞれ専用のファイルに移管されました。現在は、将来的な共通システムの実装のために残されています。
-*   `action_modifier_system.go`: **[ロジック/振る舞い]** 行動実行時の戦闘計算修飾システム。`ApplyActionModifiersSystem` と `RemoveActionModifiersSystem` を定義します。
-*   `action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューの処理と、実際のアクション実行ロジック。`UpdateActionQueueSystem`, `executeActionLogic`, `StartCooldownSystem`, `StartCharge` を定義します。
-*   `action_handler.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の行動処理戦略。`ActionHandler` インターフェースとその実装を定義します。
+*   `action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionHandler` を呼び出してアクションを実行します。
+*   `action_handler.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の具体的なアクション実行ロジックをカプセル化します。`ActionHandler` インターフェースとその実装（`ShootActionHandler`, `MeleeActionHandler`など）を定義します。
 *   `game_end_system.go`: **[ロジック/振る舞い]** ゲーム終了条件判定システム。`CheckGameEndSystem` を定義します。
 *   `gauge_system.go`: **[ロジック/振る舞い]** チャージゲージおよびクールダウンゲージの進行管理システム。`UpdateGaugeSystem` を定義します。
 *   `state_change_systems.go`: **[ロジック/振る舞い]** 状態遷移時の副作用処理システム。`ProcessStateChangeSystem` を定義します。

@@ -48,79 +48,25 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
-		actionResult := executeAction(actingEntry, world, battleLogic, gameConfig)
-		results = append(results, actionResult)
+		intent := ActionIntentComponent.Get(actingEntry)
+		partsComp := PartsComponent.Get(actingEntry)
+		actingPartInst := partsComp.Map[intent.SelectedPartKey]
+		actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
+
+		handler := GetActionHandlerForCategory(actingPartDef.Category)
+
+		if handler != nil {
+			actionResult := handler.Execute(actingEntry, world, intent, battleLogic, gameConfig)
+			results = append(results, actionResult)
+		} else {
+			// Handle error: no handler found
+			log.Printf("No action handler found for category: %s", actingPartDef.Category)
+		}
 	}
 	return results, nil
 }
 
-func executeAction(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-) ActionResult {
-	actionResult := ActionResult{ActingEntry: actingEntry}
 
-	// 1. アクション解決
-	actingPartDef, _, intendedTargetPartInstance, intendedTargetPartDef, success := ResolveActionSystem(
-		actingEntry,
-		world,
-		&actionResult,
-		battleLogic.PartInfoProvider,
-		gameConfig,
-		battleLogic.TargetSelector,
-	)
-	if !success {
-		CleanupActionSystem(actingEntry, world)
-		return actionResult
-	}
-
-	// 2. 命中判定
-	didHit := DetermineHitSystem(
-		actingEntry,
-		world,
-		&actionResult,
-		battleLogic.HitCalculator,
-		battleLogic.DamageCalculator,
-		actingPartDef,
-	)
-	if !didHit {
-		CleanupActionSystem(actingEntry, world)
-		return actionResult
-	}
-
-	// 3. ダメージ適用 (攻撃アクションの場合)
-	var actualHitPartDef *PartDefinition
-	if actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee {
-		actualHitPartDef = ApplyDamageSystem(
-			actingEntry,
-			world,
-			&actionResult,
-			battleLogic.DamageCalculator,
-			battleLogic.HitCalculator,
-			battleLogic.TargetSelector,
-			battleLogic.PartInfoProvider,
-			actingPartDef,
-			intendedTargetPartInstance,
-			intendedTargetPartDef,
-		)
-	}
-
-	// 4. アクション結果生成
-	GenerateActionResultSystem(
-		actingEntry,
-		world,
-		&actionResult,
-		actingPartDef,
-		actualHitPartDef,
-	)
-
-	// 5. クリーンアップ
-	CleanupActionSystem(actingEntry, world)
-
-	return actionResult
-}
 
 // StartCooldownSystem はクールダウン状態を開始します。
 func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *Config, partInfoProvider *PartInfoProvider) {
