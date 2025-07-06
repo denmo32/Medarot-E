@@ -78,9 +78,9 @@ func (s *CrusherStrategy) SelectTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 ) (*donburi.Entry, PartSlotKey) {
-	targetParts := getAllTargetableParts(actingEntry, targetSelector, false) // 脚部以外、頭部以外
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, false)
 	if len(targetParts) == 0 {
-		targetParts = getAllTargetableParts(actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
+		targetParts = getAllTargetableParts(actingEntry, targetSelector, true)
 	}
 	if len(targetParts) == 0 {
 		return nil, ""
@@ -103,9 +103,9 @@ func (s *HunterStrategy) SelectTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 ) (*donburi.Entry, PartSlotKey) {
-	targetParts := getAllTargetableParts(actingEntry, targetSelector, false) // 脚部以外、頭部以外
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, false)
 	if len(targetParts) == 0 {
-		targetParts = getAllTargetableParts(actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
+		targetParts = getAllTargetableParts(actingEntry, targetSelector, true)
 	}
 	if len(targetParts) == 0 {
 		return nil, ""
@@ -128,7 +128,7 @@ func (s *JokerStrategy) SelectTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider *PartInfoProvider,
 ) (*donburi.Entry, PartSlotKey) {
-	allEnemyParts := getAllTargetableParts(actingEntry, targetSelector, true) // 脚部以外 (頭部含む)
+	allEnemyParts := getAllTargetableParts(actingEntry, targetSelector, true)
 	if len(allEnemyParts) == 0 {
 		return nil, ""
 	}
@@ -204,8 +204,7 @@ func (s *ChaseStrategy) SelectTarget(
 		return selected.entity, selected.slot
 	}
 
-	// 脚部が全破壊の場合、左腕→右腕→頭部の順で狙う
-	// このロジックは単純化のため、ランダムな非脚部パーツを狙うことで代替します
+	// 脚部が全破壊の場合、ランダムな非脚部パーツを狙う
 	var otherParts []targetablePart
 	for _, p := range targetParts {
 		if p.partDef.Type != PartTypeLegs {
