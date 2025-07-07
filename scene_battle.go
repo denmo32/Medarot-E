@@ -22,6 +22,8 @@ type BattleScene struct {
 	playerTeam               TeamID
 	ui                       UIInterface
 	message                  string
+	messageQueue             []string // 複数のメッセージを保持するキュー
+	currentMessageIndex      int      // 現在表示しているメッセージのインデックス
 	postMessageCallback      func()
 	winner                   TeamID           // TeamNone で初期化されます
 	playerActionPendingQueue []*donburi.Entry // プレイヤーメダロットの行動選択待ちキュー
@@ -37,11 +39,8 @@ type BattleScene struct {
 
 // ActionAnimationData はアクションアニメーションのデータを保持します。
 type ActionAnimationData struct {
-	ActingEntry *donburi.Entry
-	TargetEntry *donburi.Entry
-	Damage      int
-	LogMessage  string
-	StartTime   int // アニメーション開始時のtickCount
+	Result    ActionResult // ActionResult全体を保持
+	StartTime int          // アニメーション開始時のtickCount
 }
 
 // NewBattleScene は新しい戦闘シーンを初期化します
@@ -137,11 +136,8 @@ func (bs *BattleScene) Update() (SceneType, error) {
 				if result.ActingEntry != nil && result.ActingEntry.Valid() {
 					// アニメーションデータを設定
 					bs.currentActionAnimation = &ActionAnimationData{
-						ActingEntry: result.ActingEntry,
-						TargetEntry: result.TargetEntry,
-						Damage:      result.OriginalDamage, // ダメージポップアップ用
-						LogMessage:  result.LogMessage,
-						StartTime:   bs.tickCount,
+						Result:    result,
+						StartTime: bs.tickCount,
 					}
 
 					// ダメージ適用
@@ -194,10 +190,46 @@ func (bs *BattleScene) Update() (SceneType, error) {
 			// アニメーション終了後の処理
 			bs.currentActionAnimation = nil // アニメーションデータをクリア
 
-			// 既存のメッセージ表示とクールダウン処理
-			bs.enqueueMessage(anim.LogMessage, func() {
-				if anim.ActingEntry.Valid() && StateComponent.Get(anim.ActingEntry).Current != StateTypeBroken {
-					StartCooldownSystem(anim.ActingEntry, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
+			// アニメーション終了後の処理
+			bs.currentActionAnimation = nil // アニメーションデータをクリア
+
+			// 新しいメッセージ形式でメッセージキューを作成
+			messages := []string{}
+			result := anim.Result
+			if result.ActionDidHit {
+				// メッセージID: action_initiate
+				initiateParams := map[string]interface{}{
+					"attacker_name": result.AttackerName,
+					"action_name":   result.ActionName,
+					"weapon_type":   result.WeaponType,
+				}
+				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
+
+				// メッセージID: action_defend
+				if result.ActionIsDefended {
+					defendParams := map[string]interface{}{
+						"defender_name":       result.DefenderName,
+						"defending_part_type": result.DefendingPartType,
+					}
+					messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_defend", defendParams))
+				}
+
+				// メッセージID: action_damage
+				damageParams := map[string]interface{}{
+					"defender_name":    result.DefenderName,
+					"target_part_type": result.TargetPartType,
+					"damage":           result.DamageDealt,
+				}
+				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_damage", damageParams))
+
+			} else {
+				messages = append(messages, result.LogMessage) // 回避などのメッセージ
+			}
+
+			bs.enqueueMessageQueue(messages, func() {
+				actingEntry := anim.Result.ActingEntry
+				if actingEntry.Valid() && StateComponent.Get(actingEntry).Current != StateTypeBroken {
+					StartCooldownSystem(actingEntry, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
 				}
 				bs.attackingEntity = nil
 				bs.targetedEntity = nil
@@ -278,18 +310,24 @@ func (bs *BattleScene) Update() (SceneType, error) {
 		bs.ui.SetBattlefieldViewModel(bfVM)
 
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			bs.ui.HideMessageWindow()
-			if bs.postMessageCallback != nil {
-				bs.postMessageCallback()
-				bs.postMessageCallback = nil
-			}
-
-			// 勝者が宣言されたかどうかに基づいて次の状態を決定します
-			if bs.winner != TeamNone { // 勝者が設定された場合（ゲームオーバー）
-				bs.state = StateGameOver
+			bs.currentMessageIndex++
+			if bs.currentMessageIndex < len(bs.messageQueue) {
+				// 次のメッセージを表示
+				bs.ui.ShowMessageWindow(bs.messageQueue[bs.currentMessageIndex])
 			} else {
-				bs.state = StatePlaying
-				// bs.playerMedarotToAct が nil の場合、次の StatePlaying イテレーションで入力システム（AI/プレイヤー）が呼び出されます。
+				// すべて表示完了
+				bs.ui.HideMessageWindow()
+				if bs.postMessageCallback != nil {
+					bs.postMessageCallback()
+					bs.postMessageCallback = nil
+				}
+
+				// 勝者が宣言されたかどうかに基づいて次の状態を決定します
+				if bs.winner != TeamNone { // 勝者が設定された場合（ゲームオーバー）
+					bs.state = StateGameOver
+				} else {
+					bs.state = StatePlaying
+				}
 			}
 		}
 	case StateGameOver:
@@ -315,10 +353,10 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
 		var attackerVM, targetVM *IconViewModel
 		for _, icon := range bfVM.Icons {
-			if icon.EntryID == uint32(anim.ActingEntry.Id()) {
+			if icon.EntryID == uint32(anim.Result.ActingEntry.Id()) {
 				attackerVM = icon
 			}
-			if icon.EntryID == uint32(anim.TargetEntry.Id()) {
+			if icon.EntryID == uint32(anim.Result.TargetEntry.Id()) {
 				targetVM = icon
 			}
 		}
@@ -388,7 +426,7 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 				colorM := ebiten.ColorM{}
 				colorM.Scale(1, 1, 1, alpha)
 
-				text.Draw(screen, fmt.Sprintf("%d", anim.Damage),
+				text.Draw(screen, fmt.Sprintf("%d", anim.Result.OriginalDamage),
 					bs.resources.Font,
 					&text.DrawOptions{
 						DrawImageOptions: ebiten.DrawImageOptions{
@@ -411,10 +449,18 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	}
 }
 
-// enqueueMessage はバトルシーン内でのメッセージ表示を扱います
+// enqueueMessage は単一のメッセージをキューに追加します
 func (bs *BattleScene) enqueueMessage(msg string, callback func()) {
-	bs.message = msg
+	bs.enqueueMessageQueue([]string{msg}, callback)
+}
+
+// enqueueMessageQueue は複数のメッセージをキューに追加し、表示を開始します
+func (bs *BattleScene) enqueueMessageQueue(messages []string, callback func()) {
+	bs.messageQueue = messages
+	bs.currentMessageIndex = 0
 	bs.postMessageCallback = callback
 	bs.state = StateMessage
-	bs.ui.ShowMessageWindow(bs.message)
+	if len(bs.messageQueue) > 0 {
+		bs.ui.ShowMessageWindow(bs.messageQueue[0])
+	}
 }

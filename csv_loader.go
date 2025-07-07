@@ -100,7 +100,7 @@ func LoadParts(filePath string) error {
 			Mobility:   parseInt(record[12], 0),
 			Propulsion: parseInt(record[13], 0),
 			Stability:  parseInt(record[14], 0),
-			// WeaponType は必要であれば record[5]
+			WeaponType: record[5],
 		}
 		if err := GlobalGameDataManager.AddPartDefinition(partDef); err != nil {
 			fmt.Printf("パーツ定義 %s の追加中にエラーが発生しました: %v\n", partDef.ID, err)

@@ -1,7 +1,15 @@
 [
   {
-    "id": "attack_hit",
-    "text": "{attacker_name}の{skill_name}！ {target_name}の{target_part_name}に{damage}のダメージ！"
+    "id": "action_initiate",
+    "text": "{attacker_name}の{action_name}攻撃！　{weapon_type}！"
+  },
+  {
+    "id": "action_defend",
+    "text": "{defender_name}は{defending_part_type}パーツで防御した！"
+  },
+  {
+    "id": "action_damage",
+    "text": "{defender_name}の{target_part_type}パーツに{damage}ダメージ！"
   },
   {
     "id": "attack_miss",

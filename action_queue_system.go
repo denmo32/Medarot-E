@@ -9,17 +9,25 @@ import (
 
 // ActionResult はアクション実行の詳細な結果を保持します。
 type ActionResult struct {
-	ActingEntry      *donburi.Entry
-	TargetEntry      *donburi.Entry
-	TargetPartSlot   PartSlotKey // ターゲットのパーツスロット
-	LogMessage       string
-	ActionDidHit     bool // 命中したかどうか
-	IsCritical       bool // クリティカルだったか
-	OriginalDamage   int  // 元のダメージ量
-	DamageDealt      int  // 実際に与えたダメージ
-	TargetPartBroken bool // ターゲットパーツが破壊されたか
-	ActionIsDefended bool // 攻撃が防御されたか
+	ActingEntry       *donburi.Entry
+	TargetEntry       *donburi.Entry
+	TargetPartSlot    PartSlotKey // ターゲットのパーツスロット
+	LogMessage        string      // 古いログメッセージ（後で削除予定）
+	ActionDidHit      bool        // 命中したかどうか
+	IsCritical        bool        // クリティカルだったか
+	OriginalDamage    int         // 元のダメージ量
+	DamageDealt       int         // 実際に与えたダメージ
+	TargetPartBroken  bool        // ターゲットパーツが破壊されたか
+	ActionIsDefended  bool        // 攻撃が防御されたか
 	ActualHitPartSlot PartSlotKey // 実際にヒットしたパーツのスロット
+
+	// 新しいメッセージ形式のための追加フィールド
+	AttackerName      string
+	DefenderName      string
+	ActionName        string // e.g., "撃つ", "狙い撃ち" (Trait)
+	WeaponType        string // e.g., "ソード", "マグナム"
+	TargetPartType    string // e.g., "頭部", "脚部"
+	DefendingPartType string // e.g., "頭部", "脚部"
 }
 
 // UpdateActionQueueSystem は行動準備完了キューを処理します。
@@ -65,8 +73,6 @@ func UpdateActionQueueSystem(
 	}
 	return results, nil
 }
-
-
 
 // StartCooldownSystem はクールダウン状態を開始します。
 func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *Config, partInfoProvider *PartInfoProvider) {

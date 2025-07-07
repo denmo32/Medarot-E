@@ -137,7 +137,7 @@ type BalanceConfig struct {
 		GameSpeedMultiplier  float64
 	}
 	HPAnimationSpeed float64 // HPゲージアニメーション速度 (1フレームあたりのHP変化量)
-	Factors struct {
+	Factors          struct {
 		AccuracyStabilityFactor      float64
 		EvasionStabilityFactor       float64
 		DefenseStabilityFactor       float64
@@ -266,7 +266,7 @@ type PartDefinition struct {
 	Mobility   int
 	Defense    int
 	Stability  int
-	// WeaponType string // CSVから必要であればここに追加
+	WeaponType string // CSVから必要であればここに追加
 }
 
 // PartInstanceData (旧Part) は戦闘中のパーツインスタンスの動的な状態を保持します。
@@ -319,7 +319,7 @@ type PartViewModel struct {
 
 // BattlefieldViewModel は、バトルフィールド全体の描画に必要なデータを保持します。
 type BattlefieldViewModel struct {
-	Icons []*IconViewModel
+	Icons     []*IconViewModel
 	DebugMode bool
 }
 

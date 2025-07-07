@@ -73,10 +73,18 @@ func (h *ShootActionHandler) Execute(
 	result.DamageDealt = result.OriginalDamage
 	result.TargetPartBroken = intendedTargetPartInstance.IsBroken
 	result.ActualHitPartSlot = result.TargetPartSlot
-	
+
 	// 4. アクション結果生成
 	targetPartDef, _ := GlobalGameDataManager.GetPartDefinition(intendedTargetPartInstance.DefinitionID)
-	result.LogMessage = battleLogic.DamageCalculator.GenerateActionLog(actingEntry, result.TargetEntry, actingPartDef, targetPartDef, result.DamageDealt, result.IsCritical, true)
+	// 新しいフィールドに情報を設定
+	result.AttackerName = settings.Name
+	result.DefenderName = SettingsComponent.Get(result.TargetEntry).Name
+	result.ActionName = string(actingPartDef.Trait)
+	result.WeaponType = actingPartDef.WeaponType
+	result.TargetPartType = string(targetPartDef.Type)
+	// result.DefendingPartType は防御処理で設定される
+
+	// 古いログメッセージ生成は、命中しなかった場合にのみ行うため、ここでは何もしない。
 
 	if result.TargetPartBroken {
 		partBrokenParams := map[string]interface{}{
@@ -167,7 +175,15 @@ func (h *MeleeActionHandler) Execute(
 
 	// 4. アクション結果生成
 	targetPartDef, _ := GlobalGameDataManager.GetPartDefinition(intendedTargetPartInstance.DefinitionID)
-	result.LogMessage = battleLogic.DamageCalculator.GenerateActionLog(actingEntry, result.TargetEntry, actingPartDef, targetPartDef, result.DamageDealt, result.IsCritical, true)
+	// 新しいフィールドに情報を設定
+	result.AttackerName = settings.Name
+	result.DefenderName = SettingsComponent.Get(result.TargetEntry).Name
+	result.ActionName = string(actingPartDef.Trait)
+	result.WeaponType = actingPartDef.WeaponType
+	result.TargetPartType = string(targetPartDef.Type)
+	// result.DefendingPartType は防御処理で設定される
+
+	// 古いログメッセージ生成は、命中しなかった場合にのみ行うため、ここでは何もしない。
 
 	if result.TargetPartBroken {
 		partBrokenParams := map[string]interface{}{
