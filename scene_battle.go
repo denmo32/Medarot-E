@@ -2,14 +2,17 @@ package main
 
 import (
 	"fmt"
+	"image/color"
+
+	// "math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/yohamta/donburi"
 )
 
-// BattleScene は戦闘シーンのすべてを管理します
 type BattleScene struct {
 	resources                *SharedResources
 	world                    donburi.World
@@ -20,18 +23,32 @@ type BattleScene struct {
 	ui                       UIInterface
 	message                  string
 	postMessageCallback      func()
-	winner                   TeamID // TeamNone で初期化されます
+	winner                   TeamID           // TeamNone で初期化されます
 	playerActionPendingQueue []*donburi.Entry // プレイヤーメダロットの行動選択待ちキュー
 	attackingEntity          *donburi.Entry
 	targetedEntity           *donburi.Entry
+	whitePixel               *ebiten.Image
 
-	battleLogic *BattleLogic
+	currentActionAnimation *ActionAnimationData // 現在実行中のアクションアニメーション
+
+	battleLogic    *BattleLogic
 	uiEventChannel chan UIEvent
+}
+
+// ActionAnimationData はアクションアニメーションのデータを保持します。
+type ActionAnimationData struct {
+	ActingEntry *donburi.Entry
+	TargetEntry *donburi.Entry
+	Damage      int
+	LogMessage  string
+	StartTime   int // アニメーション開始時のtickCount
 }
 
 // NewBattleScene は新しい戦闘シーンを初期化します
 func NewBattleScene(res *SharedResources) *BattleScene {
 	world := donburi.NewWorld()
+	whitePixel := ebiten.NewImage(1, 1)
+	whitePixel.Fill(color.White)
 
 	bs := &BattleScene{
 		resources:                res,
@@ -44,6 +61,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 		attackingEntity:          nil,
 		targetedEntity:           nil,
 		winner:                   TeamNone,
+		whitePixel:               whitePixel,
 	}
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config)
@@ -52,7 +70,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 	// これにより、エンティティと ActionQueueComponentData が存在しない場合に作成されます。
 	EnsureActionQueueEntity(bs.world)
 
-	CreateMedarotEntities(bs.world, bs.resources.GameData, bs.playerTeam)
+	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam)
 	bs.uiEventChannel = make(chan UIEvent, 10) // バッファ付きチャネル
 	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel)
 
@@ -61,6 +79,7 @@ func NewBattleScene(res *SharedResources) *BattleScene {
 
 // Update は戦闘シーンのロジックを更新します
 func (bs *BattleScene) Update() (SceneType, error) {
+	bs.tickCount++
 	bs.ui.Update()
 
 	// UIイベントチャネルを処理します
@@ -86,78 +105,59 @@ func (bs *BattleScene) Update() (SceneType, error) {
 
 	switch bs.state {
 	case StatePlaying:
-		bs.tickCount++
-
-		// 現在プレイヤーがアクションを選択しておらず、かつ保留キューが空の場合に限り入力を処理します。
-		// これは、複数ユニットのプレイヤーアクションシーケンスの途中ではないことを意味します。
 		if !bs.ui.IsActionModalVisible() && len(bs.playerActionPendingQueue) == 0 {
 			UpdateAIInputSystem(bs.world, bs.battleLogic.PartInfoProvider, bs.battleLogic.TargetSelector, &bs.resources.Config)
 
 			playerInputResult := UpdatePlayerInputSystem(bs.world)
 			if len(playerInputResult.PlayerMedarotsToAct) > 0 {
 				bs.playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
-				// ここではまだ playerMedarotToAct を設定したり状態を変更したりせず、
-				// 以下のロジックでキューから選択するようにします。
 			}
 		}
 
-		// 保留キューにプレイヤーがいる場合、状態をアクション選択に移行します。
 		if len(bs.playerActionPendingQueue) > 0 {
 			bs.state = StatePlayerActionSelect
 		}
 
-		// プレイヤーのアクションが保留されておらず（現在選択中でもキュー内でもない）、
-		// かつメインのアクション実行キューも空の場合にのみゲージを更新します。
-		actionQueueComp := GetActionQueueComponent(bs.world) // アクションキューコンポーネントを取得
+		actionQueueComp := GetActionQueueComponent(bs.world)
 		if !bs.ui.IsActionModalVisible() && len(bs.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
 			UpdateGaugeSystem(bs.world)
 		}
 
-		// まだ StatePlaying の場合（例：AIがアクションをキューに入れたか、入力が不要だった、プレイヤーの保留がない）、
-		// アクションキューを処理します。これは shouldSkipGaugeUpdateThisFrame に関係なく実行する必要があります。
-		// なぜなら、AIのアクションや以前にキューに入れられたプレイヤーのアクションは実行されるべきだからです。
-		// ただし、状態が PlayerActionSelect に変更された場合、この部分はスキップされるか、異なる方法で処理される可能性があります。
-		if bs.state == StatePlaying { // 状態が PlayerActionSelect に変更された可能性があるため、再確認
+		if bs.state == StatePlaying {
 			actionResults, err := UpdateActionQueueSystem(
 				bs.world,
 				bs.battleLogic,
-				&bs.resources.Config, // gameConfig を渡す
+				&bs.resources.Config,
 			)
 			if err != nil {
-				// エラーを適切に処理
 				fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
 			}
 
 			for _, result := range actionResults {
 				if result.ActingEntry != nil && result.ActingEntry.Valid() {
-					logComp := LogComponent.Get(result.ActingEntry)
-					if logComp != nil {
-						logComp.LastActionLog = result.LogMessage
+					// アニメーションデータを設定
+					bs.currentActionAnimation = &ActionAnimationData{
+						ActingEntry: result.ActingEntry,
+						TargetEntry: result.TargetEntry,
+						Damage:      result.OriginalDamage, // ダメージポップアップ用
+						LogMessage:  result.LogMessage,
+						StartTime:   bs.tickCount,
 					}
-					bs.attackingEntity = result.ActingEntry // UI表示用
-					bs.targetedEntity = result.TargetEntry  // UI表示用
-					bs.ui.SetCurrentTarget(result.TargetEntry)
 
-					// メッセージをキューに入れ、クールダウンのコールバックを設定
-					bs.enqueueMessage(result.LogMessage, func() {
-						// クールダウンを開始する前に、有効性と状態を再度確認
-						if result.ActingEntry.Valid() && StateComponent.Get(result.ActingEntry).Current != StateTypeBroken {
-							StartCooldownSystem(result.ActingEntry, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
-						}
-						bs.attackingEntity = nil // アクション処理後にクリア
-						bs.targetedEntity = nil  // アクション処理後にクリア
-						bs.ui.ClearCurrentTarget()
-					})
-					// メッセージがキューに入れられた場合、状態が StateMessage に変わるため、
-					// このフレームでの StatePlaying でのさらなる処理を避けるために、早期に break/return することがあります。
-					if bs.state == StateMessage {
-						break // 状態が変更されたため、actionResults ループを終了
+					// ダメージ適用
+					targetParts := PartsComponent.Get(result.TargetEntry)
+					if targetParts != nil {
+						intendedTargetPartInstance := targetParts.Map[result.TargetPartSlot]
+						bs.battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
 					}
+
+					// メッセージ表示とクールダウンはアニメーション終了後に行う
+					bs.state = StateAnimatingAction // アニメーション状態に遷移
+					break                           // 1フレームに1つのアクションのみ処理
 				}
 			}
 		}
 
-		// ゲーム終了判定
 		gameEndResult := CheckGameEndSystem(bs.world)
 		if gameEndResult.IsGameOver {
 			bs.winner = gameEndResult.Winner
@@ -165,11 +165,48 @@ func (bs *BattleScene) Update() (SceneType, error) {
 			bs.enqueueMessage(gameEndResult.Message, nil)
 		}
 
-		// UIの更新
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
 		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
 		bs.ui.SetBattlefieldViewModel(bfVM)
 		ProcessStateChangeSystem(bs.world)
+
+	case StateAnimatingAction:
+		// UIパネルを更新してHPバーアニメーションを実行
+		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
+
+		// アニメーションのロジック
+		anim := bs.currentActionAnimation
+		if anim == nil {
+			bs.state = StatePlaying // 安全のため
+			return SceneTypeBattle, nil
+		}
+
+		// アニメーションの進行度を計算
+		progress := float64(bs.tickCount - anim.StartTime)
+
+		// アニメーション終了判定
+		const travelDuration = 30 // 三角印が移動するフレーム数
+		const popupDelay = 30     // 三角印がターゲットに到達してからポップアップ開始までの遅延
+		const popupDuration = 60  // ポップアップ表示時間
+		const totalAnimationDuration = travelDuration + popupDelay + popupDuration
+
+		if progress >= totalAnimationDuration {
+			// アニメーション終了後の処理
+			bs.currentActionAnimation = nil // アニメーションデータをクリア
+
+			// 既存のメッセージ表示とクールダウン処理
+			bs.enqueueMessage(anim.LogMessage, func() {
+				if anim.ActingEntry.Valid() && StateComponent.Get(anim.ActingEntry).Current != StateTypeBroken {
+					StartCooldownSystem(anim.ActingEntry, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
+				}
+				bs.attackingEntity = nil
+				bs.targetedEntity = nil
+				bs.ui.ClearCurrentTarget()
+			})
+			// enqueueMessageがStateMessageに遷移させるため、ここでは何もしない
+		}
+
+		// StateAnimatingAction中は、ゲームロジックの進行は停止
 
 	case StatePlayerActionSelect:
 		// プレイヤーがアクションを選択している間、UIのみを更新し、ゲームロジックの進行は停止
@@ -267,6 +304,106 @@ func (bs *BattleScene) Update() (SceneType, error) {
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)
 	bs.ui.Draw(screen)
+
+	// アクションアニメーションの描画
+	if bs.currentActionAnimation != nil {
+		anim := bs.currentActionAnimation
+		// アニメーションの進行度を計算
+		progress := float64(bs.tickCount - anim.StartTime)
+
+		// 攻撃者とターゲットのアイコン位置を取得
+		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+		var attackerVM, targetVM *IconViewModel
+		for _, icon := range bfVM.Icons {
+			if icon.EntryID == uint32(anim.ActingEntry.Id()) {
+				attackerVM = icon
+			}
+			if icon.EntryID == uint32(anim.TargetEntry.Id()) {
+				targetVM = icon
+			}
+		}
+
+		if attackerVM != nil && targetVM != nil {
+			// 三角印のアニメーション
+			const travelDuration = 30 // 30フレームで移動
+			if progress <= travelDuration {
+				// 移動中の三角印を描画
+				lerpFactor := progress / travelDuration
+				currentX := attackerVM.X + (targetVM.X-attackerVM.X)*float32(lerpFactor)
+				currentY := attackerVM.Y + (targetVM.Y-attackerVM.Y)*float32(lerpFactor)
+
+				// 三角形の描画 (DrawTargetIndicatorを参考)
+				indicatorColor := bs.resources.Config.UI.Colors.Yellow
+				iconRadius := bs.resources.Config.UI.Battlefield.IconRadius
+				indicatorHeight := bs.resources.Config.UI.Battlefield.TargetIndicator.Height
+				indicatorWidth := bs.resources.Config.UI.Battlefield.TargetIndicator.Width
+				margin := float32(5)
+
+				p1x := currentX - indicatorWidth/2
+				p1y := currentY - iconRadius - margin - indicatorHeight
+				p2x := currentX + indicatorWidth/2
+				p2y := p1y
+				p3x := currentX
+				p3y := currentY - iconRadius - margin
+
+				vertices := []ebiten.Vertex{
+					{DstX: p1x, DstY: p1y},
+					{DstX: p2x, DstY: p2y},
+					{DstX: p3x, DstY: p3y},
+				}
+				r, g, b, a := indicatorColor.RGBA()
+				cr := float32(r) / 65535
+				cg := float32(g) / 65535
+				cb := float32(b) / 65535
+				ca := float32(a) / 65535
+				for i := range vertices {
+					vertices[i].ColorR = cr
+					vertices[i].ColorG = cg
+					vertices[i].ColorB = cb
+					vertices[i].ColorA = ca
+				}
+				indices := []uint16{0, 1, 2}
+				screen.DrawTriangles(vertices, indices, bs.whitePixel, &ebiten.DrawTrianglesOptions{})
+			}
+
+			// ダメージ数字のポップアップ
+			const popupDelay = 30    // 三角印がターゲットに到達してからポップアップ開始までの遅延
+			const popupDuration = 60 // ポップアップ表示時間
+			if progress >= travelDuration+popupDelay && progress < travelDuration+popupDelay+popupDuration {
+				popupProgress := (progress - (travelDuration + popupDelay)) / popupDuration
+
+				// ポップアップの位置を計算（少し上に移動する）
+				x := targetVM.X
+				y := targetVM.Y - 20 - (20 * float32(popupProgress)) // 20ピクセル上に移動
+
+				// フェードアウト効果
+				alpha := 1.0
+				if popupProgress > 0.7 {
+					alpha = (1.0 - popupProgress) / 0.3
+				}
+
+				// ダメージテキストを描画
+				geoM := ebiten.GeoM{}
+				geoM.Translate(float64(x), float64(y))
+				colorM := ebiten.ColorM{}
+				colorM.Scale(1, 1, 1, alpha)
+
+				text.Draw(screen, fmt.Sprintf("%d", anim.Damage),
+					bs.resources.Font,
+					&text.DrawOptions{
+						DrawImageOptions: ebiten.DrawImageOptions{
+							GeoM:   geoM,
+							ColorM: colorM,
+						},
+						LayoutOptions: text.LayoutOptions{
+							PrimaryAlign:   text.AlignCenter,
+							SecondaryAlign: text.AlignCenter,
+						},
+					})
+			}
+
+		}
+	}
 
 	if bs.debugMode {
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f\nState: %s",

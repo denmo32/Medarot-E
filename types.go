@@ -70,6 +70,7 @@ const (
 const (
 	StatePlaying            GameState = "Playing"
 	StatePlayerActionSelect GameState = "PlayerActionSelect"
+	StateAnimatingAction    GameState = "AnimatingAction" // アクションアニメーション再生中
 	StateMessage            GameState = "Message"
 	StateGameOver           GameState = "GameOver"
 )

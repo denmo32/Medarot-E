@@ -69,7 +69,7 @@ func (h *ShootActionHandler) Execute(
 	result.OriginalDamage = damage
 
 	intendedTargetPartInstance := targetParts.Map[result.TargetPartSlot]
-	battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
+	// 	// battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
 	result.DamageDealt = result.OriginalDamage
 	result.TargetPartBroken = intendedTargetPartInstance.IsBroken
 	result.ActualHitPartSlot = result.TargetPartSlot
@@ -160,7 +160,7 @@ func (h *MeleeActionHandler) Execute(
 
 	targetParts := PartsComponent.Get(result.TargetEntry)
 	intendedTargetPartInstance := targetParts.Map[result.TargetPartSlot]
-	battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
+	// 	// battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
 	result.DamageDealt = result.OriginalDamage
 	result.TargetPartBroken = intendedTargetPartInstance.IsBroken
 	result.ActualHitPartSlot = result.TargetPartSlot

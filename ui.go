@@ -192,10 +192,6 @@ func (u *UI) Update() {
 func (u *UI) Draw(screen *ebiten.Image) {
     u.ebitenui.Draw(screen)
 
-    // 修正: バトルフィールドの描画は BattlefieldWidget に任せる
-    // u.GetBattlefieldWidgetRect() は BattlefieldWidget の内部で利用されるため、ここでは不要
-    // u.whitePixel も BattlefieldWidget の内部で利用されるため、ここでは不要
-
     // ターゲットインジケーターの描画に必要な IconViewModel を取得
     var indicatorTargetVM *IconViewModel
     if u.currentTarget != nil && u.battlefieldWidget.viewModel != nil {
