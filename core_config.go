@@ -36,7 +36,7 @@ func LoadConfig() Config {
 				MeleeAccuracyMobilityFactor:  1.0,
 				BerserkPowerPropulsionFactor: 1.0,
 			},
-			
+
 			// ダメージ計算に関する設定
 			Damage: struct {
 				CriticalMultiplier     float64 // クリティカル時のダメージ倍率（現在は未使用）
@@ -201,7 +201,7 @@ func LoadConfig() Config {
 			SuccessRateBonuses: []BonusTerm{{SourceParam: Mobility, Multiplier: 1.0}},
 			PowerBonuses:       []BonusTerm{{SourceParam: Propulsion, Multiplier: 1.0}},
 			CriticalRateBonus:  0.0,
-			UserDebuffs:        []DebuffEffect{
+			UserDebuffs: []DebuffEffect{
 				{Type: DebuffTypeEvasion, Multiplier: 0.5},
 				{Type: DebuffTypeDefense, Multiplier: 0.5},
 			},

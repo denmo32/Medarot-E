@@ -14,7 +14,6 @@ var (
 	GaugeComponent         = donburi.NewComponentType[Gauge]()
 	LogComponent           = donburi.NewComponentType[Log]()
 	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
-	
 
 	// --- Action Components ---
 	ActionIntentComponent = donburi.NewComponentType[ActionIntent]()
@@ -29,8 +28,6 @@ var (
 	// --- Debuff Components ---
 	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
 	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
-
-	
 )
 
 // --- コンポーネントの構造体定義 ---
@@ -122,8 +119,6 @@ type AI struct {
 }
 
 // --- 特性効果タグコンポーネント --- (リファクタリングにより不要に)
-
-
 
 // --- AIパーツ選択戦略コンポーネント ---
 

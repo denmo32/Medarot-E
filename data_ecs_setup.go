@@ -72,7 +72,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 				{Name: "break", Src: []string{string(StateIdle), string(StateCharging), string(StateReady), string(StateCooldown)}, Dst: string(StateBroken)},
 			},
 			fsm.Callbacks{
-				
+
 				string(StateIdle): func(ctx context.Context, e *fsm.Event) {
 					// e.Args[0] には donburi.Entry が渡される想定
 					if len(e.Args) > 0 {

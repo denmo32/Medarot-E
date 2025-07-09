@@ -55,7 +55,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 		partInst, instFound := partsMap[slotKey]
 		partName := "---"
 		initialArmor := 0.0 // float64に変更
-		
+
 		if instFound && partInst != nil {
 			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if defFound {
@@ -104,7 +104,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 			hpText:       hpText,
 			hpBar:        hpBar,
 			displayedHP:  initialArmor, // 初期値として現在のアーマーを設定
-			targetHP:     initialArmor,  // 初期値として現在のアーマーを設定
+			targetHP:     initialArmor, // 初期値として現在のアーマーを設定
 		}
 	}
 

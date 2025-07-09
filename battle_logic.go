@@ -195,7 +195,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	}
 
 	// 5. 最終ダメージ計算
-	damage := (successRate - evasion) / dc.config.Balance.Damage.DamageAdjustmentFactor + power
+	damage := (successRate-evasion)/dc.config.Balance.Damage.DamageAdjustmentFactor + power
 	// 乱数(±10%)
 	randomFactor := 1.0 + (rand.Float64()*0.2 - 0.1)
 	damage *= randomFactor

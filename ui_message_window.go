@@ -42,7 +42,7 @@ func createMessageWindow(message string, config *Config, font text.Face) widget.
 	}
 
 	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(continueText, font, c.Colors.Gray), // 続行を促すテキスト
+		widget.TextOpts.Text(continueText, font, c.Colors.Gray),                  // 続行を促すテキスト
 		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd), // テキストを右下に配置
 	))
 
