@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	// "fmt"
 	"log"
 	"math"
@@ -78,7 +79,13 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 		}))
 
 		if defFound && partDef.Type == PartTypeHead { // Check Type from PartDefinition
-			ChangeState(entry, StateTypeBroken)
+			state := StateComponent.Get(entry)
+			if state.FSM.Can("break") {
+				err := state.FSM.Event(context.Background(), "break", entry)
+				if err != nil {
+					log.Printf("Error breaking medarot %s: %v", settings.Name, err)
+				}
+			}
 		}
 	}
 }
@@ -183,7 +190,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	}
 
 	// 5. 最終ダメージ計算
-	damage := (successRate - evasion) / dc.config.Balance.Damage.DamageAdjustmentFactor + power
+	damage := (successRate-evasion)/dc.config.Balance.Damage.DamageAdjustmentFactor + power
 	// 乱数(±10%)
 	randomFactor := 1.0 + (rand.Float64()*0.2 - 0.1)
 	damage *= randomFactor
@@ -192,7 +199,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 		damage = 1
 	}
 
-		log.Printf("ダメージ計算 (%s): (%.1f - %.1f) / %.1f + %.1f * %.2f = %d (Crit: %t)",
+	log.Printf("ダメージ計算 (%s): (%.1f - %.1f) / %.1f + %.1f * %.2f = %d (Crit: %t)",
 		formula.ID, successRate, evasion, dc.config.Balance.Damage.DamageAdjustmentFactor, power, randomFactor, int(damage), isCritical)
 
 	return int(damage), isCritical
@@ -439,7 +446,7 @@ func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*do
 	opponentTeamID := ts.GetOpponentTeam(actingEntry)
 	candidates := []*donburi.Entry{}
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).Current == StateTypeBroken {
+		if StateComponent.Get(entry).FSM.Is(string(StateBroken)) {
 			return
 		}
 		settings := SettingsComponent.Get(entry)
@@ -500,8 +507,8 @@ func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstan
 
 // AvailablePart now holds PartDefinition for AI/UI to see base stats.
 type AvailablePart struct {
-	PartDef *PartDefinition // Changed from Part to PartDefinition
-	Slot    PartSlotKey
+	PartDef  *PartDefinition // Changed from Part to PartDefinition
+	Slot     PartSlotKey
 	IsBroken bool // パーツが破壊されているか
 }
 
@@ -599,16 +606,15 @@ func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, battle
 	}
 
 	var xPos float32
-	switch state.Current {
-	case StateTypeCharging:
+	if state.FSM.Is(string(StateCharging)) {
 		xPos = homeX + (execX-homeX)*progress
-	case StateTypeReady:
+	} else if state.FSM.Is(string(StateReady)) {
 		xPos = execX
-	case StateTypeCooldown:
+	} else if state.FSM.Is(string(StateCooldown)) {
 		xPos = execX - (execX-homeX)*progress
-	case StateTypeIdle, StateTypeBroken:
+	} else if state.FSM.Is(string(StateIdle)) || state.FSM.Is(string(StateBroken)) {
 		xPos = homeX
-	default:
+	} else {
 		xPos = homeX // 不明な状態の場合はホームポジション
 	}
 	return xPos

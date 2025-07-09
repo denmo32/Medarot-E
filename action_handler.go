@@ -43,7 +43,7 @@ func (h *ShootActionHandler) Execute(
 	result.TargetEntry = targetComp.TargetEntity
 	result.TargetPartSlot = targetComp.TargetPartSlot
 
-	if StateComponent.Get(result.TargetEntry).Current == StateTypeBroken {
+	if StateComponent.Get(result.TargetEntry).FSM.Is(string(StateBroken)) {
 		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(result.TargetEntry).Name + ")を狙ったが、既に行動不能だった！"
 		return result
 	}
@@ -134,7 +134,7 @@ func (h *MeleeActionHandler) Execute(
 	}
 	result.TargetEntry = closestEnemy
 
-	if StateComponent.Get(closestEnemy).Current == StateTypeBroken {
+	if StateComponent.Get(closestEnemy).FSM.Is(string(StateBroken)) {
 		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(closestEnemy).Name + ")を狙ったが、既に行動不能だった！"
 		return result
 	}

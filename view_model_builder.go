@@ -38,16 +38,16 @@ func BuildInfoPanelViewModel(entry *donburi.Entry) InfoPanelViewModel {
 	}
 
 	var stateStr string
-	switch state.Current {
-	case StateTypeIdle:
+	currentState := state.FSM.Current()
+	if currentState == string(StateIdle) {
 		stateStr = "待機"
-	case StateTypeCharging:
+	} else if currentState == string(StateCharging) {
 		stateStr = "チャージ中"
-	case StateTypeReady:
+	} else if currentState == string(StateReady) {
 		stateStr = "実行準備"
-	case StateTypeCooldown:
+	} else if currentState == string(StateCooldown) {
 		stateStr = "クールダウン"
-	case StateTypeBroken:
+	} else if currentState == string(StateBroken) {
 		stateStr = "機能停止"
 	}
 
@@ -62,7 +62,7 @@ func BuildInfoPanelViewModel(entry *donburi.Entry) InfoPanelViewModel {
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
 func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoProvider, config *Config, debugMode bool, battlefieldRect image.Rectangle) BattlefieldViewModel {
 	vm := BattlefieldViewModel{
-		Icons: []*IconViewModel{},
+		Icons:     []*IconViewModel{},
 		DebugMode: debugMode,
 	}
 
@@ -85,7 +85,7 @@ func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoPr
 		y += offsetY
 
 		var iconColor color.Color
-		if state.Current == StateTypeBroken {
+		if state.FSM.Is(string(StateBroken)) {
 			iconColor = config.UI.Colors.Broken
 		} else if settings.Team == Team1 {
 			iconColor = config.UI.Colors.Team1
@@ -96,16 +96,16 @@ func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoPr
 		var debugText string
 		if debugMode {
 			stateStr := ""
-			switch state.Current {
-			case StateTypeIdle:
+			currentState := state.FSM.Current()
+			if currentState == string(StateIdle) {
 				stateStr = "待機"
-			case StateTypeCharging:
+			} else if currentState == string(StateCharging) {
 				stateStr = "チャージ中"
-			case StateTypeReady:
+			} else if currentState == string(StateReady) {
 				stateStr = "実行準備"
-			case StateTypeCooldown:
+			} else if currentState == string(StateCooldown) {
 				stateStr = "クールダウン"
-			case StateTypeBroken:
+			} else if currentState == string(StateBroken) {
 				stateStr = "機能停止"
 			}
 			debugText = fmt.Sprintf(`State: %s
@@ -120,7 +120,7 @@ Prog: %.1f / %.1f`,
 			Y:             y,
 			Color:         iconColor,
 			IsLeader:      settings.IsLeader,
-			State:         state.Current,
+			State:         StateType(state.FSM.Current()),
 			GaugeProgress: gauge.CurrentGauge / 100.0,
 			DebugText:     debugText,
 		})

@@ -80,7 +80,7 @@ func (w *CustomIconWidget) drawDebugInfo(screen *ebiten.Image) {
 
 func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, centerY float32) {
 	switch w.viewModel.State {
-	case StateTypeBroken:
+	case StateBroken:
 		lineWidth := float32(2)
 		size := float32(6)
 		vector.StrokeLine(screen, centerX-size, centerY-size,
@@ -89,7 +89,7 @@ func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, cen
 		vector.StrokeLine(screen, centerX-size, centerY+size,
 			centerX+size, centerY-size, lineWidth,
 			w.config.UI.Colors.White, true)
-	case StateTypeReady:
+	case StateReady:
 		// tickCountはBattleSceneで管理されるため、ここではViewModelに含めない
 		// このアニメーションはBattleSceneのUpdateで制御されるべき
 		// 現状はViewModelにtickCountがないため、アニメーションは停止
@@ -98,7 +98,7 @@ func (w *CustomIconWidget) drawStateIndicator(screen *ebiten.Image, centerX, cen
 		// 		w.config.UI.Battlefield.IconRadius+5, 2,
 		// 		w.config.UI.Colors.Yellow, true)
 		// }
-	case StateTypeCharging, StateTypeCooldown:
+	case StateCharging, StateCooldown:
 		w.drawCooldownGauge(screen, centerX, centerY)
 	}
 }
@@ -135,27 +135,27 @@ func (bf *BattlefieldWidget) SetViewModel(vm BattlefieldViewModel) {
 // Draw はバトルフィールドのすべての要素を描画します。
 // targetIconVM はターゲットインジケーターを描画するためのIconViewModelです。
 func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *IconViewModel) {
-    // 背景の描画
-    bf.DrawBackground(screen)
+	// 背景の描画
+	bf.DrawBackground(screen)
 
-    // アイコンの描画
-    if bf.viewModel != nil {
-        for _, iconVM := range bf.viewModel.Icons {
-            iconWidget := NewCustomIconWidget(iconVM, bf.config)
-            iconWidget.Render(screen)
-        }
+	// アイコンの描画
+	if bf.viewModel != nil {
+		for _, iconVM := range bf.viewModel.Icons {
+			iconWidget := NewCustomIconWidget(iconVM, bf.config)
+			iconWidget.Render(screen)
+		}
 
-        // デバッグ情報の描画
-        if bf.viewModel.DebugMode {
-            for _, iconVM := range bf.viewModel.Icons {
-                iconWidget := NewCustomIconWidget(iconVM, bf.config)
-                iconWidget.drawDebugInfo(screen)
-            }
-        }
-    }
+		// デバッグ情報の描画
+		if bf.viewModel.DebugMode {
+			for _, iconVM := range bf.viewModel.Icons {
+				iconWidget := NewCustomIconWidget(iconVM, bf.config)
+				iconWidget.drawDebugInfo(screen)
+			}
+		}
+	}
 
-    // ターゲットインジケーターの描画
-    bf.DrawTargetIndicator(screen, targetIconVM)
+	// ターゲットインジケーターの描画
+	bf.DrawTargetIndicator(screen, targetIconVM)
 }
 
 func (bf *BattlefieldWidget) DrawIcons(screen *ebiten.Image) {

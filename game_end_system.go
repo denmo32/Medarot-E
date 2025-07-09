@@ -25,7 +25,7 @@ func CheckGameEndSystem(world donburi.World) GameEndResult {
 	team2FuncCount := 0
 
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).Current != StateTypeBroken {
+		if !StateComponent.Get(entry).FSM.Is(string(StateBroken)) {
 			if SettingsComponent.Get(entry).Team == Team1 {
 				team1FuncCount++
 			} else {

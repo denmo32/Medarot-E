@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"sort"
 
@@ -120,7 +121,11 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
 
-	ChangeState(entry, StateTypeCooldown)
+	state := StateComponent.Get(entry)
+	err := state.FSM.Event(context.Background(), "cooldown", entry)
+	if err != nil {
+		log.Printf("Error starting cooldown for %s: %v", SettingsComponent.Get(entry).Name, err)
+	}
 }
 
 // StartCharge はチャージ状態を開始します。
@@ -134,7 +139,7 @@ func StartCharge(
 	partInfoProvider *PartInfoProvider,
 ) bool {
 	state := StateComponent.Get(entry)
-	if state.Current != StateTypeIdle {
+	if !state.FSM.Is(string(StateIdle)) {
 		return false // アイドル状態でない場合は開始できない
 	}
 
@@ -177,7 +182,7 @@ func StartCharge(
 	}
 
 	if actingPartDef.Category == CategoryShoot {
-		if targetEntry == nil || StateComponent.Get(targetEntry).Current == StateTypeBroken {
+		if targetEntry == nil || StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
 			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			return false
 		}
@@ -210,6 +215,10 @@ func StartCharge(
 	if gauge.TotalDuration < 1 {
 		gauge.TotalDuration = 1
 	}
-	ChangeState(entry, StateTypeCharging)
+	err := state.FSM.Event(context.Background(), "charge", entry)
+	if err != nil {
+		log.Printf("Error starting charge for %s: %v", settings.Name, err)
+		return false
+	}
 	return true
 }

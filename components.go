@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/looplab/fsm"
 	"github.com/yohamta/donburi"
 )
 
@@ -52,21 +53,20 @@ type PartsComponentData struct {
 	Map map[PartSlotKey]*PartInstanceData
 }
 
-// StateType はエンティティの状態を表すenumです。
-type StateType int
+// StateType はエンティティの状態を表す文字列です。
+type StateType string
 
 const (
-	StateTypeIdle StateType = iota
-	StateTypeCharging
-	StateTypeReady
-	StateTypeCooldown
-	StateTypeBroken
+	StateIdle     StateType = "idle"
+	StateCharging StateType = "charging"
+	StateReady    StateType = "ready"
+	StateCooldown StateType = "cooldown"
+	StateBroken   StateType = "broken"
 )
 
 // State はエンティティの現在の状態と関連データを保持します。
 type State struct {
-	Current      StateType
-	StateEnterAt int // この状態に遷移したゲームティック
+	FSM *fsm.FSM
 }
 
 // Gauge はチャージやクールダウンの進行状況を保持します。
@@ -132,8 +132,6 @@ type AI struct {
 type StateChangedTag struct{}
 
 var StateChangedTagComponent = donburi.NewComponentType[StateChangedTag]()
-
-
 
 // --- AIパーツ選択戦略コンポーネント ---
 

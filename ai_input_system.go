@@ -22,7 +22,7 @@ func UpdateAIInputSystem(
 	query.NewQuery(
 		filter.Not(filter.Contains(PlayerControlComponent)), // プレイヤー制御ではないエンティティ
 	).Each(world, func(entry *donburi.Entry) {
-		if !entry.HasComponent(StateComponent) || StateComponent.Get(entry).Current != StateTypeIdle {
+		if !entry.HasComponent(StateComponent) || !StateComponent.Get(entry).FSM.Is(string(StateIdle)) {
 			return
 		}
 		// aiSelectAction のシグネチャが (world donburi.World, actingEntry *donburi.Entry, pip *PartInfoProvider, ts *TargetSelector, conf *Config) のようになっていると仮定します。

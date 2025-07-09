@@ -137,7 +137,8 @@ func (bs *BattleScene) Update() error {
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
 		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
 		bs.ui.SetBattlefieldViewModel(bfVM)
-		ProcessStateChangeSystem(bs.world)
+		// ProcessStateChangeSystem はFSMコールバックに統合されたため不要
+		// ProcessStateChangeSystem(bs.world)
 
 	case StateAnimatingAction:
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
@@ -169,7 +170,7 @@ func (bs *BattleScene) Update() error {
 
 			bs.enqueueMessageQueue(messages, func() {
 				actingEntry := anim.Result.ActingEntry
-				if actingEntry.Valid() && StateComponent.Get(actingEntry).Current != StateTypeBroken {
+				if actingEntry.Valid() && !StateComponent.Get(actingEntry).FSM.Is(string(StateBroken)) {
 					StartCooldownSystem(actingEntry, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
 				}
 				bs.attackingEntity = nil
@@ -185,7 +186,7 @@ func (bs *BattleScene) Update() error {
 
 		if !bs.ui.IsActionModalVisible() && len(bs.playerActionPendingQueue) > 0 {
 			actingEntry := bs.playerActionPendingQueue[0]
-			if actingEntry.Valid() && StateComponent.Get(actingEntry).Current == StateTypeIdle {
+			if actingEntry.Valid() && StateComponent.Get(actingEntry).FSM.Is(string(StateIdle)) {
 				actionTargetMap := make(map[PartSlotKey]ActionTarget)
 				availableParts := bs.battleLogic.PartInfoProvider.GetAvailableAttackParts(actingEntry)
 				for _, available := range availableParts {

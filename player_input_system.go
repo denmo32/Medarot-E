@@ -18,7 +18,7 @@ func UpdatePlayerInputSystem(world donburi.World) PlayerInputSystemResult {
 	var playersToAct []*donburi.Entry
 
 	query.NewQuery(filter.Contains(PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).Current == StateTypeIdle {
+		if StateComponent.Get(entry).FSM.Is(string(StateIdle)) {
 			playersToAct = append(playersToAct, entry)
 		}
 	})
