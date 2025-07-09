@@ -66,6 +66,45 @@ func UpdateActionQueueSystem(
 
 		if handler != nil {
 			actionResult := handler.Execute(actingEntry, world, intent, battleLogic, gameConfig)
+
+			if actionResult.ActionDidHit {
+				// クリティカルヒット発生時でも、自動防御は試行されます。
+				targetEntry := actionResult.TargetEntry
+
+				// 1. 防御パーツの選択
+				defendingPartInst := battleLogic.TargetSelector.SelectDefensePart(targetEntry)
+				actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(partsComp.Map[intent.SelectedPartKey].DefinitionID)
+
+				// 2. 防御パーツがあり、かつ防御が成功した場合
+				if defendingPartInst != nil && battleLogic.HitCalculator.CalculateDefense(actingEntry, targetEntry, actingPartDef) {
+					actionResult.ActionIsDefended = true
+
+					defendingPartDef, _ := GlobalGameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
+					actionResult.DefendingPartType = string(defendingPartDef.Type)
+
+					// 防御パーツのスロットを特定
+					defendingPartSlot := battleLogic.PartInfoProvider.FindPartSlot(targetEntry, defendingPartInst)
+					actionResult.ActualHitPartSlot = defendingPartSlot
+
+					// ダメージ軽減計算
+					finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(actionResult.OriginalDamage, defendingPartDef)
+					actionResult.DamageDealt = finalDamage
+
+					// 防御パーツにダメージを適用
+					battleLogic.DamageCalculator.ApplyDamage(targetEntry, defendingPartInst, finalDamage)
+					actionResult.TargetPartBroken = defendingPartInst.IsBroken
+				} else {
+					// 防御失敗、または防御パーツがない場合
+					actionResult.ActionIsDefended = false
+
+					// 意図したターゲットパーツにダメージを適用
+					intendedTargetPartInstance := PartsComponent.Get(targetEntry).Map[actionResult.TargetPartSlot]
+					actionResult.DamageDealt = actionResult.OriginalDamage
+
+					battleLogic.DamageCalculator.ApplyDamage(targetEntry, intendedTargetPartInstance, actionResult.OriginalDamage)
+					actionResult.TargetPartBroken = intendedTargetPartInstance.IsBroken
+				}
+			}
 			results = append(results, actionResult)
 		} else {
 			// Handle error: no handler found

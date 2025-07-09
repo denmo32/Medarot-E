@@ -116,11 +116,6 @@ func (bs *BattleScene) Update() error {
 			for _, result := range actionResults {
 				if result.ActingEntry != nil && result.ActingEntry.Valid() {
 					bs.currentActionAnimation = &ActionAnimationData{Result: result, StartTime: bs.tickCount}
-					targetParts := PartsComponent.Get(result.TargetEntry)
-					if targetParts != nil {
-						intendedTargetPartInstance := targetParts.Map[result.TargetPartSlot]
-						bs.battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
-					}
 					bs.state = StateAnimatingAction
 					break
 				}

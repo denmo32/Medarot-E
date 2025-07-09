@@ -167,7 +167,6 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	successRate := dc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
 	power := float64(actingPartDef.Power)
 	evasion := dc.partInfoProvider.GetEvasionRate(target)
-	// defense := dc.partInfoProvider.GetDefenseRate(target) // 自動防御で処理するため削除
 
 	// クリティカル判定
 	isCritical := false
@@ -184,13 +183,12 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	if rand.Intn(100) < int(criticalChance) {
 		isCritical = true
 		log.Printf("%s の攻撃がクリティカル！ (確率: %.1f%%)", SettingsComponent.Get(attacker).Name, criticalChance)
-		// クリティカル時は回避度と防御度を0にする
+		// クリティカル時は回避度を0にする
 		evasion = 0
-		// defense = 0
 	}
 
 	// 5. 最終ダメージ計算
-	damage := (successRate-evasion)/dc.config.Balance.Damage.DamageAdjustmentFactor + power
+	damage := (successRate - evasion) / dc.config.Balance.Damage.DamageAdjustmentFactor + power
 	// 乱数(±10%)
 	randomFactor := 1.0 + (rand.Float64()*0.2 - 0.1)
 	damage *= randomFactor
@@ -241,6 +239,18 @@ func (dc *DamageCalculator) GenerateActionLog(attacker *donburi.Entry, target *d
 		return GlobalGameDataManager.Messages.FormatMessage("critical_hit", params)
 	}
 	return GlobalGameDataManager.Messages.FormatMessage("attack_hit", params)
+}
+
+// CalculateReducedDamage は防御成功時のダメージを計算します。
+func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, defensePartDef *PartDefinition) int {
+	// ダメージ軽減ロジック: ダメージ = 元ダメージ - 防御パーツの防御力
+	// 将来的に、より複雑な計算式（例：割合軽減）に変更する可能性があります。
+	reducedDamage := originalDamage - defensePartDef.Defense
+	if reducedDamage < 1 {
+		reducedDamage = 1 // 最低でも1ダメージは保証
+	}
+	log.Printf("防御成功！ ダメージ軽減: %d -> %d (防御パーツ防御力: %d)", originalDamage, reducedDamage, defensePartDef.Defense)
+	return reducedDamage
 }
 
 // GenerateActionLogDefense は防御時のアクションログを生成します。
