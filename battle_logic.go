@@ -166,6 +166,13 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	// 2. 基本パラメータの取得
 	successRate := dc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
 	power := float64(actingPartDef.Power)
+
+	// 特性による威力ボーナスを加算
+	if formula != nil {
+		for _, bonus := range formula.PowerBonuses {
+			power += dc.partInfoProvider.getParameterValue(attacker, bonus.SourceParam) * bonus.Multiplier
+		}
+	}
 	evasion := dc.partInfoProvider.GetEvasionRate(target)
 
 	// クリティカル判定

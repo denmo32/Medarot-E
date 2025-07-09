@@ -14,7 +14,7 @@ var (
 	GaugeComponent         = donburi.NewComponentType[Gauge]()
 	LogComponent           = donburi.NewComponentType[Log]()
 	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
-	// EffectsComponent       = donburi.NewComponentType[Effects]() // 現在未使用
+	
 
 	// --- Action Components ---
 	ActionIntentComponent = donburi.NewComponentType[ActionIntent]()
@@ -30,11 +30,7 @@ var (
 	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
 	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
 
-	// --- Deprecated / To be removed ---
-	// ActionComponent        = donburi.NewComponentType[Action]()
-	// TargetHistoryComponent     = donburi.NewComponentType[TargetHistoryComponentData]()
-	// LastActionHistoryComponent = donburi.NewComponentType[LastActionHistoryComponentData]()
-	// TargetingStrategyComponent = donburi.NewComponentType[TargetingStrategyComponentData]()
+	
 )
 
 // --- コンポーネントの構造体定義 ---
@@ -127,11 +123,7 @@ type AI struct {
 
 // --- 特性効果タグコンポーネント --- (リファクタリングにより不要に)
 
-// StateChangedTag は、エンティティの状態がこのフレームで変更されたことを示す一時的なタグです。
-// 状態遷移システムがこれを処理し、フレームの終わりに削除します。
-type StateChangedTag struct{}
 
-var StateChangedTagComponent = donburi.NewComponentType[StateChangedTag]()
 
 // --- AIパーツ選択戦略コンポーネント ---
 

@@ -72,15 +72,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 				{Name: "break", Src: []string{string(StateIdle), string(StateCharging), string(StateReady), string(StateCooldown)}, Dst: string(StateBroken)},
 			},
 			fsm.Callbacks{
-				"enter_state": func(ctx context.Context, e *fsm.Event) {
-					// 状態が変更されたことを示すタグを付与
-					// e.Args[0] には donburi.Entry が渡される想定
-					if len(e.Args) > 0 {
-						if entry, ok := e.Args[0].(*donburi.Entry); ok {
-							donburi.Add(entry, StateChangedTagComponent, &StateChangedTag{})
-						}
-					}
-				},
+				
 				string(StateIdle): func(ctx context.Context, e *fsm.Event) {
 					// e.Args[0] には donburi.Entry が渡される想定
 					if len(e.Args) > 0 {

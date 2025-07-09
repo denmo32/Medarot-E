@@ -36,45 +36,7 @@ func LoadConfig() Config {
 				MeleeAccuracyMobilityFactor:  1.0,
 				BerserkPowerPropulsionFactor: 1.0,
 			},
-			// 特性やカテゴリの特殊効果に関する設定（現在は未使用ですが、将来的な拡張のために残されています）
-			Effects: struct {
-				Melee struct {
-					DefenseRateDebuff float64
-					CriticalRateBonus int
-				}
-				Berserk struct {
-					DefenseRateDebuff float64
-					EvasionRateDebuff float64
-				}
-				Shoot struct{}
-				Aim   struct {
-					EvasionRateDebuff float64
-					CriticalRateBonus int
-				}
-			}{
-				Melee: struct {
-					DefenseRateDebuff float64
-					CriticalRateBonus int
-				}{
-					DefenseRateDebuff: 0.5,
-					CriticalRateBonus: 10,
-				},
-				Berserk: struct {
-					DefenseRateDebuff float64
-					EvasionRateDebuff float64
-				}{
-					DefenseRateDebuff: 0.5,
-					EvasionRateDebuff: 0.5,
-				},
-				Shoot: struct{}{},
-				Aim: struct {
-					EvasionRateDebuff float64
-					CriticalRateBonus int
-				}{
-					EvasionRateDebuff: 0.5,
-					CriticalRateBonus: 15,
-				},
-			},
+			
 			// ダメージ計算に関する設定
 			Damage: struct {
 				CriticalMultiplier     float64 // クリティカル時のダメージ倍率（現在は未使用）
