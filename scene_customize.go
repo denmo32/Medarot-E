@@ -16,8 +16,8 @@ import (
 // CustomizeScene は機体カスタマイズ画面のシーンです
 type CustomizeScene struct {
 	resources *SharedResources
+	manager   *SceneManager // bamennのシーンマネージャ
 	ui        *ebitenui.UI
-	nextScene SceneType
 
 	statusText              *widget.Text
 	medalNameButton         *widget.Button
@@ -43,17 +43,16 @@ type CustomizeScene struct {
 	currentLegsIndex  int
 }
 
-func NewCustomizeScene(res *SharedResources) *CustomizeScene {
+func NewCustomizeScene(res *SharedResources, manager *SceneManager) *CustomizeScene {
 	cs := &CustomizeScene{
 		resources: res,
-		nextScene: SceneTypeCustomize,
+		manager:   manager,
 	}
 
 	for i := range res.GameData.Medarots {
 		cs.playerMedarots = append(cs.playerMedarots, &res.GameData.Medarots[i])
 	}
 	sort.Slice(cs.playerMedarots, func(i, j int) bool {
-		// TeamID と DrawIndex の両方でソート
 		if cs.playerMedarots[i].Team != cs.playerMedarots[j].Team {
 			return cs.playerMedarots[i].Team < cs.playerMedarots[j].Team
 		}
@@ -78,11 +77,9 @@ func NewCustomizeScene(res *SharedResources) *CustomizeScene {
 
 func (cs *CustomizeScene) setupPartLists() {
 	cs.medalList = GlobalGameDataManager.GetAllMedalDefinitions()
-	// Sort medals if necessary, e.g., by ID for consistent order
 	sort.Slice(cs.medalList, func(i, j int) bool { return cs.medalList[i].ID < cs.medalList[j].ID })
 
 	allPartDefs := GlobalGameDataManager.GetAllPartDefinitions()
-	// Sort all parts if necessary, e.g., by ID
 	sort.Slice(allPartDefs, func(i, j int) bool { return allPartDefs[i].ID < allPartDefs[j].ID })
 
 	cs.headPartsList = []*PartDefinition{}
@@ -107,9 +104,9 @@ func (cs *CustomizeScene) setupPartLists() {
 func (cs *CustomizeScene) createLayout() *widget.Container {
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewGridLayout(
-			widget.GridLayoutOpts.Columns(2),
-			widget.GridLayoutOpts.Stretch([]bool{true, true}, []bool{true}),
-			widget.GridLayoutOpts.Spacing(20, 0),
+			widget.GridLayoutOpts.Columns(3),
+			widget.GridLayoutOpts.Stretch([]bool{false, true, false}, []bool{true}),
+			widget.GridLayoutOpts.Spacing(10, 0),
 			widget.GridLayoutOpts.Padding(widget.NewInsetsSimple(20)),
 		)),
 	)
@@ -186,7 +183,7 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 			} else {
 				log.Println("Successfully saved medarots.csv")
 			}
-			cs.nextScene = SceneTypeTitle
+			cs.manager.GoToTitleScene() // マネージャ経由で遷移
 		}),
 	)
 	leftPanel.AddChild(saveButton)
@@ -362,14 +359,18 @@ func (cs *CustomizeScene) updateStatus(id string) {
 	cs.statusText.Label = sb.String()
 }
 
-func (cs *CustomizeScene) Update() (SceneType, error) {
+func (cs *CustomizeScene) Update() error {
 	cs.ui.Update()
-	return cs.nextScene, nil
+	return nil
 }
 
 func (cs *CustomizeScene) Draw(screen *ebiten.Image) {
 	screen.Fill(cs.resources.Config.UI.Colors.Background)
 	cs.ui.Draw(screen)
+}
+
+func (cs *CustomizeScene) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return cs.resources.Config.UI.Screen.Width, cs.resources.Config.UI.Screen.Height
 }
 
 // findIndexByIDGeneric はスライス内のインデックスを見つけるためのジェネリック関数です。

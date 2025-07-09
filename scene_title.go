@@ -12,15 +12,15 @@ import (
 // TitleScene はタイトル画面のシーンです
 type TitleScene struct {
 	resources *SharedResources
+	manager   *SceneManager // シーンマネージャへの参照
 	ui        *ebitenui.UI
-	nextScene SceneType
 }
 
 // NewTitleScene は新しいタイトルシーンを作成します
-func NewTitleScene(res *SharedResources) *TitleScene {
+func NewTitleScene(res *SharedResources, manager *SceneManager) *TitleScene {
 	t := &TitleScene{
 		resources: res,
-		nextScene: SceneTypeTitle,
+		manager:   manager, // マネージャを保持
 	}
 
 	rootContainer := widget.NewContainer(
@@ -58,7 +58,8 @@ func NewTitleScene(res *SharedResources) *TitleScene {
 		widget.ButtonOpts.Text("Battle", res.Font, buttonTextColor),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(10)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			t.nextScene = SceneTypeBattle
+			// マネージャ経由でシーン遷移を依頼
+			t.manager.GoToBattleScene()
 		}),
 	)
 	panel.AddChild(battleButton)
@@ -68,7 +69,8 @@ func NewTitleScene(res *SharedResources) *TitleScene {
 		widget.ButtonOpts.Text("Customize", res.Font, buttonTextColor),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(10)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			t.nextScene = SceneTypeCustomize
+			// マネージャ経由でシーン遷移を依頼
+			t.manager.GoToCustomizeScene()
 		}),
 	)
 	panel.AddChild(customizeButton)
@@ -77,12 +79,19 @@ func NewTitleScene(res *SharedResources) *TitleScene {
 	return t
 }
 
-func (t *TitleScene) Update() (SceneType, error) {
+// Update はUIの状態を更新します。bamennに準拠し、errorのみを返します。
+func (t *TitleScene) Update() error {
 	t.ui.Update()
-	return t.nextScene, nil
+	return nil
 }
 
+// Draw はUIを描画します
 func (t *TitleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(t.resources.Config.UI.Colors.Background)
 	t.ui.Draw(screen)
+}
+
+// Layout はEbitenのレイアウト計算を行います。bamennのシーンとして必須です。
+func (t *TitleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return t.resources.Config.UI.Screen.Width, t.resources.Config.UI.Screen.Height
 }

@@ -5,24 +5,16 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// SceneType はゲーム全体のシーンの種類を定義します
-type SceneType int
-
-const (
-	SceneTypeTitle     SceneType = iota // タイトルシーン
-	SceneTypeBattle                     // バトルシーン
-	SceneTypeCustomize                  // カスタマイズシーン
-)
-
-// Scene は各シーンが実装すべきメソッドのインターフェースです
-type Scene interface {
-	Update() (SceneType, error)
-	Draw(screen *ebiten.Image)
-}
-
 // SharedResources はシーン間で共有されるリソースを保持します
+// (旧game.goから移動)
 type SharedResources struct {
 	GameData *GameData
 	Config   Config
 	Font     text.Face
+}
+
+// Sceneは、bamennで管理される全てのシーンが満たすべきインターフェースです。
+// ebiten.Gameを埋め込むことで、Update/Draw/Layoutメソッドを持つことが保証されます。
+type Scene interface {
+	ebiten.Game
 }

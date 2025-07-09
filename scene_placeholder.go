@@ -12,15 +12,15 @@ import (
 // PlaceholderScene は「未実装」などを表示するための汎用シーンです
 type PlaceholderScene struct {
 	resources *SharedResources
+	manager   *SceneManager // bamennのシーンマネージャ
 	ui        *ebitenui.UI
-	nextScene SceneType
 }
 
 // NewPlaceholderScene は新しいプレースホルダーシーンを作成します
-func NewPlaceholderScene(res *SharedResources, message string) *PlaceholderScene {
+func NewPlaceholderScene(res *SharedResources, manager *SceneManager, message string) *PlaceholderScene {
 	p := &PlaceholderScene{
 		resources: res,
-		nextScene: SceneTypeCustomize, // 自分自身のシーンタイプを初期値に
+		manager:   manager,
 	}
 
 	rootContainer := widget.NewContainer(
@@ -53,15 +53,19 @@ func NewPlaceholderScene(res *SharedResources, message string) *PlaceholderScene
 	return p
 }
 
-func (p *PlaceholderScene) Update() (SceneType, error) {
+func (p *PlaceholderScene) Update() error {
 	p.ui.Update()
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		p.nextScene = SceneTypeTitle
+		p.manager.GoToTitleScene() // マネージャ経由で遷移
 	}
-	return p.nextScene, nil
+	return nil
 }
 
 func (p *PlaceholderScene) Draw(screen *ebiten.Image) {
 	screen.Fill(p.resources.Config.UI.Colors.Background)
 	p.ui.Draw(screen)
+}
+
+func (p *PlaceholderScene) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return p.resources.Config.UI.Screen.Width, p.resources.Config.UI.Screen.Height
 }
