@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"log"
-	// "math"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
@@ -171,8 +170,6 @@ func (u *UI) Update() {
 }
 
 func (u *UI) Draw(screen *ebiten.Image, tick int) {
-	u.ebitenui.Draw(screen)
-
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
 	var indicatorTargetVM *IconViewModel
 	if u.currentTarget != nil && u.battlefieldWidget.viewModel != nil {
@@ -184,8 +181,11 @@ func (u *UI) Draw(screen *ebiten.Image, tick int) {
 		}
 	}
 
-	// BattlefieldWidget の Draw メソッドを呼び出す
+	// BattlefieldWidget の Draw メソッドを先に呼び出す
 	u.battlefieldWidget.Draw(screen, indicatorTargetVM, tick)
+
+	// その後でebitenuiを描画する
+	u.ebitenui.Draw(screen)
 }
 
 func (u *UI) DrawBackground(screen *ebiten.Image) {
@@ -244,23 +244,30 @@ func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick
 			if popupProgress > 0.7 {
 				alpha = (1.0 - popupProgress) / 0.3
 			}
-			geoM := ebiten.GeoM{}
-			geoM.Translate(float64(x), float64(y))
 
-			// テキストを透明度付きで描画
-			colorScale := ebiten.ColorScale{}
-			colorScale.ScaleAlpha(float32(alpha))
+			drawOpts := &text.DrawOptions{}
 
-			text.Draw(screen, fmt.Sprintf("%d", anim.Result.OriginalDamage), GlobalGameDataManager.Font, &text.DrawOptions{
-				DrawImageOptions: ebiten.DrawImageOptions{
-					GeoM:       geoM,
-					ColorScale: colorScale,
-				},
-				LayoutOptions: text.LayoutOptions{
-					PrimaryAlign:   text.AlignCenter,
-					SecondaryAlign: text.AlignCenter,
-				},
-			})
+			// Set position and scale
+			drawOpts.GeoM.Scale(1.5, 1.5)
+			drawOpts.GeoM.Translate(float64(x), float64(y))
+
+			// Set layout options to center the text
+			drawOpts.LayoutOptions = text.LayoutOptions{
+				PrimaryAlign:   text.AlignCenter,
+				SecondaryAlign: text.AlignCenter,
+			}
+
+			// Set color and alpha
+			r, g, b, a := u.config.UI.Colors.Red.RGBA()
+			cr := float32(r) / 0xffff
+			cg := float32(g) / 0xffff
+			cb := float32(b) / 0xffff
+			ca := float32(a) / 0xffff
+
+			drawOpts.DrawImageOptions.ColorScale.Scale(cr, cg, cb, ca)
+			drawOpts.DrawImageOptions.ColorScale.ScaleAlpha(float32(alpha))
+
+			text.Draw(screen, fmt.Sprintf("-%d", anim.Result.OriginalDamage), GlobalGameDataManager.Font, drawOpts)
 		}
 	}
 }
