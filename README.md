@@ -90,12 +90,12 @@ Data & Utilities (データ定義と補助機能)
 *   `data_config.go`
     *   役割: ゲームの固定設定値を管理します。
     *   内容: ゲームバランス（攻撃力係数など）、UIのサイズや色といった、マジックナンバーになりがちな値を一元管理します。
-*   `data_csv_loader.go`
-    *   役割: `data` フォルダにあるCSVファイルの保存。
-    *   内容: メダロット構成のデータをファイルに保存します。読み込み機能は `data_resource_manager.go` に移管されました。
+*   `data_csv_saver.go`
+    *   役割: メダロット構成のデータをCSVファイルに保存します。
+    *   内容: `scene_customize.go` から呼び出され、現在のメダロットのロードアウトを `data/medarots.csv` に保存します。
 *   `data_resource_manager.go`
     *   役割: `ebitengine-resource` を使用したゲームリソース（CSVデータ、フォントなど）の読み込みと管理。
-    *   内容: リソースの登録、キャッシュ、および `text.Face` への変換機能を提供します。
+    *   内容: リソースの登録、キャッシュ、および `text.Face` への変換機能を提供します。CSVファイルのロード機能もここに集約されています。
 *   `data_game_manager.go`
     *   役割: 静的なゲームデータ（パーツ定義、メダル定義、フォントなど）の管理。
     *   内容: `GlobalGameDataManager` インスタンスを通じて、ロードされた各種定義データへのアクセスを提供します。

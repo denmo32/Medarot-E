@@ -3,6 +3,8 @@ package main
 import (
 	"image"
 	"image/color"
+	"strconv"
+	"strings"
 
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -445,4 +447,22 @@ type UIInterface interface {
 	SetCurrentTarget(entry *donburi.Entry)
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle
+}
+
+// parseInt は文字列をintに変換します。変換できない場合はdefaultValueを返します。
+func parseInt(s string, defaultValue int) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return defaultValue
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultValue
+	}
+	return i
+}
+
+// parseBool は文字列をboolに変換します。"true" (大文字小文字を区別しない) の場合のみtrueを返します。
+func parseBool(s string) bool {
+	return strings.ToLower(strings.TrimSpace(s)) == "true"
 }

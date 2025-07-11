@@ -5,24 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 )
-
-func parseInt(s string, defaultValue int) int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return defaultValue
-	}
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		return defaultValue
-	}
-	return i
-}
-
-func parseBool(s string) bool {
-	return strings.ToLower(strings.TrimSpace(s)) == "true"
-}
 
 // SaveMedarotLoadouts は、現在のメダロットの構成をCSVファイルに保存します。
 func SaveMedarotLoadouts(filePath string, medarots []MedarotData) error {
@@ -61,3 +44,6 @@ func SaveMedarotLoadouts(filePath string, medarots []MedarotData) error {
 	}
 	return nil
 }
+
+// parseInt と parseBool は data_csv_loader.go に移動されたため、ここでは定義しません。
+// 必要であれば、共通のユーティリティファイルに移動することを検討してください。
