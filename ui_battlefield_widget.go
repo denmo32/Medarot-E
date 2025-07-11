@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"math"
 
-	uiimage "github.com/ebitenui/ebitenui/image"
+	// uiimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -34,9 +34,7 @@ func NewBattlefieldWidget(config *Config) *BattlefieldWidget {
 		whitePixel: whiteImg,
 	}
 	bf.Container = widget.NewContainer(
-		widget.ContainerOpts.BackgroundImage(
-			uiimage.NewNineSliceColor(color.NRGBA{20, 30, 40, 255}),
-		),
+		// 背景画像はBattleSceneで描画するため、ここでは設定しない
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
 	)
 	return bf
@@ -135,8 +133,7 @@ func (bf *BattlefieldWidget) SetViewModel(vm BattlefieldViewModel) {
 // Draw はバトルフィールドのすべての要素を描画します。
 // targetIconVM はターゲットインジケーターを描画するためのIconViewModelです。
 func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *IconViewModel) {
-	// 背景の描画
-	bf.DrawBackground(screen)
+	// 背景の描画はBattleSceneで行うため、ここでは行わない
 
 	// アイコンの描画
 	if bf.viewModel != nil {

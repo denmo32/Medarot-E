@@ -3,7 +3,7 @@ package main
 import (
 	"image/color"
 
-	"github.com/ebitenui/ebitenui/image"
+	// "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
@@ -17,34 +17,36 @@ func createMessageWindow(message string, config *Config, font text.Face) widget.
 		)),
 	)
 
-	panel := widget.NewContainer(
-		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{20, 20, 30, 220})), // 半透明の背景
-		widget.ContainerOpts.Layout(widget.NewRowLayout(
-			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-			widget.RowLayoutOpts.Padding(widget.NewInsetsSimple(15)), // パネル内のパディング
-			widget.RowLayoutOpts.Spacing(10),                         // メッセージと「クリックして続行」の間のスペース
-		)),
-		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.AnchorLayoutData{
-			HorizontalPosition: widget.AnchorLayoutPositionCenter, // 水平方向中央
-			VerticalPosition:   widget.AnchorLayoutPositionEnd,    // 垂直方向下部
-			StretchVertical:    false,                             // 垂直方向には引き伸ばさない
-		})),
+	// テキストウィジェットを作成
+	messageTextWidget := widget.NewText(
+		widget.TextOpts.Text(message, font, c.Colors.White),
 	)
-	root.AddChild(panel)
 
-	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(message, font, c.Colors.White), // メッセージ本文
-	))
-
-	continueText := "クリックして続行..." // デフォルトテキスト
+	continueTextStr := "クリックして続行..."
 	if GlobalGameDataManager != nil && GlobalGameDataManager.Messages != nil {
-		continueText = GlobalGameDataManager.Messages.FormatMessage("ui_click_to_continue", nil)
+		continueTextStr = GlobalGameDataManager.Messages.FormatMessage("ui_click_to_continue", nil)
 	}
+	continueTextWidget := widget.NewText(
+		widget.TextOpts.Text(continueTextStr, font, c.Colors.Gray),
+		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd),
+	)
 
-	panel.AddChild(widget.NewText(
-		widget.TextOpts.Text(continueText, font, c.Colors.Gray),                  // 続行を促すテキスト
-		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd), // テキストを右下に配置
-	))
+	// NewPanel を使用してメッセージウィンドウを作成
+	panel := NewPanel(&PanelOptions{
+		Padding:         widget.NewInsetsSimple(15),
+		Spacing:         10,
+		BackgroundColor: c.Colors.Background, // 不透明な背景色を設定
+		BorderColor:     color.White,         // 白い枠線
+		BorderThickness: 2,                   // 枠線の太さ
+	}, messageTextWidget, continueTextWidget)
+
+	// パネルを画面下部中央に配置
+	panel.GetWidget().LayoutData = widget.AnchorLayoutData{
+		HorizontalPosition: widget.AnchorLayoutPositionCenter,
+		VerticalPosition:   widget.AnchorLayoutPositionEnd,
+		StretchVertical:    false,
+	}
+	root.AddChild(panel)
 
 	return root
 }

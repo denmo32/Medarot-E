@@ -16,32 +16,20 @@ import (
 func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi.Entry) *infoPanelUI {
 	c := config.UI
 	settings := SettingsComponent.Get(entry)
-	partsComp := PartsComponent.Get(entry) // This is *PartsComponentData
-	partsMap := partsComp.Map              // map[PartSlotKey]*PartInstanceData
+	partsComp := PartsComponent.Get(entry)
+	partsMap := partsComp.Map
 
-	panelContainer := widget.NewContainer(
-		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{50, 50, 70, 200})),
-		widget.ContainerOpts.Layout(widget.NewRowLayout(
-			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-			widget.RowLayoutOpts.Padding(widget.NewInsetsSimple(5)),
-			widget.RowLayoutOpts.Spacing(2),
-		)),
-		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.MinSize(int(c.InfoPanel.BlockWidth), 0)),
-	)
-
+	// ヘッダー部分を作成
 	headerContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewGridLayout(
 			widget.GridLayoutOpts.Columns(2),
 			widget.GridLayoutOpts.Stretch([]bool{true, false}, []bool{true}),
 		)),
 	)
-	panelContainer.AddChild(headerContainer)
-
 	nameText := widget.NewText(
 		widget.TextOpts.Text(settings.Name, font, c.Colors.White),
 	)
 	headerContainer.AddChild(nameText)
-
 	stateText := widget.NewText(
 		widget.TextOpts.Text("待機", font, c.Colors.Yellow),
 		widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{
@@ -50,17 +38,19 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 	)
 	headerContainer.AddChild(stateText)
 
+	// パーツ部分のウィジェットを作成
+	partWidgets := []widget.PreferredSizeLocateableWidget{}
 	partSlots := make(map[PartSlotKey]*infoPanelPartUI)
 	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
 		partInst, instFound := partsMap[slotKey]
 		partName := "---"
-		initialArmor := 0.0 // float64に変更
+		initialArmor := 0.0
 
 		if instFound && partInst != nil {
 			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if defFound {
 				partName = partDef.PartName
-				initialArmor = float64(partInst.CurrentArmor) // float64にキャスト
+				initialArmor = float64(partInst.CurrentArmor)
 			} else {
 				partName = "(定義なし)"
 			}
@@ -72,7 +62,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 				widget.RowLayoutOpts.Spacing(2),
 			)),
 		)
-		panelContainer.AddChild(partContainer)
+		partWidgets = append(partWidgets, partContainer)
 
 		partNameText := widget.NewText(
 			widget.TextOpts.Text(partName, font, c.Colors.White),
@@ -103,10 +93,18 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 			partNameText: partNameText,
 			hpText:       hpText,
 			hpBar:        hpBar,
-			displayedHP:  initialArmor, // 初期値として現在のアーマーを設定
-			targetHP:     initialArmor, // 初期値として現在のアーマーを設定
+			displayedHP:  initialArmor,
+			targetHP:     initialArmor,
 		}
 	}
+
+	// NewPanel を使用して全体のパネルを作成
+	panelContainer := NewPanel(&PanelOptions{
+		PanelWidth:      int(c.InfoPanel.BlockWidth),
+		Padding:         widget.NewInsetsSimple(5),
+		Spacing:         2,
+		BackgroundColor: color.NRGBA{50, 50, 70, 200}, // 背景色を設定
+	}, append([]widget.PreferredSizeLocateableWidget{headerContainer}, partWidgets...)...)
 
 	return &infoPanelUI{
 		rootContainer: panelContainer,

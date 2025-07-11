@@ -239,6 +239,11 @@ func (bs *BattleScene) Update() error {
 
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)
+
+	// バトルフィールドの背景（ラインなど）をUIより先に描画
+	bfWidget := bs.ui.(*UI).battlefieldWidget // UIインターフェースからBattlefieldWidgetを取得
+	bfWidget.DrawBackground(screen)
+
 	bs.ui.Draw(screen)
 
 	if bs.currentActionAnimation != nil {
