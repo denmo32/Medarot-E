@@ -251,9 +251,21 @@ func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick
 			}
 			geoM := ebiten.GeoM{}
 			geoM.Translate(float64(x), float64(y))
-			colorM := ebiten.ColorM{}
-			colorM.Scale(1, 1, 1, alpha)
-			text.Draw(screen, fmt.Sprintf("%d", anim.Result.OriginalDamage), GlobalGameDataManager.Font, &text.DrawOptions{DrawImageOptions: ebiten.DrawImageOptions{GeoM: geoM, ColorM: colorM}, LayoutOptions: text.LayoutOptions{PrimaryAlign: text.AlignCenter, SecondaryAlign: text.AlignCenter}})
+
+			// テキストを透明度付きで描画
+			colorScale := ebiten.ColorScale{}
+			colorScale.ScaleAlpha(float32(alpha))
+
+			text.Draw(screen, fmt.Sprintf("%d", anim.Result.OriginalDamage), GlobalGameDataManager.Font, &text.DrawOptions{
+				DrawImageOptions: ebiten.DrawImageOptions{
+					GeoM:       geoM,
+					ColorScale: colorScale,
+				},
+				LayoutOptions: text.LayoutOptions{
+					PrimaryAlign:   text.AlignCenter,
+					SecondaryAlign: text.AlignCenter,
+				},
+			})
 		}
 	}
 }
