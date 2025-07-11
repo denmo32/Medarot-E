@@ -5,11 +5,13 @@ import (
 	"image"
 	"image/color"
 	"log"
+	// "math"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/yohamta/donburi"
 )
 
@@ -168,7 +170,7 @@ func (u *UI) Update() {
 	u.ebitenui.Update()
 }
 
-func (u *UI) Draw(screen *ebiten.Image) {
+func (u *UI) Draw(screen *ebiten.Image, tick int) {
 	u.ebitenui.Draw(screen)
 
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
@@ -183,7 +185,7 @@ func (u *UI) Draw(screen *ebiten.Image) {
 	}
 
 	// BattlefieldWidget の Draw メソッドを呼び出す
-	u.battlefieldWidget.Draw(screen, indicatorTargetVM)
+	u.battlefieldWidget.Draw(screen, indicatorTargetVM, tick)
 }
 
 func (u *UI) DrawBackground(screen *ebiten.Image) {
@@ -206,43 +208,36 @@ func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick
 		if icon.EntryID == uint32(anim.Result.ActingEntry.Id()) {
 			attackerVM = icon
 		}
-		if icon.EntryID == uint32(anim.Result.TargetEntry.Id()) {
+		if anim.Result.TargetEntry != nil && icon.EntryID == uint32(anim.Result.TargetEntry.Id()) {
 			targetVM = icon
 		}
 	}
 
+	// 攻撃者とターゲットが両方見つかった場合のみアニメーションを実行
 	if attackerVM != nil && targetVM != nil {
-		// 攻撃軌跡のアニメーション
-		const travelDuration = 30
-		if progress <= travelDuration {
-			lerpFactor := progress / travelDuration
-			currentX := attackerVM.X + (targetVM.X-attackerVM.X)*float32(lerpFactor)
-			currentY := attackerVM.Y + (targetVM.Y-attackerVM.Y)*float32(lerpFactor)
-			indicatorColor := u.config.UI.Colors.Yellow
-			iconRadius := u.config.UI.Battlefield.IconRadius
-			indicatorHeight := u.config.UI.Battlefield.TargetIndicator.Height
-			indicatorWidth := u.config.UI.Battlefield.TargetIndicator.Width
-			margin := float32(5)
-			p1x := currentX - indicatorWidth/2
-			p1y := currentY - iconRadius - margin - indicatorHeight
-			p2x := currentX + indicatorWidth/2
-			p2y := p1y
-			p3x := currentX
-			p3y := currentY - iconRadius - margin
-			vertices := []ebiten.Vertex{{DstX: p1x, DstY: p1y}, {DstX: p2x, DstY: p2y}, {DstX: p3x, DstY: p3y}}
-			r, g, b, a := indicatorColor.RGBA()
-			cr, cg, cb, ca := float32(r)/65535, float32(g)/65535, float32(b)/65535, float32(a)/65535
-			for i := range vertices {
-				vertices[i].ColorR, vertices[i].ColorG, vertices[i].ColorB, vertices[i].ColorA = cr, cg, cb, ca
-			}
-			screen.DrawTriangles(vertices, []uint16{0, 1, 2}, u.whitePixel, &ebiten.DrawTrianglesOptions{})
+		// アニメーションのタイミング設定
+		const firstPingDuration = 30.0
+		const secondPingDuration = 30.0
+		const delayBetweenPings = 0.0 // 連続して再生
+
+		// 1回目のピング（攻撃者） - 拡大
+		if progress >= 0 && progress < firstPingDuration {
+			pingProgress := progress / firstPingDuration
+			drawPingAnimation(screen, attackerVM.X, attackerVM.Y, pingProgress, true)
+		}
+
+		// 2回目のピング（ターゲット） - 縮小
+		secondPingStart := firstPingDuration + delayBetweenPings
+		if progress >= secondPingStart && progress < secondPingStart+secondPingDuration {
+			pingProgress := (progress - secondPingStart) / secondPingDuration
+			drawPingAnimation(screen, targetVM.X, targetVM.Y, pingProgress, false)
 		}
 
 		// ダメージポップアップのアニメーション
-		const popupDelay = 30
+		const popupDelay = 60 // 両方のピングが終わった後に開始
 		const popupDuration = 60
-		if progress >= travelDuration+popupDelay && progress < travelDuration+popupDelay+popupDuration {
-			popupProgress := (progress - (travelDuration + popupDelay)) / popupDuration
+		if progress >= popupDelay && progress < popupDelay+popupDuration {
+			popupProgress := (progress - popupDelay) / popupDuration
 			x := targetVM.X
 			y := targetVM.Y - 20 - (20 * float32(popupProgress))
 			alpha := 1.0
@@ -272,4 +267,39 @@ func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick
 
 func (u *UI) GetBattlefieldWidgetRect() image.Rectangle {
 	return u.battlefieldWidget.Container.GetWidget().Rect
+}
+
+// drawPingAnimation は、指定された中心にレーダーのようなピングアニメーションを描画します。
+// progress は 0.0 から 1.0 の値で、アニメーションの進行状況を示します。
+// expandがtrueの場合は拡大、falseの場合は縮小アニメーションになります。
+func drawPingAnimation(screen *ebiten.Image, centerX, centerY float32, progress float64, expand bool) {
+	if progress < 0 || progress > 1 {
+		return
+	}
+
+	// アニメーションのパラメータ
+	maxRadius := float32(40.0)
+	pingColor := color.RGBA{R: 0, G: 255, B: 255, A: 255} // ネオン風の水色
+
+	// 進行状況に基づいて半径とアルファ値を計算
+	var radius float32
+	if expand {
+		radius = maxRadius * float32(progress) // 拡大
+	} else {
+		radius = maxRadius * (1.0 - float32(progress)) // 縮小
+	}
+	alpha := 1.0 - progress // 徐々にフェードアウト
+
+	// アルファ値を適用した色を作成
+	r, g, b, _ := pingColor.RGBA()
+	finalColor := color.RGBA{
+		R: uint8(r >> 8),
+		G: uint8(g >> 8),
+		B: uint8(b >> 8),
+		A: uint8(255 * alpha),
+	}
+
+	// 二重丸(◎)を描画
+	vector.StrokeCircle(screen, centerX, centerY, radius, 2, finalColor, true)
+	vector.StrokeCircle(screen, centerX, centerY, radius*0.4, 1.5, finalColor, true)
 }

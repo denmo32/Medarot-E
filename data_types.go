@@ -432,7 +432,7 @@ func (e ClearCurrentTargetEvent) isUIEvent() {}
 // BattleScene will interact with the UI through this interface.
 type UIInterface interface {
 	Update()
-	Draw(screen *ebiten.Image)
+	Draw(screen *ebiten.Image, tick int)
 	DrawBackground(screen *ebiten.Image)
 	DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick int)
 	ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget)

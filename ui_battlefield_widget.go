@@ -132,7 +132,7 @@ func (bf *BattlefieldWidget) SetViewModel(vm BattlefieldViewModel) {
 
 // Draw はバトルフィールドのすべての要素を描画します。
 // targetIconVM はターゲットインジケーターを描画するためのIconViewModelです。
-func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *IconViewModel) {
+func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *IconViewModel, tick int) {
 	// 背景の描画はBattleSceneで行うため、ここでは行わない
 
 	// アイコンの描画
@@ -152,7 +152,7 @@ func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *IconViewMo
 	}
 
 	// ターゲットインジケーターの描画
-	bf.DrawTargetIndicator(screen, targetIconVM)
+	bf.DrawTargetIndicator(screen, targetIconVM, tick)
 }
 
 func (bf *BattlefieldWidget) DrawIcons(screen *ebiten.Image) {
@@ -175,43 +175,36 @@ func (bf *BattlefieldWidget) DrawDebug(screen *ebiten.Image) {
 	}
 }
 
-func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetIconVM *IconViewModel) {
+func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetIconVM *IconViewModel, tick int) {
 	if targetIconVM == nil {
 		return
 	}
 	tx, ty := targetIconVM.X, targetIconVM.Y
+	indicatorColor := color.RGBA{R: 0, G: 255, B: 255, A: 255} // ネオン風の水色
 
-	indicatorColor := bf.config.UI.Colors.Yellow
-	iconRadius := bf.config.UI.Battlefield.IconRadius
-	indicatorHeight := bf.config.UI.Battlefield.TargetIndicator.Height
-	indicatorWidth := bf.config.UI.Battlefield.TargetIndicator.Width
-	margin := float32(5)
+	// アニメーションパラメータ
+	const animationSpeed = 0.1
+	const minOuterRadius = 15.0
+	const maxOuterRadius = 25.0
+	const innerRadiusRatio = 0.4 // 内側の円の半径を外側の円に対する割合で指定
 
-	p1x := tx - indicatorWidth/2
-	p1y := ty - iconRadius - margin - indicatorHeight
-	p2x := tx + indicatorWidth/2
-	p2y := p1y
-	p3x := tx
-	p3y := ty - iconRadius - margin
+	// 時間経過に基づいて半径を計算（sin波で拡大・縮小）
+	angle := float32(tick) * animationSpeed
+	// sinの結果は-1から1なので、0から1の範囲に変換
+	normalizedSin := (math.Sin(float64(angle)) + 1) / 2
+	// 半径をminとmaxの間で変動させる
+	outerRadius := minOuterRadius + (maxOuterRadius-minOuterRadius)*float32(normalizedSin)
+	innerRadius := outerRadius * innerRadiusRatio
 
-	vertices := []ebiten.Vertex{
-		{DstX: p1x, DstY: p1y},
-		{DstX: p2x, DstY: p2y},
-		{DstX: p3x, DstY: p3y},
-	}
-	r, g, b, a := indicatorColor.RGBA()
-	cr := float32(r) / 65535
-	cg := float32(g) / 65535
-	cb := float32(b) / 65535
-	ca := float32(a) / 65535
-	for i := range vertices {
-		vertices[i].ColorR = cr
-		vertices[i].ColorG = cg
-		vertices[i].ColorB = cb
-		vertices[i].ColorA = ca
-	}
-	indices := []uint16{0, 1, 2}
-	screen.DrawTriangles(vertices, indices, bf.whitePixel, &ebiten.DrawTrianglesOptions{})
+	// 線の太さもアニメーションさせる
+	const minStrokeWidth = 1.5
+	const maxStrokeWidth = 3.0
+	strokeWidth := minStrokeWidth + (maxStrokeWidth-minStrokeWidth)*float32(normalizedSin)
+
+	// 外側の円を描画
+	vector.StrokeCircle(screen, tx, ty, outerRadius, strokeWidth, indicatorColor, true)
+	// 内側の円を描画
+	vector.StrokeCircle(screen, tx, ty, innerRadius, strokeWidth*0.8, indicatorColor, true)
 }
 
 func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {

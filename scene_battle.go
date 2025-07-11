@@ -239,7 +239,7 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	bs.ui.DrawBackground(screen)
 
 	// UIのメイン描画
-	bs.ui.Draw(screen)
+	bs.ui.Draw(screen, bs.tickCount)
 
 	// UIにアニメーション描画を委譲
 	bs.ui.DrawAnimation(screen, bs.currentActionAnimation, bs.tickCount)
