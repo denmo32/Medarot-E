@@ -2,13 +2,10 @@ package main
 
 import (
 	"fmt"
-	"image/color"
 	"log"
 
-	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	// "github.com/hajimehoshi/ebiten/v2/vector" // vectorパッケージを削除
 	"github.com/yohamta/donburi"
 )
 
@@ -31,11 +28,7 @@ func createActionModalUI(
 
 	// ボタンウィジェットのスライスを作成
 	buttons := []widget.PreferredSizeLocateableWidget{}
-	buttonImage := &widget.ButtonImage{
-		Idle:    image.NewNineSliceColor(c.Colors.Gray),
-		Hover:   image.NewNineSliceColor(color.RGBA{180, 180, 180, 255}),
-		Pressed: image.NewNineSliceColor(color.RGBA{100, 100, 100, 255}),
-	}
+	buttonImage := createCyberpunkButtonImageSet(5)
 
 	partsComp := PartsComponent.Get(actingEntry)
 	if partsComp == nil {
@@ -104,8 +97,8 @@ func createActionModalUI(
 		PanelWidth:      int(c.ActionModal.ButtonWidth) + 30,
 		TitleFont:       font,
 		BackgroundColor: c.Colors.Background, // 背景色を設定
-		BorderColor:     color.White,         // 枠線の色
-		BorderThickness: 2,                   // 枠線の太さ
+		BorderColor:     c.Colors.Gray,       // 枠線の色
+		BorderThickness: 5,                   // 枠線の太さ
 	}, buttons...)
 
 	// パネルをオーバーレイの中央に配置
