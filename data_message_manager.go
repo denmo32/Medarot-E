@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -43,7 +42,7 @@ func (mm *MessageManager) LoadMessages(filePath string) error {
 	}
 	defer file.Close()
 
-	bytes, err := ioutil.ReadAll(file)
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("could not read message file %s: %w", filePath, err)
 	}

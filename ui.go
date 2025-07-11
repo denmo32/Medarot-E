@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	_ "embed"
 	"fmt"
 	"image"
 	"image/color"
@@ -15,29 +13,12 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-//go:embed MPLUS1p-Regular.ttf
-var mplusFontData []byte
-
 func (u *UI) IsActionModalVisible() bool {
 	return u.isActionModalVisible
 }
 
 func (u *UI) SetBattlefieldViewModel(vm BattlefieldViewModel) {
 	u.battlefieldWidget.SetViewModel(vm)
-}
-
-// loadFont はEbitenUIが要求する text.Face を返します。
-func loadFont() (text.Face, error) {
-	s, err := text.NewGoTextFaceSource(bytes.NewReader(mplusFontData))
-	if err != nil {
-		return nil, err
-	}
-	face := &text.GoTextFace{
-		Source: s,
-		Size:   12,
-	}
-	log.Println("カスタムフォント（text/v2）の読み込みに成功しました。")
-	return face, nil
 }
 
 type UI struct {
@@ -54,11 +35,9 @@ type UI struct {
 	// イベント通知用チャネル
 	eventChannel chan UIEvent
 	// 依存性
-	world            donburi.World
-	config           *Config
-	partInfoProvider *PartInfoProvider
-	targetSelector   *TargetSelector
-	whitePixel       *ebiten.Image
+	world      donburi.World
+	config     *Config
+	whitePixel *ebiten.Image
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。

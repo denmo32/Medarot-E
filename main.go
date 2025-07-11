@@ -11,9 +11,11 @@ import (
 	"github.com/noppikinatta/bamenn"
 )
 
+var globalRand *rand.Rand
+
 // main関数がエントリーポイントであることは変わりません
 func main() {
-	rand.Seed(time.Now().UnixNano())
+	globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	wd, err := os.Getwd()
 	if err != nil {

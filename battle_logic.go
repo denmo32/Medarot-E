@@ -5,7 +5,6 @@ import (
 	// "fmt"
 	"log"
 	"math"
-	"math/rand"
 	"sort"
 
 	"github.com/yohamta/donburi"
@@ -187,7 +186,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 		criticalChance = dc.config.Balance.Damage.Critical.MaxChance
 	}
 
-	if rand.Intn(100) < int(criticalChance) {
+	if globalRand.Intn(100) < int(criticalChance) {
 		isCritical = true
 		log.Printf("%s の攻撃がクリティカル！ (確率: %.1f%%)", SettingsComponent.Get(attacker).Name, criticalChance)
 		// クリティカル時は回避度を0にする
@@ -197,7 +196,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	// 5. 最終ダメージ計算
 	damage := (successRate-evasion)/dc.config.Balance.Damage.DamageAdjustmentFactor + power
 	// 乱数(±10%)
-	randomFactor := 1.0 + (rand.Float64()*0.2 - 0.1)
+	randomFactor := 1.0 + (globalRand.Float64()*0.2 - 0.1)
 	damage *= randomFactor
 
 	if damage < 1 {
@@ -320,7 +319,7 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 		chance = hc.config.Balance.Hit.MaxChance
 	}
 
-	roll := rand.Intn(100)
+	roll := globalRand.Intn(100)
 	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_hit_roll", map[string]interface{}{
 		"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, successRate, evasion, roll},
 	}))
@@ -346,7 +345,7 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 		chance = hc.config.Balance.Defense.MaxChance
 	}
 
-	roll := rand.Intn(100)
+	roll := globalRand.Intn(100)
 	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_defense_roll", map[string]interface{}{
 		"ordered_args": []interface{}{SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll},
 	}))
@@ -431,7 +430,7 @@ func (ts *TargetSelector) SelectRandomPartToDamage(target *donburi.Entry) *PartI
 	if len(vulnerableInstances) == 0 {
 		return nil
 	}
-	return vulnerableInstances[rand.Intn(len(vulnerableInstances))]
+	return vulnerableInstances[globalRand.Intn(len(vulnerableInstances))]
 }
 
 // FindClosestEnemy は指定されたエンティティに最も近い敵エンティティを見つけます。

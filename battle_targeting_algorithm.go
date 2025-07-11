@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"sort"
 
 	"github.com/yohamta/donburi"
@@ -133,7 +132,7 @@ func (s *JokerStrategy) SelectTarget(
 		return nil, ""
 	}
 
-	idx := rand.Intn(len(allEnemyParts))
+	idx := globalRand.Intn(len(allEnemyParts))
 	return allEnemyParts[idx].entity, allEnemyParts[idx].slot
 }
 
@@ -200,7 +199,7 @@ func (s *ChaseStrategy) SelectTarget(
 				candidates = append(candidates, p)
 			}
 		}
-		selected := candidates[rand.Intn(len(candidates))]
+		selected := candidates[globalRand.Intn(len(candidates))]
 		return selected.entity, selected.slot
 	}
 
@@ -212,7 +211,7 @@ func (s *ChaseStrategy) SelectTarget(
 		}
 	}
 	if len(otherParts) > 0 {
-		selected := otherParts[rand.Intn(len(otherParts))]
+		selected := otherParts[globalRand.Intn(len(otherParts))]
 		return selected.entity, selected.slot
 	}
 
@@ -243,7 +242,7 @@ func (s *DuelStrategy) SelectTarget(
 	}
 
 	if len(attackArmParts) > 0 {
-		selected := attackArmParts[rand.Intn(len(attackArmParts))]
+		selected := attackArmParts[globalRand.Intn(len(attackArmParts))]
 		return selected.entity, selected.slot
 	}
 
@@ -273,7 +272,7 @@ func (s *InterceptStrategy) SelectTarget(
 	}
 
 	if len(nonAttackParts) > 0 {
-		selected := nonAttackParts[rand.Intn(len(nonAttackParts))]
+		selected := nonAttackParts[globalRand.Intn(len(nonAttackParts))]
 		return selected.entity, selected.slot
 	}
 
