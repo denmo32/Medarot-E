@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/noppikinatta/bamenn"
 )
 
@@ -22,12 +23,16 @@ func main() {
 		log.Printf("カレントワーキングディレクトリ: %s", wd)
 	}
 
-	fontFace, err := loadFont()
+	// Initialize audio context for the resource loader
+	audioContext := audio.NewContext(44100)
+	initResources(audioContext)
+
+	fontFace, err := LoadFont(FontMPLUS1pRegular)
 	if err != nil {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	GlobalGameDataManager, err = NewGameDataManager("data", fontFace)
+	GlobalGameDataManager, err = NewGameDataManager(fontFace)
 	if err != nil {
 		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
 	}
@@ -36,7 +41,7 @@ func main() {
 		log.Fatalf("静的ゲームデータの読み込みに失敗しました: %v", err)
 	}
 
-	medarotLoadouts, err := LoadMedarotLoadouts("data/medarots.csv")
+	medarotLoadouts, err := LoadMedarotLoadouts()
 	if err != nil {
 		log.Fatalf("メダロットロードアウトの読み込みに失敗しました: %v", err)
 	}

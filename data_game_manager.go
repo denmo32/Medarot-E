@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// GameDataManager はパーツやメダルなどのすべての静的ゲームデータ定義とメッセージを保持します。
+// GameDataManager はパーツやメダルなどのすべての静적ゲームデータ定義とメッセージを保持します。
 type GameDataManager struct {
 	partDefinitions  map[string]*PartDefinition
 	medalDefinitions map[string]*Medal // Medal構造体は今のところ主に定義情報と仮定
@@ -17,7 +16,7 @@ type GameDataManager struct {
 }
 
 // NewGameDataManager はGameDataManagerの新しいインスタンスを作成し、初期化します。
-func NewGameDataManager(basePath string, font text.Face) (*GameDataManager, error) {
+func NewGameDataManager(font text.Face) (*GameDataManager, error) {
 	gdm := &GameDataManager{
 		partDefinitions:  make(map[string]*PartDefinition),
 		medalDefinitions: make(map[string]*Medal),
@@ -25,8 +24,7 @@ func NewGameDataManager(basePath string, font text.Face) (*GameDataManager, erro
 	}
 
 	// メッセージマネージャーの初期化
-	// basePath は "data" フォルダを指すことを想定
-	messageManager, err := NewMessageManager(filepath.Join(basePath, "messages.json"))
+	messageManager, err := NewMessageManager("data/messages.json")
 	if err != nil {
 		return nil, fmt.Errorf("メッセージマネージャーの初期化に失敗しました: %w", err)
 	}
