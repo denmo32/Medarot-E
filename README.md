@@ -40,9 +40,9 @@ Battle Action (メダロットの行動)
 *   `battle_action_queue_component.go`
     *   役割: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
     *   内容: `ActionQueueComponentData` 構造体（行動するエンティティのキューを持つ）と、それに関連するComponentType、取得・初期化用関数を定義します。ワールドに一つ存在する専用エンティティがこのコンポーネントを持ちます。行動実行の順序制御に関わるデータを変更する場合に編集します。
-*   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionHandler` を呼び出して行動を実行します。
-*   `battle_action_handler.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の具体的な行動実行ロジックをカプセル化します。`ActionHandler` インターフェースとその実装（`ShootActionHandler`, `MeleeActionHandler`など）を定義します。
-*   `battle_action_processor.go`: **[ロジック/振る舞い]** 行動の実行結果（ダメージ計算、デバフ適用など）を処理します。
+*   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。
+*   `battle_action_executor.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の具体的な行動実行ロジックをカプセル化します。`ActionExecutor` インターフェースとその実装（`ShootActionExecutor`, `MeleeActionExecutor`など）を定義します。
+*   `battle_ui_event_handler.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、適切なゲームロジックを呼び出します。
 
 Battle Logic & AI (戦闘ルールと思考)
 ---------------------------------
@@ -54,7 +54,7 @@ Battle Logic & AI (戦闘ルールと思考)
     *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
 *   `battle_end_system.go`: **[ロジック/振る舞い]** ゲーム終了条件判定システム。`CheckGameEndSystem` を定義します。
 *   `battle_gauge_system.go`: **[ロジック/振る舞い]** チャージゲージおよびクールダウンゲージの進行管理システム。`UpdateGaugeSystem` を定義します。
-*   `battle_input.go`: **[ロジック/振る舞い]** プレイヤーとAIの入力処理を統合し、行動意図を生成します。
+*   `battle_intention_system.go`: **[ロジック/振る舞い]** プレイヤーとAIの入力を処理し、行動の「意図（Intention）」を生成するシステムです。
 *   `battle_targeting_algorithm.go`: **[ロジック/振る舞い]** ターゲット選択の具体的なアルゴリズムを定義します。
 *   `battle_targeting_strategy.go`: **[ロジック/振る舞い]** AIのターゲット選択戦略を定義します。
 

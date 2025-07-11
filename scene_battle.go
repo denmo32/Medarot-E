@@ -7,7 +7,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/yohamta/donburi"
 )
 
@@ -32,11 +31,7 @@ type BattleScene struct {
 	currentActionAnimation   *ActionAnimationData
 	battleLogic              *BattleLogic
 	uiEventChannel           chan UIEvent
-}
-
-type ActionAnimationData struct {
-	Result    ActionResult
-	StartTime int
+	battlefieldViewModel     BattlefieldViewModel
 }
 
 func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
@@ -130,8 +125,8 @@ func (bs *BattleScene) Update() error {
 		}
 
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
-		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
-		bs.ui.SetBattlefieldViewModel(bfVM)
+		bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+		bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
 		// ProcessStateChangeSystem はFSMコールバックに統合されたため不要
 		// ProcessStateChangeSystem(bs.world)
 
@@ -176,8 +171,8 @@ func (bs *BattleScene) Update() error {
 
 	case StatePlayerActionSelect:
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
-		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
-		bs.ui.SetBattlefieldViewModel(bfVM)
+		bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+		bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
 
 		if !bs.ui.IsActionModalVisible() && len(bs.playerActionPendingQueue) > 0 {
 			actingEntry := bs.playerActionPendingQueue[0]
@@ -209,8 +204,8 @@ func (bs *BattleScene) Update() error {
 		}
 	case StateMessage:
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
-		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
-		bs.ui.SetBattlefieldViewModel(bfVM)
+		bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+		bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
 
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			bs.currentMessageIndex++
@@ -240,70 +235,14 @@ func (bs *BattleScene) Update() error {
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)
 
-	// バトルフィールドの背景（ラインなど）をUIより先に描画
-	bfWidget := bs.ui.(*UI).battlefieldWidget // UIインターフェースからBattlefieldWidgetを取得
-	bfWidget.DrawBackground(screen)
+	// UIに背景描画を委譲
+	bs.ui.DrawBackground(screen)
 
+	// UIのメイン描画
 	bs.ui.Draw(screen)
 
-	if bs.currentActionAnimation != nil {
-		anim := bs.currentActionAnimation
-		progress := float64(bs.tickCount - anim.StartTime)
-		bfVM := BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
-		var attackerVM, targetVM *IconViewModel
-		for _, icon := range bfVM.Icons {
-			if icon.EntryID == uint32(anim.Result.ActingEntry.Id()) {
-				attackerVM = icon
-			}
-			if icon.EntryID == uint32(anim.Result.TargetEntry.Id()) {
-				targetVM = icon
-			}
-		}
-
-		if attackerVM != nil && targetVM != nil {
-			const travelDuration = 30
-			if progress <= travelDuration {
-				lerpFactor := progress / travelDuration
-				currentX := attackerVM.X + (targetVM.X-attackerVM.X)*float32(lerpFactor)
-				currentY := attackerVM.Y + (targetVM.Y-attackerVM.Y)*float32(lerpFactor)
-				indicatorColor := bs.resources.Config.UI.Colors.Yellow
-				iconRadius := bs.resources.Config.UI.Battlefield.IconRadius
-				indicatorHeight := bs.resources.Config.UI.Battlefield.TargetIndicator.Height
-				indicatorWidth := bs.resources.Config.UI.Battlefield.TargetIndicator.Width
-				margin := float32(5)
-				p1x := currentX - indicatorWidth/2
-				p1y := currentY - iconRadius - margin - indicatorHeight
-				p2x := currentX + indicatorWidth/2
-				p2y := p1y
-				p3x := currentX
-				p3y := currentY - iconRadius - margin
-				vertices := []ebiten.Vertex{{DstX: p1x, DstY: p1y}, {DstX: p2x, DstY: p2y}, {DstX: p3x, DstY: p3y}}
-				r, g, b, a := indicatorColor.RGBA()
-				cr, cg, cb, ca := float32(r)/65535, float32(g)/65535, float32(b)/65535, float32(a)/65535
-				for i := range vertices {
-					vertices[i].ColorR, vertices[i].ColorG, vertices[i].ColorB, vertices[i].ColorA = cr, cg, cb, ca
-				}
-				screen.DrawTriangles(vertices, []uint16{0, 1, 2}, bs.whitePixel, &ebiten.DrawTrianglesOptions{})
-			}
-
-			const popupDelay = 30
-			const popupDuration = 60
-			if progress >= travelDuration+popupDelay && progress < travelDuration+popupDelay+popupDuration {
-				popupProgress := (progress - (travelDuration + popupDelay)) / popupDuration
-				x := targetVM.X
-				y := targetVM.Y - 20 - (20 * float32(popupProgress))
-				alpha := 1.0
-				if popupProgress > 0.7 {
-					alpha = (1.0 - popupProgress) / 0.3
-				}
-				geoM := ebiten.GeoM{}
-				geoM.Translate(float64(x), float64(y))
-				colorM := ebiten.ColorM{}
-				colorM.Scale(1, 1, 1, alpha)
-				text.Draw(screen, fmt.Sprintf("%d", anim.Result.OriginalDamage), bs.resources.Font, &text.DrawOptions{DrawImageOptions: ebiten.DrawImageOptions{GeoM: geoM, ColorM: colorM}, LayoutOptions: text.LayoutOptions{PrimaryAlign: text.AlignCenter, SecondaryAlign: text.AlignCenter}})
-			}
-		}
-	}
+	// UIにアニメーション描画を委譲
+	bs.ui.DrawAnimation(screen, bs.currentActionAnimation, bs.tickCount)
 
 	if bs.debugMode {
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f\nState: %s", ebiten.ActualTPS(), ebiten.ActualFPS(), bs.state))

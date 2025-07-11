@@ -37,19 +37,7 @@ func BuildInfoPanelViewModel(entry *donburi.Entry) InfoPanelViewModel {
 		}
 	}
 
-	var stateStr string
-	currentState := state.FSM.Current()
-	if currentState == string(StateIdle) {
-		stateStr = "待機"
-	} else if currentState == string(StateCharging) {
-		stateStr = "チャージ中"
-	} else if currentState == string(StateReady) {
-		stateStr = "実行準備"
-	} else if currentState == string(StateCooldown) {
-		stateStr = "クールダウン"
-	} else if currentState == string(StateBroken) {
-		stateStr = "機能停止"
-	}
+	stateStr := GetStateDisplayName(StateType(state.FSM.Current()))
 
 	return InfoPanelViewModel{
 		MedarotName: settings.Name,
@@ -95,19 +83,7 @@ func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoPr
 
 		var debugText string
 		if debugMode {
-			stateStr := ""
-			currentState := state.FSM.Current()
-			if currentState == string(StateIdle) {
-				stateStr = "待機"
-			} else if currentState == string(StateCharging) {
-				stateStr = "チャージ中"
-			} else if currentState == string(StateReady) {
-				stateStr = "実行準備"
-			} else if currentState == string(StateCooldown) {
-				stateStr = "クールダウン"
-			} else if currentState == string(StateBroken) {
-				stateStr = "機能停止"
-			}
+			stateStr := GetStateDisplayName(StateType(state.FSM.Current()))
 			debugText = fmt.Sprintf(`State: %s
 Gauge: %.1f
 Prog: %.1f / %.1f`,

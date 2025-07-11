@@ -13,6 +13,9 @@ type TeamID int
 type GameState string
 type PartSlotKey string
 type PartType string
+
+// StateType はエンティティの状態を表す文字列です。
+type StateType string
 type PartCategory string
 type Trait string
 type CustomizeCategory string
@@ -74,6 +77,33 @@ const (
 	StateMessage            GameState = "Message"
 	StateGameOver           GameState = "GameOver"
 )
+
+const (
+	StateIdle     StateType = "idle"
+	StateCharging StateType = "charging"
+	StateReady    StateType = "ready"
+	StateCooldown StateType = "cooldown"
+	StateBroken   StateType = "broken"
+)
+
+// GetStateDisplayName は StateType に対応する日本語の表示名を返します。
+func GetStateDisplayName(state StateType) string {
+	switch state {
+	case StateIdle:
+		return "待機"
+	case StateCharging:
+		return "チャージ中"
+	case StateReady:
+		return "実行準備"
+	case StateCooldown:
+		return "クールダウン"
+	case StateBroken:
+		return "機能停止"
+	default:
+		return "不明"
+	}
+}
+
 const (
 	PartSlotHead     PartSlotKey = "head"
 	PartSlotRightArm PartSlotKey = "r_arm"
@@ -301,6 +331,35 @@ type infoPanelPartUI struct {
 
 // --- ViewModels ---
 
+// ActionResult はアクション実行の詳細な結果を保持します。
+type ActionResult struct {
+	ActingEntry       *donburi.Entry
+	TargetEntry       *donburi.Entry
+	TargetPartSlot    PartSlotKey // ターゲットのパーツスロット
+	LogMessage        string      // 古いログメッセージ（後で削除予定）
+	ActionDidHit      bool        // 命中したかどうか
+	IsCritical        bool        // クリティカルだったか
+	OriginalDamage    int         // 元のダメージ量
+	DamageDealt       int         // 実際に与えたダメージ
+	TargetPartBroken  bool        // ターゲットパーツが破壊されたか
+	ActionIsDefended  bool        // 攻撃が防御されたか
+	ActualHitPartSlot PartSlotKey // 実際にヒットしたパーツのスロット
+
+	// 新しいメッセージ形式のための追加フィールド
+	AttackerName      string
+	DefenderName      string
+	ActionName        string // e.g., "撃つ", "狙い撃ち" (Trait)
+	WeaponType        string // e.g., "ソード", "マグナム"
+	TargetPartType    string // e.g., "頭部", "脚部"
+	DefendingPartType string // e.g., "頭部", "脚部"
+}
+
+// ActionAnimationData はアニメーションの再生に必要なデータを保持します。
+type ActionAnimationData struct {
+	Result    ActionResult
+	StartTime int
+}
+
 // InfoPanelViewModel は、単一の情報パネルUIが必要とするすべてのデータを保持します。
 type InfoPanelViewModel struct {
 	MedarotName string
@@ -372,6 +431,8 @@ func (e ClearCurrentTargetEvent) isUIEvent() {}
 type UIInterface interface {
 	Update()
 	Draw(screen *ebiten.Image)
+	DrawBackground(screen *ebiten.Image)
+	DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick int)
 	ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget)
 	HideActionModal()
 	ShowMessageWindow(message string)

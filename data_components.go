@@ -46,17 +46,6 @@ type PartsComponentData struct {
 	Map map[PartSlotKey]*PartInstanceData
 }
 
-// StateType はエンティティの状態を表す文字列です。
-type StateType string
-
-const (
-	StateIdle     StateType = "idle"
-	StateCharging StateType = "charging"
-	StateReady    StateType = "ready"
-	StateCooldown StateType = "cooldown"
-	StateBroken   StateType = "broken"
-)
-
 // State はエンティティの現在の状態と関連データを保持します。
 type State struct {
 	FSM *fsm.FSM
