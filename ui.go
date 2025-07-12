@@ -10,7 +10,7 @@ import (
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
+	// "github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/yohamta/donburi"
 )
 
@@ -25,7 +25,7 @@ func (u *UI) SetBattlefieldViewModel(vm BattlefieldViewModel) {
 type UI struct {
 	ebitenui          *ebitenui.UI
 	actionModal       widget.PreferredSizeLocateableWidget
-	messageWindow     widget.PreferredSizeLocateableWidget
+	
 	battlefieldWidget *BattlefieldWidget
 	medarotInfoPanels map[string]*infoPanelUI
 	actionTargetMap   map[PartSlotKey]ActionTarget
@@ -36,9 +36,10 @@ type UI struct {
 	// イベント通知用チャネル
 	eventChannel chan UIEvent
 	// 依存性
-	world      donburi.World
-	config     *Config
-	whitePixel *ebiten.Image
+	config           *Config
+	whitePixel       *ebiten.Image
+	animationManager *BattleAnimationManager
+	messageManager   *UIMessageDisplayManager
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。
@@ -55,9 +56,9 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 		actionTargetMap:      make(map[PartSlotKey]ActionTarget),
 		isActionModalVisible: false,
 		eventChannel:         eventChannel,
-		world:                world,
 		config:               config,
 		whitePixel:           whiteImg,
+		animationManager:     NewBattleAnimationManager(config),
 	}
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
@@ -94,6 +95,7 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 	)
 	mainUIContainer.AddChild(team2PanelContainer)
 	setupInfoPanels(world, config, GlobalGameDataManager.Font, ui.medarotInfoPanels, team1PanelContainer, team2PanelContainer)
+	ui.messageManager = NewUIMessageDisplayManager(config, GlobalGameDataManager.Font, rootContainer)
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
@@ -132,22 +134,7 @@ func (u *UI) HideActionModal() {
 }
 
 // ShowMessageWindow はメッセージウィンドウを表示します。
-func (u *UI) ShowMessageWindow(message string) {
-	if u.messageWindow != nil {
-		u.HideMessageWindow()
-	}
-	win := createMessageWindow(message, u.config, GlobalGameDataManager.Font)
-	u.messageWindow = win
-	u.ebitenui.Container.AddChild(u.messageWindow)
-}
 
-// HideMessageWindow はメッセージウィンドウを非表示にします。
-func (u *UI) HideMessageWindow() {
-	if u.messageWindow != nil {
-		u.ebitenui.Container.RemoveChild(u.messageWindow)
-		u.messageWindow = nil
-	}
-}
 
 func (u *UI) UpdateInfoPanels(world donburi.World, config *Config) {
 	updateAllInfoPanels(world, config, u.medarotInfoPanels)
@@ -188,23 +175,16 @@ func (u *UI) Draw(screen *ebiten.Image, tick int) {
 	u.ebitenui.Draw(screen)
 }
 
-func (u *UI) DrawBackground(screen *ebiten.Image) {
-	u.battlefieldWidget.DrawBackground(screen)
-}
-
-func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick int) {
+func (u *UI) DrawAnimation(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel) {
+	anim := u.animationManager.currentAnimation
 	if anim == nil {
 		return
 	}
 
 	progress := float64(tick - anim.StartTime)
-	bfVM := u.battlefieldWidget.viewModel
-	if bfVM == nil {
-		return
-	}
 
 	var attackerVM, targetVM *IconViewModel
-	for _, icon := range bfVM.Icons {
+	for _, icon := range battlefieldVM.Icons {
 		if icon.EntryID == uint32(anim.Result.ActingEntry.Id()) {
 			attackerVM = icon
 		}
@@ -223,14 +203,14 @@ func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick
 		// 1回目のピング（攻撃者） - 拡大
 		if progress >= 0 && progress < firstPingDuration {
 			pingProgress := progress / firstPingDuration
-			drawPingAnimation(screen, attackerVM.X, attackerVM.Y, pingProgress, true)
+			u.battlefieldWidget.drawPingAnimation(screen, attackerVM.X, attackerVM.Y, pingProgress, true)
 		}
 
 		// 2回目のピング（ターゲット） - 縮小
 		secondPingStart := firstPingDuration + delayBetweenPings
 		if progress >= secondPingStart && progress < secondPingStart+secondPingDuration {
 			pingProgress := (progress - secondPingStart) / secondPingDuration
-			drawPingAnimation(screen, targetVM.X, targetVM.Y, pingProgress, false)
+			u.battlefieldWidget.drawPingAnimation(screen, targetVM.X, targetVM.Y, pingProgress, false)
 		}
 
 		// ダメージポップアップのアニメーション
@@ -284,41 +264,36 @@ func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick
 	}
 }
 
+func (u *UI) DrawBackground(screen *ebiten.Image) {
+	u.battlefieldWidget.DrawBackground(screen)
+}
+
+
+
 func (u *UI) GetBattlefieldWidgetRect() image.Rectangle {
 	return u.battlefieldWidget.Container.GetWidget().Rect
+}
+
+func (u *UI) GetRootContainer() *widget.Container {
+	return u.ebitenui.Container
+}
+
+func (u *UI) SetAnimation(anim *ActionAnimationData) {
+	u.animationManager.SetAnimation(anim)
+}
+
+func (u *UI) IsAnimationFinished(tick int) bool {
+	return u.animationManager.IsAnimationFinished(tick)
+}
+
+func (u *UI) ClearAnimation() {
+	u.animationManager.ClearAnimation()
+}
+
+func (u *UI) GetCurrentAnimationResult() ActionResult {
+	return u.animationManager.currentAnimation.Result
 }
 
 // drawPingAnimation は、指定された中心にレーダーのようなピングアニメーションを描画します。
 // progress は 0.0 から 1.0 の値で、アニメーションの進行状況を示します。
 // expandがtrueの場合は拡大、falseの場合は縮小アニメーションになります。
-func drawPingAnimation(screen *ebiten.Image, centerX, centerY float32, progress float64, expand bool) {
-	if progress < 0 || progress > 1 {
-		return
-	}
-
-	// アニメーションのパラメータ
-	maxRadius := float32(40.0)
-	pingColor := color.RGBA{R: 0, G: 255, B: 255, A: 255} // ネオン風の水色
-
-	// 進行状況に基づいて半径とアルファ値を計算
-	var radius float32
-	if expand {
-		radius = maxRadius * float32(progress) // 拡大
-	} else {
-		radius = maxRadius * (1.0 - float32(progress)) // 縮小
-	}
-	alpha := 1.0 - progress // 徐々にフェードアウト
-
-	// アルファ値を適用した色を作成
-	r, g, b, _ := pingColor.RGBA()
-	finalColor := color.RGBA{
-		R: uint8(r >> 8),
-		G: uint8(g >> 8),
-		B: uint8(b >> 8),
-		A: uint8(255 * alpha),
-	}
-
-	// 二重丸(◎)を描画
-	vector.StrokeCircle(screen, centerX, centerY, radius, 2, finalColor, true)
-	vector.StrokeCircle(screen, centerX, centerY, radius*0.4, 1.5, finalColor, true)
-}

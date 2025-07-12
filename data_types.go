@@ -434,11 +434,14 @@ type UIInterface interface {
 	Update()
 	Draw(screen *ebiten.Image, tick int)
 	DrawBackground(screen *ebiten.Image)
-	DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick int)
+	GetRootContainer() *widget.Container
+	SetAnimation(anim *ActionAnimationData)
+	IsAnimationFinished(tick int) bool
+	ClearAnimation()
+	GetCurrentAnimationResult() ActionResult
+	DrawAnimation(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel)
 	ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget)
 	HideActionModal()
-	ShowMessageWindow(message string)
-	HideMessageWindow()
 	SetBattlefieldViewModel(vm BattlefieldViewModel)
 	UpdateInfoPanels(world donburi.World, config *Config)
 	PostEvent(event UIEvent) // This will be implemented by the concrete UI struct

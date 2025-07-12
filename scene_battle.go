@@ -19,16 +19,12 @@ type BattleScene struct {
 	state                    GameState
 	playerTeam               TeamID
 	ui                       UIInterface
-	message                  string
-	messageQueue             []string
-	currentMessageIndex      int
-	postMessageCallback      func()
+	messageManager           *UIMessageDisplayManager
 	winner                   TeamID
 	playerActionPendingQueue []*donburi.Entry
 	attackingEntity          *donburi.Entry
 	targetedEntity           *donburi.Entry
 	whitePixel               *ebiten.Image
-	currentActionAnimation   *ActionAnimationData
 	battleLogic              *BattleLogic
 	uiEventChannel           chan UIEvent
 	battlefieldViewModel     BattlefieldViewModel
@@ -56,6 +52,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam)
 	bs.uiEventChannel = make(chan UIEvent, 10)
 	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel)
+	bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, GlobalGameDataManager.Font, bs.ui.GetRootContainer())
 
 	return bs
 }
@@ -68,10 +65,12 @@ func (bs *BattleScene) Update() error {
 	case event := <-bs.uiEventChannel:
 		switch e := event.(type) {
 		case PlayerActionSelectedEvent:
-			bs.playerActionPendingQueue, bs.state, bs.message, bs.postMessageCallback = ProcessPlayerActionSelected(
+			var message string
+			var postMessageCallback func()
+			bs.playerActionPendingQueue, bs.state, message, postMessageCallback = ProcessPlayerActionSelected(
 				bs.world, &bs.resources.Config, bs.battleLogic, bs.playerActionPendingQueue, bs.ui, e, bs.ui.GetActionTargetMap())
-			if bs.message != "" {
-				bs.enqueueMessage(bs.message, bs.postMessageCallback)
+			if message != "" {
+				bs.messageManager.EnqueueMessage(message, postMessageCallback)
 			}
 		case PlayerActionCancelEvent:
 			bs.playerActionPendingQueue, bs.state = ProcessPlayerActionCancel(bs.playerActionPendingQueue, bs.ui, e)
@@ -110,7 +109,7 @@ func (bs *BattleScene) Update() error {
 
 			for _, result := range actionResults {
 				if result.ActingEntry != nil && result.ActingEntry.Valid() {
-					bs.currentActionAnimation = &ActionAnimationData{Result: result, StartTime: bs.tickCount}
+										bs.ui.SetAnimation(&ActionAnimationData{Result: result, StartTime: bs.tickCount})
 					bs.state = StateAnimatingAction
 					break
 				}
@@ -121,7 +120,8 @@ func (bs *BattleScene) Update() error {
 		if gameEndResult.IsGameOver {
 			bs.winner = gameEndResult.Winner
 			bs.state = StateGameOver
-			bs.enqueueMessage(gameEndResult.Message, nil)
+			bs.messageManager.EnqueueMessage(gameEndResult.Message, nil)
+			bs.state = StateMessage
 		}
 
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
@@ -132,19 +132,9 @@ func (bs *BattleScene) Update() error {
 
 	case StateAnimatingAction:
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
-		anim := bs.currentActionAnimation
-		if anim == nil {
-			bs.state = StatePlaying
-			return nil
-		}
-
-		progress := float64(bs.tickCount - anim.StartTime)
-		const totalAnimationDuration = 120 // Simplified duration
-
-		if progress >= totalAnimationDuration {
-			// bs.currentActionAnimation = nil // メッセージ表示後までアニメーションを保持
+						if bs.ui.IsAnimationFinished(bs.tickCount) {
 			messages := []string{}
-			result := anim.Result
+									result := bs.ui.GetCurrentAnimationResult()
 			if result.ActionDidHit {
 				initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
 				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
@@ -158,8 +148,8 @@ func (bs *BattleScene) Update() error {
 				messages = append(messages, result.LogMessage)
 			}
 
-			bs.enqueueMessageQueue(messages, func() {
-				actingEntry := anim.Result.ActingEntry
+			bs.messageManager.EnqueueMessageQueue(messages, func() {
+				actingEntry := result.ActingEntry
 				if actingEntry.Valid() && !StateComponent.Get(actingEntry).FSM.Is(string(StateBroken)) {
 					StartCooldownSystem(actingEntry, bs.world, &bs.resources.Config, bs.battleLogic.PartInfoProvider)
 				}
@@ -167,6 +157,7 @@ func (bs *BattleScene) Update() error {
 				bs.targetedEntity = nil
 				bs.ui.ClearCurrentTarget()
 			})
+			bs.state = StateMessage
 		}
 
 	case StatePlayerActionSelect:
@@ -207,23 +198,16 @@ func (bs *BattleScene) Update() error {
 		bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
 		bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
 
-		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			bs.currentMessageIndex++
-			if bs.currentMessageIndex < len(bs.messageQueue) {
-				bs.ui.ShowMessageWindow(bs.messageQueue[bs.currentMessageIndex])
+		newState, finished := bs.messageManager.Update(bs.state)
+		if finished {
+									bs.ui.ClearAnimation()
+			if bs.winner != TeamNone {
+				bs.state = StateGameOver
 			} else {
-				bs.ui.HideMessageWindow()
-				if bs.postMessageCallback != nil {
-					bs.postMessageCallback()
-					bs.postMessageCallback = nil
-				}
-				bs.currentActionAnimation = nil // メッセージ終了時にアニメーションをクリア
-				if bs.winner != TeamNone {
-					bs.state = StateGameOver
-				} else {
-					bs.state = StatePlaying
-				}
+				bs.state = StatePlaying
 			}
+		} else {
+			bs.state = newState
 		}
 	case StateGameOver:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
@@ -243,7 +227,7 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	bs.ui.Draw(screen, bs.tickCount)
 
 	// UIにアニメーション描画を委譲
-	bs.ui.DrawAnimation(screen, bs.currentActionAnimation, bs.tickCount)
+			bs.ui.DrawAnimation(screen, bs.tickCount, bs.battlefieldViewModel)
 
 	if bs.debugMode {
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f\nState: %s", ebiten.ActualTPS(), ebiten.ActualFPS(), bs.state))
@@ -254,16 +238,4 @@ func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return bs.resources.Config.UI.Screen.Width, bs.resources.Config.UI.Screen.Height
 }
 
-func (bs *BattleScene) enqueueMessage(msg string, callback func()) {
-	bs.enqueueMessageQueue([]string{msg}, callback)
-}
 
-func (bs *BattleScene) enqueueMessageQueue(messages []string, callback func()) {
-	bs.messageQueue = messages
-	bs.currentMessageIndex = 0
-	bs.postMessageCallback = callback
-	bs.state = StateMessage
-	if len(bs.messageQueue) > 0 {
-		bs.ui.ShowMessageWindow(bs.messageQueue[0])
-	}
-}

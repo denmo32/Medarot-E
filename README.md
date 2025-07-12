@@ -44,6 +44,7 @@ Battle Action (メダロットの行動)
 *   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。
 *   `battle_action_executor.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の具体的な行動実行ロジックをカプセル化します。`ActionExecutor` インターフェースとその実装（`ShootActionExecutor`, `MeleeActionExecutor`など）を定義します。
 *   `battle_ui_event_handler.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、適切なゲームロジックを呼び出します。
+*   `battle_animation_manager.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの再生と管理を行います。
 
 Battle Logic & AI (戦闘ルールと思考)
 ---------------------------------
@@ -78,6 +79,7 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 *   `ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。ViewModelを受け取って描画します。
 *   `ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。UIイベントを発行し、ViewModelを使用して表示します。
 *   `ui_message_window.go`: 画面下のメッセージウィンドウ。
+*   `ui_message_display_manager.go`: **[ロジック/振る舞い]** ゲーム内のメッセージ表示（キュー管理、ウィンドウ表示/非表示、進行）を管理します。
 
 Data & Utilities (データ定義と補助機能)
 ------------------------------------
