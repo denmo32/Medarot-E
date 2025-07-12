@@ -35,11 +35,10 @@ type UI struct {
 	// イベント通知用チャネル
 	eventChannel chan UIEvent
 	// 依存性
-	config           *Config
-	whitePixel       *ebiten.Image
-	animationManager *BattleAnimationManager // UIAnimationDrawerに渡すため残す
-	animationDrawer  *UIAnimationDrawer      // 新しく追加
-	messageManager   *UIMessageDisplayManager
+	config          *Config
+	whitePixel      *ebiten.Image
+	animationDrawer *UIAnimationDrawer // 新しく追加
+	messageManager  *UIMessageDisplayManager
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。
@@ -51,6 +50,7 @@ func (u *UI) PostEvent(event UIEvent) {
 func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
+	animationManager := NewBattleAnimationManager(config)
 	ui := &UI{
 		medarotInfoPanels:    make(map[string]*infoPanelUI),
 		actionTargetMap:      make(map[PartSlotKey]ActionTarget),
@@ -58,9 +58,8 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 		eventChannel:         eventChannel,
 		config:               config,
 		whitePixel:           whiteImg,
-		animationManager:     NewBattleAnimationManager(config), // UIAnimationDrawerに渡すため残す
+		animationDrawer:      NewUIAnimationDrawer(config, animationManager), // UIAnimationDrawerを初期化
 	}
-	ui.animationDrawer = NewUIAnimationDrawer(config, ui.animationManager) // UIAnimationDrawerを初期化
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
 	)
@@ -171,6 +170,11 @@ func (u *UI) Draw(screen *ebiten.Image, tick int) {
 	// BattlefieldWidget の Draw メソッドを先に呼び出す
 	u.battlefieldWidget.Draw(screen, indicatorTargetVM, tick)
 
+	// アニメーションの描画
+	if u.battlefieldWidget.viewModel != nil {
+		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel, u.battlefieldWidget)
+	}
+
 	// その後でebitenuiを描画する
 	u.ebitenui.Draw(screen)
 }
@@ -188,19 +192,19 @@ func (u *UI) GetRootContainer() *widget.Container {
 }
 
 func (u *UI) SetAnimation(anim *ActionAnimationData) {
-	u.animationManager.SetAnimation(anim)
+	u.animationDrawer.animationManager.SetAnimation(anim)
 }
 
 func (u *UI) IsAnimationFinished(tick int) bool {
-	return u.animationManager.IsAnimationFinished(tick)
+	return u.animationDrawer.animationManager.IsAnimationFinished(tick)
 }
 
 func (u *UI) ClearAnimation() {
-	u.animationManager.ClearAnimation()
+	u.animationDrawer.animationManager.ClearAnimation()
 }
 
 func (u *UI) GetCurrentAnimationResult() ActionResult {
-	return u.animationManager.currentAnimation.Result
+	return u.animationDrawer.animationManager.currentAnimation.Result
 }
 
 // drawPingAnimation は、指定された中心にレーダーのようなピングアニメーションを描画します。
