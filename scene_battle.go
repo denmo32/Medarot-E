@@ -109,7 +109,7 @@ func (bs *BattleScene) Update() error {
 
 			for _, result := range actionResults {
 				if result.ActingEntry != nil && result.ActingEntry.Valid() {
-										bs.ui.SetAnimation(&ActionAnimationData{Result: result, StartTime: bs.tickCount})
+					bs.ui.SetAnimation(&ActionAnimationData{Result: result, StartTime: bs.tickCount})
 					bs.state = StateAnimatingAction
 					break
 				}
@@ -132,9 +132,9 @@ func (bs *BattleScene) Update() error {
 
 	case StateAnimatingAction:
 		bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
-						if bs.ui.IsAnimationFinished(bs.tickCount) {
+		if bs.ui.IsAnimationFinished(bs.tickCount) {
 			messages := []string{}
-									result := bs.ui.GetCurrentAnimationResult()
+			result := bs.ui.GetCurrentAnimationResult()
 			if result.ActionDidHit {
 				initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
 				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
@@ -200,7 +200,7 @@ func (bs *BattleScene) Update() error {
 
 		newState, finished := bs.messageManager.Update(bs.state)
 		if finished {
-									bs.ui.ClearAnimation()
+			bs.ui.ClearAnimation()
 			if bs.winner != TeamNone {
 				bs.state = StateGameOver
 			} else {
@@ -227,7 +227,7 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	bs.ui.Draw(screen, bs.tickCount)
 
 	// UIにアニメーション描画を委譲
-			bs.ui.DrawAnimation(screen, bs.tickCount, bs.battlefieldViewModel)
+	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battlefieldViewModel, bs.ui.(*UI).battlefieldWidget)
 
 	if bs.debugMode {
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f\nState: %s", ebiten.ActualTPS(), ebiten.ActualFPS(), bs.state))
@@ -237,5 +237,3 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return bs.resources.Config.UI.Screen.Width, bs.resources.Config.UI.Screen.Height
 }
-
-

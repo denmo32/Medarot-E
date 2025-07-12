@@ -439,7 +439,6 @@ type UIInterface interface {
 	IsAnimationFinished(tick int) bool
 	ClearAnimation()
 	GetCurrentAnimationResult() ActionResult
-	DrawAnimation(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel)
 	ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget)
 	HideActionModal()
 	SetBattlefieldViewModel(vm BattlefieldViewModel)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"log"
@@ -9,7 +8,7 @@ import (
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
+
 	// "github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/yohamta/donburi"
 )
@@ -23,9 +22,9 @@ func (u *UI) SetBattlefieldViewModel(vm BattlefieldViewModel) {
 }
 
 type UI struct {
-	ebitenui          *ebitenui.UI
-	actionModal       widget.PreferredSizeLocateableWidget
-	
+	ebitenui    *ebitenui.UI
+	actionModal widget.PreferredSizeLocateableWidget
+
 	battlefieldWidget *BattlefieldWidget
 	medarotInfoPanels map[string]*infoPanelUI
 	actionTargetMap   map[PartSlotKey]ActionTarget
@@ -38,7 +37,8 @@ type UI struct {
 	// 依存性
 	config           *Config
 	whitePixel       *ebiten.Image
-	animationManager *BattleAnimationManager
+	animationManager *BattleAnimationManager // UIAnimationDrawerに渡すため残す
+	animationDrawer  *UIAnimationDrawer      // 新しく追加
 	messageManager   *UIMessageDisplayManager
 }
 
@@ -58,8 +58,9 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 		eventChannel:         eventChannel,
 		config:               config,
 		whitePixel:           whiteImg,
-		animationManager:     NewBattleAnimationManager(config),
+		animationManager:     NewBattleAnimationManager(config), // UIAnimationDrawerに渡すため残す
 	}
+	ui.animationDrawer = NewUIAnimationDrawer(config, ui.animationManager) // UIAnimationDrawerを初期化
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
 	)
@@ -135,7 +136,6 @@ func (u *UI) HideActionModal() {
 
 // ShowMessageWindow はメッセージウィンドウを表示します。
 
-
 func (u *UI) UpdateInfoPanels(world donburi.World, config *Config) {
 	updateAllInfoPanels(world, config, u.medarotInfoPanels)
 }
@@ -175,100 +175,9 @@ func (u *UI) Draw(screen *ebiten.Image, tick int) {
 	u.ebitenui.Draw(screen)
 }
 
-func (u *UI) DrawAnimation(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel) {
-	anim := u.animationManager.currentAnimation
-	if anim == nil {
-		return
-	}
-
-	progress := float64(tick - anim.StartTime)
-
-	var attackerVM, targetVM *IconViewModel
-	for _, icon := range battlefieldVM.Icons {
-		if icon.EntryID == uint32(anim.Result.ActingEntry.Id()) {
-			attackerVM = icon
-		}
-		if anim.Result.TargetEntry != nil && icon.EntryID == uint32(anim.Result.TargetEntry.Id()) {
-			targetVM = icon
-		}
-	}
-
-	// 攻撃者とターゲットが両方見つかった場合のみアニメーションを実行
-	if attackerVM != nil && targetVM != nil {
-		// アニメーションのタイミング設定
-		const firstPingDuration = 30.0
-		const secondPingDuration = 30.0
-		const delayBetweenPings = 0.0 // 連続して再生
-
-		// 1回目のピング（攻撃者） - 拡大
-		if progress >= 0 && progress < firstPingDuration {
-			pingProgress := progress / firstPingDuration
-			u.battlefieldWidget.drawPingAnimation(screen, attackerVM.X, attackerVM.Y, pingProgress, true)
-		}
-
-		// 2回目のピング（ターゲット） - 縮小
-		secondPingStart := firstPingDuration + delayBetweenPings
-		if progress >= secondPingStart && progress < secondPingStart+secondPingDuration {
-			pingProgress := (progress - secondPingStart) / secondPingDuration
-			u.battlefieldWidget.drawPingAnimation(screen, targetVM.X, targetVM.Y, pingProgress, false)
-		}
-
-		// ダメージポップアップのアニメーション
-		const popupDelay = 60
-		const popupDuration = 60
-		const peakTimeRatio = 0.6
-		const peakHeight = 40.0
-		const settleHeight = 30.0
-
-		popupStartProgress := progress - popupDelay
-		var yOffset float32
-		alpha := float32(1.0)
-
-		if popupStartProgress >= 0 {
-			if popupStartProgress < popupDuration {
-				// Animation is in progress
-				popupProgress := popupStartProgress / popupDuration
-				if popupProgress < peakTimeRatio {
-					// Phase 1: Rising
-					phaseProgress := popupProgress / peakTimeRatio
-					yOffset = float32(phaseProgress * peakHeight)
-				} else {
-					// Phase 2: Settling down
-					phaseProgress := (popupProgress - peakTimeRatio) / (1.0 - peakTimeRatio)
-					yOffset = float32(peakHeight - (phaseProgress * (peakHeight - settleHeight)))
-				}
-			} else {
-				// Animation is finished, hold the settled position
-				yOffset = settleHeight
-			}
-
-			x := targetVM.X
-			y := targetVM.Y - 20 - yOffset
-
-			drawOpts := &text.DrawOptions{}
-			drawOpts.GeoM.Scale(1.5, 1.5)
-			drawOpts.GeoM.Translate(float64(x), float64(y))
-			drawOpts.LayoutOptions = text.LayoutOptions{
-				PrimaryAlign:   text.AlignCenter,
-				SecondaryAlign: text.AlignCenter,
-			}
-			r, g, b, a := u.config.UI.Colors.Red.RGBA()
-			cr := float32(r) / 0xffff
-			cg := float32(g) / 0xffff
-			cb := float32(b) / 0xffff
-			ca := float32(a) / 0xffff
-			drawOpts.DrawImageOptions.ColorScale.Scale(cr, cg, cb, ca)
-			drawOpts.DrawImageOptions.ColorScale.ScaleAlpha(alpha)
-			text.Draw(screen, fmt.Sprintf("-%d", anim.Result.OriginalDamage), GlobalGameDataManager.Font, drawOpts)
-		}
-	}
-}
-
 func (u *UI) DrawBackground(screen *ebiten.Image) {
 	u.battlefieldWidget.DrawBackground(screen)
 }
-
-
 
 func (u *UI) GetBattlefieldWidgetRect() image.Rectangle {
 	return u.battlefieldWidget.Container.GetWidget().Rect
