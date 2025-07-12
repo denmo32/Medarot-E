@@ -142,7 +142,7 @@ func (bs *BattleScene) Update() error {
 		const totalAnimationDuration = 120 // Simplified duration
 
 		if progress >= totalAnimationDuration {
-			bs.currentActionAnimation = nil
+			// bs.currentActionAnimation = nil // メッセージ表示後までアニメーションを保持
 			messages := []string{}
 			result := anim.Result
 			if result.ActionDidHit {
@@ -217,6 +217,7 @@ func (bs *BattleScene) Update() error {
 					bs.postMessageCallback()
 					bs.postMessageCallback = nil
 				}
+				bs.currentActionAnimation = nil // メッセージ終了時にアニメーションをクリア
 				if bs.winner != TeamNone {
 					bs.state = StateGameOver
 				} else {

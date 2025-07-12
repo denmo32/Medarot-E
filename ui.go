@@ -234,39 +234,51 @@ func (u *UI) DrawAnimation(screen *ebiten.Image, anim *ActionAnimationData, tick
 		}
 
 		// ダメージポップアップのアニメーション
-		const popupDelay = 60 // 両方のピングが終わった後に開始
+		const popupDelay = 60
 		const popupDuration = 60
-		if progress >= popupDelay && progress < popupDelay+popupDuration {
-			popupProgress := (progress - popupDelay) / popupDuration
-			x := targetVM.X
-			y := targetVM.Y - 20 - (20 * float32(popupProgress))
-			alpha := 1.0
-			if popupProgress > 0.7 {
-				alpha = (1.0 - popupProgress) / 0.3
+		const peakTimeRatio = 0.6
+		const peakHeight = 40.0
+		const settleHeight = 30.0
+
+		popupStartProgress := progress - popupDelay
+		var yOffset float32
+		alpha := float32(1.0)
+
+		if popupStartProgress >= 0 {
+			if popupStartProgress < popupDuration {
+				// Animation is in progress
+				popupProgress := popupStartProgress / popupDuration
+				if popupProgress < peakTimeRatio {
+					// Phase 1: Rising
+					phaseProgress := popupProgress / peakTimeRatio
+					yOffset = float32(phaseProgress * peakHeight)
+				} else {
+					// Phase 2: Settling down
+					phaseProgress := (popupProgress - peakTimeRatio) / (1.0 - peakTimeRatio)
+					yOffset = float32(peakHeight - (phaseProgress * (peakHeight - settleHeight)))
+				}
+			} else {
+				// Animation is finished, hold the settled position
+				yOffset = settleHeight
 			}
 
-			drawOpts := &text.DrawOptions{}
+			x := targetVM.X
+			y := targetVM.Y - 20 - yOffset
 
-			// Set position and scale
+			drawOpts := &text.DrawOptions{}
 			drawOpts.GeoM.Scale(1.5, 1.5)
 			drawOpts.GeoM.Translate(float64(x), float64(y))
-
-			// Set layout options to center the text
 			drawOpts.LayoutOptions = text.LayoutOptions{
 				PrimaryAlign:   text.AlignCenter,
 				SecondaryAlign: text.AlignCenter,
 			}
-
-			// Set color and alpha
 			r, g, b, a := u.config.UI.Colors.Red.RGBA()
 			cr := float32(r) / 0xffff
 			cg := float32(g) / 0xffff
 			cb := float32(b) / 0xffff
 			ca := float32(a) / 0xffff
-
 			drawOpts.DrawImageOptions.ColorScale.Scale(cr, cg, cb, ca)
-			drawOpts.DrawImageOptions.ColorScale.ScaleAlpha(float32(alpha))
-
+			drawOpts.DrawImageOptions.ColorScale.ScaleAlpha(alpha)
 			text.Draw(screen, fmt.Sprintf("-%d", anim.Result.OriginalDamage), GlobalGameDataManager.Font, drawOpts)
 		}
 	}
