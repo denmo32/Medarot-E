@@ -14,9 +14,10 @@ import (
 
 type BattlefieldWidget struct {
 	*widget.Container
-	config     *Config
-	whitePixel *ebiten.Image
-	viewModel  *BattlefieldViewModel
+	config          *Config
+	whitePixel      *ebiten.Image
+	viewModel       *BattlefieldViewModel
+	backgroundImage *ebiten.Image
 }
 
 type CustomIconWidget struct {
@@ -29,9 +30,12 @@ func NewBattlefieldWidget(config *Config) *BattlefieldWidget {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
+	bgImage := r.LoadImage(ImageBattleBackground).Data
+
 	bf := &BattlefieldWidget{
-		config:     config,
-		whitePixel: whiteImg,
+		config:          config,
+		whitePixel:      whiteImg,
+		backgroundImage: bgImage,
 	}
 	bf.Container = widget.NewContainer(
 		// 背景画像はBattleSceneで描画するため、ここでは設定しない
@@ -212,6 +216,26 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 	if rect.Dx() == 0 || rect.Dy() == 0 {
 		return
 	}
+
+	// Draw the background image to fill the widget, cropping as needed.
+	if bf.backgroundImage != nil {
+		bgW, bgH := bf.backgroundImage.Size()
+		widgetW, widgetH := rect.Dx(), rect.Dy()
+
+		scale := math.Max(float64(widgetW)/float64(bgW), float64(widgetH)/float64(bgH))
+
+		drawW, drawH := float64(bgW)*scale, float64(bgH)*scale
+		dx, dy := (float64(widgetW)-drawW)/2, (float64(widgetH)-drawH)/2
+
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(float64(rect.Min.X)+dx, float64(rect.Min.Y)+dy)
+		// 明度を下げるためにColorScaleを適用
+		dimmingFactor := 0.48 // 0.0 (真っ暗) から 1.0 (元の明るさ) の間で調整
+		op.ColorScale.Scale(float32(dimmingFactor), float32(dimmingFactor), float32(dimmingFactor), 1.0)
+		screen.DrawImage(bf.backgroundImage, op)
+	}
+
 	width := float32(rect.Dx())
 	height := float32(rect.Dy())
 	offsetX := float32(rect.Min.X)

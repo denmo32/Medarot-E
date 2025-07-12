@@ -17,6 +17,12 @@ const (
 	_ resource.FontID = iota
 	FontMPLUS1pRegular
 )
+
+const (
+	_ resource.ImageID = iota
+	ImageBattleBackground
+)
+
 const (
 	_ resource.RawID = iota
 	RawMedalsCSV
@@ -58,6 +64,12 @@ func initResources(audioContext *audio.Context) {
 		FontMPLUS1pRegular: {Path: "MPLUS1p-Regular.ttf", Size: 9}, // フォントサイズ
 	}
 	r.FontRegistry.Assign(fontResources)
+
+	// Register image resources.
+	imageResources := map[resource.ImageID]resource.ImageInfo{
+		ImageBattleBackground: {Path: "image/Gemini_Generated_Image_hojkprhojkprhojk.png"},
+	}
+	r.ImageRegistry.Assign(imageResources)
 }
 
 func LoadFont(id resource.FontID) (text.Face, error) {
