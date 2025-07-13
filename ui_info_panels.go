@@ -114,7 +114,15 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 	}
 }
 
-func setupInfoPanels(world donburi.World, config *Config, font text.Face, medarotInfoPanels map[string]*infoPanelUI, team1Container, team2Container *widget.Container) {
+// InfoPanelCreationResult は生成された情報パネルとそのチーム情報を持つ構造体です。
+type InfoPanelCreationResult struct {
+	PanelUI *infoPanelUI
+	Team    TeamID
+	ID      string
+}
+
+// CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
+func CreateInfoPanels(world donburi.World, config *Config, font text.Face) []InfoPanelCreationResult {
 	var entries []*donburi.Entry
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		entries = append(entries, entry)
@@ -129,16 +137,17 @@ func setupInfoPanels(world donburi.World, config *Config, font text.Face, medaro
 		return iSettings.DrawIndex < jSettings.DrawIndex
 	})
 
+	var results []InfoPanelCreationResult
 	for _, entry := range entries {
 		settings := SettingsComponent.Get(entry)
 		panelUI := createSingleMedarotInfoPanel(config, font, entry)
-		medarotInfoPanels[settings.ID] = panelUI
-		if settings.Team == Team1 {
-			team1Container.AddChild(panelUI.rootContainer)
-		} else {
-			team2Container.AddChild(panelUI.rootContainer)
-		}
+		results = append(results, InfoPanelCreationResult{
+			PanelUI: panelUI,
+			Team:    settings.Team,
+			ID:      settings.ID,
+		})
 	}
+	return results
 }
 
 func updateAllInfoPanels(world donburi.World, config *Config, medarotInfoPanels map[string]*infoPanelUI) {

@@ -94,7 +94,15 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 		),
 	)
 	mainUIContainer.AddChild(team2PanelContainer)
-	setupInfoPanels(world, config, GlobalGameDataManager.Font, ui.medarotInfoPanels, team1PanelContainer, team2PanelContainer)
+	infoPanelResults := CreateInfoPanels(world, config, GlobalGameDataManager.Font)
+	for _, result := range infoPanelResults {
+		ui.medarotInfoPanels[result.ID] = result.PanelUI
+		if result.Team == Team1 {
+			team1PanelContainer.AddChild(result.PanelUI.rootContainer)
+		} else {
+			team2PanelContainer.AddChild(result.PanelUI.rootContainer)
+		}
+	}
 	ui.messageManager = NewUIMessageDisplayManager(config, GlobalGameDataManager.Font, rootContainer)
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
