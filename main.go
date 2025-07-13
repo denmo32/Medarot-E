@@ -1,10 +1,14 @@
 package main
 
 import (
+	"image/color"
 	"log"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/ebitenui/ebitenui/image"
+	"github.com/ebitenui/ebitenui/widget"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -57,10 +61,19 @@ func main() {
 
 	// bamennを使ったシーンマネージャをセットアップします
 	// 共有リソースを作成
+	// ボタン用のシンプルな画像を作成
+	buttonImage := ebiten.NewImage(30, 30)                           // 適当なサイズ
+	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色
+
 	res := &SharedResources{
 		GameData: gameData,
 		Config:   config,
 		Font:     fontFace,
+		ButtonImage: &widget.ButtonImage{
+			Idle:    image.NewNineSliceSimple(buttonImage, 10, 10),
+			Hover:   image.NewNineSliceSimple(buttonImage, 10, 10),
+			Pressed: image.NewNineSliceSimple(buttonImage, 10, 10),
+		},
 	}
 
 	// シーンマネージャを作成
@@ -116,6 +129,10 @@ func (m *SceneManager) newCustomizeScene() (Scene, error) {
 	return NewCustomizeScene(m.resources, m), nil
 }
 
+func (m *SceneManager) newTestUIScene() (Scene, error) {
+	return NewTestUIScene(m.resources, m), nil
+}
+
 // GoTo... メソッド群は、各シーンから呼び出され、指定されたシーンに遷移させます
 
 func (m *SceneManager) GoToTitleScene() {
@@ -140,6 +157,15 @@ func (m *SceneManager) GoToCustomizeScene() {
 	scene, err := m.newCustomizeScene()
 	if err != nil {
 		log.Printf("カスタマイズシーンへの切り替えに失敗しました: %v", err)
+		return
+	}
+	m.sequence.Switch(scene)
+}
+
+func (m *SceneManager) GoToTestUIScene() {
+	scene, err := m.newTestUIScene()
+	if err != nil {
+		log.Printf("テストUIシーンへの切り替えに失敗しました: %v", err)
 		return
 	}
 	m.sequence.Switch(scene)
