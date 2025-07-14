@@ -89,43 +89,6 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 	}
 }
 
-// GetSuccessRate はエンティティの成功度を計算します。
-func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
-	successRate := float64(actingPartDef.Accuracy)
-
-	// 特性によるボーナスを加算
-	formula, ok := FormulaManager[actingPartDef.Trait]
-	if ok {
-		for _, bonus := range formula.SuccessRateBonuses {
-			// 攻撃パーツのパラメータを参照するように変更
-			successRate += pip.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
-		}
-	}
-	return successRate
-}
-
-// GetEvasionRate はエンティティの回避度を計算します。
-func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
-	evasion := pip.GetPartParameterValue(entry, PartSlotLegs, Mobility)
-
-	// デバフの影響を適用
-	if entry.HasComponent(EvasionDebuffComponent) {
-		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
-	}
-	return evasion
-}
-
-// GetDefenseRate はエンティティの防御度を計算します。
-func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
-	defense := pip.GetPartParameterValue(entry, PartSlotLegs, Defense)
-
-	// デバフの影響を適用
-	if entry.HasComponent(DefenseDebuffComponent) {
-		defense *= DefenseDebuffComponent.Get(entry).Multiplier
-	}
-	return defense
-}
-
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
 func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition) (int, bool) {
 	// 1. 計算式の取得
@@ -136,7 +99,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	}
 
 	// 2. 基本パラメータの取得
-	successRate := dc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
+	successRate := dc.GetSuccessRate(attacker, actingPartDef) // PartInfoProviderから移動
 	power := float64(actingPartDef.Power)
 
 	// 特性による威力ボーナスを加算
@@ -145,7 +108,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 			power += dc.partInfoProvider.GetPartParameterValue(attacker, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
-	evasion := dc.partInfoProvider.GetEvasionRate(target)
+	evasion := dc.GetEvasionRate(target) // PartInfoProviderから移動
 
 	// クリティカル判定
 	isCritical := false
@@ -181,7 +144,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 // GenerateActionLog は行動の結果ログを生成します。
 // targetPartDef はダメージを受けたパーツの定義 (nilの場合あり)
 // actingPartDef は攻撃に使用されたパーツの定義
-func (dc *DamageCalculator) GenerateActionLog(attacker *donburi.Entry, target *donburi.Entry, actingPartDef *PartDefinition, targetPartDef *PartDefinition, damage int, isCritical bool, didHit bool) string {
+func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, actingPartDef *PartDefinition, targetPartDef *PartDefinition, damage int, isCritical bool, didHit bool) string {
 	attackerSettings := SettingsComponent.Get(attacker)
 	targetSettings := SettingsComponent.Get(target)
 	skillName := "(不明なスキル)"
@@ -250,6 +213,50 @@ func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defe
 	return GlobalGameDataManager.Messages.FormatMessage("defense_success", params)
 }
 
+// ApplyDefenseAndDamage はアクション結果に基づいて防御判定を行い、ダメージを適用します。
+func (bl *BattleLogic) ApplyDefenseAndDamage(actionResult *ActionResult) {
+	if !actionResult.ActionDidHit {
+		return // 命中しなかった場合は何もしない
+	}
+
+	targetEntry := actionResult.TargetEntry
+	actingEntry := actionResult.ActingEntry
+	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(PartsComponent.Get(actingEntry).Map[ActionIntentComponent.Get(actingEntry).SelectedPartKey].DefinitionID)
+
+	// 1. 防御パーツの選択
+	defendingPartInst := bl.TargetSelector.SelectDefensePart(targetEntry)
+
+	// 2. 防御パーツがあり、かつ防御が成功した場合
+	if defendingPartInst != nil && bl.HitCalculator.CalculateDefense(actingEntry, targetEntry, actingPartDef) {
+		actionResult.ActionIsDefended = true
+
+		defendingPartDef, _ := GlobalGameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
+		actionResult.DefendingPartType = string(defendingPartDef.Type)
+
+		// 防御パーツのスロットを特定
+		defendingPartSlot := bl.PartInfoProvider.FindPartSlot(targetEntry, defendingPartInst)
+		actionResult.ActualHitPartSlot = defendingPartSlot
+
+		// ダメージ軽減計算
+		finalDamage := bl.DamageCalculator.CalculateReducedDamage(actionResult.OriginalDamage, defendingPartDef)
+		actionResult.DamageDealt = finalDamage
+
+		// 防御パーツにダメージを適用
+		bl.DamageCalculator.ApplyDamage(targetEntry, defendingPartInst, finalDamage)
+		actionResult.TargetPartBroken = defendingPartInst.IsBroken
+	} else {
+		// 防御失敗、または防御パーツがない場合
+		actionResult.ActionIsDefended = false
+
+		// 意図したターゲットパーツにダメージを適用
+		intendedTargetPartInstance := PartsComponent.Get(targetEntry).Map[actionResult.TargetPartSlot]
+		actionResult.DamageDealt = actionResult.OriginalDamage
+
+		bl.DamageCalculator.ApplyDamage(targetEntry, intendedTargetPartInstance, actionResult.OriginalDamage)
+		actionResult.TargetPartBroken = intendedTargetPartInstance.IsBroken
+	}
+}
+
 // --- HitCalculator ---
 
 // HitCalculator は命中・回避・防御判定に関連するロジックを担当します。
@@ -272,10 +279,10 @@ func (hc *HitCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
 // CalculateHit は新しいルールに基づいて命中判定を行います。
 func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition) bool {
 	// 攻撃側の成功度
-	successRate := hc.partInfoProvider.GetSuccessRate(attacker, partDef)
+	successRate := hc.GetSuccessRate(attacker, partDef) // PartInfoProviderから移動
 
 	// 防御側の回避度
-	evasion := hc.partInfoProvider.GetEvasionRate(target)
+	evasion := hc.GetEvasionRate(target) // PartInfoProviderから移動
 
 	// 命中確率 = 基準値 + (成功度 - 回避度)
 	chance := hc.config.Balance.Hit.BaseChance + (successRate - evasion)
@@ -298,10 +305,10 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 // CalculateDefense は防御の成否を判定します。
 func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition) bool {
 	// 攻撃側の成功度
-	successRate := hc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
+	successRate := hc.GetSuccessRate(attacker, actingPartDef) // PartInfoProviderから移動
 
 	// 防御側の防御度
-	defenseRate := hc.partInfoProvider.GetDefenseRate(target)
+	defenseRate := hc.GetDefenseRate(target) // PartInfoProviderから移動
 
 	// 防御成功確率 = 基準値 + (防御度 - 成功度)
 	chance := hc.config.Balance.Defense.BaseChance + (defenseRate - successRate)
@@ -454,6 +461,80 @@ func (ts *TargetSelector) GetOpponentTeam(actingEntry *donburi.Entry) TeamID {
 		return Team2
 	}
 	return Team1
+}
+
+// GetSuccessRate はエンティティの成功度を計算します。
+func (dc *DamageCalculator) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
+	successRate := float64(actingPartDef.Accuracy)
+
+	// 特性によるボーナスを加算
+	formula, ok := FormulaManager[actingPartDef.Trait]
+	if ok {
+		for _, bonus := range formula.SuccessRateBonuses {
+			// 攻撃パーツのパラメータを参照するように変更
+			successRate += dc.partInfoProvider.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
+		}
+	}
+	return successRate
+}
+
+// GetEvasionRate はエンティティの回避度を計算します。
+func (dc *DamageCalculator) GetEvasionRate(entry *donburi.Entry) float64 {
+	evasion := dc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Mobility)
+
+	// デバフの影響を適用
+	if entry.HasComponent(EvasionDebuffComponent) {
+		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
+	}
+	return evasion
+}
+
+// GetDefenseRate はエンティティの防御度を計算します。
+func (dc *DamageCalculator) GetDefenseRate(entry *donburi.Entry) float64 {
+	defense := dc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Defense)
+
+	// デバフの影響を適用
+	if entry.HasComponent(DefenseDebuffComponent) {
+		defense *= DefenseDebuffComponent.Get(entry).Multiplier
+	}
+	return defense
+}
+
+// GetSuccessRate はエンティティの成功度を計算します。
+func (hc *HitCalculator) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
+	successRate := float64(actingPartDef.Accuracy)
+
+	// 特性によるボーナスを加算
+	formula, ok := FormulaManager[actingPartDef.Trait]
+	if ok {
+		for _, bonus := range formula.SuccessRateBonuses {
+			// 攻撃パーツのパラメータを参照するように変更
+			successRate += hc.partInfoProvider.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
+		}
+	}
+	return successRate
+}
+
+// GetEvasionRate はエンティティの回避度を計算します。
+func (hc *HitCalculator) GetEvasionRate(entry *donburi.Entry) float64 {
+	evasion := hc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Mobility)
+
+	// デバフの影響を適用
+	if entry.HasComponent(EvasionDebuffComponent) {
+		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
+	}
+	return evasion
+}
+
+// GetDefenseRate はエンティティの防御度を計算します。
+func (hc *HitCalculator) GetDefenseRate(entry *donburi.Entry) float64 {
+	defense := hc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Defense)
+
+	// デバフの影響を適用
+	if entry.HasComponent(DefenseDebuffComponent) {
+		defense *= DefenseDebuffComponent.Get(entry).Multiplier
+	}
+	return defense
 }
 
 // --- PartInfoProvider ---

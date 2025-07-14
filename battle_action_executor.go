@@ -18,15 +18,16 @@ type ActionHandler interface {
 
 // --- 具体的なハンドラ ---
 
-// ShootActionHandler は射撃カテゴリのパーツのアクションを処理します。
-type ShootActionHandler struct{}
-
-func (h *ShootActionHandler) Execute(
+// executeAttackAction は射撃と格闘の共通攻撃ロジックをカプセル化します。
+func executeAttackAction(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
 	battleLogic *BattleLogic,
 	gameConfig *Config,
+	targetEntry *donburi.Entry,
+	targetPartSlot PartSlotKey,
+	logPrefix string, // ログメッセージのプレフィックス
 ) ActionResult {
 	result := ActionResult{ActingEntry: actingEntry}
 	settings := SettingsComponent.Get(actingEntry)
@@ -34,32 +35,28 @@ func (h *ShootActionHandler) Execute(
 	actingPartInstance := partsComp.Map[intent.SelectedPartKey]
 	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
 
-	// 1. ターゲット解決
-	targetComp := TargetComponent.Get(actingEntry)
-	if targetComp.TargetEntity == nil || targetComp.TargetPartSlot == "" {
-		result.LogMessage = settings.Name + "は射撃ターゲットが未選択です。"
-		return result
-	}
-	result.TargetEntry = targetComp.TargetEntity
-	result.TargetPartSlot = targetComp.TargetPartSlot
+	result.TargetEntry = targetEntry
+	result.TargetPartSlot = targetPartSlot
 
 	if StateComponent.Get(result.TargetEntry).FSM.Is(string(StateBroken)) {
 		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(result.TargetEntry).Name + ")を狙ったが、既に行動不能だった！"
+		cleanupActionDebuffs(actingEntry)
 		return result
 	}
 	targetParts := PartsComponent.Get(result.TargetEntry)
 	if targetParts.Map[result.TargetPartSlot] == nil || targetParts.Map[result.TargetPartSlot].IsBroken {
 		result.LogMessage = settings.Name + "は" + SettingsComponent.Get(result.TargetEntry).Name + "の" + string(result.TargetPartSlot) + "を狙ったが、パーツは既に破壊されていた！"
+		cleanupActionDebuffs(actingEntry)
 		return result
 	}
-	result.LogMessage = settings.Name + "は" + SettingsComponent.Get(result.TargetEntry).Name + "の" + string(result.TargetPartSlot) + "を狙う！"
+	result.LogMessage = logPrefix + SettingsComponent.Get(result.TargetEntry).Name + "の" + string(result.TargetPartSlot) + "を狙う！"
 
 	// 2. 命中判定
 	didHit := battleLogic.HitCalculator.CalculateHit(actingEntry, result.TargetEntry, actingPartDef)
 	result.ActionDidHit = didHit
 	if !didHit {
 		result.LogMessage = battleLogic.DamageCalculator.GenerateActionLog(actingEntry, result.TargetEntry, actingPartDef, nil, 0, false, false)
-		h.cleanup(actingEntry)
+		cleanupActionDebuffs(actingEntry)
 		return result
 	}
 
@@ -69,22 +66,17 @@ func (h *ShootActionHandler) Execute(
 	result.OriginalDamage = damage
 
 	intendedTargetPartInstance := targetParts.Map[result.TargetPartSlot]
-	// 	// battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
 	result.DamageDealt = result.OriginalDamage
 	result.TargetPartBroken = intendedTargetPartInstance.IsBroken
 	result.ActualHitPartSlot = result.TargetPartSlot
 
 	// 4. アクション結果生成
 	targetPartDef, _ := GlobalGameDataManager.GetPartDefinition(intendedTargetPartInstance.DefinitionID)
-	// 新しいフィールドに情報を設定
 	result.AttackerName = settings.Name
 	result.DefenderName = SettingsComponent.Get(result.TargetEntry).Name
 	result.ActionName = string(actingPartDef.Trait)
 	result.WeaponType = actingPartDef.WeaponType
 	result.TargetPartType = string(targetPartDef.Type)
-	// result.DefendingPartType は防御処理で設定される
-
-	// 古いログメッセージ生成は、命中しなかった場合にのみ行うため、ここでは何もしない。
 
 	if result.TargetPartBroken {
 		partBrokenParams := map[string]interface{}{
@@ -96,12 +88,45 @@ func (h *ShootActionHandler) Execute(
 	}
 
 	// 5. クリーンアップ
-	h.cleanup(actingEntry)
+	cleanupActionDebuffs(actingEntry)
 
 	return result
 }
 
-func (h *ShootActionHandler) cleanup(actingEntry *donburi.Entry) {
+// ShootActionHandler は射撃カテゴリのパーツのアクションを処理します。
+type ShootActionHandler struct{}
+
+func (h *ShootActionHandler) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+) ActionResult {
+	settings := SettingsComponent.Get(actingEntry)
+	targetComp := TargetComponent.Get(actingEntry)
+
+	if targetComp.TargetEntity == nil || targetComp.TargetPartSlot == "" {
+		return ActionResult{
+			ActingEntry: actingEntry,
+			LogMessage:  settings.Name + "は射撃ターゲットが未選択です。",
+		}
+	}
+
+	return executeAttackAction(
+		actingEntry,
+		world,
+		intent,
+		battleLogic,
+		gameConfig,
+		targetComp.TargetEntity,
+		targetComp.TargetPartSlot,
+		settings.Name+"は",
+	)
+}
+
+// cleanup は行動後のデバフをクリーンアップします。
+func cleanupActionDebuffs(actingEntry *donburi.Entry) {
 	if actingEntry.HasComponent(EvasionDebuffComponent) {
 		actingEntry.RemoveComponent(EvasionDebuffComponent)
 	}
@@ -120,93 +145,41 @@ func (h *MeleeActionHandler) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 ) ActionResult {
-	result := ActionResult{ActingEntry: actingEntry}
 	settings := SettingsComponent.Get(actingEntry)
-	partsComp := PartsComponent.Get(actingEntry)
-	actingPartInstance := partsComp.Map[intent.SelectedPartKey]
-	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
-
 	// 1. ターゲット解決
 	closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
 	if closestEnemy == nil {
-		result.LogMessage = settings.Name + "は格闘攻撃しようとしたが、相手がいなかった。"
-		return result
-	}
-	result.TargetEntry = closestEnemy
-
-	if StateComponent.Get(closestEnemy).FSM.Is(string(StateBroken)) {
-		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(closestEnemy).Name + ")を狙ったが、既に行動不能だった！"
-		return result
+		return ActionResult{
+			ActingEntry: actingEntry,
+			LogMessage:  settings.Name + "は格闘攻撃しようとしたが、相手がいなかった。",
+		}
 	}
 
 	targetPart := battleLogic.TargetSelector.SelectRandomPartToDamage(closestEnemy)
 	if targetPart == nil {
-		result.LogMessage = settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "を狙ったが、攻撃できる部位がなかった！"
-		return result
+		return ActionResult{
+			ActingEntry: actingEntry,
+			LogMessage:  settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "を狙ったが、攻撃できる部位がなかった！",
+		}
 	}
 	targetPartSlot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
 	if targetPartSlot == "" {
-		result.LogMessage = settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。"
-		return result
-	}
-	result.TargetPartSlot = targetPartSlot
-	result.LogMessage = settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "の" + string(targetPartSlot) + "に格闘攻撃！"
-
-	// 2. 命中判定
-	didHit := battleLogic.HitCalculator.CalculateHit(actingEntry, result.TargetEntry, actingPartDef)
-	result.ActionDidHit = didHit
-	if !didHit {
-		result.LogMessage = battleLogic.DamageCalculator.GenerateActionLog(actingEntry, result.TargetEntry, actingPartDef, nil, 0, false, false)
-		h.cleanup(actingEntry)
-		return result
-	}
-
-	// 3. ダメージ適用
-	damage, isCritical := battleLogic.DamageCalculator.CalculateDamage(actingEntry, result.TargetEntry, actingPartDef)
-	result.IsCritical = isCritical
-	result.OriginalDamage = damage
-
-	targetParts := PartsComponent.Get(result.TargetEntry)
-	intendedTargetPartInstance := targetParts.Map[result.TargetPartSlot]
-	// 	// battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
-	result.DamageDealt = result.OriginalDamage
-	result.TargetPartBroken = intendedTargetPartInstance.IsBroken
-	result.ActualHitPartSlot = result.TargetPartSlot
-
-	// 4. アクション結果生成
-	targetPartDef, _ := GlobalGameDataManager.GetPartDefinition(intendedTargetPartInstance.DefinitionID)
-	// 新しいフィールドに情報を設定
-	result.AttackerName = settings.Name
-	result.DefenderName = SettingsComponent.Get(result.TargetEntry).Name
-	result.ActionName = string(actingPartDef.Trait)
-	result.WeaponType = actingPartDef.WeaponType
-	result.TargetPartType = string(targetPartDef.Type)
-	// result.DefendingPartType は防御処理で設定される
-
-	// 古いログメッセージ生成は、命中しなかった場合にのみ行うため、ここでは何もしない。
-
-	if result.TargetPartBroken {
-		partBrokenParams := map[string]interface{}{
-			"target_name":      SettingsComponent.Get(result.TargetEntry).Name,
-			"target_part_name": targetPartDef.PartName,
+		return ActionResult{
+			ActingEntry: actingEntry,
+			LogMessage:  settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。",
 		}
-		additionalMsg := GlobalGameDataManager.Messages.FormatMessage("part_broken", partBrokenParams)
-		result.LogMessage += " " + additionalMsg
 	}
 
-	// 5. クリーンアップ
-	h.cleanup(actingEntry)
-
-	return result
-}
-
-func (h *MeleeActionHandler) cleanup(actingEntry *donburi.Entry) {
-	if actingEntry.HasComponent(EvasionDebuffComponent) {
-		actingEntry.RemoveComponent(EvasionDebuffComponent)
-	}
-	if actingEntry.HasComponent(DefenseDebuffComponent) {
-		actingEntry.RemoveComponent(DefenseDebuffComponent)
-	}
+	return executeAttackAction(
+		actingEntry,
+		world,
+		intent,
+		battleLogic,
+		gameConfig,
+		closestEnemy,
+		targetPartSlot,
+		settings.Name+"は"+SettingsComponent.Get(closestEnemy).Name+"の"+string(targetPartSlot)+"に格闘攻撃！",
+	)
 }
 
 // ハンドラのグローバルインスタンス（またはファクトリ/レジストリを使用することもできます）
