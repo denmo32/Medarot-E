@@ -99,7 +99,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	}
 
 	// 2. 基本パラメータの取得
-	successRate := dc.GetSuccessRate(attacker, actingPartDef) // PartInfoProviderから移動
+	successRate := dc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
 	power := float64(actingPartDef.Power)
 
 	// 特性による威力ボーナスを加算
@@ -108,7 +108,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 			power += dc.partInfoProvider.GetPartParameterValue(attacker, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
-	evasion := dc.GetEvasionRate(target) // PartInfoProviderから移動
+	evasion := dc.partInfoProvider.GetEvasionRate(target)
 
 	// クリティカル判定
 	isCritical := false
@@ -279,10 +279,10 @@ func (hc *HitCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
 // CalculateHit は新しいルールに基づいて命中判定を行います。
 func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition) bool {
 	// 攻撃側の成功度
-	successRate := hc.GetSuccessRate(attacker, partDef) // PartInfoProviderから移動
+	successRate := hc.partInfoProvider.GetSuccessRate(attacker, partDef)
 
 	// 防御側の回避度
-	evasion := hc.GetEvasionRate(target) // PartInfoProviderから移動
+	evasion := hc.partInfoProvider.GetEvasionRate(target)
 
 	// 命中確率 = 基準値 + (成功度 - 回避度)
 	chance := hc.config.Balance.Hit.BaseChance + (successRate - evasion)
@@ -305,10 +305,10 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 // CalculateDefense は防御の成否を判定します。
 func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition) bool {
 	// 攻撃側の成功度
-	successRate := hc.GetSuccessRate(attacker, actingPartDef) // PartInfoProviderから移動
+	successRate := hc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
 
 	// 防御側の防御度
-	defenseRate := hc.GetDefenseRate(target) // PartInfoProviderから移動
+	defenseRate := hc.partInfoProvider.GetDefenseRate(target)
 
 	// 防御成功確率 = 基準値 + (防御度 - 成功度)
 	chance := hc.config.Balance.Defense.BaseChance + (defenseRate - successRate)
@@ -463,80 +463,6 @@ func (ts *TargetSelector) GetOpponentTeam(actingEntry *donburi.Entry) TeamID {
 	return Team1
 }
 
-// GetSuccessRate はエンティティの成功度を計算します。
-func (dc *DamageCalculator) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
-	successRate := float64(actingPartDef.Accuracy)
-
-	// 特性によるボーナスを加算
-	formula, ok := FormulaManager[actingPartDef.Trait]
-	if ok {
-		for _, bonus := range formula.SuccessRateBonuses {
-			// 攻撃パーツのパラメータを参照するように変更
-			successRate += dc.partInfoProvider.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
-		}
-	}
-	return successRate
-}
-
-// GetEvasionRate はエンティティの回避度を計算します。
-func (dc *DamageCalculator) GetEvasionRate(entry *donburi.Entry) float64 {
-	evasion := dc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Mobility)
-
-	// デバフの影響を適用
-	if entry.HasComponent(EvasionDebuffComponent) {
-		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
-	}
-	return evasion
-}
-
-// GetDefenseRate はエンティティの防御度を計算します。
-func (dc *DamageCalculator) GetDefenseRate(entry *donburi.Entry) float64 {
-	defense := dc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Defense)
-
-	// デバフの影響を適用
-	if entry.HasComponent(DefenseDebuffComponent) {
-		defense *= DefenseDebuffComponent.Get(entry).Multiplier
-	}
-	return defense
-}
-
-// GetSuccessRate はエンティティの成功度を計算します。
-func (hc *HitCalculator) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
-	successRate := float64(actingPartDef.Accuracy)
-
-	// 特性によるボーナスを加算
-	formula, ok := FormulaManager[actingPartDef.Trait]
-	if ok {
-		for _, bonus := range formula.SuccessRateBonuses {
-			// 攻撃パーツのパラメータを参照するように変更
-			successRate += hc.partInfoProvider.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
-		}
-	}
-	return successRate
-}
-
-// GetEvasionRate はエンティティの回避度を計算します。
-func (hc *HitCalculator) GetEvasionRate(entry *donburi.Entry) float64 {
-	evasion := hc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Mobility)
-
-	// デバフの影響を適用
-	if entry.HasComponent(EvasionDebuffComponent) {
-		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
-	}
-	return evasion
-}
-
-// GetDefenseRate はエンティティの防御度を計算します。
-func (hc *HitCalculator) GetDefenseRate(entry *donburi.Entry) float64 {
-	defense := hc.partInfoProvider.GetPartParameterValue(entry, PartSlotLegs, Defense)
-
-	// デバフの影響を適用
-	if entry.HasComponent(DefenseDebuffComponent) {
-		defense *= DefenseDebuffComponent.Get(entry).Multiplier
-	}
-	return defense
-}
-
 // --- PartInfoProvider ---
 
 // PartInfoProvider はパーツの状態や情報を取得・操作するロジックを担当します。
@@ -661,6 +587,43 @@ func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*PartD
 		return nil, false
 	}
 	return pip.gameDataManager.GetPartDefinition(legsInstance.DefinitionID)
+}
+
+// GetSuccessRate はエンティティの成功度を計算します。
+func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
+	successRate := float64(actingPartDef.Accuracy)
+
+	// 特性によるボーナスを加算
+	formula, ok := FormulaManager[actingPartDef.Trait]
+	if ok {
+		for _, bonus := range formula.SuccessRateBonuses {
+			// 攻撃パーツのパラメータを参照するように変更
+			successRate += pip.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
+		}
+	}
+	return successRate
+}
+
+// GetEvasionRate はエンティティの回避度を計算します。
+func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
+	evasion := pip.GetPartParameterValue(entry, PartSlotLegs, Mobility)
+
+	// デバフの影響を適用
+	if entry.HasComponent(EvasionDebuffComponent) {
+		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
+	}
+	return evasion
+}
+
+// GetDefenseRate はエンティティの防御度を計算します。
+func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
+	defense := pip.GetPartParameterValue(entry, PartSlotLegs, Defense)
+
+	// デバフの影響を適用
+	if entry.HasComponent(DefenseDebuffComponent) {
+		defense *= DefenseDebuffComponent.Get(entry).Multiplier
+	}
+	return defense
 }
 
 // CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。
