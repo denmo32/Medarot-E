@@ -18,17 +18,15 @@ type UIMessageDisplayManager struct {
 	config              *Config
 	font                text.Face
 	uiContainer         *widget.Container // メッセージウィンドウを追加するUIのルートコンテナ
-	isWaitingForClick   bool
 }
 
 // NewUIMessageDisplayManager は新しいUIMessageDisplayManagerのインスタンスを作成します。
 func NewUIMessageDisplayManager(config *Config, font text.Face, uiContainer *widget.Container) *UIMessageDisplayManager {
 	return &UIMessageDisplayManager{
 		messageQueue: make([]string, 0),
-		config:      config,
-		font:        font,
-		uiContainer: uiContainer,
-		isWaitingForClick: false,
+		config:       config,
+		font:         font,
+		uiContainer:  uiContainer,
 	}
 }
 
@@ -79,8 +77,7 @@ func (mm *UIMessageDisplayManager) Update(state GameState) (GameState, bool) {
 		return state, false // メッセージ状態でない場合は何もしない
 	}
 
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) && !mm.isWaitingForClick {
-		mm.isWaitingForClick = true
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		mm.currentMessageIndex++
 		if mm.currentMessageIndex < len(mm.messageQueue) {
 			mm.ShowCurrentMessage()
@@ -92,8 +89,6 @@ func (mm *UIMessageDisplayManager) Update(state GameState) (GameState, bool) {
 			}
 			return StatePlaying, true // メッセージ表示完了、StatePlayingに戻る
 		}
-	} else if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		mm.isWaitingForClick = false
 	}
 	return StateMessage, false // メッセージ表示中
 }
