@@ -298,7 +298,8 @@ type PartDefinition struct {
 	Mobility   int
 	Defense    int
 	Stability  int
-	WeaponType string // CSVから必要であればここに追加
+	WeaponType string      // CSVから必要であればここに追加
+	PartSlot   PartSlotKey // このパーツが通常装着されるスロット
 }
 
 // PartInstanceData (旧Part) は戦闘中のパーツインスタンスの動的な状態を保持します。

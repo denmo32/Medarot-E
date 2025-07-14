@@ -25,7 +25,7 @@ func NewBattleLogic(world donburi.World, config *Config) *BattleLogic {
 	bl := &BattleLogic{}
 
 	// ヘルパーを初期化
-	bl.PartInfoProvider = NewPartInfoProvider(world, config)
+	bl.PartInfoProvider = NewPartInfoProvider(world, config, GlobalGameDataManager)
 	bl.DamageCalculator = NewDamageCalculator(world, config)
 	bl.HitCalculator = NewHitCalculator(world, config)
 	bl.TargetSelector = NewTargetSelector(world, config)
@@ -68,12 +68,12 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 		partInst.IsBroken = true
 		settings := SettingsComponent.Get(entry)
 		// Get PartDefinition for logging PartName
-		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partDef, defFound := dc.partInfoProvider.gameDataManager.GetPartDefinition(partInst.DefinitionID)
 		partNameForLog := "(不明パーツ)"
 		if defFound {
 			partNameForLog = partDef.PartName
 		}
-		log.Print(GlobalGameDataManager.Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
+		log.Print(dc.partInfoProvider.gameDataManager.Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
 			"ordered_args": []interface{}{settings.Name, partNameForLog, partInst.DefinitionID},
 		}))
 
@@ -89,26 +89,6 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 	}
 }
 
-// getParameterValue は指定されたパラメータの値を取得するヘルパー関数です。
-func (pip *PartInfoProvider) getParameterValue(entry *donburi.Entry, param PartParameter) float64 {
-	legsDef, found := pip.GetLegsPartDefinition(entry)
-	if !found {
-		return 0
-	}
-	switch param {
-	case Mobility:
-		return float64(legsDef.Mobility)
-	case Propulsion:
-		return float64(legsDef.Propulsion)
-	case Stability:
-		return float64(legsDef.Stability)
-	case Defense:
-		return float64(legsDef.Defense)
-	default:
-		return 0
-	}
-}
-
 // GetSuccessRate はエンティティの成功度を計算します。
 func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
 	successRate := float64(actingPartDef.Accuracy)
@@ -117,7 +97,8 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 	formula, ok := FormulaManager[actingPartDef.Trait]
 	if ok {
 		for _, bonus := range formula.SuccessRateBonuses {
-			successRate += pip.getParameterValue(entry, bonus.SourceParam) * bonus.Multiplier
+			// 攻撃パーツのパラメータを参照するように変更
+			successRate += pip.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
 	return successRate
@@ -125,11 +106,7 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 
 // GetEvasionRate はエンティティの回避度を計算します。
 func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
-	evasion := 0.0
-	legsDef, found := pip.GetLegsPartDefinition(entry)
-	if found {
-		evasion = float64(legsDef.Mobility)
-	}
+	evasion := pip.GetPartParameterValue(entry, PartSlotLegs, Mobility)
 
 	// デバフの影響を適用
 	if entry.HasComponent(EvasionDebuffComponent) {
@@ -140,11 +117,7 @@ func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
 
 // GetDefenseRate はエンティティの防御度を計算します。
 func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
-	defense := 0.0
-	legsDef, found := pip.GetLegsPartDefinition(entry)
-	if found {
-		defense = float64(legsDef.Defense)
-	}
+	defense := pip.GetPartParameterValue(entry, PartSlotLegs, Defense)
 
 	// デバフの影響を適用
 	if entry.HasComponent(DefenseDebuffComponent) {
@@ -169,7 +142,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	// 特性による威力ボーナスを加算
 	if formula != nil {
 		for _, bonus := range formula.PowerBonuses {
-			power += dc.partInfoProvider.getParameterValue(attacker, bonus.SourceParam) * bonus.Multiplier
+			power += dc.partInfoProvider.GetPartParameterValue(attacker, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
 	evasion := dc.partInfoProvider.GetEvasionRate(target)
@@ -179,12 +152,8 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	criticalChance := dc.config.Balance.Damage.Critical.BaseChance + (successRate * dc.config.Balance.Damage.Critical.SuccessRateFactor) + formula.CriticalRateBonus
 
 	// クリティカル率の上下限を適用
-	if criticalChance < dc.config.Balance.Damage.Critical.MinChance {
-		criticalChance = dc.config.Balance.Damage.Critical.MinChance
-	}
-	if criticalChance > dc.config.Balance.Damage.Critical.MaxChance {
-		criticalChance = dc.config.Balance.Damage.Critical.MaxChance
-	}
+	criticalChance = math.Max(criticalChance, dc.config.Balance.Damage.Critical.MinChance)
+	criticalChance = math.Min(criticalChance, dc.config.Balance.Damage.Critical.MaxChance)
 
 	if globalRand.Intn(100) < int(criticalChance) {
 		isCritical = true
@@ -387,7 +356,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstance
 		if partInst.IsBroken {
 			continue
 		}
-		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partDef, defFound := ts.partInfoProvider.gameDataManager.GetPartDefinition(partInst.DefinitionID)
 		if !defFound {
 			log.Printf("SelectDefensePart: PartDefinition not found for ID %s", partInst.DefinitionID)
 			continue
@@ -491,13 +460,48 @@ func (ts *TargetSelector) GetOpponentTeam(actingEntry *donburi.Entry) TeamID {
 
 // PartInfoProvider はパーツの状態や情報を取得・操作するロジックを担当します。
 type PartInfoProvider struct {
-	world  donburi.World
-	config *Config
+	world           donburi.World
+	config          *Config
+	gameDataManager *GameDataManager // GlobalGameDataManagerを注入
 }
 
 // NewPartInfoProvider は新しい PartInfoProvider のインスタンスを生成します。
-func NewPartInfoProvider(world donburi.World, config *Config) *PartInfoProvider {
-	return &PartInfoProvider{world: world, config: config}
+func NewPartInfoProvider(world donburi.World, config *Config, gdm *GameDataManager) *PartInfoProvider {
+	return &PartInfoProvider{world: world, config: config, gameDataManager: gdm}
+}
+
+// GetPartParameterValue は指定されたパーツスロットとパラメータの値を取得する汎用ヘルパー関数です。
+func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlot PartSlotKey, param PartParameter) float64 {
+	partsComp := PartsComponent.Get(entry)
+	if partsComp == nil {
+		return 0
+	}
+	partInst, ok := partsComp.Map[partSlot]
+	if !ok || partInst == nil || partInst.IsBroken {
+		return 0
+	}
+	partDef, found := pip.gameDataManager.GetPartDefinition(partInst.DefinitionID)
+	if !found {
+		log.Printf("警告: PartDefinition not found for ID %s in slot %s", partInst.DefinitionID, partSlot)
+		return 0
+	}
+
+	switch param {
+	case Power:
+		return float64(partDef.Power)
+	case Accuracy:
+		return float64(partDef.Accuracy)
+	case Mobility:
+		return float64(partDef.Mobility)
+	case Propulsion:
+		return float64(partDef.Propulsion)
+	case Stability:
+		return float64(partDef.Stability)
+	case Defense:
+		return float64(partDef.Defense)
+	default:
+		return 0
+	}
 }
 
 // FindPartSlot は指定されたパーツインスタンスがどのスロットにあるかを返します。
@@ -542,7 +546,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 		if !ok || partInst == nil {
 			continue
 		}
-		partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partDef, defFound := pip.gameDataManager.GetPartDefinition(partInst.DefinitionID)
 		if !defFound {
 			log.Printf("Warning: Part definition %s not found for available part check.", partInst.DefinitionID)
 			continue
@@ -557,38 +561,12 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 
 // GetOverallPropulsion はエンティティの総推進力を返します。
 func (pip *PartInfoProvider) GetOverallPropulsion(entry *donburi.Entry) int {
-	partsComp := PartsComponent.Get(entry)
-	if partsComp == nil {
-		return 1
-	}
-	legsInstance, ok := partsComp.Map[PartSlotLegs]
-	if !ok || legsInstance == nil || legsInstance.IsBroken {
-		return 1 // 脚部がない、または破壊されている場合はデフォルト値
-	}
-	legsDef, defFound := GlobalGameDataManager.GetPartDefinition(legsInstance.DefinitionID)
-	if !defFound {
-		log.Printf("Warning: Legs part definition %s not found for propulsion.", legsInstance.DefinitionID)
-		return 1
-	}
-	return legsDef.Propulsion
+	return int(pip.GetPartParameterValue(entry, PartSlotLegs, Propulsion))
 }
 
 // GetOverallMobility はエンティティの総機動力を返します。
 func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
-	partsComp := PartsComponent.Get(entry)
-	if partsComp == nil {
-		return 1
-	}
-	legsInstance, ok := partsComp.Map[PartSlotLegs]
-	if !ok || legsInstance == nil || legsInstance.IsBroken {
-		return 1 // 脚部がない、または破壊されている場合はデフォルト値
-	}
-	legsDef, defFound := GlobalGameDataManager.GetPartDefinition(legsInstance.DefinitionID)
-	if !defFound {
-		log.Printf("Warning: Legs part definition %s not found for mobility.", legsInstance.DefinitionID)
-		return 1
-	}
-	return legsDef.Mobility
+	return int(pip.GetPartParameterValue(entry, PartSlotLegs, Mobility))
 }
 
 // GetLegsPartDefinition はエンティティの脚部パーツの定義を取得します。
@@ -601,7 +579,7 @@ func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*PartD
 	if !ok || legsInstance == nil || legsInstance.IsBroken {
 		return nil, false
 	}
-	return GlobalGameDataManager.GetPartDefinition(legsInstance.DefinitionID)
+	return pip.gameDataManager.GetPartDefinition(legsInstance.DefinitionID)
 }
 
 // CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。
