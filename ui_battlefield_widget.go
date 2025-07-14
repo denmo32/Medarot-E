@@ -219,7 +219,7 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 
 	// Draw the background image to fill the widget, cropping as needed.
 	if bf.backgroundImage != nil {
-		bgW, bgH := bf.backgroundImage.Size()
+		bgW, bgH := bf.backgroundImage.Bounds().Dx(), bf.backgroundImage.Bounds().Dy()
 		widgetW, widgetH := rect.Dx(), rect.Dy()
 
 		scale := math.Max(float64(widgetW)/float64(bgW), float64(widgetH)/float64(bgH))
