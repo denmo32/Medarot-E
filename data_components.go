@@ -126,8 +126,6 @@ type AIPartSelectionStrategyComponentData struct {
 	Strategy AIPartSelectionStrategyFunc
 }
 
-// var AIPartSelectionStrategyComponent = donburi.NewComponentType[AIPartSelectionStrategyComponentData]()
-
 // --- 履歴データコンポーネント ---
 
 // TargetHistoryData は、このエンティティを最後に攻撃したエンティティを記録します。
