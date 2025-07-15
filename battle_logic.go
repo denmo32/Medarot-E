@@ -521,7 +521,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 			continue
 		}
 
-		if partDef.Category != CategoryNone && partDef.Category != CategorySupport && partDef.Category != CategoryDefense {
+		if partDef.Category == CategoryShoot || partDef.Category == CategoryMelee || partDef.Category == CategoryIntervention {
 			availableParts = append(availableParts, AvailablePart{PartDef: partDef, Slot: slot, IsBroken: partInst.IsBroken})
 		}
 	}

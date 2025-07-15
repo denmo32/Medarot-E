@@ -227,67 +227,78 @@ func (h *InterventionActionHandler) Execute(
 	partsComp := PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
 	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
-
-	// 1. TeamBuffsComponent を取得
-	teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(world)
-	if !ok {
-		log.Println("エラー: TeamBuffsComponent がワールドに見つかりません。")
-		return ActionResult{
-			ActingEntry: actingEntry,
-			// LogMessage:  settings.Name + "は支援行動に失敗した(バフ管理エラー)。",
-		}
-	}
-	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
-
-	// 2. バフ情報を生成
-	buffValue := 1.0 + (float64(actingPartDef.Power) / 100.0)
-	newBuffSource := &BuffSource{
-		SourceEntry: actingEntry,
-		SourcePart:  intent.SelectedPartKey,
-		Value:       buffValue,
-	}
-
-	// 3. TeamBuffsComponent を更新
-	teamID := settings.Team
-	buffType := BuffTypeAccuracy
-
-	// チームのバフマップがなければ初期化
-	if _, exists := teamBuffs.Buffs[teamID]; !exists {
-		teamBuffs.Buffs[teamID] = make(map[BuffType][]*BuffSource)
-	}
-	// バフタイプのスライスがなければ初期化
-	if _, exists := teamBuffs.Buffs[teamID][buffType]; !exists {
-		teamBuffs.Buffs[teamID][buffType] = make([]*BuffSource, 0)
-	}
-
-	// 同じソースからの既存のバフがあれば削除 (念のため)
-	existingBuffs := teamBuffs.Buffs[teamID][buffType]
-	filteredBuffs := make([]*BuffSource, 0, len(existingBuffs))
-	for _, buff := range existingBuffs {
-		if buff.SourceEntry != actingEntry || buff.SourcePart != intent.SelectedPartKey {
-			filteredBuffs = append(filteredBuffs, buff)
-		}
-	}
-
-	// 新しいバフを追加
-	teamBuffs.Buffs[teamID][buffType] = append(filteredBuffs, newBuffSource)
-
-	log.Printf("チーム%dに命中バフを追加: %s (%.2f倍)", teamID, settings.Name, buffValue)
-
-	// 4. アクション結果を生成
 	result := ActionResult{
 		ActingEntry:  actingEntry,
-		ActionDidHit: true, // 支援行動は必ず「成功」とする
+		ActionDidHit: true, // 介入行動は基本「成功」とする
 		AttackerName: settings.Name,
 		ActionName:   string(actingPartDef.Trait),
 		WeaponType:   actingPartDef.WeaponType,
 	}
 
-	// LogMessage は scene_battle.go で生成するため、ここでは設定しない
-	// result.LogMessage = GlobalGameDataManager.Messages.FormatMessage("support_action_generic", params)
+	switch actingPartDef.Trait {
+	case TraitSupport:
+		// --- 支援処理 ---
+		// 1. TeamBuffsComponent を取得
+		teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(world)
+		if !ok {
+			log.Println("エラー: TeamBuffsComponent がワールドに見つかりません。")
+			result.ActionDidHit = false // 失敗としてマーク
+			return result
+		}
+		teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
+
+		// 2. バフ情報を生成
+		buffValue := 1.0 + (float64(actingPartDef.Power) / 100.0)
+		newBuffSource := &BuffSource{
+			SourceEntry: actingEntry,
+			SourcePart:  intent.SelectedPartKey,
+			Value:       buffValue,
+		}
+
+		// 3. TeamBuffsComponent を更新
+		teamID := settings.Team
+		buffType := BuffTypeAccuracy // 現在は命中バフ固定
+
+		if _, exists := teamBuffs.Buffs[teamID]; !exists {
+			teamBuffs.Buffs[teamID] = make(map[BuffType][]*BuffSource)
+		}
+		if _, exists := teamBuffs.Buffs[teamID][buffType]; !exists {
+			teamBuffs.Buffs[teamID][buffType] = make([]*BuffSource, 0)
+		}
+
+		existingBuffs := teamBuffs.Buffs[teamID][buffType]
+		filteredBuffs := make([]*BuffSource, 0, len(existingBuffs))
+		for _, buff := range existingBuffs {
+			if buff.SourceEntry != actingEntry || buff.SourcePart != intent.SelectedPartKey {
+				filteredBuffs = append(filteredBuffs, buff)
+			}
+		}
+		teamBuffs.Buffs[teamID][buffType] = append(filteredBuffs, newBuffSource)
+		log.Printf("チーム%dに命中バフを追加: %s (%.2f倍)", teamID, settings.Name, buffValue)
+
+	case TraitDebuff:
+		// --- 妨害処理 ---
+		targetComp := TargetComponent.Get(actingEntry)
+		if targetComp.TargetEntity == nil {
+			log.Printf("%s は妨害ターゲットが未選択です。", settings.Name)
+			result.ActionDidHit = false
+			return result
+		}
+		targetEntry := targetComp.TargetEntity
+		result.TargetEntry = targetEntry
+		result.DefenderName = SettingsComponent.Get(targetEntry).Name
+
+		// ここに将来的なデバフ処理を実装します。
+		// 例: ターゲットの回避デバフコンポーネントを追加
+		// donburi.Add(targetEntry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: 0.8})
+		log.Printf("%s が %s に妨害を実行しました（現在効果なし）。", settings.Name, result.DefenderName)
+
+	default:
+		log.Printf("未対応の介入Traitです: %s", actingPartDef.Trait)
+		result.ActionDidHit = false // 不明なTraitは失敗とする
+	}
 
 	cleanupActionDebuffs(actingEntry)
-
 	return result
 }
 

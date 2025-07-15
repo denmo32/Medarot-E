@@ -127,8 +127,6 @@ const (
 	CategoryShoot        PartCategory = "射撃"
 	CategoryMelee        PartCategory = "格闘" // CSVの FIGHT に対応します
 	CategoryIntervention PartCategory = "介入"
-	CategorySupport      PartCategory = "支援"
-	CategoryDefense      PartCategory = "防御"
 	CategoryNone         PartCategory = "NONE" // NONE はそのままです
 )
 const (
@@ -137,6 +135,7 @@ const (
 	TraitBerserk Trait = "我武者羅"
 	TraitNormal  Trait = "撃つ"
 	TraitSupport Trait = "支援"
+	TraitDebuff  Trait = "妨害"
 	TraitNone    Trait = "NONE" // NONE はそのままです
 )
 
