@@ -216,50 +216,6 @@ func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defe
 	return GlobalGameDataManager.Messages.FormatMessage("defense_success", params)
 }
 
-// ApplyDefenseAndDamage はアクション結果に基づいて防御判定を行い、ダメージを適用します。
-func (bl *BattleLogic) ApplyDefenseAndDamage(actionResult *ActionResult) {
-	if !actionResult.ActionDidHit {
-		return // 命中しなかった場合は何もしない
-	}
-
-	targetEntry := actionResult.TargetEntry
-	actingEntry := actionResult.ActingEntry
-	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(PartsComponent.Get(actingEntry).Map[ActionIntentComponent.Get(actingEntry).SelectedPartKey].DefinitionID)
-
-	// 1. 防御パーツの選択
-	defendingPartInst := bl.TargetSelector.SelectDefensePart(targetEntry)
-
-	// 2. 防御パーツがあり、かつ防御が成功した場合
-	if defendingPartInst != nil && bl.HitCalculator.CalculateDefense(actingEntry, targetEntry, actingPartDef) {
-		actionResult.ActionIsDefended = true
-
-		defendingPartDef, _ := GlobalGameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
-		actionResult.DefendingPartType = string(defendingPartDef.Type)
-
-		// 防御パーツのスロットを特定
-		defendingPartSlot := bl.PartInfoProvider.FindPartSlot(targetEntry, defendingPartInst)
-		actionResult.ActualHitPartSlot = defendingPartSlot
-
-		// ダメージ軽減計算
-		finalDamage := bl.DamageCalculator.CalculateReducedDamage(actionResult.OriginalDamage, defendingPartDef)
-		actionResult.DamageDealt = finalDamage
-
-		// 防御パーツにダメージを適用
-		bl.DamageCalculator.ApplyDamage(targetEntry, defendingPartInst, finalDamage)
-		actionResult.TargetPartBroken = defendingPartInst.IsBroken
-	} else {
-		// 防御失敗、または防御パーツがない場合
-		actionResult.ActionIsDefended = false
-
-		// 意図したターゲットパーツにダメージを適用
-		intendedTargetPartInstance := PartsComponent.Get(targetEntry).Map[actionResult.TargetPartSlot]
-		actionResult.DamageDealt = actionResult.OriginalDamage
-
-		bl.DamageCalculator.ApplyDamage(targetEntry, intendedTargetPartInstance, actionResult.OriginalDamage)
-		actionResult.TargetPartBroken = intendedTargetPartInstance.IsBroken
-	}
-}
-
 // --- HitCalculator ---
 
 // HitCalculator は命中・回避・防御判定に関連するロジックを担当します。
