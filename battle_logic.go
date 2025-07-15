@@ -86,6 +86,9 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 				}
 			}
 		}
+
+		// パーツ破壊時にバフを解除する
+		dc.partInfoProvider.RemoveBuffsFromSource(entry, partInst)
 	}
 }
 
@@ -280,6 +283,9 @@ func (hc *HitCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
 func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition) bool {
 	// 攻撃側の成功度
 	successRate := hc.partInfoProvider.GetSuccessRate(attacker, partDef)
+
+	// チームバフによる成功度の上昇
+	successRate *= hc.partInfoProvider.GetTeamAccuracyBuffMultiplier(attacker)
 
 	// 防御側の回避度
 	evasion := hc.partInfoProvider.GetEvasionRate(target)
@@ -656,4 +662,55 @@ func (pip *PartInfoProvider) CalculateIconXPosition(entry *donburi.Entry, battle
 		xPos = homeX // 不明な状態の場合はホームポジション
 	}
 	return xPos
+}
+
+// GetTeamAccuracyBuffMultiplier は、指定されたエンティティが所属するチームの
+// 命中率バフ（スキャンなど）の中から最も効果の高いものの乗数を返します。
+func (pip *PartInfoProvider) GetTeamAccuracyBuffMultiplier(entry *donburi.Entry) float64 {
+	teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(pip.world)
+	if !ok {
+		return 1.0 // バフコンポーネントがなければ効果なし
+	}
+	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
+	settings := SettingsComponent.Get(entry)
+
+	teamID := settings.Team
+	buffType := BuffTypeAccuracy
+
+	maxMultiplier := 1.0
+
+	if teamBuffMap, teamOk := teamBuffs.Buffs[teamID]; teamOk {
+		if buffSources, buffOk := teamBuffMap[buffType]; buffOk {
+			for _, buff := range buffSources {
+				if buff.Value > maxMultiplier {
+					maxMultiplier = buff.Value
+				}
+			}
+		}
+	}
+
+	return maxMultiplier
+}
+
+// RemoveBuffsFromSource は、指定されたパーツインスタンスが提供していたバフをすべて削除します。
+func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partInst *PartInstanceData) {
+	teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(pip.world)
+	if !ok {
+		return
+	}
+	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
+	partSlot := pip.FindPartSlot(entry, partInst)
+
+	for teamID, buffMap := range teamBuffs.Buffs {
+		for buffType, buffSources := range buffMap {
+			newBuffSources := make([]*BuffSource, 0, len(buffSources))
+			for _, buff := range buffSources {
+				// このパーツからのバフでなければ保持する
+				if buff.SourceEntry != entry || buff.SourcePart != partSlot {
+					newBuffSources = append(newBuffSources, buff)
+				}
+			}
+			teamBuffs.Buffs[teamID][buffType] = newBuffSources
+		}
+	}
 }

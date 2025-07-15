@@ -78,6 +78,10 @@ func createActionModalUI(
 							if targetInfo, ok := actionTargetMap[slotKey]; ok && targetInfo.Target != nil {
 								eventChannel <- SetCurrentTargetEvent{Target: targetInfo.Target}
 							}
+						} else if partDef.Category == CategoryIntervention {
+							// 介入の場合はターゲット表示なし
+						} else {
+							// 格闘など、他のカテゴリでターゲット表示が必要な場合はここに追加
 						}
 					}),
 					widget.ButtonOpts.CursorExitedHandler(func(args *widget.ButtonHoverEventArgs) {

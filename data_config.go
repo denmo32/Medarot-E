@@ -206,6 +206,12 @@ func LoadConfig() Config {
 				{Type: DebuffTypeDefense, Multiplier: 0.5},
 			},
 		},
+		TraitSupport: {
+			SuccessRateBonuses: []BonusTerm{},
+			PowerBonuses:       []BonusTerm{},
+			CriticalRateBonus:  0.0,
+			UserDebuffs:        []DebuffEffect{},
+		},
 	}
 
 	return cfg

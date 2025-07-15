@@ -62,5 +62,9 @@
   {
     "id": "action_part_broken",
     "text": "{actor_name}の{part_name}は壊れていた！"
+  },
+  {
+    "id": "support_action_generic",
+    "text": "味方チーム全体の命中率が上昇した！"
   }
 ]

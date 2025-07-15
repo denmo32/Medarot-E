@@ -49,6 +49,13 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config)
 	EnsureActionQueueEntity(bs.world)
+
+	// チームバフ管理エンティティを生成
+	teamBuffsEntry := bs.world.Entry(bs.world.Create(TeamBuffsComponent))
+	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{
+		Buffs: make(map[TeamID]map[BuffType][]*BuffSource),
+	})
+
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam)
 	bs.uiEventChannel = make(chan UIEvent, 10)
 	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel)
@@ -138,12 +145,21 @@ func (bs *BattleScene) Update() error {
 			if result.ActionDidHit {
 				initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
 				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
-				if result.ActionIsDefended {
-					defendParams := map[string]interface{}{"defender_name": result.DefenderName, "defending_part_type": result.DefendingPartType}
-					messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_defend", defendParams))
+
+				// アクションのカテゴリに応じて追加のメッセージを生成
+				actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(PartsComponent.Get(result.ActingEntry).Map[ActionIntentComponent.Get(result.ActingEntry).SelectedPartKey].DefinitionID)
+				switch actingPartDef.Category {
+				case CategoryShoot, CategoryMelee:
+					if result.ActionIsDefended {
+						defendParams := map[string]interface{}{"defender_name": result.DefenderName, "defending_part_type": result.DefendingPartType}
+						messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_defend", defendParams))
+					}
+					damageParams := map[string]interface{}{"defender_name": result.DefenderName, "target_part_type": result.TargetPartType, "damage": result.DamageDealt}
+					messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_damage", damageParams))
+				case CategoryIntervention:
+					messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("support_action_generic", nil))
 				}
-				damageParams := map[string]interface{}{"defender_name": result.DefenderName, "target_part_type": result.TargetPartType, "damage": result.DamageDealt}
-				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_damage", damageParams))
+
 			} else {
 				messages = append(messages, result.LogMessage)
 			}

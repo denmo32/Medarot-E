@@ -28,6 +28,9 @@ var (
 	// --- Debuff Components ---
 	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
 	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
+
+	// --- Team Buff Component ---
+	TeamBuffsComponent = donburi.NewComponentType[TeamBuffs]()
 )
 
 // --- コンポーネントの構造体定義 ---
@@ -137,4 +140,20 @@ type TargetHistoryData struct {
 type LastActionHistoryData struct {
 	LastHitTarget   *donburi.Entry
 	LastHitPartSlot PartSlotKey
+}
+
+// --- チームバフ関連コンポーネント ---
+
+// TeamBuffs はチーム全体にかかるバフ効果を管理します。
+// このコンポーネントを持つエンティティはワールドに1つだけ存在することを想定しています。
+type TeamBuffs struct {
+	// Buffs[TeamID][BuffType]
+	Buffs map[TeamID]map[BuffType][]*BuffSource
+}
+
+// BuffSource は、どのエンティティのどのパーツからバフが発生しているかを記録します。
+type BuffSource struct {
+	SourceEntry *donburi.Entry
+	SourcePart  PartSlotKey
+	Value       float64 // 効果量 (例: 命中率1.2倍なら1.2)
 }

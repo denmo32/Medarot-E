@@ -35,6 +35,9 @@ func ProcessPlayerActionSelected(
 	case CategoryMelee:
 		// 格闘の場合はターゲットがnilでも問題ない
 		successful = StartCharge(event.ActingEntry, event.SelectedSlotKey, nil, "", world, config, battleLogic.PartInfoProvider)
+	case CategoryIntervention:
+		// 介入（支援）の場合もターゲットは不要
+		successful = StartCharge(event.ActingEntry, event.SelectedSlotKey, nil, "", world, config, battleLogic.PartInfoProvider)
 	default:
 		log.Printf("未対応のパーツカテゴリです: %s", event.SelectedPartDef.Category)
 		successful = false

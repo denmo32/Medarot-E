@@ -43,7 +43,10 @@ func UpdateActionQueueSystem(
 
 		if handler != nil {
 			actionResult := handler.Execute(actingEntry, world, intent, battleLogic, gameConfig)
-			battleLogic.ApplyDefenseAndDamage(&actionResult) // 新しいメソッドを呼び出す
+			// ダメージや防御の計算は、攻撃系のアクションの場合のみ実行
+			if actingPartDef.Category == CategoryShoot || actingPartDef.Category == CategoryMelee {
+				battleLogic.ApplyDefenseAndDamage(&actionResult)
+			}
 			results = append(results, actionResult)
 		} else {
 			// Handle error: no handler found

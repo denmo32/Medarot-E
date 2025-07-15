@@ -21,6 +21,7 @@ type StateType string
 type PartCategory string
 type Trait string
 type CustomizeCategory string
+type BuffType string // 新しく追加
 
 // --- 計算式データ構造 ---
 
@@ -42,6 +43,10 @@ type DebuffType string
 const (
 	DebuffTypeEvasion DebuffType = "Evasion"
 	DebuffTypeDefense DebuffType = "Defense"
+)
+
+const (
+	BuffTypeAccuracy BuffType = "Accuracy"
 )
 
 // BonusTerm は計算式のボーナス項を定義します
@@ -119,17 +124,19 @@ const (
 	PartTypeLegs PartType = "脚部"
 )
 const (
-	CategoryShoot   PartCategory = "射撃"
-	CategoryMelee   PartCategory = "格闘" // CSVの FIGHT に対応します
-	CategorySupport PartCategory = "支援"
-	CategoryDefense PartCategory = "防御"
-	CategoryNone    PartCategory = "NONE" // NONE はそのままです
+	CategoryShoot        PartCategory = "射撃"
+	CategoryMelee        PartCategory = "格闘" // CSVの FIGHT に対応します
+	CategoryIntervention PartCategory = "介入"
+	CategorySupport      PartCategory = "支援"
+	CategoryDefense      PartCategory = "防御"
+	CategoryNone         PartCategory = "NONE" // NONE はそのままです
 )
 const (
 	TraitAim     Trait = "狙い撃ち"
 	TraitStrike  Trait = "殴る"
 	TraitBerserk Trait = "我武者羅"
 	TraitNormal  Trait = "撃つ"
+	TraitSupport Trait = "支援"
 	TraitNone    Trait = "NONE" // NONE はそのままです
 )
 
