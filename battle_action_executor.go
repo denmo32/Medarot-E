@@ -45,56 +45,80 @@ func executeAttackAction(
 	result.TargetEntry = targetEntry
 	result.TargetPartSlot = targetPartSlot
 
+	// 命中判定やダメージ計算の前に、基本的な情報を結果に設定
+	result.AttackerName = settings.Name
+	result.DefenderName = SettingsComponent.Get(targetEntry).Name
+	result.ActionName = string(actingPartDef.Trait)
+	result.WeaponType = actingPartDef.WeaponType
+
 	if StateComponent.Get(result.TargetEntry).FSM.Is(string(StateBroken)) {
-		result.LogMessage = settings.Name + "はターゲット(" + SettingsComponent.Get(result.TargetEntry).Name + ")を狙ったが、既に行動不能だった！"
+		// ログメッセージは event/animation 層で生成するため、ここでは何もしない
 		cleanupActionDebuffs(actingEntry)
 		return result
 	}
 	targetParts := PartsComponent.Get(result.TargetEntry)
 	if targetParts.Map[result.TargetPartSlot] == nil || targetParts.Map[result.TargetPartSlot].IsBroken {
-		result.LogMessage = settings.Name + "は" + SettingsComponent.Get(result.TargetEntry).Name + "の" + string(result.TargetPartSlot) + "を狙ったが、パーツは既に破壊されていた！"
+		// ログメッセージは event/animation 層で生成するため、ここでは何もしない
 		cleanupActionDebuffs(actingEntry)
 		return result
 	}
-	result.LogMessage = logPrefix + SettingsComponent.Get(result.TargetEntry).Name + "の" + string(result.TargetPartSlot) + "を狙う！"
 
 	// 2. 命中判定
 	didHit := battleLogic.HitCalculator.CalculateHit(actingEntry, result.TargetEntry, actingPartDef)
 	result.ActionDidHit = didHit
 	if !didHit {
-		result.LogMessage = battleLogic.DamageCalculator.GenerateActionLog(actingEntry, result.TargetEntry, actingPartDef, nil, 0, false, false)
+		// ログメッセージは event/animation 層で生成するため、ここでは何もしない
 		cleanupActionDebuffs(actingEntry)
 		return result
 	}
 
-	// 3. ダメージ適用
+	// 3. 初期ダメージ計算
 	damage, isCritical := battleLogic.DamageCalculator.CalculateDamage(actingEntry, result.TargetEntry, actingPartDef)
 	result.IsCritical = isCritical
 	result.OriginalDamage = damage
 
-	intendedTargetPartInstance := targetParts.Map[result.TargetPartSlot]
-	result.DamageDealt = result.OriginalDamage
-	result.TargetPartBroken = intendedTargetPartInstance.IsBroken
-	result.ActualHitPartSlot = result.TargetPartSlot
+	// 4. 防御判定と最終ダメージ適用
+	// 4a. 防御パーツの選択
+	defendingPartInst := battleLogic.TargetSelector.SelectDefensePart(result.TargetEntry)
 
-	// 4. アクション結果生成
-	targetPartDef, _ := GlobalGameDataManager.GetPartDefinition(intendedTargetPartInstance.DefinitionID)
+	// 4b. 防御成功判定
+	if defendingPartInst != nil && battleLogic.HitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef) {
+		result.ActionIsDefended = true
+		defendingPartDef, _ := GlobalGameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
+		result.DefendingPartType = string(defendingPartDef.Type)
+		result.ActualHitPartSlot = battleLogic.PartInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
+
+		// ダメージ軽減計算と適用
+		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, defendingPartDef)
+		result.DamageDealt = finalDamage
+		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage)
+		result.TargetPartBroken = defendingPartInst.IsBroken
+	} else {
+		// 防御失敗、または防御パーツがない場合
+		result.ActionIsDefended = false
+		intendedTargetPartInstance := PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
+		result.DamageDealt = result.OriginalDamage
+		result.ActualHitPartSlot = result.TargetPartSlot // 意図したパーツにヒット
+
+		// 意図したターゲットパーツにダメージを適用
+		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
+		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
+	}
+
+	// 5. アクション結果生成 (ログ用)
+	// 実際にダメージを受けたパーツの情報を取得
+	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
+	actualHitPartDef, _ := GlobalGameDataManager.GetPartDefinition(actualHitPartInst.DefinitionID)
 	result.AttackerName = settings.Name
 	result.DefenderName = SettingsComponent.Get(result.TargetEntry).Name
 	result.ActionName = string(actingPartDef.Trait)
 	result.WeaponType = actingPartDef.WeaponType
-	result.TargetPartType = string(targetPartDef.Type)
+	result.TargetPartType = string(actualHitPartDef.Type) // 実際にヒットしたパーツのタイプ
 
-	if result.TargetPartBroken {
-		partBrokenParams := map[string]interface{}{
-			"target_name":      SettingsComponent.Get(result.TargetEntry).Name,
-			"target_part_name": targetPartDef.PartName,
-		}
-		additionalMsg := GlobalGameDataManager.Messages.FormatMessage("part_broken", partBrokenParams)
-		result.LogMessage += " " + additionalMsg
-	}
+	// ログメッセージはscene_battle.goで生成するため、ここでは生成しない
+	// if result.TargetPartBroken { ... }
 
-	// 5. クリーンアップ
+	// 6. クリーンアップ
 	cleanupActionDebuffs(actingEntry)
 
 	return result
@@ -116,7 +140,7 @@ func (h *ShootActionHandler) Execute(
 	if targetComp.TargetEntity == nil || targetComp.TargetPartSlot == "" {
 		return ActionResult{
 			ActingEntry: actingEntry,
-			LogMessage:  settings.Name + "は射撃ターゲットが未選択です。",
+			// LogMessage:  settings.Name + "は射撃ターゲットが未選択です。",
 		}
 	}
 
@@ -158,7 +182,7 @@ func (h *MeleeActionHandler) Execute(
 	if closestEnemy == nil {
 		return ActionResult{
 			ActingEntry: actingEntry,
-			LogMessage:  settings.Name + "は格闘攻撃しようとしたが、相手がいなかった。",
+			// LogMessage:  settings.Name + "は格闘攻撃しようとしたが、相手がいなかった。",
 		}
 	}
 
@@ -166,14 +190,14 @@ func (h *MeleeActionHandler) Execute(
 	if targetPart == nil {
 		return ActionResult{
 			ActingEntry: actingEntry,
-			LogMessage:  settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "を狙ったが、攻撃できる部位がなかった！",
+			// LogMessage:  settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "を狙ったが、攻撃できる部位がなかった！",
 		}
 	}
 	targetPartSlot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
 	if targetPartSlot == "" {
 		return ActionResult{
 			ActingEntry: actingEntry,
-			LogMessage:  settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。",
+			// LogMessage:  settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。",
 		}
 	}
 
@@ -210,7 +234,7 @@ func (h *InterventionActionHandler) Execute(
 		log.Println("エラー: TeamBuffsComponent がワールドに見つかりません。")
 		return ActionResult{
 			ActingEntry: actingEntry,
-			LogMessage:  settings.Name + "は支援行動に失敗した(バフ管理エラー)。",
+			// LogMessage:  settings.Name + "は支援行動に失敗した(バフ管理エラー)。",
 		}
 	}
 	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)

@@ -161,7 +161,17 @@ func (bs *BattleScene) Update() error {
 				}
 
 			} else {
-				messages = append(messages, result.LogMessage)
+				// 攻撃が命中しなかった場合
+				// 1. 攻撃開始メッセージ
+				initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
+				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
+				// 2. 回避メッセージ
+				missParams := map[string]interface{}{
+					"attacker_name": result.AttackerName, // 将来的に使うかもしれないので残す
+					"skill_name":    result.ActionName,   // 同上
+					"target_name":   result.DefenderName,
+				}
+				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("attack_miss", missParams))
 			}
 
 			bs.messageManager.EnqueueMessageQueue(messages, func() {

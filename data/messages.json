@@ -13,7 +13,7 @@
   },
   {
     "id": "attack_miss",
-    "text": "{attacker_name}の{skill_name}！ {target_name}は攻撃を回避！"
+    "text": "{target_name}は攻撃を回避！"
   },
   {
     "id": "critical_hit",

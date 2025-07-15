@@ -346,7 +346,6 @@ type ActionResult struct {
 	ActingEntry       *donburi.Entry
 	TargetEntry       *donburi.Entry
 	TargetPartSlot    PartSlotKey // ターゲットのパーツスロット
-	LogMessage        string      // 古いログメッセージ（後で削除予定）
 	ActionDidHit      bool        // 命中したかどうか
 	IsCritical        bool        // クリティカルだったか
 	OriginalDamage    int         // 元のダメージ量
