@@ -236,7 +236,7 @@ func (s *DuelStrategy) SelectTarget(
 	var attackArmParts []targetablePart
 	for _, p := range targetParts {
 		if (p.partDef.Type == PartTypeLArm || p.partDef.Type == PartTypeRArm) &&
-			(p.partDef.Category == CategoryShoot || p.partDef.Category == CategoryMelee) {
+			(p.partDef.Category == CategoryRanged || p.partDef.Category == CategoryMelee) {
 			attackArmParts = append(attackArmParts, p)
 		}
 	}
@@ -266,7 +266,7 @@ func (s *InterceptStrategy) SelectTarget(
 
 	var nonAttackParts []targetablePart
 	for _, p := range targetParts {
-		if p.partDef.Category != CategoryShoot && p.partDef.Category != CategoryMelee {
+		if p.partDef.Category != CategoryRanged && p.partDef.Category != CategoryMelee {
 			nonAttackParts = append(nonAttackParts, p)
 		}
 	}

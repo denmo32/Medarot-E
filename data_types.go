@@ -124,19 +124,19 @@ const (
 	PartTypeLegs PartType = "脚部"
 )
 const (
-	CategoryShoot        PartCategory = "射撃"
-	CategoryMelee        PartCategory = "格闘" // CSVの FIGHT に対応します
+	CategoryRanged       PartCategory = "射撃"
+	CategoryMelee        PartCategory = "格闘"
 	CategoryIntervention PartCategory = "介入"
-	CategoryNone         PartCategory = "NONE" // NONE はそのままです
+	CategoryNone         PartCategory = "NONE"
 )
 const (
-	TraitAim     Trait = "狙い撃ち"
-	TraitStrike  Trait = "殴る"
-	TraitBerserk Trait = "我武者羅"
-	TraitNormal  Trait = "撃つ"
-	TraitSupport Trait = "支援"
-	TraitDebuff  Trait = "妨害"
-	TraitNone    Trait = "NONE" // NONE はそのままです
+	TraitAim      Trait = "狙い撃ち"
+	TraitStrike   Trait = "殴る"
+	TraitBerserk  Trait = "我武者羅"
+	TraitShoot    Trait = "撃つ"
+	TraitSupport  Trait = "支援"
+	TraitObstruct Trait = "妨害"
+	TraitNone     Trait = "NONE"
 )
 
 const (

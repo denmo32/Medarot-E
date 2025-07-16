@@ -128,7 +128,7 @@ func aiSelectAction(
 		targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, targetSelector, partInfoProvider)
 	}
 
-	if selectedPartDef.Category == CategoryShoot {
+	if selectedPartDef.Category == CategoryRanged {
 		if targetEntry == nil {
 			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
 			return

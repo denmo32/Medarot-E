@@ -134,7 +134,7 @@ func (bs *BattleScene) buildActionLogMessages(result ActionResult) []string {
 
 		actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(PartsComponent.Get(result.ActingEntry).Map[ActionIntentComponent.Get(result.ActingEntry).SelectedPartKey].DefinitionID)
 		switch actingPartDef.Category {
-		case CategoryShoot, CategoryMelee:
+		case CategoryRanged, CategoryMelee:
 			if result.ActionIsDefended {
 				defendParams := map[string]interface{}{"defender_name": result.DefenderName, "defending_part_type": result.DefendingPartType}
 				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_defend", defendParams))

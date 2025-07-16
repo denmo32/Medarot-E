@@ -293,7 +293,7 @@ func (h *InterventionActionHandler) Execute(
 		teamBuffs.Buffs[teamID][buffType] = append(filteredBuffs, newBuffSource)
 		log.Printf("チーム%dに命中バフを追加: %s (%.2f倍)", teamID, settings.Name, buffValue)
 
-	case TraitDebuff:
+	case TraitObstruct:
 		// --- 妨害処理 ---
 		targetComp := TargetComponent.Get(actingEntry)
 		if targetComp.TargetEntity == nil {
@@ -329,7 +329,7 @@ var (
 // GetActionHandlerForCategory はパーツカテゴリに基づいて適切なActionHandlerを返します。
 func GetActionHandlerForCategory(category PartCategory) ActionHandler {
 	switch category {
-	case CategoryShoot:
+	case CategoryRanged:
 		return shootHandler
 	case CategoryMelee:
 		return meleeHandler

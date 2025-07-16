@@ -91,7 +91,7 @@ func (s *PlayerActionSelectState) Update(scene *BattleScene) (GameState, error) 
 				slotKey := available.Slot
 				var targetEntity *donburi.Entry
 				var targetPartSlot PartSlotKey
-				if partDef.Category == CategoryShoot || partDef.Category == CategoryIntervention {
+				if partDef.Category == CategoryRanged || partDef.Category == CategoryIntervention {
 					medal := MedalComponent.Get(actingEntry)
 					personality, ok := PersonalityRegistry[medal.Personality]
 					if !ok {

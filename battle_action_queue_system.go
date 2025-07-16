@@ -141,7 +141,7 @@ func StartCharge(
 		}
 	}
 
-	if actingPartDef.Category == CategoryShoot {
+	if actingPartDef.Category == CategoryRanged {
 		if targetEntry == nil || StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
 			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			return false

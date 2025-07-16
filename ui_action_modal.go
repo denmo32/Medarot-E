@@ -74,7 +74,7 @@ func createActionModalUI(
 						}
 					}),
 					widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
-						if partDef.Category == CategoryShoot {
+						if partDef.Category == CategoryRanged {
 							if targetInfo, ok := actionTargetMap[slotKey]; ok && targetInfo.Target != nil {
 								eventChannel <- SetCurrentTargetEvent{Target: targetInfo.Target}
 							}

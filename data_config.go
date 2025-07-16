@@ -179,7 +179,7 @@ func LoadConfig() Config {
 	}
 
 	cfg.Balance.Formulas = map[Trait]ActionFormulaConfig{
-		TraitNormal: {
+		TraitShoot: {
 			SuccessRateBonuses: []BonusTerm{},
 			PowerBonuses:       []BonusTerm{},
 			CriticalRateBonus:  0.0,
@@ -207,6 +207,12 @@ func LoadConfig() Config {
 			},
 		},
 		TraitSupport: {
+			SuccessRateBonuses: []BonusTerm{},
+			PowerBonuses:       []BonusTerm{},
+			CriticalRateBonus:  0.0,
+			UserDebuffs:        []DebuffEffect{},
+		},
+		TraitObstruct: {
 			SuccessRateBonuses: []BonusTerm{},
 			PowerBonuses:       []BonusTerm{},
 			CriticalRateBonus:  0.0,

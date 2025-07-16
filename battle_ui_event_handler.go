@@ -21,7 +21,7 @@ func ProcessPlayerActionSelected(
 
 	var successful bool
 	switch event.SelectedPartDef.Category {
-	case CategoryShoot:
+	case CategoryRanged:
 		actionTarget, ok := actionTargetMap[event.SelectedSlotKey]
 		if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
 			message = "ターゲットがいません！"

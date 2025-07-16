@@ -98,7 +98,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	formula, ok := FormulaManager[actingPartDef.Trait]
 	if !ok {
 		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。デフォルトを使用します。", actingPartDef.Trait)
-		formula = FormulaManager[TraitNormal]
+		formula = FormulaManager[TraitShoot]
 	}
 
 	// 2. 基本パラメータの取得
@@ -521,7 +521,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 			continue
 		}
 
-		if partDef.Category == CategoryShoot || partDef.Category == CategoryMelee || partDef.Category == CategoryIntervention {
+				if partDef.Category == CategoryRanged || partDef.Category == CategoryMelee || partDef.Category == CategoryIntervention {
 			availableParts = append(availableParts, AvailablePart{PartDef: partDef, Slot: slot, IsBroken: partInst.IsBroken})
 		}
 	}
