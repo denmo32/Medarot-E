@@ -65,7 +65,7 @@ func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoPr
 		offsetX := float32(battlefieldRect.Min.X)
 		offsetY := float32(battlefieldRect.Min.Y)
 
-		x := CalculateIconXPosition(entry, bfWidth)
+		x := CalculateIconXPosition(entry, partInfoProvider, bfWidth)
 		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
@@ -107,32 +107,6 @@ Prog: %.1f / %.1f`,
 
 // CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // worldWidth はバトルフィールドの表示幅です。
-func CalculateIconXPosition(entry *donburi.Entry, battlefieldWidth float32) float32 {
-	settings := SettingsComponent.Get(entry)
-	gauge := GaugeComponent.Get(entry)
-	state := StateComponent.Get(entry)
-
-	progress := float32(0)
-	if gauge.TotalDuration > 0 { // TotalDurationが0の場合のゼロ除算を避ける
-		progress = float32(gauge.CurrentGauge / 100.0)
-	}
-
-	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
-	if settings.Team == Team2 {
-		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
-	}
-
-	var xPos float32
-	if state.FSM.Is(string(StateCharging)) {
-		xPos = homeX + (execX-homeX)*progress
-	} else if state.FSM.Is(string(StateReady)) {
-		xPos = execX
-	} else if state.FSM.Is(string(StateCooldown)) {
-		xPos = execX - (execX-homeX)*progress
-	} else if state.FSM.Is(string(StateIdle)) || state.FSM.Is(string(StateBroken)) {
-		xPos = homeX
-	} else {
-		xPos = homeX // 不明な状態の場合はホームポジション
-	}
-	return xPos
+func CalculateIconXPosition(entry *donburi.Entry, partInfoProvider *PartInfoProvider, battlefieldWidth float32) float32 {
+	return partInfoProvider.CalculateMedarotXPosition(entry, battlefieldWidth)
 }

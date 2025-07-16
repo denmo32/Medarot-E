@@ -365,13 +365,13 @@ func (ts *TargetSelector) SelectRandomPartToDamage(target *donburi.Entry) *PartI
 // FindClosestEnemy は指定されたエンティティに最も近い敵エンティティを見つけます。
 func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry) *donburi.Entry {
 	var closestEnemy *donburi.Entry
-	minDiff := math.MaxInt32
+	var minDiff float32 = math.MaxFloat32 // float32 を使用するため、MaxFloat32 に変更
 
-	actingSettings := SettingsComponent.Get(actingEntry)
+	actingX := ts.partInfoProvider.CalculateMedarotXPosition(actingEntry, float32(ts.config.UI.Screen.Width))
 
 	for _, enemy := range ts.GetTargetableEnemies(actingEntry) {
-		enemySettings := SettingsComponent.Get(enemy)
-		diff := int(math.Abs(float64(actingSettings.DrawIndex - enemySettings.DrawIndex)))
+		enemyX := ts.partInfoProvider.CalculateMedarotXPosition(enemy, float32(ts.config.UI.Screen.Width))
+		diff := float32(math.Abs(float64(actingX - enemyX))) // float32 の差を計算
 		if diff < minDiff {
 			minDiff = diff
 			closestEnemy = enemy
@@ -654,4 +654,36 @@ func (pip *PartInfoProvider) CalculateGaugeDuration(baseSeconds float64, entry *
 		return 1
 	}
 	return totalTicks
+}
+
+// CalculateMedarotXPosition はメダロットのX座標を計算します。
+// battlefieldWidth はバトルフィールドの論理的な幅です。
+func (pip *PartInfoProvider) CalculateMedarotXPosition(entry *donburi.Entry, battlefieldWidth float32) float32 {
+	settings := SettingsComponent.Get(entry)
+	gauge := GaugeComponent.Get(entry)
+	state := StateComponent.Get(entry)
+
+	progress := float32(0)
+	if gauge.TotalDuration > 0 { // TotalDurationが0の場合のゼロ除算を避ける
+		progress = float32(gauge.CurrentGauge / 100.0)
+	}
+
+	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
+	if settings.Team == Team2 {
+		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
+	}
+
+	var xPos float32
+	if state.FSM.Is(string(StateCharging)) {
+		xPos = homeX + (execX-homeX)*progress
+	} else if state.FSM.Is(string(StateReady)) {
+		xPos = execX
+	} else if state.FSM.Is(string(StateCooldown)) {
+		xPos = execX - (execX-homeX)*progress
+	} else if state.FSM.Is(string(StateIdle)) || state.FSM.Is(string(StateBroken)) {
+		xPos = homeX
+	} else {
+		xPos = homeX // 不明な状態の場合はホームポジション
+	}
+	return xPos
 }
