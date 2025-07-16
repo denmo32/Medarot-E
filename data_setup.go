@@ -119,17 +119,12 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		TargetComponent.SetValue(entry, Target{})
 
 		if loadout.Team != playerTeam { // AIのみ
-			personality, ok := PersonalityRegistry[medalDef.Personality]
-			if !ok {
-				log.Printf("警告: 性格 '%s' がレジストリに見つかりません。デフォルトを使用します。", medalDef.Personality)
-				personality = PersonalityRegistry["リーダー"] // デフォルトの性格
-			}
+			
 
 			donburi.Add(entry, AIComponent, &AI{
-				TargetingStrategy:     personality.TargetingStrategy,
-				PartSelectionStrategy: personality.PartSelectionStrategy,
-				TargetHistory:         TargetHistoryData{},
-				LastActionHistory:     LastActionHistoryData{},
+				PersonalityID:     medalDef.Personality,
+				TargetHistory:     TargetHistoryData{},
+				LastActionHistory: LastActionHistoryData{},
 			})
 		}
 

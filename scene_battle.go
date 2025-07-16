@@ -73,8 +73,9 @@ func (bs *BattleScene) Update() error {
 	bs.tickCount++
 	bs.ui.Update()
 
-	// Process UI events first
-	bs.processUIEvents()
+	bs.playerActionPendingQueue, bs.state = UpdateUIEventProcessorSystem(
+		bs.world, bs.battleLogic, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
+	)
 
 	// Update current state
 	newState, err := bs.currentState.Update(bs)
@@ -96,64 +97,7 @@ func (bs *BattleScene) Update() error {
 	return nil
 }
 
-func (bs *BattleScene) processUIEvents() {
-	// このメソッドは、PlayerActionSelectState のみが関心を持つイベントを処理します。
-	if bs.state != StatePlayerActionSelect {
-		return
-	}
 
-	select {
-	case event := <-bs.uiEventChannel:
-		switch e := event.(type) {
-		case PlayerActionSelectedEvent:
-			var message string
-			var postMessageCallback func()
-			bs.playerActionPendingQueue, message, postMessageCallback = ProcessPlayerActionSelected(
-				bs.world, bs.battleLogic, bs.playerActionPendingQueue, bs.ui, e, bs.ui.GetActionTargetMap())
-			if message != "" {
-				bs.messageManager.EnqueueMessage(message, postMessageCallback)
-				bs.state = StateMessage // メッセージ表示状態に遷移
-			}
-		case PlayerActionCancelEvent:
-			bs.playerActionPendingQueue = ProcessPlayerActionCancel(bs.playerActionPendingQueue, bs.ui, e)
-			bs.state = StatePlaying // キャンセル時は即座にPlaying状態に戻る
-		case SetCurrentTargetEvent:
-			bs.ui.SetCurrentTarget(e.Target)
-		case ClearCurrentTargetEvent:
-			bs.ui.ClearCurrentTarget()
-		}
-	default:
-	}
-}
-
-func (bs *BattleScene) buildActionLogMessages(result ActionResult) []string {
-	messages := []string{}
-	if result.ActionDidHit {
-		initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
-		messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
-
-		actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(PartsComponent.Get(result.ActingEntry).Map[ActionIntentComponent.Get(result.ActingEntry).SelectedPartKey].DefinitionID)
-		switch actingPartDef.Category {
-		case CategoryRanged, CategoryMelee:
-			if result.ActionIsDefended {
-				defendParams := map[string]interface{}{"defender_name": result.DefenderName, "defending_part_type": result.DefendingPartType}
-				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_defend", defendParams))
-			}
-			damageParams := map[string]interface{}{"defender_name": result.DefenderName, "target_part_type": result.TargetPartType, "damage": result.DamageDealt}
-			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_damage", damageParams))
-		case CategoryIntervention:
-			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("support_action_generic", nil))
-		}
-	} else {
-		initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
-		messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
-		missParams := map[string]interface{}{
-			"target_name": result.DefenderName,
-		}
-		messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("attack_miss", missParams))
-	}
-	return messages
-}
 
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)

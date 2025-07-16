@@ -6,6 +6,16 @@ import (
 	"github.com/yohamta/donburi"
 )
 
+// AIPartSelectionStrategyFunc はAIパーツ選択戦略の関数シグネチャを定義します。
+// 行動するAIエンティティと利用可能なパーツのリストを受け取り、選択されたパーツとそのスロットを返します。
+type AIPartSelectionStrategyFunc func(
+	actingEntry *donburi.Entry,
+	availableParts []AvailablePart,
+	world donburi.World, // より複雑な戦略でワールドアクセスが必要な場合
+	partInfoProvider *PartInfoProvider,
+	targetSelector *TargetSelector,
+) (PartSlotKey, *PartDefinition) // 選択されたパーツのスロットキーとその定義を返します。
+
 // AIPersonality はAIの性格に関連する戦略をカプセル化します。
 type AIPersonality struct {
 	TargetingStrategy     TargetingStrategy
@@ -70,6 +80,11 @@ func aiSelectAction(
 ) {
 	settings := SettingsComponent.Get(entry)
 
+	var slotKey PartSlotKey
+	var selectedPartDef *PartDefinition
+	var targetingStrategy TargetingStrategy
+	var partSelectionStrategy AIPartSelectionStrategyFunc
+
 	if partInfoProvider == nil {
 		log.Printf("%s: AI行動選択エラー - PartInfoProviderが初期化されていません。", settings.Name)
 		return
@@ -81,24 +96,26 @@ func aiSelectAction(
 		return
 	}
 
-	var slotKey PartSlotKey
-	var selectedPartDef *PartDefinition
-
 	if entry.HasComponent(AIComponent) {
 		ai := AIComponent.Get(entry)
-		if ai.PartSelectionStrategy != nil {
-			slotKey, selectedPartDef = ai.PartSelectionStrategy(entry, availableParts, world, partInfoProvider, targetSelector)
-		} else {
-			// 戦略が設定されていない場合のフォールバック
-			log.Printf("%s: AIエラー - PartSelectionStrategyが設定されていません。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
-			if len(availableParts) > 0 {
-				slotKey = availableParts[0].Slot
-				selectedPartDef = availableParts[0].PartDef
-			}
+		personality, ok := PersonalityRegistry[ai.PersonalityID]
+		if !ok {
+			log.Printf("%s: AIエラー - PersonalityID '%s' がレジストリに見つかりません。デフォルト（リーダー）を使用。", settings.Name, ai.PersonalityID)
+			personality = PersonalityRegistry["リーダー"] // フォールバック
 		}
+		targetingStrategy = personality.TargetingStrategy
+		partSelectionStrategy = personality.PartSelectionStrategy
 	} else {
-		// AIComponentがない場合のフォールバック
-		log.Printf("%s: AIエラー - AIComponentがありません。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
+		log.Printf("%s: AIエラー - AIComponentがありません。デフォルト（リーダー）を使用。", settings.Name)
+		personality := PersonalityRegistry["リーダー"] // フォールバック
+		targetingStrategy = personality.TargetingStrategy
+		partSelectionStrategy = personality.PartSelectionStrategy
+	}
+
+	if partSelectionStrategy != nil {
+		slotKey, selectedPartDef = partSelectionStrategy(entry, availableParts, world, partInfoProvider, targetSelector)
+	} else {
+		log.Printf("%s: AIエラー - PartSelectionStrategyがnilです。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
 		if len(availableParts) > 0 {
 			slotKey = availableParts[0].Slot
 			selectedPartDef = availableParts[0].PartDef
@@ -113,18 +130,10 @@ func aiSelectAction(
 	var targetEntry *donburi.Entry
 	var targetPartSlot PartSlotKey
 
-	if entry.HasComponent(AIComponent) {
-		ai := AIComponent.Get(entry)
-		if ai.TargetingStrategy != nil {
-			targetEntry, targetPartSlot = ai.TargetingStrategy.SelectTarget(world, entry, targetSelector, partInfoProvider)
-		} else {
-			// 戦略が設定されていない場合のフォールバック
-			log.Printf("%s: AIエラー - TargetingStrategyが設定されていません。デフォルトのターゲット選択（リーダー）を使用します。", settings.Name)
-			targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, targetSelector, partInfoProvider)
-		}
+	if targetingStrategy != nil {
+		targetEntry, targetPartSlot = targetingStrategy.SelectTarget(world, entry, targetSelector, partInfoProvider)
 	} else {
-		// AIComponentがない場合のフォールバック
-		log.Printf("%s: AIエラー - AIComponentがありません。デフォルトのターゲット選択（リーダー）を使用します。", settings.Name)
+		log.Printf("%s: AIエラー - TargetingStrategyがnilです。デフォルトのターゲット選択（リーダー）を使用します。", settings.Name)
 		targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, targetSelector, partInfoProvider)
 	}
 

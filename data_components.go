@@ -104,30 +104,16 @@ type EvasionDebuff struct {
 
 // AI はAI制御エンティティのすべてのデータを集約します。
 type AI struct {
-	TargetingStrategy     TargetingStrategy
-	PartSelectionStrategy AIPartSelectionStrategyFunc
-	TargetHistory         TargetHistoryData
-	LastActionHistory     LastActionHistoryData
+	PersonalityID     string
+	TargetHistory     TargetHistoryData
+	LastActionHistory LastActionHistoryData
 }
 
 // --- 特性効果タグコンポーネント --- (リファクタリングにより不要に)
 
 // --- AIパーツ選択戦略コンポーネント ---
 
-// AIPartSelectionStrategyFunc はAIパーツ選択戦略の関数シグネチャを定義します。
-// 行動するAIエンティティと利用可能なパーツのリストを受け取り、選択されたパーツとそのスロットを返します。
-type AIPartSelectionStrategyFunc func(
-	actingEntry *donburi.Entry,
-	availableParts []AvailablePart,
-	world donburi.World, // より複雑な戦略でワールドアクセスが必要な場合
-	partInfoProvider *PartInfoProvider,
-	targetSelector *TargetSelector,
-) (PartSlotKey, *PartDefinition) // 選択されたパーツのスロットキーとその定義を返します。
 
-// AIPartSelectionStrategyComponentData はAIエンティティのパーツ選択戦略を保持します。
-type AIPartSelectionStrategyComponentData struct {
-	Strategy AIPartSelectionStrategyFunc
-}
 
 // --- 履歴データコンポーネント ---
 

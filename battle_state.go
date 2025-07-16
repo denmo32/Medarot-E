@@ -126,7 +126,7 @@ type AnimatingActionState struct{}
 func (s *AnimatingActionState) Update(scene *BattleScene) (GameState, error) {
 	if scene.ui.IsAnimationFinished(scene.tickCount) {
 		result := scene.ui.GetCurrentAnimationResult()
-		messages := scene.buildActionLogMessages(result)
+		messages := buildActionLogMessages(result)
 
 		scene.messageManager.EnqueueMessageQueue(messages, func() {
 			UpdateHistorySystem(scene.world, &result)
