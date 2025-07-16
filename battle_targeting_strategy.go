@@ -67,7 +67,6 @@ func aiSelectAction(
 	entry *donburi.Entry,
 	partInfoProvider *PartInfoProvider,
 	targetSelector *TargetSelector,
-	gameConfig *Config,
 ) {
 	settings := SettingsComponent.Get(entry)
 
@@ -134,10 +133,10 @@ func aiSelectAction(
 			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
 			return
 		}
-		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, gameConfig, partInfoProvider)
+		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, partInfoProvider)
 	} else if selectedPartDef.Category == CategoryMelee {
 		// 格闘の場合はターゲット選択が不要なので、nilを渡す
-		StartCharge(entry, slotKey, nil, "", world, gameConfig, partInfoProvider)
+		StartCharge(entry, slotKey, nil, "", world, partInfoProvider)
 	} else {
 		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
 	}

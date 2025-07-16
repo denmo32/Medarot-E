@@ -670,3 +670,32 @@ func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partIns
 		}
 	}
 }
+
+// CalculateGaugeDuration は、行動の基本時間と推進力を基に、
+// 最終的なゲージの持続時間（tick数）を計算します。
+func (pip *PartInfoProvider) CalculateGaugeDuration(baseSeconds float64, entry *donburi.Entry) float64 {
+	if baseSeconds <= 0 {
+		baseSeconds = 0.1 // 0秒または負の値を避ける
+	}
+
+	propulsion := 1
+	// entryが有効でPartsComponentを持っているか確認
+	if entry != nil && entry.HasComponent(PartsComponent) {
+		partsComp := PartsComponent.Get(entry)
+		if partsComp != nil {
+			legsInstance, ok := partsComp.Map[PartSlotLegs]
+			if ok && legsInstance != nil && !legsInstance.IsBroken {
+				propulsion = pip.GetOverallPropulsion(entry)
+			}
+		}
+	}
+
+	balanceConfig := &pip.config.Balance
+	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
+	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
+
+	if totalTicks < 1 {
+		return 1
+	}
+	return totalTicks
+}

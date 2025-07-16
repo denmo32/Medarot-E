@@ -54,7 +54,7 @@ func UpdateActionQueueSystem(
 }
 
 // StartCooldownSystem はクールダウン状態を開始します。
-func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *Config, partInfoProvider *PartInfoProvider) {
+func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProvider *PartInfoProvider) {
 	intent := ActionIntentComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 	var actingPartDef *PartDefinition
@@ -73,29 +73,12 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, gameConfig *
 	if actingPartDef != nil {
 		baseSeconds = float64(actingPartDef.Cooldown)
 	}
-	if baseSeconds <= 0 {
-		baseSeconds = 0.1
-	}
 
-	propulsion := 1
-	if partInfoProvider != nil {
-		legsInstance := partsComp.Map[PartSlotLegs]
-		if legsInstance != nil && !legsInstance.IsBroken {
-			propulsion = partInfoProvider.GetOverallPropulsion(entry)
-		}
-	} else {
-		log.Println("警告: StartCooldownSystem - partInfoProviderがnilです。")
-	}
-
-	balanceConfig := &gameConfig.Balance
-	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
-	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
+	// 新しい共通関数を呼び出す
+	totalTicks := partInfoProvider.CalculateGaugeDuration(baseSeconds, entry)
 
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
-	if gauge.TotalDuration < 1 {
-		gauge.TotalDuration = 1
-	}
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
 
@@ -113,7 +96,6 @@ func StartCharge(
 	targetEntry *donburi.Entry,
 	targetPartSlot PartSlotKey,
 	world donburi.World,
-	gameConfig *Config,
 	partInfoProvider *PartInfoProvider,
 ) bool {
 	state := StateComponent.Get(entry)
@@ -169,30 +151,13 @@ func StartCharge(
 		log.Printf("%sは%sで攻撃準備！", settings.Name, actingPartDef.PartName)
 	}
 
-	propulsion := 1
-	if partInfoProvider != nil {
-		legsInstance := partsComp.Map[PartSlotLegs]
-		if legsInstance != nil && !legsInstance.IsBroken {
-			propulsion = partInfoProvider.GetOverallPropulsion(entry)
-		}
-	} else {
-		log.Println("警告: StartCharge - partInfoProviderがnilです。")
-	}
-
-	balanceConfig := &gameConfig.Balance
 	baseSeconds := float64(actingPartDef.Charge)
-	if baseSeconds <= 0 {
-		baseSeconds = 0.1
-	}
-	// balanceConfig := &gameConfig.Balance // ここが重複していた
-	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
-	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
+	// 新しい共通関数を呼び出す
+	totalTicks := partInfoProvider.CalculateGaugeDuration(baseSeconds, entry)
 
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
-	if gauge.TotalDuration < 1 {
-		gauge.TotalDuration = 1
-	}
+
 	err := state.FSM.Event(context.Background(), "charge", entry)
 	if err != nil {
 		log.Printf("Error starting charge for %s: %v", settings.Name, err)
