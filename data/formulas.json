@@ -1,11 +1,11 @@
 {
-  "TraitShoot": {
+  "撃つ": {
     "SuccessRateBonuses": [],
     "PowerBonuses": [],
     "CriticalRateBonus": 0.0,
     "UserDebuffs": []
   },
-  "TraitAim": {
+  "狙い撃ち": {
     "SuccessRateBonuses": [
       {
         "SourceParam": "Stability",
@@ -21,7 +21,7 @@
       }
     ]
   },
-  "TraitStrike": {
+  "殴る": {
     "SuccessRateBonuses": [
       {
         "SourceParam": "Mobility",
@@ -37,7 +37,7 @@
       }
     ]
   },
-  "TraitBerserk": {
+  "我武者羅": {
     "SuccessRateBonuses": [
       {
         "SourceParam": "Mobility",
@@ -62,13 +62,13 @@
       }
     ]
   },
-  "TraitSupport": {
+  "支援": {
     "SuccessRateBonuses": [],
     "PowerBonuses": [],
     "CriticalRateBonus": 0.0,
     "UserDebuffs": []
   },
-  "TraitObstruct": {
+  "妨害": {
     "SuccessRateBonuses": [],
     "PowerBonuses": [],
     "CriticalRateBonus": 0.0,

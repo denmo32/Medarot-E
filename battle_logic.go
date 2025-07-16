@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	// "fmt"
 	"log"
 	"math"
@@ -77,15 +76,7 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 			"ordered_args": []interface{}{settings.Name, partNameForLog, partInst.DefinitionID},
 		}))
 
-		if defFound && partDef.Type == PartTypeHead { // Check Type from PartDefinition
-			state := StateComponent.Get(entry)
-			if state.FSM.Can("break") {
-				err := state.FSM.Event(context.Background(), "break", entry)
-				if err != nil {
-					log.Printf("Error breaking medarot %s: %v", settings.Name, err)
-				}
-			}
-		}
+		
 
 		// パーツ破壊時にバフを解除する
 		dc.partInfoProvider.RemoveBuffsFromSource(entry, partInst)

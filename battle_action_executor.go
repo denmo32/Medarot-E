@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	// "fmt"
 	"log"
 
@@ -138,7 +139,18 @@ func executeAttackAction(
 	// 5. 最終結果の構築
 	finalizeActionResult(&result, actingEntry, actingPartDef)
 
-	// 6. クリーンアップ
+	// 6. 頭部パーツが破壊された場合、メダロットを機能停止状態に遷移させる
+	if result.TargetPartBroken && result.ActualHitPartSlot == PartSlotHead {
+		state := StateComponent.Get(targetEntry)
+		if state.FSM.Can("break") {
+			err := state.FSM.Event(context.Background(), "break", targetEntry)
+			if err != nil {
+				log.Printf("Error breaking medarot %s: %v", SettingsComponent.Get(targetEntry).Name, err)
+			}
+		}
+	}
+
+	// 7. クリーンアップ
 	cleanupActionDebuffs(actingEntry)
 
 	return result
