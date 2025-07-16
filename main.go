@@ -57,6 +57,11 @@ func main() {
 	}
 
 	config := LoadConfig()
+	formulas, err := LoadFormulas()
+	if err != nil {
+		log.Fatalf("アクション計算式の読み込みに失敗しました: %v", err)
+	}
+	config.Balance.Formulas = formulas
 	SetupFormulaManager(&config)
 
 	// bamennを使ったシーンマネージャをセットアップします

@@ -1,0 +1,77 @@
+{
+  "TraitShoot": {
+    "SuccessRateBonuses": [],
+    "PowerBonuses": [],
+    "CriticalRateBonus": 0.0,
+    "UserDebuffs": []
+  },
+  "TraitAim": {
+    "SuccessRateBonuses": [
+      {
+        "SourceParam": "Stability",
+        "Multiplier": 1.0
+      }
+    ],
+    "PowerBonuses": [],
+    "CriticalRateBonus": 50.0,
+    "UserDebuffs": [
+      {
+        "Type": "Evasion",
+        "Multiplier": 0.5
+      }
+    ]
+  },
+  "TraitStrike": {
+    "SuccessRateBonuses": [
+      {
+        "SourceParam": "Mobility",
+        "Multiplier": 1.0
+      }
+    ],
+    "PowerBonuses": [],
+    "CriticalRateBonus": 10.0,
+    "UserDebuffs": [
+      {
+        "Type": "Defense",
+        "Multiplier": 0.5
+      }
+    ]
+  },
+  "TraitBerserk": {
+    "SuccessRateBonuses": [
+      {
+        "SourceParam": "Mobility",
+        "Multiplier": 1.0
+      }
+    ],
+    "PowerBonuses": [
+      {
+        "SourceParam": "Propulsion",
+        "Multiplier": 1.0
+      }
+    ],
+    "CriticalRateBonus": 0.0,
+    "UserDebuffs": [
+      {
+        "Type": "Evasion",
+        "Multiplier": 0.5
+      },
+      {
+        "Type": "Defense",
+        "Multiplier": 0.5
+      }
+    ]
+  },
+  "TraitSupport": {
+    "SuccessRateBonuses": [],
+    "PowerBonuses": [],
+    "CriticalRateBonus": 0.0,
+    "UserDebuffs": []
+  },
+  "TraitObstruct": {
+    "SuccessRateBonuses": [],
+    "PowerBonuses": [],
+    "CriticalRateBonus": 0.0,
+    "UserDebuffs": []
+  }
+}

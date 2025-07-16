@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -28,6 +29,7 @@ const (
 	RawMedalsCSV
 	RawPartsCSV
 	RawMedarotsCSV
+	RawFormulasJSON
 )
 
 // Global resource loader
@@ -56,6 +58,7 @@ func initResources(audioContext *audio.Context) {
 		RawMedalsCSV:   {Path: "data/medals.csv"},
 		RawPartsCSV:    {Path: "data/parts.csv"},
 		RawMedarotsCSV: {Path: "data/medarots.csv"},
+		RawFormulasJSON: {Path: "data/formulas.json"},
 	}
 	r.RawRegistry.Assign(rawResources)
 
@@ -75,6 +78,17 @@ func initResources(audioContext *audio.Context) {
 func LoadFont(id resource.FontID) (text.Face, error) {
 	f := r.LoadFont(id)
 	return text.NewGoXFace(f.Face), nil
+}
+
+// LoadFormulas loads action formulas from the JSON resource.
+func LoadFormulas() (map[Trait]ActionFormulaConfig, error) {
+	res := r.LoadRaw(RawFormulasJSON)
+	var formulas map[Trait]ActionFormulaConfig
+	err := json.Unmarshal(res.Data, &formulas)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal formulas data: %w", err)
+	}
+	return formulas, nil
 }
 
 // LoadAllStaticGameData re-implements the original function using the resource loader.
