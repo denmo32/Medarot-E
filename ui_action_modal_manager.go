@@ -12,10 +12,10 @@ import (
 type UIActionModalManager struct {
 	ebitenui             *ebitenui.UI // UIのルートコンテナにアクセスするため
 	actionModal          widget.PreferredSizeLocateableWidget
-	playerMedarotToAct   *donburi.Entry // 現在アクション選択中のプレイヤーメダロット
-	isActionModalVisible bool           // アクションモーダルが表示されているか
+	playerMedarotToAct   *donburi.Entry               // 現在アクション選択中のプレイヤーメダロット
+	isActionModalVisible bool                         // アクションモーダルが表示されているか
 	actionTargetMap      map[PartSlotKey]ActionTarget // 選択可能なアクションとターゲットのマップ
-	eventChannel         chan UIEvent   // UIイベント通知用
+	eventChannel         chan UIEvent                 // UIイベント通知用
 	config               *Config
 }
 
@@ -39,7 +39,45 @@ func (m *UIActionModalManager) ShowActionModal(actingEntry *donburi.Entry, actio
 	m.isActionModalVisible = true
 	m.actionTargetMap = actionTargetMap // Set the pre-calculated map
 
-	modal := createActionModalUI(actingEntry, m.config, m.actionTargetMap, m.eventChannel, GlobalGameDataManager.Font)
+	// ViewModelを構築
+	settings := SettingsComponent.Get(actingEntry)
+	partsComp := PartsComponent.Get(actingEntry)
+
+	var buttons []ActionModalButtonViewModel
+	if partsComp == nil {
+		log.Println("エラー: ShowActionModal - actingEntry に PartsComponent がありません。")
+	} else {
+		var displayableParts []AvailablePart
+		for slotKey, partInst := range partsComp.Map {
+			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+			if !defFound {
+				continue
+			}
+			if _, ok := actionTargetMap[slotKey]; ok {
+				displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey, IsBroken: partInst.IsBroken})
+			}
+		}
+
+		for _, available := range displayableParts {
+			targetInfo, _ := actionTargetMap[available.Slot] // ターゲット情報は必ず存在する
+			buttons = append(buttons, ActionModalButtonViewModel{
+				PartName:        available.PartDef.PartName,
+				PartCategory:    available.PartDef.Category,
+				SlotKey:         available.Slot,
+				IsBroken:        available.IsBroken,
+				TargetEntry:     targetInfo.Target,
+				SelectedPartDef: available.PartDef,
+			})
+		}
+	}
+
+	vm := &ActionModalViewModel{
+		ActingMedarotName: settings.Name,
+		ActingEntry:       actingEntry,
+		Buttons:           buttons,
+	}
+
+	modal := createActionModalUI(vm, m.config, m.eventChannel, GlobalGameDataManager.Font)
 	m.actionModal = modal
 	m.ebitenui.Container.AddChild(m.actionModal)
 	log.Println("アクションモーダルを表示しました。")
