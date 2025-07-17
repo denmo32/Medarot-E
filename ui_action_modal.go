@@ -67,10 +67,12 @@ func createActionModalUI(
 					widget.ButtonOpts.Text(fmt.Sprintf("%s (%s)", partDef.PartName, partDef.Category), font, buttonTextColor),
 					widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 					widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-						eventChannel <- PlayerActionSelectedEvent{
-							ActingEntry:     actingEntry,
-							SelectedPartDef: partDef,
-							SelectedSlotKey: slotKey,
+						if !available.IsBroken {
+							eventChannel <- PlayerActionSelectedEvent{
+								ActingEntry:     actingEntry,
+								SelectedPartDef: partDef,
+								SelectedSlotKey: slotKey,
+							}
 						}
 					}),
 					widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
