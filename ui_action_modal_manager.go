@@ -59,7 +59,7 @@ func (m *UIActionModalManager) ShowActionModal(actingEntry *donburi.Entry, actio
 		}
 
 		for _, available := range displayableParts {
-			targetInfo, _ := actionTargetMap[available.Slot] // ターゲット情報は必ず存在する
+			targetInfo := actionTargetMap[available.Slot]
 			buttons = append(buttons, ActionModalButtonViewModel{
 				PartName:        available.PartDef.PartName,
 				PartCategory:    available.PartDef.Category,
