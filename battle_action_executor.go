@@ -26,7 +26,6 @@ type ActionHandler interface {
 
 // --- 具体的なハンドラ ---
 
-
 // --- attack action helpers ---
 
 // validateTarget は攻撃対象が有効かどうかをチェックします。
@@ -116,7 +115,7 @@ func executeAttackAction(
 
 	// 1. ターゲットの有効性チェック
 	if !validateTarget(targetEntry, targetPartSlot) {
-		cleanupActionDebuffs(actingEntry)
+		CleanupActionDebuffs(actingEntry)
 		return result
 	}
 
@@ -124,7 +123,7 @@ func executeAttackAction(
 	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, battleLogic)
 	result.ActionDidHit = didHit
 	if !didHit {
-		cleanupActionDebuffs(actingEntry)
+		CleanupActionDebuffs(actingEntry)
 		return result
 	}
 
@@ -151,11 +150,10 @@ func executeAttackAction(
 	}
 
 	// 7. クリーンアップ
-	cleanupActionDebuffs(actingEntry)
+	CleanupActionDebuffs(actingEntry)
 
 	return result
 }
-
 
 // ShootActionHandler は射撃カテゴリのパーツのアクションを処理します。
 type ShootActionHandler struct{}
@@ -185,16 +183,6 @@ func (h *ShootActionHandler) Execute(
 		targetComp.TargetEntity,
 		targetComp.TargetPartSlot,
 	)
-}
-
-// cleanup は行動後のデバフをクリーンアップします。
-func cleanupActionDebuffs(actingEntry *donburi.Entry) {
-	if actingEntry.HasComponent(EvasionDebuffComponent) {
-		actingEntry.RemoveComponent(EvasionDebuffComponent)
-	}
-	if actingEntry.HasComponent(DefenseDebuffComponent) {
-		actingEntry.RemoveComponent(DefenseDebuffComponent)
-	}
 }
 
 // MeleeActionHandler は格闘カテゴリのパーツのアクションを処理します。
@@ -327,7 +315,7 @@ func (h *InterventionActionHandler) Execute(
 		result.ActionDidHit = false // 不明なTraitは失敗とする
 	}
 
-	cleanupActionDebuffs(actingEntry)
+	CleanupActionDebuffs(actingEntry)
 	return result
 }
 
