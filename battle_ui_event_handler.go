@@ -13,13 +13,14 @@ func ProcessPlayerActionSelected(
 	playerActionPendingQueue []*donburi.Entry,
 	ui UIInterface,
 	event PlayerActionSelectedEvent,
-	actionTargetMap map[PartSlotKey]ActionTarget,
 ) (newPlayerActionPendingQueue []*donburi.Entry, message string, postMessageCallback func()) {
 	log.Printf("BattleActionProcessor: PlayerActionSelectedEvent を処理中 - Actor: %s, Part: %s",
 		SettingsComponent.Get(event.ActingEntry).Name,
 		event.SelectedPartDef.PartName)
 
 	var successful bool
+	actionTargetMap := ui.GetActionTargetMap() // UIからマップを取得
+
 	switch event.SelectedPartDef.Category {
 	case CategoryRanged:
 		actionTarget, ok := actionTargetMap[event.SelectedSlotKey]

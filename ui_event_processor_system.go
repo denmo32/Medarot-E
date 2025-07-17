@@ -31,7 +31,7 @@ func UpdateUIEventProcessorSystem(
 			var message string
 			var postMessageCallback func()
 			newPlayerActionPendingQueue, message, postMessageCallback = ProcessPlayerActionSelected(
-				world, battleLogic, playerActionPendingQueue, ui, e, ui.GetActionTargetMap())
+				world, battleLogic, playerActionPendingQueue, ui, e)
 			if message != "" {
 				messageManager.EnqueueMessage(message, postMessageCallback)
 				newState = StateMessage // メッセージ表示状態に遷移

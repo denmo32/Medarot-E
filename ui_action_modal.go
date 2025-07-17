@@ -68,6 +68,7 @@ func createActionModalUI(
 					widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 					widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 						if !available.IsBroken {
+							eventChannel <- ClearCurrentTargetEvent{}
 							eventChannel <- PlayerActionSelectedEvent{
 								ActingEntry:     actingEntry,
 								SelectedPartDef: partDef,
