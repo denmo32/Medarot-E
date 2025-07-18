@@ -39,19 +39,25 @@ func UpdateActionQueueSystem(
 		actingPartInst := partsComp.Map[intent.SelectedPartKey]
 		actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
 
-		handler := GetActionHandlerForCategory(actingPartDef.Category)
-
-		if handler != nil {
-			actionResult := handler.Execute(actingEntry, world, intent, battleLogic, gameConfig)
-
-			// アクション後の共通処理を実行
-			ProcessPostActionEffects(&actionResult, world)
-
-			results = append(results, actionResult)
-		} else {
-			// Handle error: no handler found
-			log.Printf("No action handler found for category: %s", actingPartDef.Category)
+		handler, ok := traitHandlers[actingPartDef.Trait]
+		if !ok {
+			log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
+			return results, nil // エラーとして処理し、結果を返さない
 		}
+
+		actionResult := ActionResult{
+			ActingEntry:  actingEntry,
+			ActionDidHit: true, // 初期値としてtrueを設定、ハンドラ内で変更可能
+			AttackerName: SettingsComponent.Get(actingEntry).Name,
+			ActionName:   string(actingPartDef.Trait),
+			WeaponType:   actingPartDef.WeaponType,
+		}
+		handler.Execute(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef, &actionResult)
+
+		// アクション後の共通処理を実行
+		ProcessPostActionEffects(&actionResult, world)
+
+		results = append(results, actionResult)
 	}
 	return results, nil
 }

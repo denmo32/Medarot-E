@@ -134,6 +134,7 @@ const (
 	TraitStrike   Trait = "殴る"
 	TraitBerserk  Trait = "我武者羅"
 	TraitShoot    Trait = "撃つ"
+	TraitMelee    Trait = "格闘" // 新しく追加
 	TraitSupport  Trait = "支援"
 	TraitObstruct Trait = "妨害"
 	TraitNone     Trait = "NONE"

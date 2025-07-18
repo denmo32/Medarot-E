@@ -10,21 +10,7 @@ import (
 )
 
 // ActionHandler はカテゴリ固有のアクション処理全体をカプセル化します。
-type ActionHandler interface {
-	// Execute は、アクションの解決から結果生成までの一連の処理を実行します。
-	// 成功した場合は、詳細な結果を含む ActionResult を返します。
-	// 失敗した場合は、エラー情報を含む ActionResult を返します。
-	Execute(
-		actingEntry *donburi.Entry,
-		world donburi.World,
-		intent *ActionIntent,
-		battleLogic *BattleLogic, // 必要な計算機へのアクセスを提供
-		gameConfig *Config,
-	) ActionResult
-}
-
-// InterventionTraitHandler は、各介入特性固有の処理をカプセル化します。
-type InterventionTraitHandler interface {
+type TraitActionHandler interface {
 	Execute(
 		actingEntry *donburi.Entry,
 		world donburi.World,
@@ -151,26 +137,27 @@ func executeAttackAction(
 	return result
 }
 
-// ShootActionHandler は射撃カテゴリのパーツのアクションを処理します。
-type ShootActionHandler struct{}
+// ShootTraitHandler は TraitShoot のアクションを処理します。
+type ShootTraitHandler struct{}
 
-func (h *ShootActionHandler) Execute(
+func (h *ShootTraitHandler) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
 	battleLogic *BattleLogic,
 	gameConfig *Config,
-) ActionResult {
+	actingPartDef *PartDefinition,
+	result *ActionResult,
+) {
 	targetComp := TargetComponent.Get(actingEntry)
 
 	if targetComp.TargetEntity == nil || targetComp.TargetPartSlot == "" {
-		return ActionResult{
-			ActingEntry: actingEntry,
-			// LogMessage:  settings.Name + "は射撃ターゲットが未選択です。",
-		}
+		result.ActionDidHit = false // ターゲット未選択は失敗
+		return
 	}
 
-	return executeAttackAction(
+	// executeAttackAction は ActionResult を返すので、result ポインタに直接設定
+	*result = executeAttackAction(
 		actingEntry,
 		world,
 		intent,
@@ -181,41 +168,38 @@ func (h *ShootActionHandler) Execute(
 	)
 }
 
-// MeleeActionHandler は格闘カテゴリのパーツのアクションを処理します。
-type MeleeActionHandler struct{}
+// MeleeTraitHandler は TraitMelee のアクションを処理します。
+type MeleeTraitHandler struct{}
 
-func (h *MeleeActionHandler) Execute(
+func (h *MeleeTraitHandler) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
 	battleLogic *BattleLogic,
 	gameConfig *Config,
-) ActionResult {
+	actingPartDef *PartDefinition,
+	result *ActionResult,
+) {
 	// 1. ターゲット解決
 	closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
 	if closestEnemy == nil {
-		return ActionResult{
-			ActingEntry: actingEntry,
-			// LogMessage:  settings.Name + "は格闘攻撃しようとしたが、相手がいなかった。",
-		}
+		result.ActionDidHit = false // ターゲット不在は失敗
+		return
 	}
 
 	targetPart := battleLogic.TargetSelector.SelectRandomPartToDamage(closestEnemy)
 	if targetPart == nil {
-		return ActionResult{
-			ActingEntry: actingEntry,
-			// LogMessage:  settings.Name + "は" + SettingsComponent.Get(closestEnemy).Name + "を狙ったが、攻撃できる部位がなかった！",
-		}
+		result.ActionDidHit = false // 攻撃できる部位がない場合は失敗
+		return
 	}
 	targetPartSlot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
 	if targetPartSlot == "" {
-		return ActionResult{
-			ActingEntry: actingEntry,
-			// LogMessage:  settings.Name + "の" + SettingsComponent.Get(closestEnemy).Name + "への攻撃でパーツスロット特定失敗。",
-		}
+		result.ActionDidHit = false // パーツスロット特定失敗は失敗
+		return
 	}
 
-	return executeAttackAction(
+	// executeAttackAction は ActionResult を返すので、result ポインタに直接設定
+	*result = executeAttackAction(
 		actingEntry,
 		world,
 		intent,
@@ -308,65 +292,13 @@ func (h *ObstructTraitExecutor) Execute(
 	log.Printf("%s が %s に妨害を実行しました（現在効果なし）。", settings.Name, result.DefenderName)
 }
 
-// interventionTraitHandlers は Trait に対応する InterventionTraitHandler のレジストリです。
-var interventionTraitHandlers = map[Trait]InterventionTraitHandler{
+// traitHandlers は Trait に対応する TraitActionHandler のレジストリです。
+var traitHandlers = map[Trait]TraitActionHandler{
+	TraitShoot:    &ShootTraitHandler{},
+	TraitAim:      &ShootTraitHandler{}, // 狙い撃ちも射撃ハンドラを使用
+	TraitMelee:    &MeleeTraitHandler{},
+	TraitStrike:   &MeleeTraitHandler{}, // 殴るも格闘ハンドラを使用
+	TraitBerserk:  &MeleeTraitHandler{}, // 我武者羅も格闘ハンドラを使用
 	TraitSupport:  &SupportTraitExecutor{},
 	TraitObstruct: &ObstructTraitExecutor{},
-}
-
-// InterventionActionHandler は介入カテゴリのパーツのアクションを処理します。
-type InterventionActionHandler struct{}
-
-func (h *InterventionActionHandler) Execute(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-) ActionResult {
-	settings := SettingsComponent.Get(actingEntry)
-	partsComp := PartsComponent.Get(actingEntry)
-	actingPartInst := partsComp.Map[intent.SelectedPartKey]
-	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
-	result := ActionResult{
-		ActingEntry:  actingEntry,
-		ActionDidHit: true, // 介入行動は基本「成功」とする
-		AttackerName: settings.Name,
-		ActionName:   string(actingPartDef.Trait),
-		WeaponType:   actingPartDef.WeaponType,
-	}
-
-	handler, ok := interventionTraitHandlers[actingPartDef.Trait]
-	if !ok {
-		log.Printf("未対応の介入Traitです: %s", actingPartDef.Trait)
-		result.ActionDidHit = false // 不明なTraitは失敗とする
-		return result
-	}
-
-	handler.Execute(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef, &result)
-
-	return result
-}
-
-// ハンドラのグローバルインスタンス（またはファクトリ/レジストリを使用することもできます）
-var (
-	shootHandler        = &ShootActionHandler{}
-	meleeHandler        = &MeleeActionHandler{}
-	interventionHandler = &InterventionActionHandler{}
-)
-
-// GetActionHandlerForCategory はパーツカテゴリに基づいて適切なActionHandlerを返します。
-func GetActionHandlerForCategory(category PartCategory) ActionHandler {
-	switch category {
-	case CategoryRanged:
-		return shootHandler
-	case CategoryMelee:
-		return meleeHandler
-	case CategoryIntervention:
-		return interventionHandler
-	default:
-		// 未処理の場合はデフォルトハンドラまたはnilを返します
-		// 現状、nilを返すとexecuteActionLogicでフォールバックまたはエラー処理が必要になります
-		return nil
-	}
 }
