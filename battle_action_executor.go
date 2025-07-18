@@ -23,6 +23,19 @@ type ActionHandler interface {
 	) ActionResult
 }
 
+// InterventionTraitHandler は、各介入特性固有の処理をカプセル化します。
+type InterventionTraitHandler interface {
+	Execute(
+		actingEntry *donburi.Entry,
+		world donburi.World,
+		intent *ActionIntent,
+		battleLogic *BattleLogic,
+		gameConfig *Config,
+		actingPartDef *PartDefinition,
+		result *ActionResult,
+	)
+}
+
 // --- 具体的なハンドラ ---
 
 // --- attack action helpers ---
@@ -213,6 +226,94 @@ func (h *MeleeActionHandler) Execute(
 	)
 }
 
+// SupportTraitExecutor は TraitSupport の介入アクションを処理します。
+type SupportTraitExecutor struct{}
+
+func (h *SupportTraitExecutor) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+	result *ActionResult,
+) {
+	settings := SettingsComponent.Get(actingEntry)
+
+	// 1. TeamBuffsComponent を取得
+	teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(world)
+	if !ok {
+		log.Println("エラー: TeamBuffsComponent がワールドに見つかりません。")
+		result.ActionDidHit = false // 失敗としてマーク
+		return
+	}
+	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
+
+	// 2. バフ情報を生成
+	buffValue := 1.0 + (float64(actingPartDef.Power) / 100.0)
+	newBuffSource := &BuffSource{
+		SourceEntry: actingEntry,
+		SourcePart:  intent.SelectedPartKey,
+		Value:       buffValue,
+	}
+
+	// 3. TeamBuffsComponent を更新
+	teamID := settings.Team
+	buffType := BuffTypeAccuracy // 現在は命中バフ固定
+
+	if _, exists := teamBuffs.Buffs[teamID]; !exists {
+		teamBuffs.Buffs[teamID] = make(map[BuffType][]*BuffSource)
+	}
+	if _, exists := teamBuffs.Buffs[teamID][buffType]; !exists {
+		teamBuffs.Buffs[teamID][buffType] = make([]*BuffSource, 0)
+	}
+
+	existingBuffs := teamBuffs.Buffs[teamID][buffType]
+	filteredBuffs := make([]*BuffSource, 0, len(existingBuffs))
+	for _, buff := range existingBuffs {
+		if buff.SourceEntry != actingEntry || buff.SourcePart != intent.SelectedPartKey {
+			filteredBuffs = append(filteredBuffs, buff)
+		}
+	}
+	teamBuffs.Buffs[teamID][buffType] = append(filteredBuffs, newBuffSource)
+	log.Printf("チーム%dに命中バフを追加: %s (%.2f倍)", teamID, settings.Name, buffValue)
+}
+
+// ObstructTraitExecutor は TraitObstruct の介入アクションを処理します。
+type ObstructTraitExecutor struct{}
+
+func (h *ObstructTraitExecutor) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+	result *ActionResult,
+) {
+	settings := SettingsComponent.Get(actingEntry)
+	targetComp := TargetComponent.Get(actingEntry)
+	if targetComp.TargetEntity == nil {
+		log.Printf("%s は妨害ターゲットが未選択です。", settings.Name)
+		result.ActionDidHit = false
+		return
+	}
+	targetEntry := targetComp.TargetEntity
+	result.TargetEntry = targetEntry
+	result.DefenderName = SettingsComponent.Get(targetEntry).Name
+
+	// ここに将来的なデバフ処理を実装します。
+	// 例: ターゲットの回避デバフコンポーネントを追加
+	// donburi.Add(targetEntry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: 0.8})
+	log.Printf("%s が %s に妨害を実行しました（現在効果なし）。", settings.Name, result.DefenderName)
+}
+
+// interventionTraitHandlers は Trait に対応する InterventionTraitHandler のレジストリです。
+var interventionTraitHandlers = map[Trait]InterventionTraitHandler{
+	TraitSupport:  &SupportTraitExecutor{},
+	TraitObstruct: &ObstructTraitExecutor{},
+}
+
 // InterventionActionHandler は介入カテゴリのパーツのアクションを処理します。
 type InterventionActionHandler struct{}
 
@@ -235,68 +336,14 @@ func (h *InterventionActionHandler) Execute(
 		WeaponType:   actingPartDef.WeaponType,
 	}
 
-	switch actingPartDef.Trait {
-	case TraitSupport:
-		// --- 支援処理 ---
-		// 1. TeamBuffsComponent を取得
-		teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(world)
-		if !ok {
-			log.Println("エラー: TeamBuffsComponent がワールドに見つかりません。")
-			result.ActionDidHit = false // 失敗としてマーク
-			return result
-		}
-		teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
-
-		// 2. バフ情報を生成
-		buffValue := 1.0 + (float64(actingPartDef.Power) / 100.0)
-		newBuffSource := &BuffSource{
-			SourceEntry: actingEntry,
-			SourcePart:  intent.SelectedPartKey,
-			Value:       buffValue,
-		}
-
-		// 3. TeamBuffsComponent を更新
-		teamID := settings.Team
-		buffType := BuffTypeAccuracy // 現在は命中バフ固定
-
-		if _, exists := teamBuffs.Buffs[teamID]; !exists {
-			teamBuffs.Buffs[teamID] = make(map[BuffType][]*BuffSource)
-		}
-		if _, exists := teamBuffs.Buffs[teamID][buffType]; !exists {
-			teamBuffs.Buffs[teamID][buffType] = make([]*BuffSource, 0)
-		}
-
-		existingBuffs := teamBuffs.Buffs[teamID][buffType]
-		filteredBuffs := make([]*BuffSource, 0, len(existingBuffs))
-		for _, buff := range existingBuffs {
-			if buff.SourceEntry != actingEntry || buff.SourcePart != intent.SelectedPartKey {
-				filteredBuffs = append(filteredBuffs, buff)
-			}
-		}
-		teamBuffs.Buffs[teamID][buffType] = append(filteredBuffs, newBuffSource)
-		log.Printf("チーム%dに命中バフを追加: %s (%.2f倍)", teamID, settings.Name, buffValue)
-
-	case TraitObstruct:
-		// --- 妨害処理 ---
-		targetComp := TargetComponent.Get(actingEntry)
-		if targetComp.TargetEntity == nil {
-			log.Printf("%s は妨害ターゲットが未選択です。", settings.Name)
-			result.ActionDidHit = false
-			return result
-		}
-		targetEntry := targetComp.TargetEntity
-		result.TargetEntry = targetEntry
-		result.DefenderName = SettingsComponent.Get(targetEntry).Name
-
-		// ここに将来的なデバフ処理を実装します。
-		// 例: ターゲットの回避デバフコンポーネントを追加
-		// donburi.Add(targetEntry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: 0.8})
-		log.Printf("%s が %s に妨害を実行しました（現在効果なし）。", settings.Name, result.DefenderName)
-
-	default:
+	handler, ok := interventionTraitHandlers[actingPartDef.Trait]
+	if !ok {
 		log.Printf("未対応の介入Traitです: %s", actingPartDef.Trait)
 		result.ActionDidHit = false // 不明なTraitは失敗とする
+		return result
 	}
+
+	handler.Execute(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef, &result)
 
 	return result
 }
