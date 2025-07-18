@@ -34,29 +34,8 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
-		intent := ActionIntentComponent.Get(actingEntry)
-		partsComp := PartsComponent.Get(actingEntry)
-		actingPartInst := partsComp.Map[intent.SelectedPartKey]
-		actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
-
-		handler, ok := traitHandlers[actingPartDef.Trait]
-		if !ok {
-			log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
-			return results, nil // エラーとして処理し、結果を返さない
-		}
-
-		actionResult := ActionResult{
-			ActingEntry:  actingEntry,
-			ActionDidHit: true, // 初期値としてtrueを設定、ハンドラ内で変更可能
-			AttackerName: SettingsComponent.Get(actingEntry).Name,
-			ActionName:   string(actingPartDef.Trait),
-			WeaponType:   actingPartDef.WeaponType,
-		}
-		handler.Execute(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef, &actionResult)
-
-		// アクション後の共通処理を実行
-		ProcessPostActionEffects(&actionResult, world)
-
+		executor := NewActionExecutor(world, battleLogic, gameConfig)
+		actionResult := executor.ExecuteAction(actingEntry)
 		results = append(results, actionResult)
 	}
 	return results, nil

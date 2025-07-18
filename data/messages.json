@@ -1,7 +1,11 @@
 [
   {
-    "id": "action_initiate",
+    "id": "action_initiate_attack",
     "text": "{attacker_name}の{action_name}攻撃！　{weapon_type}！"
+  },
+  {
+    "id": "action_initiate_intervention",
+    "text": "{attacker_name}の{action_name}行動！　{weapon_type}！"
   },
   {
     "id": "action_defend",

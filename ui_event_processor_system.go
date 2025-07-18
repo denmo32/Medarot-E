@@ -113,16 +113,33 @@ func UpdateUIEventProcessorSystem(
 }
 
 // buildActionLogMessages はアクションの結果ログを生成します。
-// targetPartDef はダメージを受けたパーツの定義 (nilの場合あり)
-// actingPartDef は攻撃に使用されたパーツの定義
 func buildActionLogMessages(result ActionResult) []string {
 	messages := []string{}
-	if result.ActionDidHit {
-		initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
-		messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
 
-		actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(PartsComponent.Get(result.ActingEntry).Map[ActionIntentComponent.Get(result.ActingEntry).SelectedPartKey].DefinitionID)
-		switch actingPartDef.Category {
+	// メッセージテンプレートのパラメータを準備
+	// action_name には特性名(Trait)を渡す
+	initiateParams := map[string]interface{}{
+		"attacker_name": result.AttackerName,
+		"action_name":   result.ActionTrait,
+		"weapon_type":   result.WeaponType,
+	}
+
+	// カテゴリに応じてメッセージIDを切り替え
+	messageID := ""
+	switch result.ActionCategory {
+	case CategoryRanged, CategoryMelee:
+		messageID = "action_initiate_attack"
+	case CategoryIntervention:
+		messageID = "action_initiate_intervention"
+	}
+
+	if result.ActionDidHit {
+		if messageID != "" {
+			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage(messageID, initiateParams))
+		}
+
+		// ダメージや防御のメッセージを追加
+		switch result.ActionCategory {
 		case CategoryRanged, CategoryMelee:
 			if result.ActionIsDefended {
 				defendParams := map[string]interface{}{"defender_name": result.DefenderName, "defending_part_type": result.DefendingPartType}
@@ -131,11 +148,17 @@ func buildActionLogMessages(result ActionResult) []string {
 			damageParams := map[string]interface{}{"defender_name": result.DefenderName, "target_part_type": result.TargetPartType, "damage": result.DamageDealt}
 			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_damage", damageParams))
 		case CategoryIntervention:
-			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("support_action_generic", nil))
+			// 介入アクションの成功メッセージ（例：「味方チーム全体の命中率が上昇した！」）
+			// 必要であれば、ここで特性(Trait)に応じたメッセージを追加する
+			if result.ActionTrait == string(TraitSupport) {
+				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("support_action_generic", nil))
+			}
 		}
 	} else {
-		initiateParams := map[string]interface{}{"attacker_name": result.AttackerName, "action_name": result.ActionName, "weapon_type": result.WeaponType}
-		messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_initiate", initiateParams))
+		// ミスした場合
+		if messageID != "" {
+			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage(messageID, initiateParams))
+		}
 		missParams := map[string]interface{}{
 			"target_name": result.DefenderName,
 		}

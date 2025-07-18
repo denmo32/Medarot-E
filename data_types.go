@@ -134,7 +134,6 @@ const (
 	TraitStrike   Trait = "殴る"
 	TraitBerserk  Trait = "我武者羅"
 	TraitShoot    Trait = "撃つ"
-	TraitMelee    Trait = "格闘" // 新しく追加
 	TraitSupport  Trait = "支援"
 	TraitObstruct Trait = "妨害"
 	TraitNone     Trait = "NONE"
@@ -357,8 +356,10 @@ type ActionResult struct {
 	// 新しいメッセージ形式のための追加フィールド
 	AttackerName      string
 	DefenderName      string
-	ActionName        string // e.g., "撃つ", "狙い撃ち" (Trait)
+	ActionName        string // e.g., "パーツ名"
+	ActionTrait       string // e.g., "撃つ", "狙い撃ち" (Trait)
 	WeaponType        string // e.g., "ソード", "マグナム"
+	ActionCategory    PartCategory
 	TargetPartType    string // e.g., "頭部", "脚部"
 	DefendingPartType string // e.g., "頭部", "脚部"
 }
