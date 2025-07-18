@@ -30,10 +30,10 @@ type ActionExecutor struct {
 	handlers    map[Trait]TraitActionHandler
 }
 
-// AttackTraitHandler は射撃系および格闘系のアクションを処理します。
-type AttackTraitHandler struct{}
+// --- attack action helpers ---
 
-func (h *AttackTraitHandler) resolveTarget(
+// resolveAttackTarget は攻撃アクションのターゲットを解決します。
+func resolveAttackTarget(
 	actingEntry *donburi.Entry,
 	battleLogic *BattleLogic,
 ) (targetEntry *donburi.Entry, targetPartSlot PartSlotKey) {
@@ -65,7 +65,10 @@ func (h *AttackTraitHandler) resolveTarget(
 	}
 }
 
-func (h *AttackTraitHandler) Execute(
+// ShootHandler は TraitShoot のアクションを処理します。
+type ShootHandler struct{}
+
+func (h *ShootHandler) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
@@ -73,22 +76,140 @@ func (h *AttackTraitHandler) Execute(
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
 ) ActionResult {
-	baseResult := ActionResult{
-		ActingEntry:    actingEntry,
-		ActionDidHit:   false, // 初期値はfalse
-		AttackerName:   SettingsComponent.Get(actingEntry).Name,
-		ActionName:     actingPartDef.PartName,
-		ActionTrait:    string(actingPartDef.Trait),
-		ActionCategory: actingPartDef.Category,
-		WeaponType:     actingPartDef.WeaponType,
-	}
-
-	targetEntry, targetPartSlot := h.resolveTarget(actingEntry, battleLogic)
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
 
 	// ターゲットが解決できなかった場合
 	if targetEntry == nil {
-		return baseResult
+		return ActionResult{
+			ActingEntry:    actingEntry,
+			ActionDidHit:   false,
+			AttackerName:   SettingsComponent.Get(actingEntry).Name,
+			ActionName:     actingPartDef.PartName,
+			ActionTrait:    string(actingPartDef.Trait),
+			ActionCategory: actingPartDef.Category,
+			WeaponType:     actingPartDef.WeaponType,
+		}
 	}
+
+	return executeAttackAction(
+		actingEntry,
+		world,
+		intent,
+		battleLogic,
+		gameConfig,
+		targetEntry,
+		targetPartSlot,
+	)
+}
+
+// AimHandler は TraitAim のアクションを処理します。
+type AimHandler struct{}
+
+func (h *AimHandler) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+) ActionResult {
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
+
+	// ターゲットが解決できなかった場合
+	if targetEntry == nil {
+		return ActionResult{
+			ActingEntry:    actingEntry,
+			ActionDidHit:   false,
+			AttackerName:   SettingsComponent.Get(actingEntry).Name,
+			ActionName:     actingPartDef.PartName,
+			ActionTrait:    string(actingPartDef.Trait),
+			ActionCategory: actingPartDef.Category,
+			WeaponType:     actingPartDef.WeaponType,
+		}
+	}
+
+	// AimHandler固有のロジック（例：クリティカルボーナス適用、デバフ付与など）をここに追加
+	// ...
+
+	return executeAttackAction(
+		actingEntry,
+		world,
+		intent,
+		battleLogic,
+		gameConfig,
+		targetEntry,
+		targetPartSlot,
+	)
+}
+
+// StrikeHandler は TraitStrike のアクションを処理します。
+type StrikeHandler struct{}
+
+func (h *StrikeHandler) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+) ActionResult {
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
+
+	// ターゲットが解決できなかった場合
+	if targetEntry == nil {
+		return ActionResult{
+			ActingEntry:    actingEntry,
+			ActionDidHit:   false,
+			AttackerName:   SettingsComponent.Get(actingEntry).Name,
+			ActionName:     actingPartDef.PartName,
+			ActionTrait:    string(actingPartDef.Trait),
+			ActionCategory: actingPartDef.Category,
+			WeaponType:     actingPartDef.WeaponType,
+		}
+	}
+
+	// StrikeHandler固有のロジックをここに追加
+	// ...
+
+	return executeAttackAction(
+		actingEntry,
+		world,
+		intent,
+		battleLogic,
+		gameConfig,
+		targetEntry,
+		targetPartSlot,
+	)
+}
+
+// BerserkHandler は TraitBerserk のアクションを処理します。
+type BerserkHandler struct{}
+
+func (h *BerserkHandler) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+) ActionResult {
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
+
+	// ターゲットが解決できなかった場合
+	if targetEntry == nil {
+		return ActionResult{
+			ActingEntry:    actingEntry,
+			ActionDidHit:   false,
+			AttackerName:   SettingsComponent.Get(actingEntry).Name,
+			ActionName:     actingPartDef.PartName,
+			ActionTrait:    string(actingPartDef.Trait),
+			ActionCategory: actingPartDef.Category,
+			WeaponType:     actingPartDef.WeaponType,
+		}
+	}
+
+	// BerserkHandler固有のロジックをここに追加
+	// ...
 
 	return executeAttackAction(
 		actingEntry,
@@ -108,10 +229,10 @@ func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig
 		battleLogic: battleLogic,
 		gameConfig:  gameConfig,
 		handlers: map[Trait]TraitActionHandler{
-			TraitShoot:    &AttackTraitHandler{},
-			TraitAim:      &AttackTraitHandler{},
-			TraitStrike:   &AttackTraitHandler{},
-			TraitBerserk:  &AttackTraitHandler{},
+			TraitShoot:    &ShootHandler{},
+			TraitAim:      &AimHandler{},
+			TraitStrike:   &StrikeHandler{},
+			TraitBerserk:  &BerserkHandler{},
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
 		},
