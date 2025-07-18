@@ -30,6 +30,69 @@ type ActionExecutor struct {
 	handlers    map[Trait]TraitActionHandler
 }
 
+// AttackTraitHandler は射撃系および格闘系のアクションを処理します。
+type AttackTraitHandler struct{}
+
+func (h *AttackTraitHandler) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+) ActionResult {
+	baseResult := ActionResult{
+		ActingEntry:    actingEntry,
+		ActionDidHit:   false, // 初期値はfalse
+		AttackerName:   SettingsComponent.Get(actingEntry).Name,
+		ActionName:     actingPartDef.PartName,
+		ActionTrait:    string(actingPartDef.Trait),
+		ActionCategory: actingPartDef.Category,
+		WeaponType:     actingPartDef.WeaponType,
+	}
+
+	var targetEntry *donburi.Entry
+	var targetPartSlot PartSlotKey
+
+	switch actingPartDef.Trait {
+	case TraitShoot, TraitAim:
+		targetComp := TargetComponent.Get(actingEntry)
+		if targetComp.TargetEntity == nil || targetComp.TargetPartSlot == "" {
+			return baseResult // ターゲットが見つからない場合は失敗
+		}
+		targetEntry = targetComp.TargetEntity
+		targetPartSlot = targetComp.TargetPartSlot
+	case TraitStrike, TraitBerserk:
+		closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
+		if closestEnemy == nil {
+			return baseResult // ターゲットが見つからない場合は失敗
+		}
+		targetPart := battleLogic.TargetSelector.SelectRandomPartToDamage(closestEnemy)
+		if targetPart == nil {
+			return baseResult // ターゲットパーツが見つからない場合は失敗
+		}
+		slot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
+		if slot == "" {
+			return baseResult // ターゲットスロットが見つからない場合は失敗
+		}
+		targetEntry = closestEnemy
+		targetPartSlot = slot
+	default:
+		log.Printf("未対応の攻撃Traitです: %s", actingPartDef.Trait)
+		return baseResult
+	}
+
+	return executeAttackAction(
+		actingEntry,
+		world,
+		intent,
+		battleLogic,
+		gameConfig,
+		targetEntry,
+		targetPartSlot,
+	)
+}
+
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
 func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig *Config) *ActionExecutor {
 	return &ActionExecutor{
@@ -37,10 +100,10 @@ func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig
 		battleLogic: battleLogic,
 		gameConfig:  gameConfig,
 		handlers: map[Trait]TraitActionHandler{
-			TraitShoot:    &ShootTraitHandler{},
-			TraitAim:      &ShootTraitHandler{},
-			TraitStrike:   &MeleeTraitHandler{},
-			TraitBerserk:  &MeleeTraitHandler{},
+			TraitShoot:    &AttackTraitHandler{},
+			TraitAim:      &AttackTraitHandler{},
+			TraitStrike:   &AttackTraitHandler{},
+			TraitBerserk:  &AttackTraitHandler{},
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
 		},
@@ -201,102 +264,6 @@ func executeAttackAction(
 	finalizeActionResult(&result, actingEntry, actingPartDef)
 
 	return result
-}
-
-// ShootTraitHandler は TraitShoot のアクションを処理します。
-type ShootTraitHandler struct{}
-
-func (h *ShootTraitHandler) Execute(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	actingPartDef *PartDefinition,
-) ActionResult {
-	targetComp := TargetComponent.Get(actingEntry)
-
-	if targetComp.TargetEntity == nil || targetComp.TargetPartSlot == "" {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	return executeAttackAction(
-		actingEntry,
-		world,
-		intent,
-		battleLogic,
-		gameConfig,
-		targetComp.TargetEntity,
-		targetComp.TargetPartSlot,
-	)
-}
-
-// MeleeTraitHandler は TraitMelee のアクションを処理します。
-type MeleeTraitHandler struct{}
-
-func (h *MeleeTraitHandler) Execute(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	actingPartDef *PartDefinition,
-) ActionResult {
-	closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
-	if closestEnemy == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	targetPart := battleLogic.TargetSelector.SelectRandomPartToDamage(closestEnemy)
-	if targetPart == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-	targetPartSlot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
-	if targetPartSlot == "" {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	return executeAttackAction(
-		actingEntry,
-		world,
-		intent,
-		battleLogic,
-		gameConfig,
-		closestEnemy,
-		targetPartSlot,
-	)
 }
 
 // SupportTraitExecutor は TraitSupport の介入アクションを処理します。
