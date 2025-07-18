@@ -30,7 +30,115 @@ type ActionExecutor struct {
 	handlers    map[Trait]TraitActionHandler
 }
 
+// --- BaseAttackHandler ---
+
+// BaseAttackHandler は、すべての攻撃アクションに共通するロジックをカプセル化します。
+type BaseAttackHandler struct {
+	world       donburi.World
+	battleLogic *BattleLogic
+	gameConfig  *Config
+}
+
+// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
+func (h *BaseAttackHandler) PerformAttack(
+	actingEntry *donburi.Entry,
+	intent *ActionIntent,
+	targetEntry *donburi.Entry,
+	targetPartSlot PartSlotKey,
+) ActionResult {
+	partsComp := PartsComponent.Get(actingEntry)
+	actingPartInstance := partsComp.Map[intent.SelectedPartKey]
+	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
+
+	result := ActionResult{
+		ActingEntry:    actingEntry,
+		TargetEntry:    targetEntry,
+		TargetPartSlot: targetPartSlot,
+		ActionDidHit:   true, // 初期値
+		AttackerName:   SettingsComponent.Get(actingEntry).Name,
+		DefenderName:   SettingsComponent.Get(targetEntry).Name,
+		ActionName:     actingPartDef.PartName,
+		ActionTrait:    string(actingPartDef.Trait),
+		ActionCategory: actingPartDef.Category,
+		WeaponType:     actingPartDef.WeaponType,
+	}
+
+	if !validateTarget(targetEntry, targetPartSlot) {
+		result.ActionDidHit = false
+		return result
+	}
+
+	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, h.battleLogic)
+	result.ActionDidHit = didHit
+	if !didHit {
+		return result
+	}
+
+	damage, isCritical := h.battleLogic.DamageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef)
+	result.IsCritical = isCritical
+	result.OriginalDamage = damage
+
+	applyDamageAndDefense(&result, actingEntry, actingPartDef, h.battleLogic)
+
+	finalizeActionResult(&result, actingEntry, actingPartDef)
+
+	return result
+}
+
 // --- attack action helpers ---
+
+func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool {
+	if StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
+		return false
+	}
+	targetParts := PartsComponent.Get(targetEntry)
+	if targetParts.Map[targetPartSlot] == nil || targetParts.Map[targetPartSlot].IsBroken {
+		return false
+	}
+	return true
+}
+
+func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) bool {
+	return battleLogic.HitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef)
+}
+
+func applyDamageAndDefense(
+	result *ActionResult,
+	actingEntry *donburi.Entry,
+	actingPartDef *PartDefinition,
+	battleLogic *BattleLogic,
+) {
+	defendingPartInst := battleLogic.TargetSelector.SelectDefensePart(result.TargetEntry)
+
+	if defendingPartInst != nil && battleLogic.HitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef) {
+		result.ActionIsDefended = true
+		defendingPartDef, _ := GlobalGameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
+		result.DefendingPartType = string(defendingPartDef.Type)
+		result.ActualHitPartSlot = battleLogic.PartInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
+
+		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, defendingPartDef)
+		result.DamageDealt = finalDamage
+		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage)
+		result.TargetPartBroken = defendingPartInst.IsBroken
+	} else {
+		result.ActionIsDefended = false
+		intendedTargetPartInstance := PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
+		result.DamageDealt = result.OriginalDamage
+		result.ActualHitPartSlot = result.TargetPartSlot
+
+		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
+		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
+	}
+}
+
+func finalizeActionResult(result *ActionResult, actingEntry *donburi.Entry, actingPartDef *PartDefinition) {
+	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
+	actualHitPartDef, _ := GlobalGameDataManager.GetPartDefinition(actualHitPartInst.DefinitionID)
+
+	result.TargetPartType = string(actualHitPartDef.Type)
+}
+
+// --- 具体的なハンドラ ---
 
 // resolveAttackTarget は攻撃アクションのターゲットを解決します。
 func resolveAttackTarget(
@@ -66,7 +174,9 @@ func resolveAttackTarget(
 }
 
 // ShootHandler は TraitShoot のアクションを処理します。
-type ShootHandler struct{}
+type ShootHandler struct {
+	BaseAttackHandler // BaseAttackHandler を埋め込む
+}
 
 func (h *ShootHandler) Execute(
 	actingEntry *donburi.Entry,
@@ -91,19 +201,17 @@ func (h *ShootHandler) Execute(
 		}
 	}
 
-	return executeAttackAction(
-		actingEntry,
-		world,
-		intent,
-		battleLogic,
-		gameConfig,
-		targetEntry,
-		targetPartSlot,
-	)
+	// BaseAttackHandler の PerformAttack を呼び出す
+	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
+
+	// ShootHandler固有のロジックは特にないため、そのまま返す
+	return result
 }
 
 // AimHandler は TraitAim のアクションを処理します。
-type AimHandler struct{}
+type AimHandler struct {
+	BaseAttackHandler // BaseAttackHandler を埋め込む
+}
 
 func (h *AimHandler) Execute(
 	actingEntry *donburi.Entry,
@@ -128,22 +236,25 @@ func (h *AimHandler) Execute(
 		}
 	}
 
-	// AimHandler固有のロジック（例：クリティカルボーナス適用、デバフ付与など）をここに追加
-	// ...
+	// BaseAttackHandler の PerformAttack を呼び出す
+	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
 
-	return executeAttackAction(
-		actingEntry,
-		world,
-		intent,
-		battleLogic,
-		gameConfig,
-		targetEntry,
-		targetPartSlot,
-	)
+	// AimHandler固有のロジック（例：クリティカルボーナス適用、デバフ付与など）をここに追加
+	// 例: クリティカルヒット時の追加ダメージやデバフ付与
+	if result.ActionDidHit && result.IsCritical {
+		// ここにクリティカルボーナスやデバフ付与のロジックを追加
+		log.Printf("%s の %s がクリティカルヒット！追加効果を適用します。", result.AttackerName, result.ActionName)
+		// 例: result.DamageDealt += result.DamageDealt * 0.2 // ダメージ20%増加
+		// 例: ApplyDebuff(targetEntry, DebuffTypeStun, 1)
+	}
+
+	return result
 }
 
 // StrikeHandler は TraitStrike のアクションを処理します。
-type StrikeHandler struct{}
+type StrikeHandler struct {
+	BaseAttackHandler // BaseAttackHandler を埋め込む
+}
 
 func (h *StrikeHandler) Execute(
 	actingEntry *donburi.Entry,
@@ -168,22 +279,24 @@ func (h *StrikeHandler) Execute(
 		}
 	}
 
-	// StrikeHandler固有のロジックをここに追加
-	// ...
+	// BaseAttackHandler の PerformAttack を呼び出す
+	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
 
-	return executeAttackAction(
-		actingEntry,
-		world,
-		intent,
-		battleLogic,
-		gameConfig,
-		targetEntry,
-		targetPartSlot,
-	)
+	// StrikeHandler固有のロジックをここに追加
+	// 例: 攻撃成功時に防御力を低下させるデバフを付与
+	if result.ActionDidHit && !result.ActionIsDefended {
+		// ここにデバフ付与のロジックを追加
+		// 例: ApplyDebuff(targetEntry, DebuffTypeDefenseDown, 1)
+		log.Printf("%s の %s が %s に防御力低下デバフを付与しました。", result.AttackerName, result.ActionName, result.DefenderName)
+	}
+
+	return result
 }
 
 // BerserkHandler は TraitBerserk のアクションを処理します。
-type BerserkHandler struct{}
+type BerserkHandler struct {
+	BaseAttackHandler // BaseAttackHandler を埋め込む
+}
 
 func (h *BerserkHandler) Execute(
 	actingEntry *donburi.Entry,
@@ -208,18 +321,18 @@ func (h *BerserkHandler) Execute(
 		}
 	}
 
-	// BerserkHandler固有のロジックをここに追加
-	// ...
+	// BaseAttackHandler の PerformAttack を呼び出す
+	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
 
-	return executeAttackAction(
-		actingEntry,
-		world,
-		intent,
-		battleLogic,
-		gameConfig,
-		targetEntry,
-		targetPartSlot,
-	)
+	// BerserkHandler固有のロジックをここに追加
+	// 例: 攻撃成功時に自身の攻撃力を一時的に上昇させる
+	if result.ActionDidHit {
+		// ここに攻撃力上昇のロジックを追加
+		// 例: ApplyBuff(actingEntry, BuffTypeAttackUp, 1, 0.1) // 攻撃力10%上昇
+		log.Printf("%s の %s が攻撃力上昇効果を得ました。", result.AttackerName, result.ActionName)
+	}
+
+	return result
 }
 
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
@@ -229,10 +342,10 @@ func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig
 		battleLogic: battleLogic,
 		gameConfig:  gameConfig,
 		handlers: map[Trait]TraitActionHandler{
-			TraitShoot:    &ShootHandler{},
-			TraitAim:      &AimHandler{},
-			TraitStrike:   &StrikeHandler{},
-			TraitBerserk:  &BerserkHandler{},
+			TraitShoot:    &ShootHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
+			TraitAim:      &AimHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
+			TraitStrike:   &StrikeHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
+			TraitBerserk:  &BerserkHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
 		},
@@ -290,109 +403,6 @@ func (e *ActionExecutor) processPostActionEffects(result *ActionResult) {
 			result.ActingEntry.RemoveComponent(DefenseDebuffComponent)
 		}
 	}
-}
-
-// --- 具体的なハンドラ ---
-
-// --- attack action helpers ---
-
-func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool {
-	if StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
-		return false
-	}
-	targetParts := PartsComponent.Get(targetEntry)
-	if targetParts.Map[targetPartSlot] == nil || targetParts.Map[targetPartSlot].IsBroken {
-		return false
-	}
-	return true
-}
-
-func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) bool {
-	return battleLogic.HitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef)
-}
-
-func applyDamageAndDefense(
-	result *ActionResult,
-	actingEntry *donburi.Entry,
-	actingPartDef *PartDefinition,
-	battleLogic *BattleLogic,
-) {
-	defendingPartInst := battleLogic.TargetSelector.SelectDefensePart(result.TargetEntry)
-
-	if defendingPartInst != nil && battleLogic.HitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef) {
-		result.ActionIsDefended = true
-		defendingPartDef, _ := GlobalGameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
-		result.DefendingPartType = string(defendingPartDef.Type)
-		result.ActualHitPartSlot = battleLogic.PartInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
-
-		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, defendingPartDef)
-		result.DamageDealt = finalDamage
-		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage)
-		result.TargetPartBroken = defendingPartInst.IsBroken
-	} else {
-		result.ActionIsDefended = false
-		intendedTargetPartInstance := PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
-		result.DamageDealt = result.OriginalDamage
-		result.ActualHitPartSlot = result.TargetPartSlot
-
-		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
-		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
-	}
-}
-
-func finalizeActionResult(result *ActionResult, actingEntry *donburi.Entry, actingPartDef *PartDefinition) {
-	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
-	actualHitPartDef, _ := GlobalGameDataManager.GetPartDefinition(actualHitPartInst.DefinitionID)
-
-	result.TargetPartType = string(actualHitPartDef.Type)
-}
-
-func executeAttackAction(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	targetEntry *donburi.Entry,
-	targetPartSlot PartSlotKey,
-) ActionResult {
-	partsComp := PartsComponent.Get(actingEntry)
-	actingPartInstance := partsComp.Map[intent.SelectedPartKey]
-	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
-
-	result := ActionResult{
-		ActingEntry:    actingEntry,
-		TargetEntry:    targetEntry,
-		TargetPartSlot: targetPartSlot,
-		ActionDidHit:   true, // 初期値
-		AttackerName:   SettingsComponent.Get(actingEntry).Name,
-		DefenderName:   SettingsComponent.Get(targetEntry).Name,
-		ActionName:     actingPartDef.PartName,
-		ActionTrait:    string(actingPartDef.Trait),
-		ActionCategory: actingPartDef.Category,
-		WeaponType:     actingPartDef.WeaponType,
-	}
-
-	if !validateTarget(targetEntry, targetPartSlot) {
-		result.ActionDidHit = false
-		return result
-	}
-
-	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, battleLogic)
-	result.ActionDidHit = didHit
-	if !didHit {
-		return result
-	}
-
-	damage, isCritical := battleLogic.DamageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef)
-	result.IsCritical = isCritical
-	result.OriginalDamage = damage
-
-	applyDamageAndDefense(&result, actingEntry, actingPartDef, battleLogic)
-
-	finalizeActionResult(&result, actingEntry, actingPartDef)
-
-	return result
 }
 
 // SupportTraitExecutor は TraitSupport の介入アクションを処理します。
