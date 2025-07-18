@@ -54,15 +54,17 @@ func (h *AttackTraitHandler) Execute(
 	var targetEntry *donburi.Entry
 	var targetPartSlot PartSlotKey
 
-	switch actingPartDef.Trait {
-	case TraitShoot, TraitAim:
-		targetComp := TargetComponent.Get(actingEntry)
-		if targetComp.TargetEntity == nil || targetComp.TargetPartSlot == "" {
-			return baseResult // ターゲットが見つからない場合は失敗
+	// ターゲット決定方針に基づいてターゲットを解決
+	targetComp := TargetComponent.Get(actingEntry)
+	switch targetComp.Policy {
+	case PolicyPreselected:
+		if targetComp.TargetEntity == nil {
+			log.Printf("エラー: PolicyPreselected なのにターゲットが設定されていません。")
+			return baseResult
 		}
 		targetEntry = targetComp.TargetEntity
 		targetPartSlot = targetComp.TargetPartSlot
-	case TraitStrike, TraitBerserk:
+	case PolicyClosestAtExecution:
 		closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
 		if closestEnemy == nil {
 			return baseResult // ターゲットが見つからない場合は失敗
@@ -78,7 +80,12 @@ func (h *AttackTraitHandler) Execute(
 		targetEntry = closestEnemy
 		targetPartSlot = slot
 	default:
-		log.Printf("未対応の攻撃Traitです: %s", actingPartDef.Trait)
+		log.Printf("未対応のTargetingPolicyです: %s", targetComp.Policy)
+		return baseResult
+	}
+
+	// ターゲットが解決できなかった場合
+	if targetEntry == nil {
 		return baseResult
 	}
 

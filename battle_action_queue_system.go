@@ -112,6 +112,16 @@ func StartCharge(
 	target.TargetEntity = targetEntry
 	target.TargetPartSlot = targetPartSlot
 
+	// カテゴリに基づいてターゲット決定方針を設定
+	switch actingPartDef.Category {
+	case CategoryRanged, CategoryIntervention:
+		target.Policy = PolicyPreselected
+	case CategoryMelee:
+		target.Policy = PolicyClosestAtExecution
+	default:
+		target.Policy = PolicyPreselected // デフォルト
+	}
+
 	// 1. 計算式の取得
 	formula, ok := FormulaManager[actingPartDef.Trait]
 	if !ok {

@@ -67,9 +67,10 @@ type ActionIntent struct {
 	SelectedPartKey PartSlotKey
 }
 
-// Target は、行動の対象となるエンティティとパーツを表します。
+// Target は、行動の対象となるエンティティとパーツ、およびその決定方針を表します。
 // TargetingSystemによってActionIntentが解決された後に設定されます。
 type Target struct {
+	Policy         TargetingPolicyType
 	TargetEntity   *donburi.Entry
 	TargetPartSlot PartSlotKey
 }

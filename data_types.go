@@ -23,6 +23,9 @@ type Trait string
 type CustomizeCategory string
 type BuffType string // 新しく追加
 
+// TargetingPolicyType はターゲット決定方針を示す型です。
+type TargetingPolicyType string
+
 // --- 計算式データ構造 ---
 
 // PartParameter はパーツのどの数値を参照するかを示す型です
@@ -493,3 +496,10 @@ func parseInt(s string, defaultValue int) int {
 func parseBool(s string) bool {
 	return strings.ToLower(strings.TrimSpace(s)) == "true"
 }
+
+const (
+	// PolicyPreselected は、行動選択時にターゲットが事前に選択されることを示します。
+	PolicyPreselected TargetingPolicyType = "Preselected"
+	// PolicyClosestAtExecution は、行動実行時に最も近い敵をターゲットとすることを示します。
+	PolicyClosestAtExecution TargetingPolicyType = "ClosestAtExecution"
+)
