@@ -33,6 +33,38 @@ type ActionExecutor struct {
 // AttackTraitHandler は射撃系および格闘系のアクションを処理します。
 type AttackTraitHandler struct{}
 
+func (h *AttackTraitHandler) resolveTarget(
+	actingEntry *donburi.Entry,
+	battleLogic *BattleLogic,
+) (targetEntry *donburi.Entry, targetPartSlot PartSlotKey) {
+	targetComp := TargetComponent.Get(actingEntry)
+	switch targetComp.Policy {
+	case PolicyPreselected:
+		if targetComp.TargetEntity == nil {
+			log.Printf("エラー: PolicyPreselected なのにターゲットが設定されていません。")
+			return nil, ""
+		}
+		return targetComp.TargetEntity, targetComp.TargetPartSlot
+	case PolicyClosestAtExecution:
+		closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
+		if closestEnemy == nil {
+			return nil, "" // ターゲットが見つからない場合は失敗
+		}
+		targetPart := battleLogic.TargetSelector.SelectPartToDamage(closestEnemy, actingEntry)
+		if targetPart == nil {
+			return nil, "" // ターゲットパーツが見つからない場合は失敗
+		}
+		slot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
+		if slot == "" {
+			return nil, "" // ターゲットスロットが見つからない場合は失敗
+		}
+		return closestEnemy, slot
+	default:
+		log.Printf("未対応のTargetingPolicyです: %s", targetComp.Policy)
+		return nil, ""
+	}
+}
+
 func (h *AttackTraitHandler) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
@@ -51,38 +83,7 @@ func (h *AttackTraitHandler) Execute(
 		WeaponType:     actingPartDef.WeaponType,
 	}
 
-	var targetEntry *donburi.Entry
-	var targetPartSlot PartSlotKey
-
-	// ターゲット決定方針に基づいてターゲットを解決
-	targetComp := TargetComponent.Get(actingEntry)
-	switch targetComp.Policy {
-	case PolicyPreselected:
-		if targetComp.TargetEntity == nil {
-			log.Printf("エラー: PolicyPreselected なのにターゲットが設定されていません。")
-			return baseResult
-		}
-		targetEntry = targetComp.TargetEntity
-		targetPartSlot = targetComp.TargetPartSlot
-	case PolicyClosestAtExecution:
-		closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
-		if closestEnemy == nil {
-			return baseResult // ターゲットが見つからない場合は失敗
-		}
-		targetPart := battleLogic.TargetSelector.SelectPartToDamage(closestEnemy, actingEntry)
-		if targetPart == nil {
-			return baseResult // ターゲットパーツが見つからない場合は失敗
-		}
-		slot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
-		if slot == "" {
-			return baseResult // ターゲットスロットが見つからない場合は失敗
-		}
-		targetEntry = closestEnemy
-		targetPartSlot = slot
-	default:
-		log.Printf("未対応のTargetingPolicyです: %s", targetComp.Policy)
-		return baseResult
-	}
+	targetEntry, targetPartSlot := h.resolveTarget(actingEntry, battleLogic)
 
 	// ターゲットが解決できなかった場合
 	if targetEntry == nil {
