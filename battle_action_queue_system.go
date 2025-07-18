@@ -44,6 +44,9 @@ func UpdateActionQueueSystem(
 		if handler != nil {
 			actionResult := handler.Execute(actingEntry, world, intent, battleLogic, gameConfig)
 
+			// アクション後の共通処理を実行
+			ProcessPostActionEffects(&actionResult, world)
+
 			results = append(results, actionResult)
 		} else {
 			// Handle error: no handler found

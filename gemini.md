@@ -92,6 +92,9 @@
 
 アーキテクチャの指定:
     「ECS（Entity Component System）アーキテクチャを採用してください。」
+    「データ駆動型設計 (Data-Driven Design)を採用してください。」
+    「イベント駆動型アーキテクチャ (Event-Driven Architecture)を採用してください。」」
+    「単一責任の原則 (Single Responsibility Principle - SRP)に従ってください。」
     「クリーンアーキテクチャに基づいたレイヤード構造でお願いします。」
     「MVC（Model-View-Controller）パターンを適用してください。」
 
