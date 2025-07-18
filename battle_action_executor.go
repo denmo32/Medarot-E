@@ -67,7 +67,7 @@ func (h *AttackTraitHandler) Execute(
 		if closestEnemy == nil {
 			return baseResult // ターゲットが見つからない場合は失敗
 		}
-		targetPart := battleLogic.TargetSelector.SelectRandomPartToDamage(closestEnemy)
+		targetPart := battleLogic.TargetSelector.SelectPartToDamage(closestEnemy, actingEntry)
 		if targetPart == nil {
 			return baseResult // ターゲットパーツが見つからない場合は失敗
 		}

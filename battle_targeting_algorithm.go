@@ -154,7 +154,7 @@ func (s *LeaderStrategy) SelectTarget(
 	leader := FindLeader(world, opponentTeamID)
 
 	if leader != nil && !StateComponent.Get(leader).FSM.Is(string(StateBroken)) {
-		targetPart := targetSelector.SelectRandomPartToDamage(leader)
+		targetPart := targetSelector.SelectPartToDamage(leader, actingEntry)
 		if targetPart != nil {
 			slotKey := partInfoProvider.FindPartSlot(leader, targetPart)
 			if slotKey != "" {
@@ -297,8 +297,7 @@ func (s *CounterStrategy) SelectTarget(
 			lastAttacker := ai.TargetHistory.LastAttacker
 			// 攻撃者がまだ有効で、破壊されていないことを確認
 			if lastAttacker.Valid() && !StateComponent.Get(lastAttacker).FSM.Is(string(StateBroken)) {
-				// 攻撃者のランダムなパーツを狙う
-				targetPart := targetSelector.SelectRandomPartToDamage(lastAttacker)
+				targetPart := targetSelector.SelectPartToDamage(lastAttacker, actingEntry)
 				if targetPart != nil {
 					slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
 					if slotKey != "" {
@@ -332,7 +331,7 @@ func (s *GuardStrategy) SelectTarget(
 			if ai.TargetHistory.LastAttacker != nil {
 				lastAttacker := ai.TargetHistory.LastAttacker
 				if lastAttacker.Valid() && !StateComponent.Get(lastAttacker).FSM.Is(string(StateBroken)) {
-					targetPart := targetSelector.SelectRandomPartToDamage(lastAttacker)
+					targetPart := targetSelector.SelectPartToDamage(lastAttacker, actingEntry)
 					if targetPart != nil {
 						slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
 						if slotKey != "" {

@@ -341,25 +341,44 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstance
 	return bestPartInstance
 }
 
-// SelectRandomPartToDamage は攻撃対象のパーツインスタンスをランダムに選択します。
-func (ts *TargetSelector) SelectRandomPartToDamage(target *donburi.Entry) *PartInstanceData {
+// SelectPartToDamage は、行動者の性格に基づいて攻撃対象のパーツインスタンスを選択します。
+func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry) *PartInstanceData {
 	partsComp := PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
 	}
-	partsMap := partsComp.Map // map[PartSlotKey]*PartInstanceData
 
 	vulnerableInstances := []*PartInstanceData{}
 	slots := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs}
 	for _, s := range slots {
-		if partInst, ok := partsMap[s]; ok && partInst != nil && !partInst.IsBroken {
+		if partInst, ok := partsComp.Map[s]; ok && partInst != nil && !partInst.IsBroken {
 			vulnerableInstances = append(vulnerableInstances, partInst)
 		}
 	}
 	if len(vulnerableInstances) == 0 {
 		return nil
 	}
-	return vulnerableInstances[globalRand.Intn(len(vulnerableInstances))]
+
+	// 行動者の性格を取得
+	personality := "ジョーカー" // デフォルト
+	if actingEntry.HasComponent(MedalComponent) {
+		personality = MedalComponent.Get(actingEntry).Personality
+	}
+
+	switch personality {
+	case "クラッシャー":
+		sort.Slice(vulnerableInstances, func(i, j int) bool {
+			return vulnerableInstances[i].CurrentArmor > vulnerableInstances[j].CurrentArmor
+		})
+		return vulnerableInstances[0]
+	case "ハンター":
+		sort.Slice(vulnerableInstances, func(i, j int) bool {
+			return vulnerableInstances[i].CurrentArmor < vulnerableInstances[j].CurrentArmor
+		})
+		return vulnerableInstances[0]
+	default: // "ジョーカー" やその他の性格
+		return vulnerableInstances[globalRand.Intn(len(vulnerableInstances))]
+	}
 }
 
 // FindClosestEnemy は指定されたエンティティに最も近い敵エンティティを見つけます。
