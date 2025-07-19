@@ -55,9 +55,9 @@ func initResources(audioContext *audio.Context) {
 
 	// Register raw resources (our CSV files).
 	rawResources := map[resource.RawID]resource.RawInfo{
-		RawMedalsCSV:   {Path: "data/medals.csv"},
-		RawPartsCSV:    {Path: "data/parts.csv"},
-		RawMedarotsCSV: {Path: "data/medarots.csv"},
+		RawMedalsCSV:    {Path: "data/medals.csv"},
+		RawPartsCSV:     {Path: "data/parts.csv"},
+		RawMedarotsCSV:  {Path: "data/medarots.csv"},
 		RawFormulasJSON: {Path: "data/formulas.json"},
 	}
 	r.RawRegistry.Assign(rawResources)
@@ -168,7 +168,7 @@ func LoadParts() error {
 			Mobility:   parseInt(record[12], 0),
 			Propulsion: parseInt(record[13], 0),
 			Stability:  parseInt(record[14], 0),
-			WeaponType: record[5],
+			WeaponType: WeaponType(record[5]), // WeaponType型にキャスト
 		}
 		if err := GlobalGameDataManager.AddPartDefinition(partDef); err != nil {
 			fmt.Printf("error adding part definition %s: %v\n", partDef.ID, err)

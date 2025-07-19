@@ -150,7 +150,7 @@ func buildActionLogMessages(result ActionResult) []string {
 		case CategoryIntervention:
 			// 介入アクションの成功メッセージ（例：「味方チーム全体の命中率が上昇した！」）
 			// 必要であれば、ここで特性(Trait)に応じたメッセージを追加する
-			if result.ActionTrait == string(TraitSupport) {
+			if result.ActionTrait == TraitSupport { // string() を削除
 				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("support_action_generic", nil))
 			}
 		}

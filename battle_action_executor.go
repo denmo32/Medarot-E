@@ -19,8 +19,14 @@ type TraitActionHandler interface {
 		battleLogic *BattleLogic,
 		gameConfig *Config,
 		actingPartDef *PartDefinition,
-		initialResult *ActionResult, // 新しい引数
+		initialResult *ActionResult,
 	) ActionResult
+}
+
+// WeaponTypeEffectHandler は weapon_type 固有の追加効果を処理します。
+// ActionResult を受け取り、デバフ付与などの副作用を適用します。
+type WeaponTypeEffectHandler interface {
+	ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition)
 }
 
 // ActionExecutor はアクションの実行に関するロジックをカプセル化します。
@@ -29,7 +35,8 @@ type ActionExecutor struct {
 	battleLogic       *BattleLogic
 	gameConfig        *Config
 	handlers          map[Trait]TraitActionHandler
-	baseAttackHandler *BaseAttackHandler // 新しいフィールド
+	weaponHandlers    map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
+	baseAttackHandler *BaseAttackHandler
 }
 
 // --- BaseAttackHandler ---
@@ -54,7 +61,7 @@ func (h *BaseAttackHandler) PerformAttack(
 			ActionDidHit:   false,
 			AttackerName:   SettingsComponent.Get(actingEntry).Name,
 			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
+			ActionTrait:    actingPartDef.Trait, // string() を削除
 			ActionCategory: actingPartDef.Category,
 			WeaponType:     actingPartDef.WeaponType,
 		}
@@ -68,7 +75,7 @@ func (h *BaseAttackHandler) PerformAttack(
 		AttackerName:   SettingsComponent.Get(actingEntry).Name,
 		DefenderName:   SettingsComponent.Get(targetEntry).Name,
 		ActionName:     actingPartDef.PartName,
-		ActionTrait:    string(actingPartDef.Trait),
+		ActionTrait:    actingPartDef.Trait, // string() を削除
 		ActionCategory: actingPartDef.Category,
 		WeaponType:     actingPartDef.WeaponType,
 	}
@@ -197,7 +204,8 @@ func (h *ShootHandler) Execute(
 	actingPartDef *PartDefinition,
 	initialResult *ActionResult,
 ) ActionResult {
-	// ShootHandler固有のロジックは特にないため、そのまま返す
+	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
+	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
 	return *initialResult
 }
 
@@ -215,18 +223,9 @@ func (h *AimHandler) Execute(
 	actingPartDef *PartDefinition,
 	initialResult *ActionResult,
 ) ActionResult {
-	result := *initialResult
-
-	// AimHandler固有のロジック（例：クリティカルボーナス適用、デバフ付与など）をここに追加
-	// 例: クリティカルヒット時の追加ダメージやデバフ付与
-	if result.ActionDidHit && result.IsCritical {
-		// ここにクリティカルボーナスやデバフ付与のロジックを追加
-		log.Printf("%s の %s がクリティカルヒット！追加効果を適用します。", result.AttackerName, result.ActionName)
-		// 例: result.DamageDealt += result.DamageDealt * 0.2 // ダメージ20%増加
-		// 例: ApplyDebuff(targetEntry, DebuffTypeStun, 1)
-	}
-
-	return result
+	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
+	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
+	return *initialResult
 }
 
 // StrikeHandler は TraitStrike のアクションを処理します。
@@ -243,11 +242,9 @@ func (h *StrikeHandler) Execute(
 	actingPartDef *PartDefinition,
 	initialResult *ActionResult,
 ) ActionResult {
-	result := *initialResult
-
-	// StrikeHandler固有のロジックをここに追加
-
-	return result
+	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
+	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
+	return *initialResult
 }
 
 // BerserkHandler は TraitBerserk のアクションを処理します。
@@ -264,17 +261,9 @@ func (h *BerserkHandler) Execute(
 	actingPartDef *PartDefinition,
 	initialResult *ActionResult,
 ) ActionResult {
-	result := *initialResult
-
-	// BerserkHandler固有のロジックをここに追加
-	// 例: 攻撃成功時に自身の攻撃力を一時的に上昇させる
-	if result.ActionDidHit {
-		// ここに攻撃力上昇のロジックを追加
-		// 例: ApplyBuff(actingEntry, BuffTypeAttackUp, 1, 0.1) // 攻撃力10%上昇
-		log.Printf("%s の %s が攻撃力上昇効果を得ました。", result.AttackerName, result.ActionName)
-	}
-
-	return result
+	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
+	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
+	return *initialResult
 }
 
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
@@ -283,14 +272,19 @@ func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig
 		world:             world,
 		battleLogic:       battleLogic,
 		gameConfig:        gameConfig,
-		baseAttackHandler: &BaseAttackHandler{}, // BaseAttackHandler を初期化
+		baseAttackHandler: &BaseAttackHandler{},
 		handlers: map[Trait]TraitActionHandler{
-			TraitShoot:    &ShootHandler{},   // BaseAttackHandler の埋め込みを削除
-			TraitAim:      &AimHandler{},     // BaseAttackHandler の埋め込みを削除
-			TraitStrike:   &StrikeHandler{},  // BaseAttackHandler の埋め込みを削除
-			TraitBerserk:  &BerserkHandler{}, // BaseAttackHandler の埋め込みを削除
+			TraitShoot:    &ShootHandler{},
+			TraitAim:      &AimHandler{},
+			TraitStrike:   &StrikeHandler{},
+			TraitBerserk:  &BerserkHandler{},
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
+		},
+		weaponHandlers: map[WeaponType]WeaponTypeEffectHandler{
+			// 将来の拡張に備え、ここにハンドラを登録していく
+			// 例: WeaponTypeThunder: &ThunderEffectHandler{},
+			// 例: WeaponTypeMelt:    &MeltEffectHandler{},
 		},
 	}
 }
@@ -312,14 +306,19 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	}
 
 	var actionResult ActionResult
-	switch actingPartDef.Trait {
-	case TraitShoot, TraitAim, TraitStrike, TraitBerserk:
+	isAttackTrait := actingPartDef.Trait == TraitShoot || actingPartDef.Trait == TraitAim || actingPartDef.Trait == TraitStrike || actingPartDef.Trait == TraitBerserk
+	if isAttackTrait {
 		// 攻撃系アクションの場合、まずBaseAttackHandlerで共通処理を実行
 		initialResult := e.baseAttackHandler.PerformAttack(actingEntry, intent, e.battleLogic, e.gameConfig, actingPartDef)
 		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, &initialResult)
-	default:
-		// その他のアクションの場合、initialResultはnilで渡す
+	} else {
+		// 攻撃系以外は、各TraitHandler内でActionResultを生成・設定する
 		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
+	}
+
+	// WeaponType に基づく追加効果を適用 (Traitの処理から独立)
+	if weaponHandler, ok := e.weaponHandlers[actingPartDef.WeaponType]; ok {
+		weaponHandler.ApplyEffect(&actionResult, e.world, e.battleLogic, actingPartDef)
 	}
 
 	// アクション後の共通処理を実行
@@ -374,7 +373,7 @@ func (h *SupportTraitExecutor) Execute(
 		ActionDidHit:   true,
 		AttackerName:   settings.Name,
 		ActionName:     actingPartDef.PartName,
-		ActionTrait:    string(actingPartDef.Trait),
+		ActionTrait:    actingPartDef.Trait, // string() を削除
 		ActionCategory: actingPartDef.Category,
 		WeaponType:     actingPartDef.WeaponType,
 	}
@@ -427,7 +426,7 @@ func (h *ObstructTraitExecutor) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
-	initialResult *ActionResult, // 新しい引数
+	initialResult *ActionResult,
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
 	result := ActionResult{
@@ -435,7 +434,7 @@ func (h *ObstructTraitExecutor) Execute(
 		ActionDidHit:   true,
 		AttackerName:   settings.Name,
 		ActionName:     actingPartDef.PartName,
-		ActionTrait:    string(actingPartDef.Trait),
+		ActionTrait:    actingPartDef.Trait,
 		ActionCategory: actingPartDef.Category,
 		WeaponType:     actingPartDef.WeaponType,
 	}
@@ -451,4 +450,39 @@ func (h *ObstructTraitExecutor) Execute(
 
 	log.Printf("%s が %s に妨害を実行しました（現在効果なし）。", settings.Name, result.DefenderName)
 	return result
+}
+
+// --- WeaponTypeEffectHandlers ---
+// 以下は構想案であり、名称や効果は変更の可能性があります。
+// ThunderEffectHandler はサンダー効果（チャージ停止）を付与します。
+type ThunderEffectHandler struct{}
+
+func (h *ThunderEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition) {
+	if result.ActionDidHit && result.TargetEntry != nil {
+		log.Printf("%s にサンダー効果！チャージを停止させます。", result.DefenderName)
+		// ここに「チャージ停止」のデバフを付与する具体的なロジックを追加
+		// 例: ApplyDebuff(result.TargetEntry, DebuffTypeChargeStop, someDuration)
+	}
+}
+
+// MeltEffectHandler はメルト効果（継続ダメージ）を付与します。
+type MeltEffectHandler struct{}
+
+func (h *MeltEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition) {
+	if result.ActionDidHit && result.TargetEntry != nil {
+		log.Printf("%s にメルト効果！継続ダメージを与えます。", result.DefenderName)
+		// ここに「継続ダメージ」のデバフを付与する具体的なロジックを追加
+		// 例: ApplyDebuff(result.TargetEntry, DebuffTypeDamageOverTime, someDamageAmount, someDuration)
+	}
+}
+
+// VirusEffectHandler はウイルス効果（ターゲットのランダム化）を付与します。
+type VirusEffectHandler struct{}
+
+func (h *VirusEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition) {
+	if result.ActionDidHit && result.TargetEntry != nil {
+		log.Printf("%s にウイルス効果！ターゲットをランダム化します。", result.DefenderName)
+		// ここに「ターゲットのランダム化」のデバフを付与する具体的なロジックを追加
+		// 例: ApplyDebuff(result.TargetEntry, DebuffTypeTargetRandom, someDuration)
+	}
 }

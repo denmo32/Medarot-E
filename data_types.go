@@ -20,6 +20,7 @@ type PartType string
 type StateType string
 type PartCategory string
 type Trait string
+type WeaponType string // 新しく追加
 type CustomizeCategory string
 type BuffType string // 新しく追加
 
@@ -44,8 +45,11 @@ const (
 type DebuffType string
 
 const (
-	DebuffTypeEvasion DebuffType = "Evasion"
-	DebuffTypeDefense DebuffType = "Defense"
+	DebuffTypeEvasion        DebuffType = "Evasion"
+	DebuffTypeDefense        DebuffType = "Defense"
+	DebuffTypeChargeStop     DebuffType = "ChargeStop"     // チャージ一時停止
+	DebuffTypeDamageOverTime DebuffType = "DamageOverTime" // チャージ中ダメージ
+	DebuffTypeTargetRandom   DebuffType = "TargetRandom"   // ターゲットのランダム化
 )
 
 const (
@@ -307,7 +311,7 @@ type PartDefinition struct {
 	Mobility   int
 	Defense    int
 	Stability  int
-	WeaponType string      // CSVから必要であればここに追加
+	WeaponType WeaponType  // CSVから必要であればここに追加
 	PartSlot   PartSlotKey // このパーツが通常装着されるスロット
 }
 
@@ -360,8 +364,8 @@ type ActionResult struct {
 	AttackerName      string
 	DefenderName      string
 	ActionName        string // e.g., "パーツ名"
-	ActionTrait       string // e.g., "撃つ", "狙い撃ち" (Trait)
-	WeaponType        string // e.g., "ソード", "マグナム"
+	ActionTrait       Trait  // e.g., "撃つ", "狙い撃ち" (Trait)
+	WeaponType        WeaponType
 	ActionCategory    PartCategory
 	TargetPartType    string // e.g., "頭部", "脚部"
 	DefendingPartType string // e.g., "頭部", "脚部"
