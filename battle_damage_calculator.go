@@ -141,14 +141,14 @@ func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, a
 }
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
-func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, defensePartDef *PartDefinition) int {
-	// ダメージ軽減ロジック: ダメージ = 元ダメージ - 防御パーツの防御力
-	// 将来的に、より複雑な計算式（例：割合軽減）に変更する可能性があります。
-	reducedDamage := originalDamage - defensePartDef.Defense
+func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry) int {
+	// ダメージ軽減ロジック: ダメージ = 元ダメージ - 脚部パーツの防御力
+	defenseValue := dc.partInfoProvider.GetPartParameterValue(targetEntry, PartSlotLegs, Defense)
+	reducedDamage := originalDamage - int(defenseValue)
 	if reducedDamage < 1 {
 		reducedDamage = 1 // 最低でも1ダメージは保証
 	}
-	log.Printf("防御成功！ ダメージ軽減: %d -> %d (防御パーツ防御力: %d)", originalDamage, reducedDamage, defensePartDef.Defense)
+	log.Printf("防御成功！ ダメージ軽減: %d -> %d (脚部パーツ防御力: %d)", originalDamage, reducedDamage, int(defenseValue))
 	return reducedDamage
 }
 

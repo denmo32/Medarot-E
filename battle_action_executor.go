@@ -85,6 +85,34 @@ func (h *BaseAttackHandler) PerformAttack(
 	return result
 }
 
+// executeBaseAttack は、ターゲット解決と基本的な攻撃処理を実行します。
+func (h *BaseAttackHandler) executeBaseAttack(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+) ActionResult {
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
+
+	// ターゲットが解決できなかった場合
+	if targetEntry == nil {
+		return ActionResult{
+			ActingEntry:    actingEntry,
+			ActionDidHit:   false,
+			AttackerName:   SettingsComponent.Get(actingEntry).Name,
+			ActionName:     actingPartDef.PartName,
+			ActionTrait:    string(actingPartDef.Trait),
+			ActionCategory: actingPartDef.Category,
+			WeaponType:     actingPartDef.WeaponType,
+		}
+	}
+
+	// BaseAttackHandler の PerformAttack を呼び出す
+	return h.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
+}
+
 // --- attack action helpers ---
 
 func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool {
@@ -116,7 +144,7 @@ func applyDamageAndDefense(
 		result.DefendingPartType = string(defendingPartDef.Type)
 		result.ActualHitPartSlot = battleLogic.PartInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
 
-		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, defendingPartDef)
+		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
 		result.DamageDealt = finalDamage
 		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage)
 		result.TargetPartBroken = defendingPartInst.IsBroken
@@ -186,23 +214,8 @@ func (h *ShootHandler) Execute(
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
 ) ActionResult {
-	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
-
-	// ターゲットが解決できなかった場合
-	if targetEntry == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	// BaseAttackHandler の PerformAttack を呼び出す
-	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
+	// 共通処理を呼び出す
+	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
 
 	// ShootHandler固有のロジックは特にないため、そのまま返す
 	return result
@@ -221,23 +234,8 @@ func (h *AimHandler) Execute(
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
 ) ActionResult {
-	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
-
-	// ターゲットが解決できなかった場合
-	if targetEntry == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	// BaseAttackHandler の PerformAttack を呼び出す
-	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
+	// 共通処理を呼び出す
+	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
 
 	// AimHandler固有のロジック（例：クリティカルボーナス適用、デバフ付与など）をここに追加
 	// 例: クリティカルヒット時の追加ダメージやデバフ付与
@@ -264,31 +262,10 @@ func (h *StrikeHandler) Execute(
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
 ) ActionResult {
-	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
-
-	// ターゲットが解決できなかった場合
-	if targetEntry == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	// BaseAttackHandler の PerformAttack を呼び出す
-	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
+	// 共通処理を呼び出す
+	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
 
 	// StrikeHandler固有のロジックをここに追加
-	// 例: 攻撃成功時に防御力を低下させるデバフを付与
-	if result.ActionDidHit && !result.ActionIsDefended {
-		// ここにデバフ付与のロジックを追加
-		// 例: ApplyDebuff(targetEntry, DebuffTypeDefenseDown, 1)
-		log.Printf("%s の %s が %s に防御力低下デバフを付与しました。", result.AttackerName, result.ActionName, result.DefenderName)
-	}
 
 	return result
 }
@@ -306,23 +283,8 @@ func (h *BerserkHandler) Execute(
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
 ) ActionResult {
-	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
-
-	// ターゲットが解決できなかった場合
-	if targetEntry == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	// BaseAttackHandler の PerformAttack を呼び出す
-	result := h.BaseAttackHandler.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
+	// 共通処理を呼び出す
+	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
 
 	// BerserkHandler固有のロジックをここに追加
 	// 例: 攻撃成功時に自身の攻撃力を一時的に上昇させる
