@@ -4,7 +4,6 @@ import (
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 // UIMessageDisplayManager はゲーム内のメッセージ表示を管理します。
@@ -13,20 +12,16 @@ type UIMessageDisplayManager struct {
 	messageQueue        []string
 	currentMessageIndex int
 	postMessageCallback func()
-	config              *Config
-	font                text.Face
-	messageManager      *MessageManager   // 追加
+	uiFactory           *UIFactory        // 追加
 	uiContainer         *widget.Container // メッセージウィンドウを追加するUIのルートコンテナ
 }
 
 // NewUIMessageDisplayManager は新しいUIMessageDisplayManagerのインスタンスを作成します。
-func NewUIMessageDisplayManager(config *Config, font text.Face, messageManager *MessageManager, uiContainer *widget.Container) *UIMessageDisplayManager {
+func NewUIMessageDisplayManager(uiFactory *UIFactory, uiContainer *widget.Container) *UIMessageDisplayManager {
 	return &UIMessageDisplayManager{
-		messageQueue:   make([]string, 0),
-		config:         config,
-		font:           font,
-		messageManager: messageManager, // 追加
-		uiContainer:    uiContainer,
+		messageQueue: make([]string, 0),
+		uiFactory:    uiFactory, // 追加
+		uiContainer:  uiContainer,
 	}
 }
 
@@ -55,7 +50,7 @@ func (mm *UIMessageDisplayManager) ShowMessageWindow(message string) {
 	if mm.messageWindow != nil {
 		mm.HideMessageWindow()
 	}
-	win := createMessageWindow(message, mm.config, mm.font, mm.messageManager)
+	win := createMessageWindow(message, mm.uiFactory)
 	mm.messageWindow = win
 	mm.uiContainer.AddChild(mm.messageWindow)
 }

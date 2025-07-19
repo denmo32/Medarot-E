@@ -53,7 +53,10 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam)
 	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel, bs.resources.GameDataManager)
-	bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.ui.GetRootContainer())
+	// ui.goでuiFactoryが初期化され、ui.messageManagerもuiFactoryを使って初期化されるため、
+	// ここでbs.messageManagerを直接初期化する必要はない。
+	// bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.ui.GetRootContainer())
+	bs.messageManager = bs.ui.(*UI).messageManager // uiからmessageManagerを取得
 
 	// Initialize state machine
 	bs.states = map[GameState]BattleState{

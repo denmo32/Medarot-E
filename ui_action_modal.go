@@ -4,17 +4,14 @@ import (
 	"fmt"
 
 	"github.com/ebitenui/ebitenui/widget"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 func createActionModalUI(
 	vm *ActionModalViewModel,
-	config *Config,
+	uiFactory *UIFactory, // UIFactoryを追加
 	eventChannel chan UIEvent,
-	font text.Face,
-	messageManager *MessageManager,
 ) widget.PreferredSizeLocateableWidget {
-	c := config.UI
+	c := uiFactory.Config.UI
 
 	// オーバーレイ用のコンテナ
 	overlay := widget.NewContainer(
@@ -25,24 +22,23 @@ func createActionModalUI(
 
 	// ボタンウィジェットのスライスを作成
 	buttons := []widget.PreferredSizeLocateableWidget{}
-	buttonImage := createCyberpunkButtonImageSet(5)
 
 	if len(vm.Buttons) == 0 {
 		buttons = append(buttons, widget.NewText(
-			widget.TextOpts.Text(messageManager.FormatMessage("ui_no_parts_available", nil), font, c.Colors.White),
+			widget.TextOpts.Text(uiFactory.MessageManager.FormatMessage("ui_no_parts_available", nil), uiFactory.Font, c.Colors.White),
 		))
 	} else {
 		for _, buttonVM := range vm.Buttons {
+			buttonText := fmt.Sprintf("%s (%s)", buttonVM.PartName, buttonVM.PartCategory)
 			buttonTextColor := &widget.ButtonTextColor{Idle: c.Colors.White}
 			if buttonVM.IsBroken {
 				buttonTextColor.Idle = c.Colors.Red
 			}
 
-			actionButton := widget.NewButton(
-				widget.ButtonOpts.Image(buttonImage),
-				widget.ButtonOpts.Text(fmt.Sprintf("%s (%s)", buttonVM.PartName, buttonVM.PartCategory), font, buttonTextColor),
-				widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
-				widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			actionButton := uiFactory.NewCyberpunkButton(
+				buttonText,
+				buttonTextColor,
+				func(args *widget.ButtonClickedEventArgs) {
 					if !buttonVM.IsBroken {
 						eventChannel <- ClearCurrentTargetEvent{}
 						eventChannel <- PlayerActionSelectedEvent{
@@ -51,8 +47,8 @@ func createActionModalUI(
 							SelectedSlotKey: buttonVM.SlotKey,
 						}
 					}
-				}),
-				widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
+				},
+				func(args *widget.ButtonHoverEventArgs) {
 					switch buttonVM.PartCategory {
 					case CategoryRanged:
 						if buttonVM.TargetEntry != nil {
@@ -63,10 +59,10 @@ func createActionModalUI(
 					default:
 						// 格闘など、他のカテゴリでターゲット表示が必要な場合はここに追加
 					}
-				}),
-				widget.ButtonOpts.CursorExitedHandler(func(args *widget.ButtonHoverEventArgs) {
+				},
+				func(args *widget.ButtonHoverEventArgs) {
 					eventChannel <- ClearCurrentTargetEvent{}
-				}),
+				},
 			)
 			buttons = append(buttons, actionButton)
 		}
@@ -74,15 +70,15 @@ func createActionModalUI(
 
 	// NewPanel を使用してモーダルを作成
 	panel := NewPanel(&PanelOptions{
-		Title:           messageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}),
+		Title:           uiFactory.MessageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}),
 		Padding:         widget.NewInsetsSimple(15),
 		Spacing:         c.ActionModal.ButtonSpacing,
 		PanelWidth:      int(c.ActionModal.ButtonWidth) + 30,
-		TitleFont:       font,
+		TitleFont:       uiFactory.Font,
 		BackgroundColor: c.Colors.Background, // 背景色を設定
 		BorderColor:     c.Colors.Gray,       // 枠線の色
 		BorderThickness: 5,                   // 枠線の太さ
-	}, buttons...)
+	}, uiFactory, buttons...) // uiFactoryを渡す
 
 	// パネルをオーバーレイの中央に配置
 	panel.GetWidget().LayoutData = widget.AnchorLayoutData{

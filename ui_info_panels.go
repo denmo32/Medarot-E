@@ -7,13 +7,12 @@ import (
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
 
-func createSingleMedarotInfoPanel(config *Config, font text.Face, gameDataManager *GameDataManager, entry *donburi.Entry) *infoPanelUI {
+func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, entry *donburi.Entry) *infoPanelUI {
 	c := config.UI
 	settings := SettingsComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
@@ -27,11 +26,11 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, gameDataManage
 		)),
 	)
 	nameText := widget.NewText(
-		widget.TextOpts.Text(settings.Name, font, c.Colors.White),
+		widget.TextOpts.Text(settings.Name, uiFactory.Font, c.Colors.White),
 	)
 	headerContainer.AddChild(nameText)
 	stateText := widget.NewText(
-		widget.TextOpts.Text("待機", font, c.Colors.Yellow),
+		widget.TextOpts.Text("待機", uiFactory.Font, c.Colors.Yellow),
 		widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{
 			HorizontalPosition: widget.GridLayoutPositionEnd,
 		})),
@@ -47,7 +46,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, gameDataManage
 		initialArmor := 0.0
 
 		if instFound && partInst != nil {
-			partDef, defFound := gameDataManager.GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := uiFactory.GameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if defFound {
 				partName = partDef.PartName
 				initialArmor = float64(partInst.CurrentArmor)
@@ -65,7 +64,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, gameDataManage
 		partWidgets = append(partWidgets, partContainer)
 
 		partNameText := widget.NewText(
-			widget.TextOpts.Text(partName, font, c.Colors.White),
+			widget.TextOpts.Text(partName, uiFactory.Font, c.Colors.White),
 		)
 		partContainer.AddChild(partNameText)
 
@@ -85,7 +84,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, gameDataManage
 		partContainer.AddChild(hpBar)
 
 		hpText := widget.NewText(
-			widget.TextOpts.Text("0/0", font, c.Colors.White),
+			widget.TextOpts.Text("0/0", uiFactory.Font, c.Colors.White),
 		)
 		partContainer.AddChild(hpText)
 
@@ -104,7 +103,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, gameDataManage
 		Padding:         widget.NewInsetsSimple(5),
 		Spacing:         2,
 		BackgroundColor: color.NRGBA{50, 50, 70, 200}, // 背景色を設定
-	}, append([]widget.PreferredSizeLocateableWidget{headerContainer}, partWidgets...)...)
+	}, uiFactory, append([]widget.PreferredSizeLocateableWidget{headerContainer}, partWidgets...)...)
 
 	return &infoPanelUI{
 		rootContainer: panelContainer,
@@ -122,7 +121,7 @@ type InfoPanelCreationResult struct {
 }
 
 // CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
-func CreateInfoPanels(world donburi.World, config *Config, gameDataManager *GameDataManager) []InfoPanelCreationResult {
+func CreateInfoPanels(world donburi.World, config *Config, uiFactory *UIFactory) []InfoPanelCreationResult {
 	var entries []*donburi.Entry
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		entries = append(entries, entry)
@@ -140,7 +139,7 @@ func CreateInfoPanels(world donburi.World, config *Config, gameDataManager *Game
 	var results []InfoPanelCreationResult
 	for _, entry := range entries {
 		settings := SettingsComponent.Get(entry)
-		panelUI := createSingleMedarotInfoPanel(config, gameDataManager.Font, gameDataManager, entry)
+		panelUI := createSingleMedarotInfoPanel(config, uiFactory, entry)
 		results = append(results, InfoPanelCreationResult{
 			PanelUI: panelUI,
 			Team:    settings.Team,

@@ -14,19 +14,17 @@ type UIActionModalManager struct {
 	isActionModalVisible bool                         // アクションモーダルが表示されているか
 	actionTargetMap      map[PartSlotKey]ActionTarget // 選択可能なアクションとターゲットのマップ
 	eventChannel         chan UIEvent                 // UIイベント通知用
-	config               *Config
-	gameDataManager      *GameDataManager // 追加
+	uiFactory            *UIFactory                   // 追加
 }
 
 // NewUIActionModalManager は新しいUIActionModalManagerのインスタンスを作成します。
-func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, config *Config, gameDataManager *GameDataManager) *UIActionModalManager {
+func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, uiFactory *UIFactory) *UIActionModalManager {
 	return &UIActionModalManager{
 		ebitenui:             ebitenui,
 		isActionModalVisible: false,
 		actionTargetMap:      make(map[PartSlotKey]ActionTarget),
 		eventChannel:         eventChannel,
-		config:               config,
-		gameDataManager:      gameDataManager, // 追加
+		uiFactory:            uiFactory, // 追加
 	}
 }
 
@@ -44,7 +42,7 @@ func (m *UIActionModalManager) ShowActionModal(vm ActionModalViewModel) {
 	}
 
 	// ViewModel を直接 createActionModalUI に渡す
-	modal := createActionModalUI(&vm, m.config, m.eventChannel, m.gameDataManager.Font, m.gameDataManager.Messages)
+	modal := createActionModalUI(&vm, m.uiFactory, m.eventChannel)
 	m.actionModal = modal
 	m.ebitenui.Container.AddChild(m.actionModal)
 	log.Println("アクションモーダルを表示しました。")
