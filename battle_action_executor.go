@@ -37,7 +37,7 @@ type ActionExecutor struct {
 	postActionEffectSystem *PostActionEffectSystem // 新しく追加したシステム
 	handlers               map[Trait]TraitActionHandler
 	weaponHandlers         map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
-	
+
 }
 
 // --- BaseAttackHandler ---
@@ -63,9 +63,9 @@ func (h *BaseAttackHandler) Execute(
 // performAttackInternal は、PerformAttack の元のロジックを保持します。
 func (h *BaseAttackHandler) performAttackInternal(
 	actingEntry *donburi.Entry,
-	intent *ActionIntent,
+	_ *ActionIntent,
 	battleLogic *BattleLogic,
-	gameConfig *Config,
+	_ *Config,
 	actingPartDef *PartDefinition,
 ) ActionResult {
 	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
@@ -217,7 +217,7 @@ func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig
 		gameConfig:             gameConfig,
 		statusEffectSystem:     statusEffectSystem,     // Assign the created instance
 		postActionEffectSystem: postActionEffectSystem, // Assign the new system
-		
+
 		handlers: map[Trait]TraitActionHandler{
 			TraitShoot:    &BaseAttackHandler{},
 			TraitAim:      &BaseAttackHandler{},
@@ -249,7 +249,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 			ActionDidHit: false,
 		}
 	}
-	
+
 	actionResult := handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
 
 	// チャージ時に生成された保留中の効果をActionResultにコピー

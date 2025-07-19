@@ -1,9 +1,6 @@
 package main
 
 import (
-	
-
-	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
@@ -13,7 +10,7 @@ type UIFactory struct {
 	Config          *Config
 	Font            text.Face
 	MessageManager  *MessageManager
-	GameDataManager *GameDataManager // 追加
+	GameDataManager *GameDataManager  // 追加
 	imageGenerator  *UIImageGenerator // 追加
 }
 
@@ -50,10 +47,4 @@ func (f *UIFactory) NewCyberpunkButton(
 		widget.ButtonOpts.CursorEnteredHandler(cursorEnteredHandler),
 		widget.ButtonOpts.CursorExitedHandler(cursorExitedHandler),
 	)
-}
-
-// createCyberpunkPanelNineSlice は、サイバーパンク風のパネル用NineSlice画像を生成します。
-// グラデーション背景と立体的な枠線が特徴です。
-func (f *UIFactory) createCyberpunkPanelNineSlice(thickness float32) *image.NineSlice {
-	return f.imageGenerator.createCyberpunkPanelNineSlice(thickness)
 }
