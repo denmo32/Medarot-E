@@ -28,11 +28,11 @@ type UI struct {
 	config                 *Config
 	gameDataManager        *GameDataManager // 追加
 	whitePixel             *ebiten.Image
-	animationDrawer        *UIAnimationDrawer // 新しく追加
 	messageManager         *UIMessageDisplayManager
 	actionModalManager     *UIActionModalManager
 	targetIndicatorManager *UITargetIndicatorManager
-	uiFactory              *UIFactory // 追加
+	uiFactory              *UIFactory         // 追加
+	animationDrawer        *UIAnimationDrawer // 新しく追加
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。
@@ -41,10 +41,9 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, gameDataManager *GameDataManager) *UI {
+func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, gameDataManager *GameDataManager, animationManager *BattleAnimationManager) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
-	animationManager := NewBattleAnimationManager(config)
 
 	uiFactory := NewUIFactory(config, gameDataManager.Font, gameDataManager.Messages, gameDataManager) // UIFactoryを初期化
 
@@ -54,8 +53,8 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, gameD
 		config:            config,
 		gameDataManager:   gameDataManager, // 追加
 		whitePixel:        whiteImg,
-		animationDrawer:   NewUIAnimationDrawer(config, animationManager), // UIAnimationDrawerを初期化
 		uiFactory:         uiFactory,                                      // 追加
+		animationDrawer:   NewUIAnimationDrawer(config, animationManager), // UIAnimationDrawerを初期化
 	}
 
 	rootContainer := widget.NewContainer(
