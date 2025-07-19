@@ -161,7 +161,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case PlayerActionRequiredGameEvent:
 			bs.state = StatePlayerActionSelect
 		case ActionAnimationStartedGameEvent:
-			bs.ui.PostEvent(SetAnimationUIEvent{AnimationData: e.AnimationData})
+			bs.ui.PostEvent(SetAnimationUIEvent(e))
 			bs.state = StateAnimatingAction
 		case ActionAnimationFinishedGameEvent:
 			// アニメーション終了後、クールダウン開始とターゲットクリア
@@ -186,7 +186,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case HideActionModalGameEvent:
 			bs.ui.PostEvent(HideActionModalUIEvent{})
 		case ShowActionModalGameEvent:
-			bs.ui.PostEvent(ShowActionModalUIEvent{ViewModel: e.ViewModel})
+			bs.ui.PostEvent(ShowActionModalUIEvent(e))
 		case ClearAnimationGameEvent:
 			bs.ui.PostEvent(ClearAnimationUIEvent{})
 		case ClearCurrentTargetGameEvent:

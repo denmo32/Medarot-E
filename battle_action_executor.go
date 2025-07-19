@@ -50,11 +50,12 @@ func (h *BaseAttackHandler) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
-	battleLogic *BattleLogic,
+	battleLogic *BattleLogic, // battleLogic を再度受け取るように変更
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
 	initialResult *ActionResult,
 ) ActionResult {
+	_ = battleLogic // リンターの未使用パラメータ警告を抑制
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
 	return h.performAttackLogic(actingEntry, battleLogic, actingPartDef)
@@ -62,6 +63,7 @@ func (h *BaseAttackHandler) Execute(
 
 // initializeAttackResult は ActionResult を初期化します。
 func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) ActionResult {
+	_ = battleLogic // リンターの未使用パラメータ警告を抑制
 	return ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   false, // 初期値はfalse
