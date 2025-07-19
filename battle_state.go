@@ -97,7 +97,10 @@ func (s *PlayerActionSelectState) Update(world donburi.World, battleLogic *Battl
 				}
 				actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
 			}
-			ui.ShowActionModal(actingEntry, actionTargetMap)
+
+			// ここでViewModelを構築し、UIに渡す
+			actionModalVM := BuildActionModalViewModel(actingEntry, actionTargetMap) // 新規追加
+			ui.ShowActionModal(actionModalVM) // 変更: ViewModelを渡す
 			return playerActionPendingQueue, &StateUpdateResult{}, nil // モーダル表示中は状態維持
 		} else {
 			// 無効または待機状態でないならキューから削除して次のプレイヤーを処理

@@ -31,53 +31,21 @@ func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, c
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (m *UIActionModalManager) ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget) {
+func (m *UIActionModalManager) ShowActionModal(vm ActionModalViewModel) {
 	if m.isActionModalVisible {
 		m.HideActionModal()
 	}
-	m.playerMedarotToAct = actingEntry
+	m.playerMedarotToAct = vm.ActingEntry // ActingEntry は引き続き必要
 	m.isActionModalVisible = true
-	m.actionTargetMap = actionTargetMap // Set the pre-calculated map
 
-	// ViewModelを構築
-	settings := SettingsComponent.Get(actingEntry)
-	partsComp := PartsComponent.Get(actingEntry)
-
-	var buttons []ActionModalButtonViewModel
-	if partsComp == nil {
-		log.Println("エラー: ShowActionModal - actingEntry に PartsComponent がありません。")
-	} else {
-		var displayableParts []AvailablePart
-		for slotKey, partInst := range partsComp.Map {
-			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
-			if !defFound {
-				continue
-			}
-			if _, ok := actionTargetMap[slotKey]; ok {
-				displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey, IsBroken: partInst.IsBroken})
-			}
-		}
-
-		for _, available := range displayableParts {
-			targetInfo := actionTargetMap[available.Slot]
-			buttons = append(buttons, ActionModalButtonViewModel{
-				PartName:        available.PartDef.PartName,
-				PartCategory:    available.PartDef.Category,
-				SlotKey:         available.Slot,
-				IsBroken:        available.IsBroken,
-				TargetEntry:     targetInfo.Target,
-				SelectedPartDef: available.PartDef,
-			})
-		}
+	// actionTargetMap を ViewModel の情報から再構築
+	m.actionTargetMap = make(map[PartSlotKey]ActionTarget)
+	for _, btn := range vm.Buttons {
+		m.actionTargetMap[btn.SlotKey] = ActionTarget{Target: btn.TargetEntry, Slot: btn.SlotKey}
 	}
 
-	vm := &ActionModalViewModel{
-		ActingMedarotName: settings.Name,
-		ActingEntry:       actingEntry,
-		Buttons:           buttons,
-	}
-
-	modal := createActionModalUI(vm, m.config, m.eventChannel, GlobalGameDataManager.Font)
+	// ViewModel を直接 createActionModalUI に渡す
+	modal := createActionModalUI(&vm, m.config, m.eventChannel, GlobalGameDataManager.Font)
 	m.actionModal = modal
 	m.ebitenui.Container.AddChild(m.actionModal)
 	log.Println("アクションモーダルを表示しました。")

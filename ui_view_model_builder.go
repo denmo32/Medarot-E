@@ -110,3 +110,45 @@ Prog: %.1f / %.1f`,
 func CalculateIconXPosition(entry *donburi.Entry, partInfoProvider *PartInfoProvider, battlefieldWidth float32) float32 {
 	return partInfoProvider.CalculateMedarotXPosition(entry, battlefieldWidth)
 }
+
+// BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
+func BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget) ActionModalViewModel {
+	settings := SettingsComponent.Get(actingEntry)
+	partsComp := PartsComponent.Get(actingEntry)
+
+	var buttons []ActionModalButtonViewModel
+	if partsComp == nil {
+		// このエラーは通常、呼び出し元でエンティティの有効性を確認すべきですが、念のため
+		// log.Println("エラー: BuildActionModalViewModel - actingEntry に PartsComponent がありません。")
+	} else {
+		var displayableParts []AvailablePart
+		for slotKey, partInst := range partsComp.Map {
+			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+			if !defFound {
+				continue
+			}
+			// actionTargetMap に含まれるパーツのみを対象とする（行動可能なパーツ）
+			if _, ok := actionTargetMap[slotKey]; ok {
+				displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey, IsBroken: partInst.IsBroken})
+			}
+		}
+
+		for _, available := range displayableParts {
+			targetInfo := actionTargetMap[available.Slot]
+			buttons = append(buttons, ActionModalButtonViewModel{
+				PartName:        available.PartDef.PartName,
+				PartCategory:    available.PartDef.Category,
+				SlotKey:         available.Slot,
+				IsBroken:        available.IsBroken,
+				TargetEntry:     targetInfo.Target,
+				SelectedPartDef: available.PartDef,
+			})
+		}
+	}
+
+	return ActionModalViewModel{
+		ActingMedarotName: settings.Name,
+		ActingEntry:       actingEntry,
+		Buttons:           buttons,
+	}
+}

@@ -109,8 +109,8 @@ func (u *UI) IsActionModalVisible() bool {
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (u *UI) ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget) {
-	u.actionModalManager.ShowActionModal(actingEntry, actionTargetMap)
+func (u *UI) ShowActionModal(vm ActionModalViewModel) {
+	u.actionModalManager.ShowActionModal(vm)
 }
 
 // HideActionModal はアクション選択モーダルを非表示にします。

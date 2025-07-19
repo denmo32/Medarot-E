@@ -500,7 +500,7 @@ type UIInterface interface {
 	IsAnimationFinished(tick int) bool
 	ClearAnimation()
 	GetCurrentAnimationResult() ActionResult
-	ShowActionModal(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget)
+	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
 	SetBattlefieldViewModel(vm BattlefieldViewModel)
 	UpdateInfoPanels(world donburi.World, config *Config)
