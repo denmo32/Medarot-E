@@ -81,14 +81,18 @@ func (bs *BattleScene) Update() error {
 	)
 
 	// Update current state
+	battleContext := &BattleContext{
+		World:          bs.world,
+		BattleLogic:    bs.battleLogic,
+		UI:             bs.ui,
+		MessageManager: bs.messageManager,
+		Config:         &bs.resources.Config,
+		SceneManager:   bs.manager,
+		Tick:           bs.tickCount,
+	}
+
 	newPlayerActionPendingQueue, result, err := bs.currentState.Update(
-		bs.world,
-		bs.battleLogic,
-		bs.ui,
-		bs.messageManager,
-		&bs.resources.Config,
-		bs.tickCount,
-		bs.manager,
+		battleContext,
 		bs.playerActionPendingQueue,
 	)
 	if err != nil {
