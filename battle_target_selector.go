@@ -22,10 +22,7 @@ func NewTargetSelector(world donburi.World, config *Config) *TargetSelector {
 	return &TargetSelector{world: world, config: config}
 }
 
-// SetPartInfoProvider は PartInfoProvider の依存性を設定します。 // 削除
-// func (ts *TargetSelector) SetPartInfoProvider(pip *PartInfoProvider) {
-// 	ts.partInfoProvider = pip
-// }
+
 
 // SelectDefensePart は防御に使用するパーツのインスタンスを選択します。
 func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry, battleLogic *BattleLogic) *PartInstanceData {

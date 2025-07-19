@@ -18,10 +18,7 @@ func NewHitCalculator(world donburi.World, config *Config) *HitCalculator {
 	return &HitCalculator{world: world, config: config}
 }
 
-// SetPartInfoProvider は PartInfoProvider の依存性を設定します。 // 削除
-// func (hc *HitCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
-// 	hc.partInfoProvider = pip
-// }
+
 
 // CalculateHit は新しいルールに基づいて命中判定を行います。
 func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition, battleLogic *BattleLogic) bool {
