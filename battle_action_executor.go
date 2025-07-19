@@ -190,82 +190,6 @@ func resolveAttackTarget(
 	}
 }
 
-// ShootHandler は TraitShoot のアクションを処理します。
-type ShootHandler struct {
-	// BaseAttackHandler の埋め込みを削除
-}
-
-func (h *ShootHandler) Execute(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	actingPartDef *PartDefinition,
-	initialResult *ActionResult,
-) ActionResult {
-	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
-	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
-	return *initialResult
-}
-
-// AimHandler は TraitAim のアクションを処理します。
-type AimHandler struct {
-	// BaseAttackHandler の埋め込みを削除
-}
-
-func (h *AimHandler) Execute(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	actingPartDef *PartDefinition,
-	initialResult *ActionResult,
-) ActionResult {
-	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
-	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
-	return *initialResult
-}
-
-// StrikeHandler は TraitStrike のアクションを処理します。
-type StrikeHandler struct {
-	// BaseAttackHandler の埋め込みを削除
-}
-
-func (h *StrikeHandler) Execute(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	actingPartDef *PartDefinition,
-	initialResult *ActionResult,
-) ActionResult {
-	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
-	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
-	return *initialResult
-}
-
-// BerserkHandler は TraitBerserk のアクションを処理します。
-type BerserkHandler struct {
-	// BaseAttackHandler の埋め込みを削除
-}
-
-func (h *BerserkHandler) Execute(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	actingPartDef *PartDefinition,
-	initialResult *ActionResult,
-) ActionResult {
-	// Trait固有の追加効果はWeaponTypeEffectHandlerで処理するため、ここでは何もしない。
-	// このハンドラは、基本的な攻撃アクションの結果をそのまま返す責務を持つ。
-	return *initialResult
-}
-
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
 func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig *Config) *ActionExecutor {
 	return &ActionExecutor{
@@ -274,10 +198,6 @@ func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig
 		gameConfig:        gameConfig,
 		baseAttackHandler: &BaseAttackHandler{},
 		handlers: map[Trait]TraitActionHandler{
-			TraitShoot:    &ShootHandler{},
-			TraitAim:      &AimHandler{},
-			TraitStrike:   &StrikeHandler{},
-			TraitBerserk:  &BerserkHandler{},
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
 		},
@@ -296,23 +216,22 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
 	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
 
-	handler, ok := e.handlers[actingPartDef.Trait]
-	if !ok {
-		log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
-		return ActionResult{
-			ActingEntry:  actingEntry,
-			ActionDidHit: false,
-		}
-	}
-
 	var actionResult ActionResult
 	isAttackTrait := actingPartDef.Trait == TraitShoot || actingPartDef.Trait == TraitAim || actingPartDef.Trait == TraitStrike || actingPartDef.Trait == TraitBerserk
+
 	if isAttackTrait {
-		// 攻撃系アクションの場合、まずBaseAttackHandlerで共通処理を実行
-		initialResult := e.baseAttackHandler.PerformAttack(actingEntry, intent, e.battleLogic, e.gameConfig, actingPartDef)
-		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, &initialResult)
+		// 攻撃系TraitはBaseAttackHandlerで直接処理
+		actionResult = e.baseAttackHandler.PerformAttack(actingEntry, intent, e.battleLogic, e.gameConfig, actingPartDef)
 	} else {
-		// 攻撃系以外は、各TraitHandler内でActionResultを生成・設定する
+		// その他のTraitは専用ハンドラで処理
+		handler, ok := e.handlers[actingPartDef.Trait]
+		if !ok {
+			log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
+			return ActionResult{
+				ActingEntry:  actingEntry,
+				ActionDidHit: false,
+			}
+		}
 		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
 	}
 
