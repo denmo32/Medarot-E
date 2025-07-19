@@ -97,7 +97,7 @@ func (h *BaseAttackHandler) PerformAttack(
 
 	applyDamageAndDefense(&result, actingEntry, actingPartDef, battleLogic) // h.battleLogic を battleLogic に変更
 
-	finalizeActionResult(&result, actingEntry, actingPartDef)
+	finalizeActionResult(&result)
 
 	return result
 }
@@ -148,7 +148,7 @@ func applyDamageAndDefense(
 	}
 }
 
-func finalizeActionResult(result *ActionResult, actingEntry *donburi.Entry, actingPartDef *PartDefinition) {
+func finalizeActionResult(result *ActionResult) {
 	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
 	actualHitPartDef, _ := GlobalGameDataManager.GetPartDefinition(actualHitPartInst.DefinitionID)
 

@@ -52,13 +52,14 @@ func createActionModalUI(
 					}
 				}),
 				widget.ButtonOpts.CursorEnteredHandler(func(args *widget.ButtonHoverEventArgs) {
-					if buttonVM.PartCategory == CategoryRanged {
+					switch buttonVM.PartCategory {
+					case CategoryRanged:
 						if buttonVM.TargetEntry != nil {
 							eventChannel <- SetCurrentTargetEvent{Target: buttonVM.TargetEntry}
 						}
-					} else if buttonVM.PartCategory == CategoryIntervention {
+					case CategoryIntervention:
 						// 介入の場合はターゲット表示なし
-					} else {
+					default:
 						// 格闘など、他のカテゴリでターゲット表示が必要な場合はここに追加
 					}
 				}),
