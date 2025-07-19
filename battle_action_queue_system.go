@@ -107,6 +107,7 @@ func StartCharge(
 
 	intent := ActionIntentComponent.Get(entry)
 	intent.SelectedPartKey = partKey
+	intent.PendingEffects = make([]StatusEffect, 0) // 既存の効果をクリア
 
 	target := TargetComponent.Get(entry)
 	target.TargetEntity = targetEntry
@@ -127,14 +128,20 @@ func StartCharge(
 	if !ok {
 		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。", actingPartDef.Trait)
 	} else {
-		// 2. 計算式に基づいて自身にデバフを適用
-		for _, debuff := range formula.UserDebuffs {
-			log.Printf("%s が %s 特性効果（チャージ時デバフ）を発動。", settings.Name, formula.ID)
-			switch debuff.Type {
+		// 2. 計算式に基づいて自身に適用されるデバフ効果を生成
+		for _, debuffInfo := range formula.UserDebuffs {
+			log.Printf("%s が %s 特性効果（チャージ時デバフ）を準備。", settings.Name, formula.ID)
+			var effect StatusEffect
+			switch debuffInfo.Type {
 			case DebuffTypeEvasion:
-				donburi.Add(entry, EvasionDebuffComponent, &EvasionDebuff{Multiplier: debuff.Multiplier})
+				effect = &EvasionDebuffEffect{Multiplier: debuffInfo.Multiplier}
 			case DebuffTypeDefense:
-				donburi.Add(entry, DefenseDebuffComponent, &DefenseDebuff{Multiplier: debuff.Multiplier})
+				effect = &DefenseDebuffEffect{Multiplier: debuffInfo.Multiplier}
+			default:
+				log.Printf("未対応のチャージ時デバフタイプです: %s", debuffInfo.Type)
+			}
+			if effect != nil {
+				intent.PendingEffects = append(intent.PendingEffects, effect)
 			}
 		}
 	}

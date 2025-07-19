@@ -369,7 +369,27 @@ type ActionResult struct {
 	ActionCategory    PartCategory
 	TargetPartType    string // e.g., "頭部", "脚部"
 	DefendingPartType string // e.g., "頭部", "脚部"
+
+	AppliedEffects []StatusEffect // アクションによって適用されるステータス効果
 }
+
+// --- Status Effect System ---
+
+// StatusEffect は、すべてのステータス効果（バフ・デバフ）が実装すべきインターフェースです。
+type StatusEffect interface {
+	Apply(world donburi.World, target *donburi.Entry)
+	Remove(world donburi.World, target *donburi.Entry)
+	Description() string
+	Duration() int // 効果の持続時間（ターン数や秒数など）。0の場合は永続、または即時解除。
+}
+
+// ActiveStatusEffect は、エンティティに現在適用されている効果とその残り期間を追跡します。
+type ActiveStatusEffect struct {
+	Effect       StatusEffect
+	RemainingDur int
+}
+
+// --- End Status Effect System ---
 
 // ActionAnimationData はアニメーションの再生に必要なデータを保持します。
 type ActionAnimationData struct {

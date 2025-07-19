@@ -31,7 +31,15 @@ var (
 
 	// --- Team Buff Component ---
 	TeamBuffsComponent = donburi.NewComponentType[TeamBuffs]()
+
+	// --- Status Effect Component ---
+	ActiveEffectsComponent = donburi.NewComponentType[ActiveEffects]()
 )
+
+// ActiveEffects はエンティティに現在適用されているすべてのステータス効果を保持します。
+type ActiveEffects struct {
+	Effects []*ActiveStatusEffect
+}
 
 // --- コンポーネントの構造体定義 ---
 
@@ -65,6 +73,7 @@ type Gauge struct {
 // これは、ターゲットがまだ解決されていない段階です。
 type ActionIntent struct {
 	SelectedPartKey PartSlotKey
+	PendingEffects  []StatusEffect // チャージ開始時などに適用が予定される効果
 }
 
 // Target は、行動の対象となるエンティティとパーツ、およびその決定方針を表します。
@@ -113,8 +122,6 @@ type AI struct {
 // --- 特性効果タグコンポーネント --- (リファクタリングにより不要に)
 
 // --- AIパーツ選択戦略コンポーネント ---
-
-
 
 // --- 履歴データコンポーネント ---
 

@@ -31,12 +31,13 @@ type WeaponTypeEffectHandler interface {
 
 // ActionExecutor はアクションの実行に関するロジックをカプセル化します。
 type ActionExecutor struct {
-	world             donburi.World
-	battleLogic       *BattleLogic
-	gameConfig        *Config
-	handlers          map[Trait]TraitActionHandler
-	weaponHandlers    map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
-	baseAttackHandler *BaseAttackHandler
+	world              donburi.World
+	battleLogic        *BattleLogic
+	gameConfig         *Config
+	statusEffectSystem *StatusEffectSystem
+	handlers           map[Trait]TraitActionHandler
+	weaponHandlers     map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
+	baseAttackHandler  *BaseAttackHandler
 }
 
 // --- BaseAttackHandler ---
@@ -193,10 +194,11 @@ func resolveAttackTarget(
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
 func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig *Config) *ActionExecutor {
 	return &ActionExecutor{
-		world:             world,
-		battleLogic:       battleLogic,
-		gameConfig:        gameConfig,
-		baseAttackHandler: &BaseAttackHandler{},
+		world:              world,
+		battleLogic:        battleLogic,
+		gameConfig:         gameConfig,
+		statusEffectSystem: NewStatusEffectSystem(world),
+		baseAttackHandler:  &BaseAttackHandler{},
 		handlers: map[Trait]TraitActionHandler{
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
@@ -235,6 +237,13 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
 	}
 
+	// チャージ時に生成された保留中の効果をActionResultにコピー
+	if len(intent.PendingEffects) > 0 {
+		actionResult.AppliedEffects = append(actionResult.AppliedEffects, intent.PendingEffects...)
+		// 保留中の効果をクリア
+		intent.PendingEffects = nil
+	}
+
 	// WeaponType に基づく追加効果を適用 (Traitの処理から独立)
 	if weaponHandler, ok := e.weaponHandlers[actingPartDef.WeaponType]; ok {
 		weaponHandler.ApplyEffect(&actionResult, e.world, e.battleLogic, actingPartDef)
@@ -246,13 +255,25 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	return actionResult
 }
 
-// processPostActionEffects は、アクション実行後の共通処理（パーツ破壊、デバフ解除など）を適用します。
+// processPostActionEffects は、アクション実行後の共通処理（パーツ破壊、ステータス効果適用など）を適用します。
 func (e *ActionExecutor) processPostActionEffects(result *ActionResult) {
 	if result == nil {
 		return
 	}
 
-	// 1. パーツ破壊による状態遷移
+	// 1. 適用されるべきステータス効果を処理
+	if len(result.AppliedEffects) > 0 {
+		// 効果の適用対象を決定する（通常は行動者自身）
+		// 将来的には効果ごとに対象を指定できるように拡張可能
+		targetEntry := result.ActingEntry
+		if targetEntry != nil {
+			for _, effect := range result.AppliedEffects {
+				e.statusEffectSystem.Apply(targetEntry, effect)
+			}
+		}
+	}
+
+	// 2. パーツ破壊による状態遷移
 	if result.TargetEntry != nil && result.TargetPartBroken && result.ActualHitPartSlot == PartSlotHead {
 		state := StateComponent.Get(result.TargetEntry)
 		if state.FSM.Can("break") {
@@ -263,13 +284,21 @@ func (e *ActionExecutor) processPostActionEffects(result *ActionResult) {
 		}
 	}
 
-	// 2. 行動後のデバフクリーンアップ
-	if result.ActingEntry != nil {
-		if result.ActingEntry.HasComponent(EvasionDebuffComponent) {
-			result.ActingEntry.RemoveComponent(EvasionDebuffComponent)
+	// 3. 行動後のクリーンアップ
+	//    チャージ中に付与された効果で、持続時間が0のものを解除する
+	if result.ActingEntry != nil && result.ActingEntry.HasComponent(ActiveEffectsComponent) {
+		activeEffects := ActiveEffectsComponent.Get(result.ActingEntry)
+		// このループ内でRemoveを呼ぶとスライスが変更されて危険なので、
+		// 解除すべきエフェクトを一旦リストアップする
+		effectsToRemove := []StatusEffect{}
+		for _, activeEffect := range activeEffects.Effects {
+			if activeEffect.RemainingDur == 0 {
+				effectsToRemove = append(effectsToRemove, activeEffect.Effect)
+			}
 		}
-		if result.ActingEntry.HasComponent(DefenseDebuffComponent) {
-			result.ActingEntry.RemoveComponent(DefenseDebuffComponent)
+		// リストアップしたエフェクトを安全に解除する
+		for _, effect := range effectsToRemove {
+			e.statusEffectSystem.Remove(result.ActingEntry, effect)
 		}
 	}
 }

@@ -23,6 +23,7 @@ type BattleScene struct {
 	battleLogic              *BattleLogic
 	uiEventChannel           chan UIEvent
 	battlefieldViewModel     BattlefieldViewModel
+	statusEffectSystem       *StatusEffectSystem
 
 	// State Machine
 	states       map[GameState]BattleState
@@ -45,6 +46,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	}
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config)
+	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
 	EnsureActionQueueEntity(bs.world)
 
 	teamBuffsEntry := bs.world.Entry(bs.world.Create(TeamBuffsComponent))
@@ -92,6 +94,9 @@ func (bs *BattleScene) Update() error {
 	if err != nil {
 		return err
 	}
+
+	// Update status effect durations
+	bs.statusEffectSystem.Update()
 
 	// Transition to new state if changed
 	if newState != bs.state {
