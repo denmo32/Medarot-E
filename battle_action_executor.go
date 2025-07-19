@@ -37,7 +37,7 @@ type ActionExecutor struct {
 	postActionEffectSystem *PostActionEffectSystem // 新しく追加したシステム
 	handlers               map[Trait]TraitActionHandler
 	weaponHandlers         map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
-	baseAttackHandler      *BaseAttackHandler
+	
 }
 
 // --- BaseAttackHandler ---
@@ -45,13 +45,28 @@ type ActionExecutor struct {
 // BaseAttackHandler は、すべての攻撃アクションに共通するロジックをカプセル化します。
 type BaseAttackHandler struct{}
 
-// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
-func (h *BaseAttackHandler) PerformAttack(
+// Execute は TraitActionHandler インターフェースを実装します。
+func (h *BaseAttackHandler) Execute(
+	actingEntry *donburi.Entry,
+	world donburi.World,
+	intent *ActionIntent,
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
+	initialResult *ActionResult,
+) ActionResult {
+	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
+	// Execute メソッドから呼び出されるため、引数を調整します。
+	return h.performAttackInternal(actingEntry, intent, battleLogic, gameConfig, actingPartDef)
+}
+
+// performAttackInternal は、PerformAttack の元のロジックを保持します。
+func (h *BaseAttackHandler) performAttackInternal(
 	actingEntry *donburi.Entry,
 	intent *ActionIntent,
-	battleLogic *BattleLogic, // battleLogic を引数に追加
-	gameConfig *Config, // gameConfig を引数に追加
-	actingPartDef *PartDefinition, // actingPartDef を引数に追加
+	battleLogic *BattleLogic,
+	gameConfig *Config,
+	actingPartDef *PartDefinition,
 ) ActionResult {
 	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
 
@@ -202,8 +217,12 @@ func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig
 		gameConfig:             gameConfig,
 		statusEffectSystem:     statusEffectSystem,     // Assign the created instance
 		postActionEffectSystem: postActionEffectSystem, // Assign the new system
-		baseAttackHandler:      &BaseAttackHandler{},
+		
 		handlers: map[Trait]TraitActionHandler{
+			TraitShoot:    &BaseAttackHandler{},
+			TraitAim:      &BaseAttackHandler{},
+			TraitStrike:   &BaseAttackHandler{},
+			TraitBerserk:  &BaseAttackHandler{},
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
 		},
@@ -222,24 +241,16 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
 	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
 
-	var actionResult ActionResult
-	isAttackTrait := actingPartDef.Trait == TraitShoot || actingPartDef.Trait == TraitAim || actingPartDef.Trait == TraitStrike || actingPartDef.Trait == TraitBerserk
-
-	if isAttackTrait {
-		// 攻撃系TraitはBaseAttackHandlerで直接処理
-		actionResult = e.baseAttackHandler.PerformAttack(actingEntry, intent, e.battleLogic, e.gameConfig, actingPartDef)
-	} else {
-		// その他のTraitは専用ハンドラで処理
-		handler, ok := e.handlers[actingPartDef.Trait]
-		if !ok {
-			log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
-			return ActionResult{
-				ActingEntry:  actingEntry,
-				ActionDidHit: false,
-			}
+	handler, ok := e.handlers[actingPartDef.Trait]
+	if !ok {
+		log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
+		return ActionResult{
+			ActingEntry:  actingEntry,
+			ActionDidHit: false,
 		}
-		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
 	}
+	
+	actionResult := handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
 
 	// チャージ時に生成された保留中の効果をActionResultにコピー
 	if len(intent.PendingEffects) > 0 {
