@@ -5,14 +5,12 @@ import (
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
-	"github.com/yohamta/donburi"
 )
 
 // UIActionModalManager はアクション選択モーダルの表示と状態を管理します。
 type UIActionModalManager struct {
 	ebitenui             *ebitenui.UI // UIのルートコンテナにアクセスするため
 	actionModal          widget.PreferredSizeLocateableWidget
-	playerMedarotToAct   *donburi.Entry               // 現在アクション選択中のプレイヤーメダロット
 	isActionModalVisible bool                         // アクションモーダルが表示されているか
 	actionTargetMap      map[PartSlotKey]ActionTarget // 選択可能なアクションとターゲットのマップ
 	eventChannel         chan UIEvent                 // UIイベント通知用
@@ -37,7 +35,6 @@ func (m *UIActionModalManager) ShowActionModal(vm ActionModalViewModel) {
 	if m.isActionModalVisible {
 		m.HideActionModal()
 	}
-	m.playerMedarotToAct = vm.ActingEntry // ActingEntry は引き続き必要
 	m.isActionModalVisible = true
 
 	// actionTargetMap を ViewModel の情報から再構築
@@ -69,7 +66,6 @@ func (m *UIActionModalManager) HideActionModal() {
 		m.ebitenui.Container.RemoveChild(m.actionModal)
 		m.actionModal = nil
 	}
-	m.playerMedarotToAct = nil
 	m.isActionModalVisible = false
 	m.actionTargetMap = make(map[PartSlotKey]ActionTarget) // ターゲットマップをクリア
 	log.Println("アクションモーダルを非表示にしました。")
