@@ -61,7 +61,7 @@ func (h *BaseAttackHandler) Execute(
 }
 
 // initializeAttackResult は ActionResult を初期化します。
-func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefinition) ActionResult {
+func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) ActionResult {
 	return ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   false, // 初期値はfalse
@@ -79,7 +79,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 	battleLogic *BattleLogic,
 	actingPartDef *PartDefinition,
 ) ActionResult {
-	result := initializeAttackResult(actingEntry, actingPartDef)
+	result := initializeAttackResult(actingEntry, actingPartDef, battleLogic)
 
 	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
 	if targetEntry == nil {
@@ -108,7 +108,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 
 	applyDamageAndDefense(&result, actingEntry, actingPartDef, battleLogic)
 
-	finalizeActionResult(&result)
+	finalizeActionResult(&result, battleLogic)
 
 	return result
 }
@@ -159,9 +159,9 @@ func applyDamageAndDefense(
 	}
 }
 
-func finalizeActionResult(result *ActionResult) {
+func finalizeActionResult(result *ActionResult, battleLogic *BattleLogic) {
 	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
-	actualHitPartDef, _ := GlobalGameDataManager.GetPartDefinition(actualHitPartInst.DefinitionID)
+	actualHitPartDef, _ := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(actualHitPartInst.DefinitionID)
 
 	result.TargetPartType = string(actualHitPartDef.Type)
 }
@@ -234,7 +234,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	intent := ActionIntentComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
-	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
+	actingPartDef, _ := e.battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
 
 	handler, ok := e.handlers[actingPartDef.Trait]
 	if !ok {

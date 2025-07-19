@@ -149,14 +149,14 @@ func CreateInfoPanels(world donburi.World, config *Config, uiFactory *UIFactory)
 	return results
 }
 
-func updateAllInfoPanels(world donburi.World, config *Config, medarotInfoPanels map[string]*infoPanelUI) {
+func updateAllInfoPanels(world donburi.World, config *Config, medarotInfoPanels map[string]*infoPanelUI, battleLogic *BattleLogic) {
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)
 		ui, ok := medarotInfoPanels[settings.ID]
 		if !ok {
 			return
 		}
-		vm := BuildInfoPanelViewModel(entry)
+		vm := BuildInfoPanelViewModel(entry, battleLogic)
 		updateSingleInfoPanel(ui, vm, config)
 	})
 }

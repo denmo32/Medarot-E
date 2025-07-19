@@ -61,7 +61,7 @@ func NewPanel(opts *PanelOptions, uiFactory *UIFactory, children ...widget.Prefe
 			titleColor = opts.TitleColor
 		}
 
-		titleFont := GlobalGameDataManager.Font
+		titleFont := uiFactory.Font
 		if opts.TitleFont != nil {
 			titleFont = GlobalGameDataManager.Font
 		}

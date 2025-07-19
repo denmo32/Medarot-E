@@ -523,7 +523,7 @@ type UIInterface interface {
 	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
 	SetBattlefieldViewModel(vm BattlefieldViewModel)
-	UpdateInfoPanels(world donburi.World, config *Config)
+	UpdateInfoPanels(world donburi.World, config *Config, battleLogic *BattleLogic)
 	PostEvent(event UIEvent) // This will be implemented by the concrete UI struct
 	IsActionModalVisible() bool
 	GetActionTargetMap() map[PartSlotKey]ActionTarget

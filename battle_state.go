@@ -126,7 +126,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM := BuildActionModalViewModel(actingEntry, actionTargetMap) // 新規追加
+			actionModalVM := BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic) // 新規追加
 			ui.ShowActionModal(actionModalVM)                                        // 変更: ViewModelを渡す
 			return playerActionPendingQueue, &StateUpdateResult{}, nil               // モーダル表示中は状態維持
 		} else {

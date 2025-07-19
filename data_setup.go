@@ -11,7 +11,7 @@ import (
 )
 
 // CreateMedarotEntities はゲームデータからECSのエンティティを生成します。
-func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam TeamID) {
+func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam TeamID, battleLogic *BattleLogic) {
 	for _, loadout := range gameData.Medarots {
 		entry := world.Entry(world.Create(
 			SettingsComponent,
@@ -40,7 +40,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		}
 
 		for slot, partID := range partIDMap {
-			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partID)
+			partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partID)
 			if defFound {
 				partsInstanceMap[slot] = &PartInstanceData{
 					DefinitionID: partDef.ID,
@@ -53,7 +53,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		}
 		PartsComponent.SetValue(entry, PartsComponentData{Map: partsInstanceMap})
 
-		medalDef, medalFound := GlobalGameDataManager.GetMedalDefinition(loadout.MedalID)
+		medalDef, medalFound := battleLogic.GetPartInfoProvider().gameDataManager.GetMedalDefinition(loadout.MedalID)
 		if medalFound {
 			MedalComponent.SetValue(entry, *medalDef)
 		} else {

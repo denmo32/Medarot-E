@@ -11,7 +11,7 @@ import (
 )
 
 // BuildInfoPanelViewModel は、指定されたエンティティからInfoPanelViewModelを構築します。
-func BuildInfoPanelViewModel(entry *donburi.Entry) InfoPanelViewModel {
+func BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) InfoPanelViewModel {
 	settings := SettingsComponent.Get(entry)
 	state := StateComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
@@ -22,7 +22,7 @@ func BuildInfoPanelViewModel(entry *donburi.Entry) InfoPanelViewModel {
 			if partInst == nil {
 				continue
 			}
-			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
 				partViewModels[slotKey] = PartViewModel{PartName: "(不明)"}
 				continue
@@ -112,7 +112,7 @@ func CalculateIconXPosition(entry *donburi.Entry, partInfoProvider *PartInfoProv
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget) ActionModalViewModel {
+func BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, battleLogic *BattleLogic) ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 
@@ -123,7 +123,7 @@ func BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[P
 	} else {
 		var displayableParts []AvailablePart
 		for slotKey, partInst := range partsComp.Map {
-			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
 				continue
 			}

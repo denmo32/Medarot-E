@@ -43,7 +43,7 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 	}
 
 	roll := globalRand.Intn(100)
-	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_hit_roll", map[string]interface{}{
+	log.Print(battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("log_hit_roll", map[string]interface{}{
 		"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, successRate, evasion, roll},
 	}))
 	return float64(roll) < chance
@@ -69,7 +69,7 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 	}
 
 	roll := globalRand.Intn(100)
-	log.Print(GlobalGameDataManager.Messages.FormatMessage("log_defense_roll", map[string]interface{}{
+	log.Print(battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("log_defense_roll", map[string]interface{}{
 		"ordered_args": []interface{}{SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll},
 	}))
 	return float64(roll) < chance

@@ -51,7 +51,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		Buffs: make(map[TeamID]map[BuffType][]*BuffSource),
 	})
 
-	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam)
+	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.battleLogic)
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
 	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel, bs.resources.GameDataManager, animationManager)
 	// ui.goでuiFactoryが初期化され、ui.messageManagerもuiFactoryを使って初期化されるため、
@@ -143,7 +143,7 @@ func (bs *BattleScene) Update() error {
 	}
 
 	// Update UI components that depend on world state
-	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
+	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config, bs.battleLogic)
 	bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
 	bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
 

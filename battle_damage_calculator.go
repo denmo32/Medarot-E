@@ -105,7 +105,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 // GenerateActionLog は行動の結果ログを生成します。
 // targetPartDef はダメージを受けたパーツの定義 (nilの場合あり)
 // actingPartDef は攻撃に使用されたパーツの定義
-func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, actingPartDef *PartDefinition, targetPartDef *PartDefinition, damage int, isCritical bool, didHit bool) string {
+func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, actingPartDef *PartDefinition, targetPartDef *PartDefinition, damage int, isCritical bool, didHit bool, battleLogic *BattleLogic) string {
 	attackerSettings := SettingsComponent.Get(attacker)
 	targetSettings := SettingsComponent.Get(target)
 	skillName := "(不明なスキル)"
@@ -114,7 +114,7 @@ func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, a
 	}
 
 	if !didHit {
-		return GlobalGameDataManager.Messages.FormatMessage("attack_miss", map[string]interface{}{
+		return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("attack_miss", map[string]interface{}{
 			"attacker_name": attackerSettings.Name,
 			"skill_name":    skillName,
 			"target_name":   targetSettings.Name,
@@ -135,9 +135,9 @@ func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, a
 	}
 
 	if isCritical {
-		return GlobalGameDataManager.Messages.FormatMessage("critical_hit", params)
+		return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("critical_hit", params)
 	}
-	return GlobalGameDataManager.Messages.FormatMessage("attack_hit", params)
+	return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("attack_hit", params)
 }
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
@@ -154,7 +154,7 @@ func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEnt
 
 // GenerateActionLogDefense は防御時のアクションログを生成します。
 // defensePartDef は防御に使用されたパーツの定義
-func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePartDef *PartDefinition, damageDealt int, originalDamage int, isCritical bool) string {
+func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePartDef *PartDefinition, damageDealt int, originalDamage int, isCritical bool, battleLogic *BattleLogic) string {
 	targetSettings := SettingsComponent.Get(target)
 	defensePartNameStr := "(不明なパーツ)"
 	if defensePartDef != nil {
@@ -169,7 +169,7 @@ func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defe
 	}
 
 	if isCritical {
-		return GlobalGameDataManager.Messages.FormatMessage("defense_success_critical", params)
+		return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("defense_success_critical", params)
 	}
-	return GlobalGameDataManager.Messages.FormatMessage("defense_success", params)
+	return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("defense_success", params)
 }

@@ -42,7 +42,7 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 		log.Printf("%s: 選択されたパーツ %s は存在しません。", settings.Name, partKey)
 		return false
 	}
-	actingPartDef, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
+	actingPartDef, defFound := s.partInfoProvider.gameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
 	if !defFound {
 		log.Printf("%s: パーツ定義(%s)が見つかりません。", settings.Name, actingPartInstance.DefinitionID)
 		return false
