@@ -13,46 +13,56 @@ func ProcessPlayerActionSelected(
 	playerActionPendingQueue []*donburi.Entry,
 	ui UIInterface,
 	event PlayerActionSelectedEvent,
-) (newPlayerActionPendingQueue []*donburi.Entry, message string, postMessageCallback func()) {
+) []*donburi.Entry { // 戻り値から message と postMessageCallback を削除
 	log.Printf("BattleActionProcessor: PlayerActionSelectedEvent を処理中 - Actor: %s, Part: %s",
 		SettingsComponent.Get(event.ActingEntry).Name,
 		event.SelectedPartDef.PartName)
 
-	var successful bool
 	actionTargetMap := ui.GetActionTargetMap() // UIからマップを取得
+
+	var targetEntry *donburi.Entry
+	var targetPartSlot PartSlotKey
 
 	switch event.SelectedPartDef.Category {
 	case CategoryRanged:
 		actionTarget, ok := actionTargetMap[event.SelectedSlotKey]
 		if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
-			message = "ターゲットがいません！"
-			postMessageCallback = func() {
-				ui.ClearCurrentTarget()
+			log.Printf("ターゲットがいません！")
+			ui.ClearCurrentTarget()
+			// ターゲットがいない場合は行動選択をキャンセルし、キューから削除
+			if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
+				playerActionPendingQueue = playerActionPendingQueue[1:]
 			}
-			return playerActionPendingQueue, message, postMessageCallback
+			return playerActionPendingQueue
 		}
-		successful = StartCharge(event.ActingEntry, event.SelectedSlotKey, actionTarget.Target, actionTarget.Slot, world, battleLogic.PartInfoProvider)
-	case CategoryMelee:
-		successful = StartCharge(event.ActingEntry, event.SelectedSlotKey, nil, "", world, battleLogic.PartInfoProvider)
-	case CategoryIntervention:
-		successful = StartCharge(event.ActingEntry, event.SelectedSlotKey, nil, "", world, battleLogic.PartInfoProvider)
+		targetEntry = actionTarget.Target
+		targetPartSlot = actionTarget.Slot
+	case CategoryMelee, CategoryIntervention:
+		// 格闘や介入はターゲット選択が不要な場合があるため、nil, "" を渡す
+		targetEntry = nil
+		targetPartSlot = ""
 	default:
 		log.Printf("未対応のパーツカテゴリです: %s", event.SelectedPartDef.Category)
-		successful = false
+		// 未対応のカテゴリの場合もキューから削除
+		if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
+			playerActionPendingQueue = playerActionPendingQueue[1:]
+		}
+		return playerActionPendingQueue
 	}
 
-	if successful {
-		ui.HideActionModal()
-		if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
-			playerActionPendingQueue = playerActionPendingQueue[1:]
-		}
-	} else {
-		log.Printf("エラー: %s の行動選択に失敗しました。", SettingsComponent.Get(event.ActingEntry).Name)
-		if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
-			playerActionPendingQueue = playerActionPendingQueue[1:]
-		}
+	// StartCharge を直接呼び出す代わりに、GameActionRequestEvent をポスト
+	ui.PostEvent(GameActionRequestEvent{
+		ActingEntry:     event.ActingEntry,
+		SelectedPartKey: event.SelectedSlotKey,
+		TargetEntry:     targetEntry,
+		TargetPartSlot:  targetPartSlot,
+	})
+
+	ui.HideActionModal()
+	if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
+		playerActionPendingQueue = playerActionPendingQueue[1:]
 	}
-	return playerActionPendingQueue, "", nil
+	return playerActionPendingQueue
 }
 
 // ProcessPlayerActionCancel handles the PlayerActionCancelEvent, clearing the pending queue.
@@ -91,13 +101,13 @@ func UpdateUIEventProcessorSystem(
 	case event := <-uiEventChannel:
 		switch e := event.(type) {
 		case PlayerActionSelectedEvent:
-			var message string
-			var postMessageCallback func()
-			newPlayerActionPendingQueue, message, postMessageCallback = ProcessPlayerActionSelected(
+			newPlayerActionPendingQueue = ProcessPlayerActionSelected(
 				world, battleLogic, playerActionPendingQueue, ui, e)
-			if message != "" {
-				messageManager.EnqueueMessage(message, postMessageCallback)
-				newState = StateMessage // メッセージ表示状態に遷移
+		case GameActionRequestEvent:
+			successful := StartCharge(e.ActingEntry, e.SelectedPartKey, e.TargetEntry, e.TargetPartSlot, world, battleLogic.PartInfoProvider)
+			if !successful {
+				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(e.ActingEntry).Name)
+				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
 			}
 		case PlayerActionCancelEvent:
 			newPlayerActionPendingQueue = ProcessPlayerActionCancel(playerActionPendingQueue, ui, e)

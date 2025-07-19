@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -148,14 +149,11 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 type MessageState struct{}
 
 func (s *MessageState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
-	_, finished := messageManager.Update(StateMessage) // Correct assignment
-	if finished {
-		ui.ClearAnimation()
-		// Signal that the game should proceed to the next phase, e.g., player action selection
-		return playerActionPendingQueue, &StateUpdateResult{PlayerActionRequired: true}, nil
-	}
-	// If messages are still being processed, maintain the current state or return an empty result
-	return playerActionPendingQueue, &StateUpdateResult{}, nil
+	messageManager.Update()
+	messageFinished := messageManager.IsFinished()
+	log.Printf("MessageState.Update: messageFinished = %t", messageFinished)
+	// メッセージ表示が完了したかどうかをBattleSceneに通知
+	return playerActionPendingQueue, &StateUpdateResult{MessageFinished: messageFinished}, nil
 }
 
 func (s *MessageState) Draw(screen *ebiten.Image) {}

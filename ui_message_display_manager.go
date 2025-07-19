@@ -71,29 +71,28 @@ func (mm *UIMessageDisplayManager) HideMessageWindow() {
 }
 
 // Update はメッセージマネージャーの状態を更新します。
-// StateMessage のロジックをここに移動します。
-func (mm *UIMessageDisplayManager) Update(state GameState) (GameState, bool) {
-	if state != StateMessage {
-		return state, false // メッセージ状態でない場合は何もしない
-	}
-
+func (mm *UIMessageDisplayManager) Update() {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		log.Printf("UIMessageDisplayManager.Update: Mouse clicked. currentMessageIndex: %d, messageQueue length: %d", mm.currentMessageIndex, len(mm.messageQueue))
 		mm.currentMessageIndex++
 		if mm.currentMessageIndex < len(mm.messageQueue) {
 			mm.ShowCurrentMessage()
+			log.Printf("UIMessageDisplayManager.Update: Showing next message.")
 		} else {
 			mm.HideMessageWindow()
+			log.Printf("UIMessageDisplayManager.Update: All messages processed. messageWindow is nil: %t", mm.messageWindow == nil)
 			if mm.postMessageCallback != nil {
 				mm.postMessageCallback()
 				mm.postMessageCallback = nil
 			}
-			return StatePlaying, true // メッセージ表示完了、StatePlayingに戻る
+			mm.messageQueue = make([]string, 0) // メッセージキューをクリア
 		}
 	}
-	return StateMessage, false // メッセージ表示中
 }
 
 // IsFinished はメッセージキューが空で、かつメッセージウィンドウが表示されていない場合にtrueを返します。
 func (mm *UIMessageDisplayManager) IsFinished() bool {
-	return len(mm.messageQueue) == 0 && mm.messageWindow == nil
+	isFinished := len(mm.messageQueue) == 0 && mm.messageWindow == nil
+	log.Printf("UIMessageDisplayManager.IsFinished: Returning %t (Queue empty: %t, Window nil: %t)", isFinished, len(mm.messageQueue) == 0, mm.messageWindow == nil)
+	return isFinished
 }

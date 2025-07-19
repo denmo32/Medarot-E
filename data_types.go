@@ -16,6 +16,7 @@ type StateUpdateResult struct {
 	PlayerActionRequired bool
 	ActionStarted        bool
 	MessageQueued        bool
+	MessageFinished      bool // 新しく追加
 	GameOver             bool
 	Winner               TeamID
 }
@@ -467,6 +468,16 @@ type PlayerActionSelectedEvent struct {
 	SelectedPartDef *PartDefinition
 	SelectedSlotKey PartSlotKey
 }
+
+// GameActionRequestEvent は、ゲームロジック層に行動の実行を要求するために発行されます。
+type GameActionRequestEvent struct {
+	ActingEntry     *donburi.Entry
+	SelectedPartKey PartSlotKey
+	TargetEntry     *donburi.Entry
+	TargetPartSlot  PartSlotKey
+}
+
+func (e GameActionRequestEvent) isUIEvent() {}
 
 func (e PlayerActionSelectedEvent) isUIEvent() {}
 

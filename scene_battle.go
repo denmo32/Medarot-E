@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -75,6 +76,8 @@ func (bs *BattleScene) Update() error {
 	bs.tickCount++
 	bs.ui.Update()
 
+	log.Printf("BattleScene.Update: Current State: %s", bs.state)
+
 	bs.playerActionPendingQueue, bs.state = UpdateUIEventProcessorSystem(
 		bs.world, bs.battleLogic, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
 	)
@@ -104,28 +107,36 @@ func (bs *BattleScene) Update() error {
 	if result.GameOver {
 		bs.winner = result.Winner
 		nextState = StateMessage
+		log.Printf("BattleScene.Update: Transitioning to StateMessage (GameOver)")
 	} else if result.ActionStarted {
 		nextState = StateAnimatingAction
+		log.Printf("BattleScene.Update: Transitioning to StateAnimatingAction")
 	} else if result.MessageQueued {
 		nextState = StateMessage
+		log.Printf("BattleScene.Update: Transitioning to StateMessage (MessageQueued)")
 	} else if result.PlayerActionRequired {
 		nextState = StatePlayerActionSelect
+		log.Printf("BattleScene.Update: Transitioning to StatePlayerActionSelect")
 	} else if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
 		nextState = StatePlaying
+		log.Printf("BattleScene.Update: Transitioning to StatePlaying (PlayerActionSelect finished)")
 	} else if bs.state == StateAnimatingAction && bs.ui.IsAnimationFinished(bs.tickCount) {
 		nextState = StateMessage
-	} else if bs.state == StateMessage {
-		if bs.messageManager.IsFinished() {
-			if bs.winner != TeamNone {
-				nextState = StateGameOver
-			} else {
-				nextState = StatePlaying
-			}
+		log.Printf("BattleScene.Update: Transitioning to StateMessage (Animation finished)")
+	} else if bs.state == StateMessage && result.MessageFinished {
+		log.Printf("BattleScene.Update: MessageFinished is true. winner: %v", bs.winner)
+		if bs.winner != TeamNone {
+			nextState = StateGameOver
+			log.Printf("BattleScene.Update: Transitioning to StateGameOver")
+		} else {
+			nextState = StatePlaying
+			log.Printf("BattleScene.Update: Transitioning to StatePlaying (Message finished)")
 		}
 	}
 
 	// Transition to new state if changed
 	if nextState != bs.state {
+		log.Printf("BattleScene.Update: State changed from %s to %s", bs.state, nextState)
 		bs.state = nextState
 		bs.currentState = bs.states[nextState]
 	}
