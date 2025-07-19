@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 
 	"github.com/yohamta/donburi"
@@ -258,54 +257,6 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	e.postActionEffectSystem.Process(&actionResult)
 
 	return actionResult
-}
-
-// processPostActionEffects は、アクション実行後の共通処理（パーツ破壊、ステータス効果適用など）を適用します。
-func (e *ActionExecutor) processPostActionEffects(result *ActionResult) {
-	if result == nil {
-		return
-	}
-
-	// 1. 適用されるべきステータス効果を処理
-	if len(result.AppliedEffects) > 0 {
-		// 効果の適用対象を決定する（通常は行動者自身）
-		// 将来的には効果ごとに対象を指定できるように拡張可能
-		targetEntry := result.ActingEntry
-		if targetEntry != nil {
-			for _, effect := range result.AppliedEffects {
-				e.statusEffectSystem.Apply(targetEntry, effect)
-			}
-		}
-	}
-
-	// 2. パーツ破壊による状態遷移
-	if result.TargetEntry != nil && result.TargetPartBroken && result.ActualHitPartSlot == PartSlotHead {
-		state := StateComponent.Get(result.TargetEntry)
-		if state.FSM.Can("break") {
-			err := state.FSM.Event(context.Background(), "break", result.TargetEntry)
-			if err != nil {
-				log.Printf("Error breaking medarot %s: %v", SettingsComponent.Get(result.TargetEntry).Name, err)
-			}
-		}
-	}
-
-	// 3. 行動後のクリーンアップ
-	//    チャージ中に付与された効果で、持続時間が0のものを解除する
-	if result.ActingEntry != nil && result.ActingEntry.HasComponent(ActiveEffectsComponent) {
-		activeEffects := ActiveEffectsComponent.Get(result.ActingEntry)
-		// このループ内でRemoveを呼ぶとスライスが変更されて危険なので、
-		// 解除すべきエフェクトを一旦リストアップする
-		effectsToRemove := []StatusEffect{}
-		for _, activeEffect := range activeEffects.Effects {
-			if activeEffect.RemainingDur == 0 {
-				effectsToRemove = append(effectsToRemove, activeEffect.Effect)
-			}
-		}
-		// リストアップしたエフェクトを安全に解除する
-		for _, effect := range effectsToRemove {
-			e.statusEffectSystem.Remove(result.ActingEntry, effect)
-		}
-	}
 }
 
 // SupportTraitExecutor は TraitSupport の介入アクションを処理します。
