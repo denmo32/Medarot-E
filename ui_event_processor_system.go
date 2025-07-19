@@ -101,6 +101,7 @@ func UpdateUIEventProcessorSystem(
 	case event := <-uiEventChannel:
 		switch e := event.(type) {
 		case PlayerActionSelectedEvent:
+			// ProcessPlayerActionSelected は GameActionRequestEvent をポストする責任を持つ
 			newPlayerActionPendingQueue = ProcessPlayerActionSelected(
 				world, battleLogic, playerActionPendingQueue, ui, e)
 		case GameActionRequestEvent:
