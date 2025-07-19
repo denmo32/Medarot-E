@@ -31,13 +31,14 @@ type WeaponTypeEffectHandler interface {
 
 // ActionExecutor はアクションの実行に関するロジックをカプセル化します。
 type ActionExecutor struct {
-	world              donburi.World
-	battleLogic        *BattleLogic
-	gameConfig         *Config
-	statusEffectSystem *StatusEffectSystem
-	handlers           map[Trait]TraitActionHandler
-	weaponHandlers     map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
-	baseAttackHandler  *BaseAttackHandler
+	world                  donburi.World
+	battleLogic            *BattleLogic
+	gameConfig             *Config
+	statusEffectSystem     *StatusEffectSystem
+	postActionEffectSystem *PostActionEffectSystem // 新しく追加したシステム
+	handlers               map[Trait]TraitActionHandler
+	weaponHandlers         map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
+	baseAttackHandler      *BaseAttackHandler
 }
 
 // --- BaseAttackHandler ---
@@ -193,12 +194,16 @@ func resolveAttackTarget(
 
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
 func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig *Config) *ActionExecutor {
+	statusEffectSystem := NewStatusEffectSystem(world)                             // Create once
+	postActionEffectSystem := NewPostActionEffectSystem(world, statusEffectSystem) // Use the created instance
+
 	return &ActionExecutor{
-		world:              world,
-		battleLogic:        battleLogic,
-		gameConfig:         gameConfig,
-		statusEffectSystem: NewStatusEffectSystem(world),
-		baseAttackHandler:  &BaseAttackHandler{},
+		world:                  world,
+		battleLogic:            battleLogic,
+		gameConfig:             gameConfig,
+		statusEffectSystem:     statusEffectSystem,     // Assign the created instance
+		postActionEffectSystem: postActionEffectSystem, // Assign the new system
+		baseAttackHandler:      &BaseAttackHandler{},
 		handlers: map[Trait]TraitActionHandler{
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
@@ -250,7 +255,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	}
 
 	// アクション後の共通処理を実行
-	e.processPostActionEffects(&actionResult)
+	e.postActionEffectSystem.Process(&actionResult)
 
 	return actionResult
 }
