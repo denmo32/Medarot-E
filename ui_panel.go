@@ -38,7 +38,7 @@ func NewPanel(opts *PanelOptions, uiFactory *UIFactory, children ...widget.Prefe
 
 	// 枠線が指定されている場合、サイバーパンク風のパネル画像を生成
 	if opts.BorderThickness > 0 {
-		bg = uiFactory.createCyberpunkPanelNineSlice(opts.BorderThickness)
+		bg = uiFactory.imageGenerator.createCyberpunkPanelNineSlice(opts.BorderThickness)
 	}
 
 	widgetOpts := []widget.WidgetOpt{
