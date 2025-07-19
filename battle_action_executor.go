@@ -19,36 +19,46 @@ type TraitActionHandler interface {
 		battleLogic *BattleLogic,
 		gameConfig *Config,
 		actingPartDef *PartDefinition,
+		initialResult *ActionResult, // 新しい引数
 	) ActionResult
 }
 
 // ActionExecutor はアクションの実行に関するロジックをカプセル化します。
 type ActionExecutor struct {
-	world       donburi.World
-	battleLogic *BattleLogic
-	gameConfig  *Config
-	handlers    map[Trait]TraitActionHandler
+	world             donburi.World
+	battleLogic       *BattleLogic
+	gameConfig        *Config
+	handlers          map[Trait]TraitActionHandler
+	baseAttackHandler *BaseAttackHandler // 新しいフィールド
 }
 
 // --- BaseAttackHandler ---
 
 // BaseAttackHandler は、すべての攻撃アクションに共通するロジックをカプセル化します。
-type BaseAttackHandler struct {
-	world       donburi.World
-	battleLogic *BattleLogic
-	gameConfig  *Config
-}
+type BaseAttackHandler struct{}
 
 // PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 func (h *BaseAttackHandler) PerformAttack(
 	actingEntry *donburi.Entry,
 	intent *ActionIntent,
-	targetEntry *donburi.Entry,
-	targetPartSlot PartSlotKey,
+	battleLogic *BattleLogic, // battleLogic を引数に追加
+	gameConfig *Config, // gameConfig を引数に追加
+	actingPartDef *PartDefinition, // actingPartDef を引数に追加
 ) ActionResult {
-	partsComp := PartsComponent.Get(actingEntry)
-	actingPartInstance := partsComp.Map[intent.SelectedPartKey]
-	actingPartDef, _ := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
+
+	// ターゲットが解決できなかった場合
+	if targetEntry == nil {
+		return ActionResult{
+			ActingEntry:    actingEntry,
+			ActionDidHit:   false,
+			AttackerName:   SettingsComponent.Get(actingEntry).Name,
+			ActionName:     actingPartDef.PartName,
+			ActionTrait:    string(actingPartDef.Trait),
+			ActionCategory: actingPartDef.Category,
+			WeaponType:     actingPartDef.WeaponType,
+		}
+	}
 
 	result := ActionResult{
 		ActingEntry:    actingEntry,
@@ -68,49 +78,21 @@ func (h *BaseAttackHandler) PerformAttack(
 		return result
 	}
 
-	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, h.battleLogic)
+	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, battleLogic) // h.battleLogic を battleLogic に変更
 	result.ActionDidHit = didHit
 	if !didHit {
 		return result
 	}
 
-	damage, isCritical := h.battleLogic.DamageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef)
+	damage, isCritical := battleLogic.DamageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef) // h.battleLogic を battleLogic に変更
 	result.IsCritical = isCritical
 	result.OriginalDamage = damage
 
-	applyDamageAndDefense(&result, actingEntry, actingPartDef, h.battleLogic)
+	applyDamageAndDefense(&result, actingEntry, actingPartDef, battleLogic) // h.battleLogic を battleLogic に変更
 
 	finalizeActionResult(&result, actingEntry, actingPartDef)
 
 	return result
-}
-
-// executeBaseAttack は、ターゲット解決と基本的な攻撃処理を実行します。
-func (h *BaseAttackHandler) executeBaseAttack(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *ActionIntent,
-	battleLogic *BattleLogic,
-	gameConfig *Config,
-	actingPartDef *PartDefinition,
-) ActionResult {
-	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
-
-	// ターゲットが解決できなかった場合
-	if targetEntry == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    string(actingPartDef.Trait),
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	// BaseAttackHandler の PerformAttack を呼び出す
-	return h.PerformAttack(actingEntry, intent, targetEntry, targetPartSlot)
 }
 
 // --- attack action helpers ---
@@ -203,7 +185,7 @@ func resolveAttackTarget(
 
 // ShootHandler は TraitShoot のアクションを処理します。
 type ShootHandler struct {
-	BaseAttackHandler // BaseAttackHandler を埋め込む
+	// BaseAttackHandler の埋め込みを削除
 }
 
 func (h *ShootHandler) Execute(
@@ -213,17 +195,15 @@ func (h *ShootHandler) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	initialResult *ActionResult,
 ) ActionResult {
-	// 共通処理を呼び出す
-	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
-
 	// ShootHandler固有のロジックは特にないため、そのまま返す
-	return result
+	return *initialResult
 }
 
 // AimHandler は TraitAim のアクションを処理します。
 type AimHandler struct {
-	BaseAttackHandler // BaseAttackHandler を埋め込む
+	// BaseAttackHandler の埋め込みを削除
 }
 
 func (h *AimHandler) Execute(
@@ -233,9 +213,9 @@ func (h *AimHandler) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	initialResult *ActionResult,
 ) ActionResult {
-	// 共通処理を呼び出す
-	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
+	result := *initialResult
 
 	// AimHandler固有のロジック（例：クリティカルボーナス適用、デバフ付与など）をここに追加
 	// 例: クリティカルヒット時の追加ダメージやデバフ付与
@@ -251,7 +231,7 @@ func (h *AimHandler) Execute(
 
 // StrikeHandler は TraitStrike のアクションを処理します。
 type StrikeHandler struct {
-	BaseAttackHandler // BaseAttackHandler を埋め込む
+	// BaseAttackHandler の埋め込みを削除
 }
 
 func (h *StrikeHandler) Execute(
@@ -261,9 +241,9 @@ func (h *StrikeHandler) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	initialResult *ActionResult,
 ) ActionResult {
-	// 共通処理を呼び出す
-	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
+	result := *initialResult
 
 	// StrikeHandler固有のロジックをここに追加
 
@@ -272,7 +252,7 @@ func (h *StrikeHandler) Execute(
 
 // BerserkHandler は TraitBerserk のアクションを処理します。
 type BerserkHandler struct {
-	BaseAttackHandler // BaseAttackHandler を埋め込む
+	// BaseAttackHandler の埋め込みを削除
 }
 
 func (h *BerserkHandler) Execute(
@@ -282,9 +262,9 @@ func (h *BerserkHandler) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	initialResult *ActionResult,
 ) ActionResult {
-	// 共通処理を呼び出す
-	result := h.executeBaseAttack(actingEntry, world, intent, battleLogic, gameConfig, actingPartDef)
+	result := *initialResult
 
 	// BerserkHandler固有のロジックをここに追加
 	// 例: 攻撃成功時に自身の攻撃力を一時的に上昇させる
@@ -300,14 +280,15 @@ func (h *BerserkHandler) Execute(
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
 func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig *Config) *ActionExecutor {
 	return &ActionExecutor{
-		world:       world,
-		battleLogic: battleLogic,
-		gameConfig:  gameConfig,
+		world:             world,
+		battleLogic:       battleLogic,
+		gameConfig:        gameConfig,
+		baseAttackHandler: &BaseAttackHandler{}, // BaseAttackHandler を初期化
 		handlers: map[Trait]TraitActionHandler{
-			TraitShoot:    &ShootHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
-			TraitAim:      &AimHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
-			TraitStrike:   &StrikeHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
-			TraitBerserk:  &BerserkHandler{BaseAttackHandler: BaseAttackHandler{world: world, battleLogic: battleLogic, gameConfig: gameConfig}},
+			TraitShoot:    &ShootHandler{},   // BaseAttackHandler の埋め込みを削除
+			TraitAim:      &AimHandler{},     // BaseAttackHandler の埋め込みを削除
+			TraitStrike:   &StrikeHandler{},  // BaseAttackHandler の埋め込みを削除
+			TraitBerserk:  &BerserkHandler{}, // BaseAttackHandler の埋め込みを削除
 			TraitSupport:  &SupportTraitExecutor{},
 			TraitObstruct: &ObstructTraitExecutor{},
 		},
@@ -330,8 +311,16 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 		}
 	}
 
-	// ハンドラを呼び出してアクションを実行
-	actionResult := handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef)
+	var actionResult ActionResult
+	switch actingPartDef.Trait {
+	case TraitShoot, TraitAim, TraitStrike, TraitBerserk:
+		// 攻撃系アクションの場合、まずBaseAttackHandlerで共通処理を実行
+		initialResult := e.baseAttackHandler.PerformAttack(actingEntry, intent, e.battleLogic, e.gameConfig, actingPartDef)
+		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, &initialResult)
+	default:
+		// その他のアクションの場合、initialResultはnilで渡す
+		actionResult = handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
+	}
 
 	// アクション後の共通処理を実行
 	e.processPostActionEffects(&actionResult)
@@ -377,6 +366,7 @@ func (h *SupportTraitExecutor) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	initialResult *ActionResult, // 新しい引数
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
 	result := ActionResult{
@@ -437,6 +427,7 @@ func (h *ObstructTraitExecutor) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	initialResult *ActionResult, // 新しい引数
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
 	result := ActionResult{
