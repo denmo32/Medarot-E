@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -101,8 +100,8 @@ func (s *PlayerActionSelectState) Update(world donburi.World, battleLogic *Battl
 
 			// ここでViewModelを構築し、UIに渡す
 			actionModalVM := BuildActionModalViewModel(actingEntry, actionTargetMap) // 新規追加
-			ui.ShowActionModal(actionModalVM) // 変更: ViewModelを渡す
-			return playerActionPendingQueue, &StateUpdateResult{}, nil // モーダル表示中は状態維持
+			ui.ShowActionModal(actionModalVM)                                        // 変更: ViewModelを渡す
+			return playerActionPendingQueue, &StateUpdateResult{}, nil               // モーダル表示中は状態維持
 		} else {
 			// 無効または待機状態でないならキューから削除して次のプレイヤーを処理
 			playerActionPendingQueue = playerActionPendingQueue[1:]
@@ -151,7 +150,6 @@ type MessageState struct{}
 func (s *MessageState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
 	messageManager.Update()
 	messageFinished := messageManager.IsFinished()
-	log.Printf("MessageState.Update: messageFinished = %t", messageFinished)
 	// メッセージ表示が完了したかどうかをBattleSceneに通知
 	return playerActionPendingQueue, &StateUpdateResult{MessageFinished: messageFinished}, nil
 }

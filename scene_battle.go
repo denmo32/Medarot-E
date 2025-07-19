@@ -1,11 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"log"
-
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/yohamta/donburi"
 )
 
@@ -76,8 +72,6 @@ func (bs *BattleScene) Update() error {
 	bs.tickCount++
 	bs.ui.Update()
 
-	log.Printf("BattleScene.Update: Current State: %s", bs.state)
-
 	bs.playerActionPendingQueue, bs.state = UpdateUIEventProcessorSystem(
 		bs.world, bs.battleLogic, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
 	)
@@ -107,36 +101,35 @@ func (bs *BattleScene) Update() error {
 	if result.GameOver {
 		bs.winner = result.Winner
 		nextState = StateMessage
-		log.Printf("BattleScene.Update: Transitioning to StateMessage (GameOver)")
+		// log.Printf("BattleScene.Update: Transitioning to StateMessage (GameOver)")
 	} else if result.ActionStarted {
 		nextState = StateAnimatingAction
-		log.Printf("BattleScene.Update: Transitioning to StateAnimatingAction")
+		// log.Printf("BattleScene.Update: Transitioning to StateAnimatingAction")
 	} else if result.MessageQueued {
 		nextState = StateMessage
-		log.Printf("BattleScene.Update: Transitioning to StateMessage (MessageQueued)")
+		// log.Printf("BattleScene.Update: Transitioning to StateMessage (MessageQueued)")
 	} else if result.PlayerActionRequired {
 		nextState = StatePlayerActionSelect
-		log.Printf("BattleScene.Update: Transitioning to StatePlayerActionSelect")
+		// log.Printf("BattleScene.Update: Transitioning to StatePlayerActionSelect")
 	} else if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
 		nextState = StatePlaying
-		log.Printf("BattleScene.Update: Transitioning to StatePlaying (PlayerActionSelect finished)")
+		// log.Printf("BattleScene.Update: Transitioning to StatePlaying (PlayerActionSelect finished)")
 	} else if bs.state == StateAnimatingAction && bs.ui.IsAnimationFinished(bs.tickCount) {
 		nextState = StateMessage
-		log.Printf("BattleScene.Update: Transitioning to StateMessage (Animation finished)")
+		// log.Printf("BattleScene.Update: Transitioning to StateMessage (Animation finished)")
 	} else if bs.state == StateMessage && result.MessageFinished {
-		log.Printf("BattleScene.Update: MessageFinished is true. winner: %v", bs.winner)
+		// log.Printf("BattleScene.Update: MessageFinished is true. winner: %v", bs.winner)
 		if bs.winner != TeamNone {
 			nextState = StateGameOver
-			log.Printf("BattleScene.Update: Transitioning to StateGameOver")
+			// log.Printf("BattleScene.Update: Transitioning to StateGameOver")
 		} else {
 			nextState = StatePlaying
-			log.Printf("BattleScene.Update: Transitioning to StatePlaying (Message finished)")
+			// log.Printf("BattleScene.Update: Transitioning to StatePlaying (Message finished)")
 		}
 	}
 
 	// Transition to new state if changed
 	if nextState != bs.state {
-		log.Printf("BattleScene.Update: State changed from %s to %s", bs.state, nextState)
 		bs.state = nextState
 		bs.currentState = bs.states[nextState]
 	}
@@ -158,9 +151,6 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	// 現在のステートに描画を委譲
 	bs.currentState.Draw(screen)
 
-	if bs.debugMode {
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f\nState: %s", ebiten.ActualTPS(), ebiten.ActualFPS(), bs.state))
-	}
 }
 
 func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
