@@ -105,7 +105,7 @@ func UpdateUIEventProcessorSystem(
 			newPlayerActionPendingQueue = ProcessPlayerActionSelected(
 				world, battleLogic, playerActionPendingQueue, ui, e)
 		case GameActionRequestEvent:
-			successful := StartCharge(e.ActingEntry, e.SelectedPartKey, e.TargetEntry, e.TargetPartSlot, world, battleLogic.PartInfoProvider)
+			successful := StartCharge(e.ActingEntry, e.SelectedPartKey, e.TargetEntry, e.TargetPartSlot, world, battleLogic)
 			if !successful {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(e.ActingEntry).Name)
 				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加

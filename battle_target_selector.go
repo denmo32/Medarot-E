@@ -12,9 +12,9 @@ import (
 
 // TargetSelector はターゲット選択やパーツ選択に関連するロジックを担当します。
 type TargetSelector struct {
-	world            donburi.World
-	config           *Config
-	partInfoProvider *PartInfoProvider
+	world  donburi.World
+	config *Config
+	// partInfoProvider *PartInfoProvider // 削除
 }
 
 // NewTargetSelector は新しい TargetSelector のインスタンスを生成します。
@@ -22,13 +22,13 @@ func NewTargetSelector(world donburi.World, config *Config) *TargetSelector {
 	return &TargetSelector{world: world, config: config}
 }
 
-// SetPartInfoProvider は PartInfoProvider の依存性を設定します。
-func (ts *TargetSelector) SetPartInfoProvider(pip *PartInfoProvider) {
-	ts.partInfoProvider = pip
-}
+// SetPartInfoProvider は PartInfoProvider の依存性を設定します。 // 削除
+// func (ts *TargetSelector) SetPartInfoProvider(pip *PartInfoProvider) {
+// 	ts.partInfoProvider = pip
+// }
 
 // SelectDefensePart は防御に使用するパーツのインスタンスを選択します。
-func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstanceData {
+func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry, battleLogic *BattleLogic) *PartInstanceData {
 	partsComp := PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
@@ -43,7 +43,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstance
 		if partInst.IsBroken {
 			continue
 		}
-		partDef, defFound := ts.partInfoProvider.gameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
 		if !defFound {
 			log.Printf("SelectDefensePart: PartDefinition not found for ID %s", partInst.DefinitionID)
 			continue
@@ -69,7 +69,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstance
 }
 
 // SelectPartToDamage は、行動者の性格に基づいて攻撃対象のパーツインスタンスを選択します。
-func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry) *PartInstanceData {
+func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry, battleLogic *BattleLogic) *PartInstanceData {
 	partsComp := PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
@@ -109,14 +109,14 @@ func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry)
 }
 
 // FindClosestEnemy は指定されたエンティティに最も近い敵エンティティを見つけます。
-func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry) *donburi.Entry {
+func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry, battleLogic *BattleLogic) *donburi.Entry {
 	var closestEnemy *donburi.Entry
 	var minDiff float32 = math.MaxFloat32 // float32 を使用するため、MaxFloat32 に変更
 
-	actingX := ts.partInfoProvider.CalculateMedarotXPosition(actingEntry, float32(ts.config.UI.Screen.Width))
+	actingX := battleLogic.GetPartInfoProvider().CalculateMedarotXPosition(actingEntry, float32(ts.config.UI.Screen.Width))
 
 	for _, enemy := range ts.GetTargetableEnemies(actingEntry) {
-		enemyX := ts.partInfoProvider.CalculateMedarotXPosition(enemy, float32(ts.config.UI.Screen.Width))
+		enemyX := battleLogic.GetPartInfoProvider().CalculateMedarotXPosition(enemy, float32(ts.config.UI.Screen.Width))
 		diff := float32(math.Abs(float64(actingX - enemyX))) // float32 の差を計算
 		if diff < minDiff {
 			minDiff = diff

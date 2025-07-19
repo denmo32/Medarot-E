@@ -57,61 +57,56 @@ func (h *BaseAttackHandler) Execute(
 ) ActionResult {
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
-	return h.performAttackInternal(actingEntry, intent, battleLogic, gameConfig, actingPartDef)
+	return h.performAttackLogic(actingEntry, battleLogic, actingPartDef)
 }
 
-// performAttackInternal は、PerformAttack の元のロジックを保持します。
-func (h *BaseAttackHandler) performAttackInternal(
-	actingEntry *donburi.Entry,
-	_ *ActionIntent,
-	battleLogic *BattleLogic,
-	_ *Config,
-	actingPartDef *PartDefinition,
-) ActionResult {
-	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
-
-	// ターゲットが解決できなかった場合
-	if targetEntry == nil {
-		return ActionResult{
-			ActingEntry:    actingEntry,
-			ActionDidHit:   false,
-			AttackerName:   SettingsComponent.Get(actingEntry).Name,
-			ActionName:     actingPartDef.PartName,
-			ActionTrait:    actingPartDef.Trait, // string() を削除
-			ActionCategory: actingPartDef.Category,
-			WeaponType:     actingPartDef.WeaponType,
-		}
-	}
-
-	result := ActionResult{
+// initializeAttackResult は ActionResult を初期化します。
+func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefinition) ActionResult {
+	return ActionResult{
 		ActingEntry:    actingEntry,
-		TargetEntry:    targetEntry,
-		TargetPartSlot: targetPartSlot,
-		ActionDidHit:   true, // 初期値
+		ActionDidHit:   false, // 初期値はfalse
 		AttackerName:   SettingsComponent.Get(actingEntry).Name,
-		DefenderName:   SettingsComponent.Get(targetEntry).Name,
 		ActionName:     actingPartDef.PartName,
-		ActionTrait:    actingPartDef.Trait, // string() を削除
+		ActionTrait:    actingPartDef.Trait,
 		ActionCategory: actingPartDef.Category,
 		WeaponType:     actingPartDef.WeaponType,
 	}
+}
+
+// performAttackLogic は攻撃アクションの主要なロジックを実行します。
+func (h *BaseAttackHandler) performAttackLogic(
+	actingEntry *donburi.Entry,
+	battleLogic *BattleLogic,
+	actingPartDef *PartDefinition,
+) ActionResult {
+	result := initializeAttackResult(actingEntry, actingPartDef)
+
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
+	if targetEntry == nil {
+		return result // ターゲットが見つからない場合は、ActionDidHit: false のまま返す
+	}
+
+	result.TargetEntry = targetEntry
+	result.TargetPartSlot = targetPartSlot
+	result.DefenderName = SettingsComponent.Get(targetEntry).Name
+	result.ActionDidHit = true // ターゲットが見つかったので、初期値をtrueに設定
 
 	if !validateTarget(targetEntry, targetPartSlot) {
 		result.ActionDidHit = false
 		return result
 	}
 
-	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, battleLogic) // h.battleLogic を battleLogic に変更
+	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, battleLogic)
 	result.ActionDidHit = didHit
 	if !didHit {
 		return result
 	}
 
-	damage, isCritical := battleLogic.DamageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef) // h.battleLogic を battleLogic に変更
+	damage, isCritical := battleLogic.DamageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef, battleLogic)
 	result.IsCritical = isCritical
 	result.OriginalDamage = damage
 
-	applyDamageAndDefense(&result, actingEntry, actingPartDef, battleLogic) // h.battleLogic を battleLogic に変更
+	applyDamageAndDefense(&result, actingEntry, actingPartDef, battleLogic)
 
 	finalizeActionResult(&result)
 
@@ -132,7 +127,7 @@ func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool
 }
 
 func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) bool {
-	return battleLogic.HitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef)
+	return battleLogic.HitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef, battleLogic)
 }
 
 func applyDamageAndDefense(
@@ -141,17 +136,17 @@ func applyDamageAndDefense(
 	actingPartDef *PartDefinition,
 	battleLogic *BattleLogic,
 ) {
-	defendingPartInst := battleLogic.TargetSelector.SelectDefensePart(result.TargetEntry)
+	defendingPartInst := battleLogic.TargetSelector.SelectDefensePart(result.TargetEntry, battleLogic)
 
-	if defendingPartInst != nil && battleLogic.HitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef) {
+	if defendingPartInst != nil && battleLogic.HitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, battleLogic) {
 		result.ActionIsDefended = true
 		defendingPartDef, _ := GlobalGameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
 		result.DefendingPartType = string(defendingPartDef.Type)
 		result.ActualHitPartSlot = battleLogic.PartInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
 
-		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
+		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry, battleLogic)
 		result.DamageDealt = finalDamage
-		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage)
+		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage, battleLogic)
 		result.TargetPartBroken = defendingPartInst.IsBroken
 	} else {
 		result.ActionIsDefended = false
@@ -159,7 +154,7 @@ func applyDamageAndDefense(
 		result.DamageDealt = result.OriginalDamage
 		result.ActualHitPartSlot = result.TargetPartSlot
 
-		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage)
+		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage, battleLogic)
 		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
 	}
 }
@@ -187,15 +182,15 @@ func resolveAttackTarget(
 		}
 		return targetComp.TargetEntity, targetComp.TargetPartSlot
 	case PolicyClosestAtExecution:
-		closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry)
+		closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry, battleLogic)
 		if closestEnemy == nil {
 			return nil, "" // ターゲットが見つからない場合は失敗
 		}
-		targetPart := battleLogic.TargetSelector.SelectPartToDamage(closestEnemy, actingEntry)
+		targetPart := battleLogic.TargetSelector.SelectPartToDamage(closestEnemy, actingEntry, battleLogic)
 		if targetPart == nil {
 			return nil, "" // ターゲットパーツが見つからない場合は失敗
 		}
-		slot := battleLogic.PartInfoProvider.FindPartSlot(closestEnemy, targetPart)
+		slot := battleLogic.GetPartInfoProvider().FindPartSlot(closestEnemy, targetPart)
 		if slot == "" {
 			return nil, "" // ターゲットスロットが見つからない場合は失敗
 		}

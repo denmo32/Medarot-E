@@ -40,7 +40,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 
 	// AIの行動選択
 	if !ui.IsActionModalVisible() && len(playerActionPendingQueue) == 0 {
-		UpdateAIInputSystem(world, battleLogic.PartInfoProvider, battleLogic.TargetSelector)
+		UpdateAIInputSystem(world, battleLogic)
 	}
 
 	// プレイヤーの行動選択が必要かチェック
@@ -120,7 +120,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 					if !ok {
 						personality = PersonalityRegistry["リーダー"]
 					}
-					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic.TargetSelector, battleLogic.PartInfoProvider)
+					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic)
 				}
 				actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
 			}
@@ -167,7 +167,7 @@ func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQue
 
 			actingEntry := result.ActingEntry
 			if actingEntry.Valid() && !StateComponent.Get(actingEntry).FSM.Is(string(StateBroken)) {
-				StartCooldownSystem(actingEntry, world, battleLogic.PartInfoProvider)
+				StartCooldownSystem(actingEntry, world, battleLogic)
 			}
 			ui.ClearCurrentTarget()
 		})

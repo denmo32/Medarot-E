@@ -10,9 +10,9 @@ import (
 
 // DamageCalculator はダメージ計算に関連するロジックを担当します。
 type DamageCalculator struct {
-	world            donburi.World
-	config           *Config
-	partInfoProvider *PartInfoProvider
+	world  donburi.World
+	config *Config
+	// partInfoProvider *PartInfoProvider // 削除
 }
 
 // NewDamageCalculator は新しい DamageCalculator のインスタンスを生成します。
@@ -20,13 +20,13 @@ func NewDamageCalculator(world donburi.World, config *Config) *DamageCalculator 
 	return &DamageCalculator{world: world, config: config}
 }
 
-// SetPartInfoProvider は PartInfoProvider の依存性を設定します。
-func (dc *DamageCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
-	dc.partInfoProvider = pip
-}
+// SetPartInfoProvider は PartInfoProvider の依存性を設定します。 // 削除
+// func (dc *DamageCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
+// 	dc.partInfoProvider = pip
+// }
 
 // ApplyDamage はパーツインスタンスにダメージを適用し、メダロットの状態を更新します。
-func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInstanceData, damage int) {
+func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInstanceData, damage int, battleLogic *BattleLogic) {
 	if damage < 0 {
 		damage = 0
 	}
@@ -36,22 +36,22 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 		partInst.IsBroken = true
 		settings := SettingsComponent.Get(entry)
 		// Get PartDefinition for logging PartName
-		partDef, defFound := dc.partInfoProvider.gameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
 		partNameForLog := "(不明パーツ)"
 		if defFound {
 			partNameForLog = partDef.PartName
 		}
-		log.Print(dc.partInfoProvider.gameDataManager.Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
+		log.Print(battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
 			"ordered_args": []interface{}{settings.Name, partNameForLog, partInst.DefinitionID},
 		}))
 
 		// パーツ破壊時にバフを解除する
-		dc.partInfoProvider.RemoveBuffsFromSource(entry, partInst)
+		battleLogic.GetPartInfoProvider().RemoveBuffsFromSource(entry, partInst)
 	}
 }
 
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
-func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition) (int, bool) {
+func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) (int, bool) {
 	// 1. 計算式の取得
 	formula, ok := FormulaManager[actingPartDef.Trait]
 	if !ok {
@@ -60,16 +60,16 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	}
 
 	// 2. 基本パラメータの取得
-	successRate := dc.partInfoProvider.GetSuccessRate(attacker, actingPartDef)
+	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, actingPartDef)
 	power := float64(actingPartDef.Power)
 
 	// 特性による威力ボーナスを加算
 	if formula != nil {
 		for _, bonus := range formula.PowerBonuses {
-			power += dc.partInfoProvider.GetPartParameterValue(attacker, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
+			power += battleLogic.GetPartInfoProvider().GetPartParameterValue(attacker, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
-	evasion := dc.partInfoProvider.GetEvasionRate(target)
+	evasion := battleLogic.GetPartInfoProvider().GetEvasionRate(target)
 
 	// クリティカル判定
 	isCritical := false
@@ -141,9 +141,9 @@ func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, a
 }
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
-func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry) int {
+func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry, battleLogic *BattleLogic) int {
 	// ダメージ軽減ロジック: ダメージ = 元ダメージ - 脚部パーツの防御力
-	defenseValue := dc.partInfoProvider.GetPartParameterValue(targetEntry, PartSlotLegs, Defense)
+	defenseValue := battleLogic.GetPartInfoProvider().GetPartParameterValue(targetEntry, PartSlotLegs, Defense)
 	reducedDamage := originalDamage - int(defenseValue)
 	if reducedDamage < 1 {
 		reducedDamage = 1 // 最低でも1ダメージは保証

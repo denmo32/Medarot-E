@@ -12,6 +12,11 @@ type BattleLogic struct {
 	PartInfoProvider *PartInfoProvider
 }
 
+// GetPartInfoProvider は PartInfoProvider のインスタンスを返します。
+func (bl *BattleLogic) GetPartInfoProvider() *PartInfoProvider {
+	return bl.PartInfoProvider
+}
+
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
 func NewBattleLogic(world donburi.World, config *Config) *BattleLogic {
 	bl := &BattleLogic{}
@@ -22,10 +27,10 @@ func NewBattleLogic(world donburi.World, config *Config) *BattleLogic {
 	bl.HitCalculator = NewHitCalculator(world, config)
 	bl.TargetSelector = NewTargetSelector(world, config)
 
-	// ヘルパー間の依存性を注入
-	bl.DamageCalculator.SetPartInfoProvider(bl.PartInfoProvider)
-	bl.HitCalculator.SetPartInfoProvider(bl.PartInfoProvider)
-	bl.TargetSelector.SetPartInfoProvider(bl.PartInfoProvider)
+	// ヘルパー間の依存性注入は不要になったため削除
+	// bl.DamageCalculator.SetPartInfoProvider(bl.PartInfoProvider)
+	// bl.HitCalculator.SetPartInfoProvider(bl.PartInfoProvider)
+	// bl.TargetSelector.SetPartInfoProvider(bl.PartInfoProvider)
 
 	return bl
 }

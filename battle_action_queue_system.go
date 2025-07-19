@@ -42,13 +42,13 @@ func UpdateActionQueueSystem(
 }
 
 // StartCooldownSystem はクールダウン状態を開始します。
-func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProvider *PartInfoProvider) {
+func StartCooldownSystem(entry *donburi.Entry, world donburi.World, battleLogic *BattleLogic) {
 	intent := ActionIntentComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 	var actingPartDef *PartDefinition
 
 	if actingPartInstance, ok := partsComp.Map[intent.SelectedPartKey]; ok {
-		if def, defFound := GlobalGameDataManager.GetPartDefinition(actingPartInstance.DefinitionID); defFound {
+		if def, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(actingPartInstance.DefinitionID); defFound {
 			actingPartDef = def
 		} else {
 			log.Printf("エラー: StartCooldownSystem - ID %s のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID)
@@ -63,7 +63,7 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProv
 	}
 
 	// 新しい共通関数を呼び出す
-	totalTicks := partInfoProvider.CalculateGaugeDuration(baseSeconds, entry)
+	totalTicks := battleLogic.GetPartInfoProvider().CalculateGaugeDuration(baseSeconds, entry)
 
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
@@ -84,8 +84,8 @@ func StartCharge(
 	targetEntry *donburi.Entry,
 	targetPartSlot PartSlotKey,
 	world donburi.World,
-	partInfoProvider *PartInfoProvider,
+	battleLogic *BattleLogic, // battleLogic を追加
 ) bool {
-	system := NewChargeInitiationSystem(world, partInfoProvider)
+	system := NewChargeInitiationSystem(world, battleLogic.GetPartInfoProvider()) // battleLogic から取得
 	return system.ProcessChargeRequest(entry, partKey, targetEntry, targetPartSlot)
 }
