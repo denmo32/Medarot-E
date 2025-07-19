@@ -10,18 +10,17 @@ import (
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 type BattleContext struct {
-	World          donburi.World
-	BattleLogic    *BattleLogic
-	UI             UIInterface
-	MessageManager *UIMessageDisplayManager
-	Config         *Config
-	SceneManager   *SceneManager
-	Tick           int
+	World        donburi.World
+	BattleLogic  *BattleLogic
+	UI           UIInterface
+	Config       *Config
+	SceneManager *SceneManager
+	Tick         int
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error)
+	Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -29,14 +28,14 @@ type BattleState interface {
 
 type PlayingState struct{}
 
-func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
+func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	battleLogic := ctx.BattleLogic
 	ui := ctx.UI
-	messageManager := ctx.MessageManager
 	config := ctx.Config
 	tick := ctx.Tick
-	// sceneManager := ctx.SceneManager // PlayingStateでは未使用
+
+	var gameEvents []GameEvent
 
 	// AIの行動選択
 	if !ui.IsActionModalVisible() && len(playerActionPendingQueue) == 0 {
@@ -47,7 +46,8 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 	playerInputResult := UpdatePlayerInputSystem(world)
 	if len(playerInputResult.PlayerMedarotsToAct) > 0 {
 		playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
-		return playerActionPendingQueue, &StateUpdateResult{PlayerActionRequired: true}, nil
+		gameEvents = append(gameEvents, PlayerActionRequiredGameEvent{})
+		return playerActionPendingQueue, gameEvents, nil
 	}
 
 	// ゲージ進行
@@ -64,19 +64,20 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
-			ui.SetAnimation(&ActionAnimationData{Result: result, StartTime: tick})
-			return playerActionPendingQueue, &StateUpdateResult{ActionStarted: true}, nil
+			gameEvents = append(gameEvents, ActionAnimationStartedGameEvent{AnimationData: ActionAnimationData{Result: result, StartTime: tick}})
+			return playerActionPendingQueue, gameEvents, nil
 		}
 	}
 
 	// ゲーム終了判定
 	gameEndResult := CheckGameEndSystem(world)
 	if gameEndResult.IsGameOver {
-		messageManager.EnqueueMessage(gameEndResult.Message, nil)
-		return playerActionPendingQueue, &StateUpdateResult{GameOver: true, Winner: gameEndResult.Winner, MessageQueued: true}, nil
+		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
+		gameEvents = append(gameEvents, GameOverGameEvent{Winner: gameEndResult.Winner})
+		return playerActionPendingQueue, gameEvents, nil
 	}
 
-	return playerActionPendingQueue, &StateUpdateResult{}, nil // 状態は維持
+	return playerActionPendingQueue, gameEvents, nil // 状態は維持
 }
 
 func (s *PlayingState) Draw(screen *ebiten.Image) {
@@ -87,18 +88,16 @@ func (s *PlayingState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
+func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	battleLogic := ctx.BattleLogic
 	ui := ctx.UI
-	// messageManager := ctx.MessageManager // PlayerActionSelectStateでは未使用
-	// config := ctx.Config // PlayerActionSelectStateでは未使用
-	// tick := ctx.Tick // PlayerActionSelectStateでは未使用
-	// sceneManager := ctx.SceneManager // PlayerActionSelectStateでは未使用
+
+	var gameEvents []GameEvent
 
 	// モーダル表示中は何もしない
 	if ui.IsActionModalVisible() {
-		return playerActionPendingQueue, &StateUpdateResult{}, nil
+		return playerActionPendingQueue, gameEvents, nil
 	}
 
 	// 待機中のプレイヤーがいるかチェック
@@ -126,9 +125,9 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM := BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic) // 新規追加
-			ui.ShowActionModal(actionModalVM)                                        // 変更: ViewModelを渡す
-			return playerActionPendingQueue, &StateUpdateResult{}, nil               // モーダル表示中は状態維持
+			actionModalVM := BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic)
+			gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
+			return playerActionPendingQueue, gameEvents, nil
 		} else {
 			// 無効または待機状態でないならキューから削除して次のプレイヤーを処理
 			playerActionPendingQueue = playerActionPendingQueue[1:]
@@ -138,7 +137,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 	}
 
 	// キューが空なら処理完了
-	return playerActionPendingQueue, &StateUpdateResult{}, nil
+	return playerActionPendingQueue, gameEvents, nil
 }
 
 func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
@@ -147,33 +146,23 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
+func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
-	battleLogic := ctx.BattleLogic
 	ui := ctx.UI
-	messageManager := ctx.MessageManager
 	tick := ctx.Tick
-	// config := ctx.Config // AnimatingActionStateでは未使用
-	// sceneManager := ctx.SceneManager // AnimatingActionStateでは未使用
+
+	var gameEvents []GameEvent
 
 	if ui.IsAnimationFinished(tick) {
-		result := ui.GetCurrentAnimationResult() // まず結果を取得
-		ui.ClearAnimation()                      // その後でアニメーションをクリア
-
-		messages := buildActionLogMessages(result)
-
-		messageManager.EnqueueMessageQueue(messages, func() {
+		result := ui.GetCurrentAnimationResult()
+		gameEvents = append(gameEvents, ClearAnimationGameEvent{})
+		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: buildActionLogMessages(result), Callback: func() {
 			UpdateHistorySystem(world, &result)
-
-			actingEntry := result.ActingEntry
-			if actingEntry.Valid() && !StateComponent.Get(actingEntry).FSM.Is(string(StateBroken)) {
-				StartCooldownSystem(actingEntry, world, battleLogic)
-			}
-			ui.ClearCurrentTarget()
-		})
-		return playerActionPendingQueue, &StateUpdateResult{MessageQueued: true}, nil
+		}})
+		gameEvents = append(gameEvents, ActionAnimationFinishedGameEvent{Result: result, ActingEntry: result.ActingEntry})
+		return playerActionPendingQueue, gameEvents, nil
 	}
-	return playerActionPendingQueue, &StateUpdateResult{}, nil
+	return playerActionPendingQueue, gameEvents, nil
 }
 
 func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
@@ -182,19 +171,17 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
-	messageManager := ctx.MessageManager
-	// world := ctx.World // MessageStateでは未使用
-	// battleLogic := ctx.BattleLogic // MessageStateでは未使用
-	// ui := ctx.UI // MessageStateでは未使用
-	// config := ctx.Config // MessageStateでは未使用
-	// tick := ctx.Tick // MessageStateでは未使用
-	// sceneManager := ctx.SceneManager // MessageStateでは未使用
+func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+	// MessageStateはMessageDisplayFinishedGameEventを返すのみで、MessageManagerのUpdateはBattleSceneで行う
+	var gameEvents []GameEvent
 
-	messageManager.Update()
-	messageFinished := messageManager.IsFinished()
-	// メッセージ表示が完了したかどうかをBattleSceneに通知
-	return playerActionPendingQueue, &StateUpdateResult{MessageFinished: messageFinished}, nil
+	// MessageManagerのIsFinished()はBattleSceneでチェックされるため、ここではイベントを生成するのみ
+	// if ctx.MessageManager.IsFinished() { // このチェックはBattleSceneに移動
+	// 	gameEvents = append(gameEvents, MessageDisplayFinishedGameEvent{})
+	// }
+	// MessageStateはメッセージ表示の完了を待つ状態なので、ここではイベントを生成しない
+	// 完了はBattleSceneでMessageManager.IsFinished()をチェックして判断する
+	return playerActionPendingQueue, gameEvents, nil
 }
 
 func (s *MessageState) Draw(screen *ebiten.Image) {}
@@ -203,19 +190,14 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
+func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	sceneManager := ctx.SceneManager
-	// world := ctx.World // GameOverStateでは未使用
-	// battleLogic := ctx.BattleLogic // GameOverStateでは未使用
-	// ui := ctx.UI // GameOverStateでは未使用
-	// messageManager := ctx.MessageManager // GameOverStateでは未使用
-	// config := ctx.Config // GameOverStateでは未使用
-	// tick := ctx.Tick // GameOverStateでは未使用
+	var gameEvents []GameEvent
 
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		sceneManager.GoToTitleScene()
 	}
-	return playerActionPendingQueue, &StateUpdateResult{}, nil
+	return playerActionPendingQueue, gameEvents, nil
 }
 
 func (s *GameOverState) Draw(screen *ebiten.Image) {}

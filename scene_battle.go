@@ -76,22 +76,32 @@ func (bs *BattleScene) Update() error {
 	bs.tickCount++
 	bs.ui.Update()
 
+	// UIイベントプロセッサシステムを更新
 	bs.playerActionPendingQueue, bs.state = UpdateUIEventProcessorSystem(
 		bs.world, bs.battleLogic, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
 	)
 
-	// Update current state
-	battleContext := &BattleContext{
-		World:          bs.world,
-		BattleLogic:    bs.battleLogic,
-		UI:             bs.ui,
-		MessageManager: bs.messageManager,
-		Config:         &bs.resources.Config,
-		SceneManager:   bs.manager,
-		Tick:           bs.tickCount,
+	// メッセージ表示状態の場合、メッセージマネージャーを更新
+	if bs.state == StateMessage {
+		bs.messageManager.Update()
+		if bs.messageManager.IsFinished() {
+			// メッセージ表示が完了したら、MessageDisplayFinishedGameEvent を発行
+			gameEvents := []GameEvent{MessageDisplayFinishedGameEvent{}}
+			bs.processGameEvents(gameEvents) // 新しいヘルパー関数でイベントを処理
+		}
 	}
 
-	newPlayerActionPendingQueue, result, err := bs.currentState.Update(
+	// 現在のバトルステートを更新
+	battleContext := &BattleContext{
+		World:        bs.world,
+		BattleLogic:  bs.battleLogic,
+		UI:           bs.ui,
+		Config:       &bs.resources.Config,
+		SceneManager: bs.manager,
+		Tick:         bs.tickCount,
+	}
+
+	newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(
 		battleContext,
 		bs.playerActionPendingQueue,
 	)
@@ -103,44 +113,23 @@ func (bs *BattleScene) Update() error {
 	// Update status effect durations
 	bs.statusEffectSystem.Update()
 
-	// Process result and transition state
-	nextState := bs.state // Default to current state
+	// Process game events and transition state
+	// nextState は processGameEvents 内で更新される
+	bs.processGameEvents(gameEvents)
 
-	if result.GameOver {
-		bs.winner = result.Winner
-		nextState = StateMessage
-		// log.Printf("BattleScene.Update: Transitioning to StateMessage (GameOver)")
-	} else if result.ActionStarted {
-		nextState = StateAnimatingAction
-		// log.Printf("BattleScene.Update: Transitioning to StateAnimatingAction")
-	} else if result.MessageQueued {
-		nextState = StateMessage
-		// log.Printf("BattleScene.Update: Transitioning to StateMessage (MessageQueued)")
-	} else if result.PlayerActionRequired {
-		nextState = StatePlayerActionSelect
-		// log.Printf("BattleScene.Update: Transitioning to StatePlayerActionSelect")
-	} else if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
-		nextState = StatePlaying
-		// log.Printf("BattleScene.Update: Transitioning to StatePlaying (PlayerActionSelect finished)")
+	// Additional state transitions not directly tied to a single GameEvent
+	if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
+		bs.state = StatePlaying
+		bs.currentState = bs.states[bs.state]
 	} else if bs.state == StateAnimatingAction && bs.ui.IsAnimationFinished(bs.tickCount) {
-		nextState = StateMessage
-		// log.Printf("BattleScene.Update: Transitioning to StateMessage (Animation finished)")
-	} else if bs.state == StateMessage && result.MessageFinished {
-		// log.Printf("BattleScene.Update: MessageFinished is true. winner: %v", bs.winner)
-		if bs.winner != TeamNone {
-			nextState = StateGameOver
-			// log.Printf("BattleScene.Update: Transitioning to StateGameOver")
-		} else {
-			nextState = StatePlaying
-			// log.Printf("BattleScene.Update: Transitioning to StatePlaying (Message finished)")
-		}
+		// この条件はActionAnimationFinishedGameEventで処理されるため、削除
 	}
 
-	// Transition to new state if changed
-	if nextState != bs.state {
-		bs.state = nextState
-		bs.currentState = bs.states[nextState]
-	}
+	// Transition to new state if changed (processGameEventsでbs.stateが更新されるため、このブロックは不要になる)
+	// if nextState != bs.state {
+	// 	bs.state = nextState
+	// 	bs.currentState = bs.states[nextState]
+	// }
 
 	// Update UI components that depend on world state
 	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config, bs.battleLogic)
@@ -163,4 +152,47 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 
 func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return bs.resources.Config.UI.Screen.Width, bs.resources.Config.UI.Screen.Height
+}
+
+// processGameEvents はGameEventのリストを処理し、BattleSceneの状態を更新します。
+func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
+	for _, event := range gameEvents {
+		switch e := event.(type) {
+		case PlayerActionRequiredGameEvent:
+			bs.state = StatePlayerActionSelect
+		case ActionAnimationStartedGameEvent:
+			bs.ui.PostEvent(SetAnimationUIEvent{AnimationData: e.AnimationData})
+			bs.state = StateAnimatingAction
+		case ActionAnimationFinishedGameEvent:
+			// アニメーション終了後、クールダウン開始とターゲットクリア
+			actingEntry := e.ActingEntry
+			if actingEntry.Valid() && !StateComponent.Get(actingEntry).FSM.Is(string(StateBroken)) {
+				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic)
+			}
+			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
+			bs.state = StateMessage
+		case MessageDisplayRequestGameEvent:
+			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
+			bs.state = StateMessage
+		case MessageDisplayFinishedGameEvent:
+			if bs.winner != TeamNone {
+				bs.state = StateGameOver
+			} else {
+				bs.state = StatePlaying
+			}
+		case GameOverGameEvent:
+			bs.winner = e.Winner
+			bs.state = StateMessage // ゲームオーバーメッセージ表示のため
+		case HideActionModalGameEvent:
+			bs.ui.PostEvent(HideActionModalUIEvent{})
+		case ShowActionModalGameEvent:
+			bs.ui.PostEvent(ShowActionModalUIEvent{ViewModel: e.ViewModel})
+		case ClearAnimationGameEvent:
+			bs.ui.PostEvent(ClearAnimationUIEvent{})
+		case ClearCurrentTargetGameEvent:
+			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
+		}
+	}
+	// イベント処理後に現在の状態を更新
+	bs.currentState = bs.states[bs.state]
 }

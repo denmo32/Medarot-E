@@ -12,16 +12,6 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// StateUpdateResult は、各BattleStateのUpdateメソッドが返す結果を表します。
-type StateUpdateResult struct {
-	PlayerActionRequired bool
-	ActionStarted        bool
-	MessageQueued        bool
-	MessageFinished      bool // 新しく追加
-	GameOver             bool
-	Winner               TeamID
-}
-
 type TeamID int
 type GameState string
 type PartSlotKey string
@@ -466,6 +456,73 @@ type IconViewModel struct {
 	DebugText     string
 }
 
+// GameEvent は、ゲームロジックから発行されるすべてのイベントを示すマーカーインターフェースです。
+type GameEvent interface {
+	isGameEvent()
+}
+
+// PlayerActionRequiredGameEvent は、プレイヤーの行動選択が必要になったことを示すイベントです。
+type PlayerActionRequiredGameEvent struct{}
+
+func (e PlayerActionRequiredGameEvent) isGameEvent() {}
+
+// ActionAnimationStartedGameEvent は、アクションアニメーションが開始されたことを示すイベントです。
+type ActionAnimationStartedGameEvent struct {
+	AnimationData ActionAnimationData
+}
+
+func (e ActionAnimationStartedGameEvent) isGameEvent() {}
+
+// ActionAnimationFinishedGameEvent は、アクションアニメーションが終了したことを示すイベントです。
+type ActionAnimationFinishedGameEvent struct {
+	Result      ActionResult
+	ActingEntry *donburi.Entry // クールダウン開始のために追加
+}
+
+func (e ActionAnimationFinishedGameEvent) isGameEvent() {}
+
+// MessageDisplayRequestGameEvent は、メッセージ表示が必要になったことを示すイベントです。
+type MessageDisplayRequestGameEvent struct {
+	Messages []string
+	Callback func()
+}
+
+func (e MessageDisplayRequestGameEvent) isGameEvent() {}
+
+// MessageDisplayFinishedGameEvent は、メッセージ表示が終了したことを示すイベントです。
+type MessageDisplayFinishedGameEvent struct{}
+
+func (e MessageDisplayFinishedGameEvent) isGameEvent() {}
+
+// GameOverGameEvent は、ゲームオーバーになったことを示すイベントです。
+type GameOverGameEvent struct {
+	Winner TeamID
+}
+
+func (e GameOverGameEvent) isGameEvent() {}
+
+// HideActionModalGameEvent は、アクションモーダルを隠す必要があることを示すイベントです。
+type HideActionModalGameEvent struct{}
+
+func (e HideActionModalGameEvent) isGameEvent() {}
+
+// ShowActionModalGameEvent は、アクションモーダルを表示する必要があることを示すイベントです。
+type ShowActionModalGameEvent struct {
+	ViewModel ActionModalViewModel
+}
+
+func (e ShowActionModalGameEvent) isGameEvent() {}
+
+// ClearAnimationGameEvent は、アニメーションをクリアする必要があることを示すイベントです。
+type ClearAnimationGameEvent struct{}
+
+func (e ClearAnimationGameEvent) isGameEvent() {}
+
+// ClearCurrentTargetGameEvent は、現在のターゲットをクリアする必要があることを示すイベントです。
+type ClearCurrentTargetGameEvent struct{}
+
+func (e ClearCurrentTargetGameEvent) isGameEvent() {}
+
 // UIEvent は、UIから発行されるすべてのイベントを示すマーカーインターフェースです。
 type UIEvent interface {
 	isUIEvent()
@@ -478,6 +535,8 @@ type PlayerActionSelectedEvent struct {
 	SelectedSlotKey PartSlotKey
 }
 
+func (e PlayerActionSelectedEvent) isUIEvent() {}
+
 // GameActionRequestEvent は、ゲームロジック層に行動の実行を要求するために発行されます。
 type GameActionRequestEvent struct {
 	ActingEntry     *donburi.Entry
@@ -487,8 +546,6 @@ type GameActionRequestEvent struct {
 }
 
 func (e GameActionRequestEvent) isUIEvent() {}
-
-func (e PlayerActionSelectedEvent) isUIEvent() {}
 
 // PlayerActionCancelEvent は、プレイヤーが行動選択をキャンセルしたときに発行されます。
 type PlayerActionCancelEvent struct {
@@ -508,6 +565,43 @@ func (e SetCurrentTargetEvent) isUIEvent() {}
 type ClearCurrentTargetEvent struct{}
 
 func (e ClearCurrentTargetEvent) isUIEvent() {}
+
+// ShowActionModalUIEvent は、アクションモーダルを表示するUIイベントです。
+type ShowActionModalUIEvent struct {
+	ViewModel ActionModalViewModel
+}
+
+func (e ShowActionModalUIEvent) isUIEvent() {}
+
+// HideActionModalUIEvent は、アクションモーダルを隠すUIイベントです。
+type HideActionModalUIEvent struct{}
+
+func (e HideActionModalUIEvent) isUIEvent() {}
+
+// SetAnimationUIEvent は、アニメーションを設定するUIイベントです。
+type SetAnimationUIEvent struct {
+	AnimationData ActionAnimationData
+}
+
+func (e SetAnimationUIEvent) isUIEvent() {}
+
+// ClearAnimationUIEvent は、アニメーションをクリアするUIイベントです。
+type ClearAnimationUIEvent struct{}
+
+func (e ClearAnimationUIEvent) isUIEvent() {}
+
+// ClearCurrentTargetUIEvent は、現在のターゲットをクリアするUIイベントです。
+type ClearCurrentTargetUIEvent struct{}
+
+func (e ClearCurrentTargetUIEvent) isUIEvent() {}
+
+// MessageDisplayRequestUIEvent は、メッセージ表示を要求するUIイベントです。
+type MessageDisplayRequestUIEvent struct {
+	Messages []string
+	Callback func()
+}
+
+func (e MessageDisplayRequestUIEvent) isUIEvent() {}
 
 // UIInterface defines the interface for the game's user interface.
 // BattleScene will interact with the UI through this interface.

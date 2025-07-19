@@ -92,11 +92,6 @@ func UpdateUIEventProcessorSystem(
 	newPlayerActionPendingQueue = playerActionPendingQueue
 	newState = currentState
 
-	// このメソッドは、PlayerActionSelectState のみが関心を持つイベントを処理します。
-	if currentState != StatePlayerActionSelect {
-		return
-	}
-
 	select {
 	case event := <-uiEventChannel:
 		switch e := event.(type) {
@@ -117,6 +112,18 @@ func UpdateUIEventProcessorSystem(
 			ui.SetCurrentTarget(e.Target)
 		case ClearCurrentTargetEvent:
 			ui.ClearCurrentTarget()
+		case ShowActionModalUIEvent:
+			ui.ShowActionModal(e.ViewModel)
+		case HideActionModalUIEvent:
+			ui.HideActionModal()
+		case SetAnimationUIEvent:
+			ui.SetAnimation(&e.AnimationData)
+		case ClearAnimationUIEvent:
+			ui.ClearAnimation()
+		case ClearCurrentTargetUIEvent:
+			ui.ClearCurrentTarget()
+		case MessageDisplayRequestUIEvent:
+			messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
 		}
 	default:
 	}
