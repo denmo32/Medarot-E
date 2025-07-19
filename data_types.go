@@ -11,6 +11,15 @@ import (
 	"github.com/yohamta/donburi"
 )
 
+// StateUpdateResult は、各BattleStateのUpdateメソッドが返す結果を表します。
+type StateUpdateResult struct {
+	PlayerActionRequired bool
+	ActionStarted        bool
+	MessageQueued        bool
+	GameOver             bool
+	Winner               TeamID
+}
+
 type TeamID int
 type GameState string
 type PartSlotKey string

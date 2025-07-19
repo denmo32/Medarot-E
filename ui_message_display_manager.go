@@ -92,3 +92,8 @@ func (mm *UIMessageDisplayManager) Update(state GameState) (GameState, bool) {
 	}
 	return StateMessage, false // メッセージ表示中
 }
+
+// IsFinished はメッセージキューが空で、かつメッセージウィンドウが表示されていない場合にtrueを返します。
+func (mm *UIMessageDisplayManager) IsFinished() bool {
+	return len(mm.messageQueue) == 0 && mm.messageWindow == nil
+}

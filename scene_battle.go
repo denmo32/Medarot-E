@@ -80,31 +80,55 @@ func (bs *BattleScene) Update() error {
 	)
 
 	// Update current state
-	newPlayerActionPendingQueue, newState, newWinner, err := bs.currentState.Update(
+	newPlayerActionPendingQueue, result, err := bs.currentState.Update(
 		bs.world,
 		bs.battleLogic,
 		bs.ui,
 		bs.messageManager,
 		&bs.resources.Config,
 		bs.tickCount,
-		bs.winner,
 		bs.manager,
 		bs.playerActionPendingQueue,
 	)
 	if err != nil {
 		return err
 	}
+	bs.playerActionPendingQueue = newPlayerActionPendingQueue
 
 	// Update status effect durations
 	bs.statusEffectSystem.Update()
 
-	// Transition to new state if changed
-	if newState != bs.state {
-		bs.state = newState
-		bs.currentState = bs.states[newState]
+	// Process result and transition state
+	nextState := bs.state // Default to current state
+
+	if result.GameOver {
+		bs.winner = result.Winner
+		nextState = StateMessage
+	} else if result.ActionStarted {
+		nextState = StateAnimatingAction
+	} else if result.MessageQueued {
+		nextState = StateMessage
+	} else if result.PlayerActionRequired {
+		nextState = StatePlayerActionSelect
+	} else if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
+		nextState = StatePlaying
+	} else if bs.state == StateAnimatingAction && bs.ui.IsAnimationFinished(bs.tickCount) {
+		nextState = StateMessage
+	} else if bs.state == StateMessage {
+		if bs.messageManager.IsFinished() {
+			if bs.winner != TeamNone {
+				nextState = StateGameOver
+			} else {
+				nextState = StatePlaying
+			}
+		}
 	}
-	bs.playerActionPendingQueue = newPlayerActionPendingQueue
-	bs.winner = newWinner
+
+	// Transition to new state if changed
+	if nextState != bs.state {
+		bs.state = nextState
+		bs.currentState = bs.states[nextState]
+	}
 
 	// Update UI components that depend on world state
 	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)

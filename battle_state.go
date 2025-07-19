@@ -10,7 +10,7 @@ import (
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error)
+	Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -18,7 +18,7 @@ type BattleState interface {
 
 type PlayingState struct{}
 
-func (s *PlayingState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
+func (s *PlayingState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
 	// AIの行動選択
 	if !ui.IsActionModalVisible() && len(playerActionPendingQueue) == 0 {
 		UpdateAIInputSystem(world, battleLogic.PartInfoProvider, battleLogic.TargetSelector)
@@ -28,7 +28,7 @@ func (s *PlayingState) Update(world donburi.World, battleLogic *BattleLogic, ui 
 	playerInputResult := UpdatePlayerInputSystem(world)
 	if len(playerInputResult.PlayerMedarotsToAct) > 0 {
 		playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
-		return playerActionPendingQueue, StatePlayerActionSelect, winner, nil
+		return playerActionPendingQueue, &StateUpdateResult{PlayerActionRequired: true}, nil
 	}
 
 	// ゲージ進行
@@ -46,19 +46,18 @@ func (s *PlayingState) Update(world donburi.World, battleLogic *BattleLogic, ui 
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
 			ui.SetAnimation(&ActionAnimationData{Result: result, StartTime: tick})
-			return playerActionPendingQueue, StateAnimatingAction, winner, nil
+			return playerActionPendingQueue, &StateUpdateResult{ActionStarted: true}, nil
 		}
 	}
 
 	// ゲーム終了判定
 	gameEndResult := CheckGameEndSystem(world)
 	if gameEndResult.IsGameOver {
-		winner = gameEndResult.Winner
 		messageManager.EnqueueMessage(gameEndResult.Message, nil)
-		return playerActionPendingQueue, StateMessage, winner, nil
+		return playerActionPendingQueue, &StateUpdateResult{GameOver: true, Winner: gameEndResult.Winner, MessageQueued: true}, nil
 	}
 
-	return playerActionPendingQueue, StatePlaying, winner, nil // 状態は維持
+	return playerActionPendingQueue, &StateUpdateResult{}, nil // 状態は維持
 }
 
 func (s *PlayingState) Draw(screen *ebiten.Image) {
@@ -69,20 +68,17 @@ func (s *PlayingState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
-	// If the action modal is currently visible, the player is still making a choice.
+func (s *PlayerActionSelectState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
+	// モーダル表示中は何もしない
 	if ui.IsActionModalVisible() {
-		return playerActionPendingQueue, StatePlayerActionSelect, winner, nil
+		return playerActionPendingQueue, &StateUpdateResult{}, nil
 	}
 
-	// If the modal is not visible, it means a choice was made (or cancelled)
-	// in processUIEvents, or it's the first time entering this state.
-
-	// Check if there are players still waiting to act.
+	// 待機中のプレイヤーがいるかチェック
 	if len(playerActionPendingQueue) > 0 {
 		actingEntry := playerActionPendingQueue[0]
 
-		// If the current acting entry is valid and idle, show the modal for them.
+		// 有効で待機状態ならモーダルを表示
 		if actingEntry.Valid() && StateComponent.Get(actingEntry).FSM.Is(string(StateIdle)) {
 			actionTargetMap := make(map[PartSlotKey]ActionTarget)
 			availableParts := battleLogic.PartInfoProvider.GetAvailableAttackParts(actingEntry)
@@ -102,19 +98,17 @@ func (s *PlayerActionSelectState) Update(world donburi.World, battleLogic *Battl
 				actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
 			}
 			ui.ShowActionModal(actingEntry, actionTargetMap)
-			return playerActionPendingQueue, StatePlayerActionSelect, winner, nil // Stay in this state while modal is shown
+			return playerActionPendingQueue, &StateUpdateResult{}, nil // モーダル表示中は状態維持
 		} else {
-			// If the current acting entry is invalid or not idle, remove it from the queue
-			// and re-evaluate for the next player.
+			// 無効または待機状態でないならキューから削除して次のプレイヤーを処理
 			playerActionPendingQueue = playerActionPendingQueue[1:]
-			// Recursively call Update to process the next player in the queue immediately
-			// or transition to PlayingState if the queue is now empty.
-			return s.Update(world, battleLogic, ui, messageManager, config, tick, winner, sceneManager, playerActionPendingQueue)
+			// 即座に次のプレイヤーを評価するため、再帰的に呼び出す
+			return s.Update(world, battleLogic, ui, messageManager, config, tick, sceneManager, playerActionPendingQueue)
 		}
 	}
 
-	// If the queue is empty, all player actions have been processed.
-	return playerActionPendingQueue, StatePlaying, winner, nil
+	// キューが空なら処理完了
+	return playerActionPendingQueue, &StateUpdateResult{}, nil
 }
 
 func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
@@ -123,9 +117,11 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
+func (s *AnimatingActionState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
 	if ui.IsAnimationFinished(tick) {
-		result := ui.GetCurrentAnimationResult()
+		result := ui.GetCurrentAnimationResult() // まず結果を取得
+		ui.ClearAnimation()                      // その後でアニメーションをクリア
+
 		messages := buildActionLogMessages(result)
 
 		messageManager.EnqueueMessageQueue(messages, func() {
@@ -137,9 +133,9 @@ func (s *AnimatingActionState) Update(world donburi.World, battleLogic *BattleLo
 			}
 			ui.ClearCurrentTarget()
 		})
-		return playerActionPendingQueue, StateMessage, winner, nil
+		return playerActionPendingQueue, &StateUpdateResult{MessageQueued: true}, nil
 	}
-	return playerActionPendingQueue, StateAnimatingAction, winner, nil
+	return playerActionPendingQueue, &StateUpdateResult{}, nil
 }
 
 func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
@@ -148,16 +144,15 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
-	newState, finished := messageManager.Update(StateMessage) // Pass StateMessage as current state
+func (s *MessageState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
+	_, finished := messageManager.Update(StateMessage) // Correct assignment
 	if finished {
 		ui.ClearAnimation()
-		if winner != TeamNone {
-			return playerActionPendingQueue, StateGameOver, winner, nil
-		}
-		return playerActionPendingQueue, StatePlaying, winner, nil
+		// Signal that the game should proceed to the next phase, e.g., player action selection
+		return playerActionPendingQueue, &StateUpdateResult{PlayerActionRequired: true}, nil
 	}
-	return playerActionPendingQueue, newState, winner, nil
+	// If messages are still being processed, maintain the current state or return an empty result
+	return playerActionPendingQueue, &StateUpdateResult{}, nil
 }
 
 func (s *MessageState) Draw(screen *ebiten.Image) {}
@@ -166,11 +161,11 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
+func (s *GameOverState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, *StateUpdateResult, error) {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		sceneManager.GoToTitleScene()
 	}
-	return playerActionPendingQueue, StateGameOver, winner, nil
+	return playerActionPendingQueue, &StateUpdateResult{}, nil
 }
 
 func (s *GameOverState) Draw(screen *ebiten.Image) {}
