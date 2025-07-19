@@ -52,8 +52,8 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	})
 
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam)
-	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel)
-	bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, GlobalGameDataManager.Font, bs.ui.GetRootContainer())
+	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel, bs.resources.GameDataManager)
+	bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.ui.GetRootContainer())
 
 	// Initialize state machine
 	bs.states = map[GameState]BattleState{

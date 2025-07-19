@@ -12,6 +12,7 @@ func createActionModalUI(
 	config *Config,
 	eventChannel chan UIEvent,
 	font text.Face,
+	messageManager *MessageManager,
 ) widget.PreferredSizeLocateableWidget {
 	c := config.UI
 
@@ -28,7 +29,7 @@ func createActionModalUI(
 
 	if len(vm.Buttons) == 0 {
 		buttons = append(buttons, widget.NewText(
-			widget.TextOpts.Text("利用可能なパーツがありません。", font, c.Colors.White),
+			widget.TextOpts.Text(messageManager.FormatMessage("ui_no_parts_available", nil), font, c.Colors.White),
 		))
 	} else {
 		for _, buttonVM := range vm.Buttons {
@@ -73,7 +74,7 @@ func createActionModalUI(
 
 	// NewPanel を使用してモーダルを作成
 	panel := NewPanel(&PanelOptions{
-		Title:           fmt.Sprintf("行動選択: %s", vm.ActingMedarotName),
+		Title:           messageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}),
 		Padding:         widget.NewInsetsSimple(15),
 		Spacing:         c.ActionModal.ButtonSpacing,
 		PanelWidth:      int(c.ActionModal.ButtonWidth) + 30,

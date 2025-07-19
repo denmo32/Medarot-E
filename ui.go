@@ -26,6 +26,7 @@ type UI struct {
 	eventChannel chan UIEvent
 	// 依存性
 	config                 *Config
+	gameDataManager        *GameDataManager // 追加
 	whitePixel             *ebiten.Image
 	animationDrawer        *UIAnimationDrawer // 新しく追加
 	messageManager         *UIMessageDisplayManager
@@ -39,7 +40,7 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
+func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, gameDataManager *GameDataManager) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 	animationManager := NewBattleAnimationManager(config)
@@ -47,6 +48,7 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 		medarotInfoPanels: make(map[string]*infoPanelUI),
 		eventChannel:      eventChannel,
 		config:            config,
+		gameDataManager:   gameDataManager, // 追加
 		whitePixel:        whiteImg,
 		animationDrawer:   NewUIAnimationDrawer(config, animationManager), // UIAnimationDrawerを初期化
 	}
@@ -85,7 +87,7 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 		),
 	)
 	mainUIContainer.AddChild(team2PanelContainer)
-	infoPanelResults := CreateInfoPanels(world, config, GlobalGameDataManager.Font)
+	infoPanelResults := CreateInfoPanels(world, config, gameDataManager)
 	for _, result := range infoPanelResults {
 		ui.medarotInfoPanels[result.ID] = result.PanelUI
 		if result.Team == Team1 {
@@ -94,11 +96,11 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent) *UI {
 			team2PanelContainer.AddChild(result.PanelUI.rootContainer)
 		}
 	}
-	ui.messageManager = NewUIMessageDisplayManager(config, GlobalGameDataManager.Font, rootContainer)
+	ui.messageManager = NewUIMessageDisplayManager(config, gameDataManager.Font, gameDataManager.Messages, rootContainer)
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
-	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, config)
+	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, config, gameDataManager)
 	ui.targetIndicatorManager = NewUITargetIndicatorManager()
 	return ui
 }

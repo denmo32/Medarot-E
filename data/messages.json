@@ -70,5 +70,13 @@
   {
     "id": "support_action_generic",
     "text": "味方チーム全体の命中率が上昇した！"
+  },
+  {
+    "id": "ui_action_select_title",
+    "text": "行動選択: {MedarotName}"
+  },
+  {
+    "id": "ui_no_parts_available",
+    "text": "利用可能なパーツがありません。"
   }
 ]

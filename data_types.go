@@ -8,6 +8,7 @@ import (
 
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/yohamta/donburi"
 )
 
@@ -237,6 +238,14 @@ type BalanceConfig struct {
 		MaxChance  float64
 	}
 	Formulas map[Trait]ActionFormulaConfig // 新しく追加
+}
+
+type SharedResources struct {
+	GameData        *GameData
+	Config          Config
+	Font            text.Face
+	GameDataManager *GameDataManager // 追加
+	ButtonImage     *widget.ButtonImage
 }
 
 type UIConfig struct {

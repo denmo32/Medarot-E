@@ -8,7 +8,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-func createMessageWindow(message string, config *Config, font text.Face) widget.PreferredSizeLocateableWidget {
+func createMessageWindow(message string, config *Config, font text.Face, messageManager *MessageManager) widget.PreferredSizeLocateableWidget {
 	c := config.UI
 
 	root := widget.NewContainer(
@@ -23,8 +23,8 @@ func createMessageWindow(message string, config *Config, font text.Face) widget.
 	)
 
 	continueTextStr := "クリックして続行..."
-	if GlobalGameDataManager != nil && GlobalGameDataManager.Messages != nil {
-		continueTextStr = GlobalGameDataManager.Messages.FormatMessage("ui_click_to_continue", nil)
+	if messageManager != nil {
+		continueTextStr = messageManager.FormatMessage("ui_click_to_continue", nil)
 	}
 	continueTextWidget := widget.NewText(
 		widget.TextOpts.Text(continueTextStr, font, c.Colors.Gray),

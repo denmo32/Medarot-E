@@ -71,9 +71,10 @@ func main() {
 	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色
 
 	res := &SharedResources{
-		GameData: gameData,
-		Config:   config,
-		Font:     fontFace,
+		GameData:        gameData,
+		Config:          config,
+		Font:            fontFace,
+		GameDataManager: GlobalGameDataManager,
 		ButtonImage: &widget.ButtonImage{
 			Idle:    image.NewNineSliceSimple(buttonImage, 10, 10),
 			Hover:   image.NewNineSliceSimple(buttonImage, 10, 10),

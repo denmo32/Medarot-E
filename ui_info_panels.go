@@ -13,7 +13,7 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi.Entry) *infoPanelUI {
+func createSingleMedarotInfoPanel(config *Config, font text.Face, gameDataManager *GameDataManager, entry *donburi.Entry) *infoPanelUI {
 	c := config.UI
 	settings := SettingsComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
@@ -47,7 +47,7 @@ func createSingleMedarotInfoPanel(config *Config, font text.Face, entry *donburi
 		initialArmor := 0.0
 
 		if instFound && partInst != nil {
-			partDef, defFound := GlobalGameDataManager.GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if defFound {
 				partName = partDef.PartName
 				initialArmor = float64(partInst.CurrentArmor)
@@ -122,7 +122,7 @@ type InfoPanelCreationResult struct {
 }
 
 // CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
-func CreateInfoPanels(world donburi.World, config *Config, font text.Face) []InfoPanelCreationResult {
+func CreateInfoPanels(world donburi.World, config *Config, gameDataManager *GameDataManager) []InfoPanelCreationResult {
 	var entries []*donburi.Entry
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		entries = append(entries, entry)
@@ -140,7 +140,7 @@ func CreateInfoPanels(world donburi.World, config *Config, font text.Face) []Inf
 	var results []InfoPanelCreationResult
 	for _, entry := range entries {
 		settings := SettingsComponent.Get(entry)
-		panelUI := createSingleMedarotInfoPanel(config, font, entry)
+		panelUI := createSingleMedarotInfoPanel(config, gameDataManager.Font, gameDataManager, entry)
 		results = append(results, InfoPanelCreationResult{
 			PanelUI: panelUI,
 			Team:    settings.Team,
