@@ -78,7 +78,17 @@ func (bs *BattleScene) Update() error {
 	)
 
 	// Update current state
-	newState, err := bs.currentState.Update(bs)
+	newPlayerActionPendingQueue, newState, newWinner, err := bs.currentState.Update(
+		bs.world,
+		bs.battleLogic,
+		bs.ui,
+		bs.messageManager,
+		&bs.resources.Config,
+		bs.tickCount,
+		bs.winner,
+		bs.manager,
+		bs.playerActionPendingQueue,
+	)
 	if err != nil {
 		return err
 	}
@@ -88,6 +98,8 @@ func (bs *BattleScene) Update() error {
 		bs.state = newState
 		bs.currentState = bs.states[newState]
 	}
+	bs.playerActionPendingQueue = newPlayerActionPendingQueue
+	bs.winner = newWinner
 
 	// Update UI components that depend on world state
 	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)
@@ -96,8 +108,6 @@ func (bs *BattleScene) Update() error {
 
 	return nil
 }
-
-
 
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)

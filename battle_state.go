@@ -10,7 +10,7 @@ import (
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(scene *BattleScene) (GameState, error)
+	Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -18,47 +18,47 @@ type BattleState interface {
 
 type PlayingState struct{}
 
-func (s *PlayingState) Update(scene *BattleScene) (GameState, error) {
+func (s *PlayingState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
 	// AIの行動選択
-	if !scene.ui.IsActionModalVisible() && len(scene.playerActionPendingQueue) == 0 {
-		UpdateAIInputSystem(scene.world, scene.battleLogic.PartInfoProvider, scene.battleLogic.TargetSelector)
+	if !ui.IsActionModalVisible() && len(playerActionPendingQueue) == 0 {
+		UpdateAIInputSystem(world, battleLogic.PartInfoProvider, battleLogic.TargetSelector)
 	}
 
 	// プレイヤーの行動選択が必要かチェック
-	playerInputResult := UpdatePlayerInputSystem(scene.world)
+	playerInputResult := UpdatePlayerInputSystem(world)
 	if len(playerInputResult.PlayerMedarotsToAct) > 0 {
-		scene.playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
-		return StatePlayerActionSelect, nil
+		playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
+		return playerActionPendingQueue, StatePlayerActionSelect, winner, nil
 	}
 
 	// ゲージ進行
-	actionQueueComp := GetActionQueueComponent(scene.world)
-	if !scene.ui.IsActionModalVisible() && len(scene.playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
-		UpdateGaugeSystem(scene.world)
+	actionQueueComp := GetActionQueueComponent(world)
+	if !ui.IsActionModalVisible() && len(playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
+		UpdateGaugeSystem(world)
 	}
 
 	// アクション実行
-	actionResults, err := UpdateActionQueueSystem(scene.world, scene.battleLogic, &scene.resources.Config)
+	actionResults, err := UpdateActionQueueSystem(world, battleLogic, config)
 	if err != nil {
 		fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
 	}
 
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
-			scene.ui.SetAnimation(&ActionAnimationData{Result: result, StartTime: scene.tickCount})
-			return StateAnimatingAction, nil
+			ui.SetAnimation(&ActionAnimationData{Result: result, StartTime: tick})
+			return playerActionPendingQueue, StateAnimatingAction, winner, nil
 		}
 	}
 
 	// ゲーム終了判定
-	gameEndResult := CheckGameEndSystem(scene.world)
+	gameEndResult := CheckGameEndSystem(world)
 	if gameEndResult.IsGameOver {
-		scene.winner = gameEndResult.Winner
-		scene.messageManager.EnqueueMessage(gameEndResult.Message, nil)
-		return StateMessage, nil
+		winner = gameEndResult.Winner
+		messageManager.EnqueueMessage(gameEndResult.Message, nil)
+		return playerActionPendingQueue, StateMessage, winner, nil
 	}
 
-	return StatePlaying, nil // 状態は維持
+	return playerActionPendingQueue, StatePlaying, winner, nil // 状態は維持
 }
 
 func (s *PlayingState) Draw(screen *ebiten.Image) {
@@ -69,23 +69,23 @@ func (s *PlayingState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(scene *BattleScene) (GameState, error) {
+func (s *PlayerActionSelectState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
 	// If the action modal is currently visible, the player is still making a choice.
-	if scene.ui.IsActionModalVisible() {
-		return StatePlayerActionSelect, nil
+	if ui.IsActionModalVisible() {
+		return playerActionPendingQueue, StatePlayerActionSelect, winner, nil
 	}
 
 	// If the modal is not visible, it means a choice was made (or cancelled)
 	// in processUIEvents, or it's the first time entering this state.
 
 	// Check if there are players still waiting to act.
-	if len(scene.playerActionPendingQueue) > 0 {
-		actingEntry := scene.playerActionPendingQueue[0]
+	if len(playerActionPendingQueue) > 0 {
+		actingEntry := playerActionPendingQueue[0]
 
 		// If the current acting entry is valid and idle, show the modal for them.
 		if actingEntry.Valid() && StateComponent.Get(actingEntry).FSM.Is(string(StateIdle)) {
 			actionTargetMap := make(map[PartSlotKey]ActionTarget)
-			availableParts := scene.battleLogic.PartInfoProvider.GetAvailableAttackParts(actingEntry)
+			availableParts := battleLogic.PartInfoProvider.GetAvailableAttackParts(actingEntry)
 			for _, available := range availableParts {
 				partDef := available.PartDef
 				slotKey := available.Slot
@@ -97,24 +97,24 @@ func (s *PlayerActionSelectState) Update(scene *BattleScene) (GameState, error) 
 					if !ok {
 						personality = PersonalityRegistry["リーダー"]
 					}
-					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(scene.world, actingEntry, scene.battleLogic.TargetSelector, scene.battleLogic.PartInfoProvider)
+					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic.TargetSelector, battleLogic.PartInfoProvider)
 				}
 				actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
 			}
-			scene.ui.ShowActionModal(actingEntry, actionTargetMap)
-			return StatePlayerActionSelect, nil // Stay in this state while modal is shown
+			ui.ShowActionModal(actingEntry, actionTargetMap)
+			return playerActionPendingQueue, StatePlayerActionSelect, winner, nil // Stay in this state while modal is shown
 		} else {
 			// If the current acting entry is invalid or not idle, remove it from the queue
 			// and re-evaluate for the next player.
-			scene.playerActionPendingQueue = scene.playerActionPendingQueue[1:]
+			playerActionPendingQueue = playerActionPendingQueue[1:]
 			// Recursively call Update to process the next player in the queue immediately
 			// or transition to PlayingState if the queue is now empty.
-			return s.Update(scene)
+			return s.Update(world, battleLogic, ui, messageManager, config, tick, winner, sceneManager, playerActionPendingQueue)
 		}
 	}
 
 	// If the queue is empty, all player actions have been processed.
-	return StatePlaying, nil
+	return playerActionPendingQueue, StatePlaying, winner, nil
 }
 
 func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
@@ -123,23 +123,23 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(scene *BattleScene) (GameState, error) {
-	if scene.ui.IsAnimationFinished(scene.tickCount) {
-		result := scene.ui.GetCurrentAnimationResult()
+func (s *AnimatingActionState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
+	if ui.IsAnimationFinished(tick) {
+		result := ui.GetCurrentAnimationResult()
 		messages := buildActionLogMessages(result)
 
-		scene.messageManager.EnqueueMessageQueue(messages, func() {
-			UpdateHistorySystem(scene.world, &result)
+		messageManager.EnqueueMessageQueue(messages, func() {
+			UpdateHistorySystem(world, &result)
 
 			actingEntry := result.ActingEntry
 			if actingEntry.Valid() && !StateComponent.Get(actingEntry).FSM.Is(string(StateBroken)) {
-				StartCooldownSystem(actingEntry, scene.world, scene.battleLogic.PartInfoProvider)
+				StartCooldownSystem(actingEntry, world, battleLogic.PartInfoProvider)
 			}
-			scene.ui.ClearCurrentTarget()
+			ui.ClearCurrentTarget()
 		})
-		return StateMessage, nil
+		return playerActionPendingQueue, StateMessage, winner, nil
 	}
-	return StateAnimatingAction, nil
+	return playerActionPendingQueue, StateAnimatingAction, winner, nil
 }
 
 func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
@@ -148,16 +148,16 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(scene *BattleScene) (GameState, error) {
-	newState, finished := scene.messageManager.Update(scene.state)
+func (s *MessageState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
+	newState, finished := messageManager.Update(StateMessage) // Pass StateMessage as current state
 	if finished {
-		scene.ui.ClearAnimation()
-		if scene.winner != TeamNone {
-			return StateGameOver, nil
+		ui.ClearAnimation()
+		if winner != TeamNone {
+			return playerActionPendingQueue, StateGameOver, winner, nil
 		}
-		return StatePlaying, nil
+		return playerActionPendingQueue, StatePlaying, winner, nil
 	}
-	return newState, nil
+	return playerActionPendingQueue, newState, winner, nil
 }
 
 func (s *MessageState) Draw(screen *ebiten.Image) {}
@@ -166,11 +166,11 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(scene *BattleScene) (GameState, error) {
+func (s *GameOverState) Update(world donburi.World, battleLogic *BattleLogic, ui UIInterface, messageManager *UIMessageDisplayManager, config *Config, tick int, winner TeamID, sceneManager *SceneManager, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, GameState, TeamID, error) {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		scene.manager.GoToTitleScene()
+		sceneManager.GoToTitleScene()
 	}
-	return StateGameOver, nil
+	return playerActionPendingQueue, StateGameOver, winner, nil
 }
 
 func (s *GameOverState) Draw(screen *ebiten.Image) {}
