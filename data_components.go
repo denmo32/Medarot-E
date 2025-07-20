@@ -30,6 +30,9 @@ var (
 
 	// --- Status Effect Component ---
 	ActiveEffectsComponent = donburi.NewComponentType[ActiveEffects]()
+
+	// --- Debug Components ---
+	DebugModeComponent = donburi.NewComponentType[struct{}]()
 )
 
 // ActiveEffects はエンティティに現在適用されているすべてのステータス効果を保持します。

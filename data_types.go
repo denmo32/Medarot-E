@@ -666,7 +666,7 @@ type UIInterface interface {
 	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
 	SetBattlefieldViewModel(vm BattlefieldViewModel)
-	UpdateInfoPanels(world donburi.World, config *Config) // battleLogic を削除
+	UpdateInfoPanels(battleUIState *BattleUIState, config *Config)
 	PostEvent(event UIEvent) // This will be implemented by the concrete UI struct
 	IsActionModalVisible() bool
 	GetActionTargetMap() map[PartSlotKey]ActionTarget
@@ -706,5 +706,6 @@ var BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
 // BattleUIState is a singleton component that stores UI-specific data (ViewModels).
 type BattleUIState struct {
 	InfoPanels map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
-	// Add other ViewModels here as needed (e.g., BattlefieldViewModel)
+	BattlefieldViewModel BattlefieldViewModel // Add BattlefieldViewModel here
 }
+

@@ -48,13 +48,16 @@ func BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) Inf
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoProvider, config *Config, debugMode bool, battlefieldRect image.Rectangle) BattlefieldViewModel {
+func BuildBattlefieldViewModel(battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel {
 	vm := BattlefieldViewModel{
 		Icons:     []*IconViewModel{},
-		DebugMode: debugMode,
+		DebugMode: func() bool {
+		_, ok := query.NewQuery(filter.Contains(DebugModeComponent)).First(battleLogic.world)
+		return ok
+	}(),
 	}
 
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(battleLogic.world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)
 		state := StateComponent.Get(entry)
 		gauge := GaugeComponent.Get(entry)
@@ -65,7 +68,7 @@ func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoPr
 		offsetX := float32(battlefieldRect.Min.X)
 		offsetY := float32(battlefieldRect.Min.Y)
 
-		x := CalculateIconXPosition(entry, partInfoProvider, bfWidth)
+		x := CalculateIconXPosition(entry, battleLogic.GetPartInfoProvider(), bfWidth)
 		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
@@ -82,7 +85,7 @@ func BuildBattlefieldViewModel(world donburi.World, partInfoProvider *PartInfoPr
 		}
 
 		var debugText string
-		if debugMode {
+		if vm.DebugMode { // ViewModelのDebugModeを使用
 			stateStr := GetStateDisplayName(StateType(state.FSM.Current()))
 			debugText = fmt.Sprintf(`State: %s
 Gauge: %.1f

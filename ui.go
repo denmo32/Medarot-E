@@ -125,8 +125,8 @@ func (u *UI) HideActionModal() {
 }
 
 // UpdateInfoPanels は情報パネルを更新します。
-func (u *UI) UpdateInfoPanels(world donburi.World, config *Config) {
-	updateAllInfoPanels(world, u.medarotInfoPanels, config)
+func (u *UI) UpdateInfoPanels(battleUIState *BattleUIState, config *Config) {
+	updateAllInfoPanels(battleUIState, u.medarotInfoPanels, config)
 }
 
 // GetActionTargetMap は現在のアクションターゲットマップを返します。

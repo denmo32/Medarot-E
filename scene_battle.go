@@ -5,6 +5,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
 type BattleScene struct {
@@ -146,11 +148,18 @@ func (bs *BattleScene) Update() error {
 	// }
 
 	// Update UI components that depend on world state
-	UpdateInfoPanelViewModelSystem(bs.world, bs.battleLogic) // ViewModelを更新
-	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)   // 更新されたViewModelをUIに反映
+	battleUIStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bs.world)
+	if !ok {
+		log.Println("エラー: BattleUIStateComponent がワールドに見つかりません。UI更新をスキップします。")
+		return nil
+	}
+	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
 
-	bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.GetPartInfoProvider(), &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
-	bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
+	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic) // ViewModelを更新
+	bs.ui.UpdateInfoPanels(battleUIState, &bs.resources.Config)   // 更新されたViewModelをUIに反映
+
+	battleUIState.BattlefieldViewModel = BuildBattlefieldViewModel(battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
+	bs.ui.SetBattlefieldViewModel(battleUIState.BattlefieldViewModel)
 
 	return nil
 }

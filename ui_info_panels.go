@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"image/color"
-	"log"
 	"sort"
 
 	"github.com/ebitenui/ebitenui/image"
@@ -150,13 +149,7 @@ func CreateInfoPanels(world donburi.World, config *Config, uiFactory *UIFactory)
 	return results
 }
 
-func updateAllInfoPanels(world donburi.World, medarotInfoPanels map[string]*infoPanelUI, config *Config) {
-	battleUIStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(world)
-	if !ok {
-		log.Println("エラー: BattleUIStateComponent がワールドに見つかりません。")
-		return
-	}
-	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
+func updateAllInfoPanels(battleUIState *BattleUIState, medarotInfoPanels map[string]*infoPanelUI, config *Config) {
 
 	for id, vm := range battleUIState.InfoPanels {
 		ui, ok := medarotInfoPanels[id]
