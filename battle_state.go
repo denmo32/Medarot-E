@@ -10,12 +10,13 @@ import (
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 type BattleContext struct {
-	World        donburi.World
-	BattleLogic  *BattleLogic
-	UI           UIInterface
-	Config       *Config
-	SceneManager *SceneManager
-	Tick         int
+	World           donburi.World
+	BattleLogic     *BattleLogic
+	UI              UIInterface
+	Config          *Config
+	SceneManager    *SceneManager
+	GameDataManager *GameDataManager // 追加
+	Tick            int
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
@@ -156,7 +157,7 @@ func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQue
 	if ui.IsAnimationFinished(tick) {
 		result := ui.GetCurrentAnimationResult()
 		gameEvents = append(gameEvents, ClearAnimationGameEvent{})
-		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: buildActionLogMessages(result), Callback: func() {
+		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: buildActionLogMessages(result, ctx.GameDataManager), Callback: func() {
 			UpdateHistorySystem(world, &result)
 		}})
 		gameEvents = append(gameEvents, ActionAnimationFinishedGameEvent{Result: result, ActingEntry: result.ActingEntry})

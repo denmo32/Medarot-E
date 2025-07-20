@@ -38,12 +38,12 @@ func main() {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	GlobalGameDataManager, err = NewGameDataManager(fontFace)
+	gameDataManager, err := NewGameDataManager(fontFace)
 	if err != nil {
 		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
 	}
 
-	if err := LoadAllStaticGameData(); err != nil {
+	if err := LoadAllStaticGameData(gameDataManager); err != nil {
 		log.Fatalf("静的ゲームデータの読み込みに失敗しました: %v", err)
 	}
 
@@ -74,7 +74,7 @@ func main() {
 		GameData:        gameData,
 		Config:          config,
 		Font:            fontFace,
-		GameDataManager: GlobalGameDataManager,
+		GameDataManager: gameDataManager,
 		ButtonImage: &widget.ButtonImage{
 			Idle:    image.NewNineSliceSimple(buttonImage, 10, 10),
 			Hover:   image.NewNineSliceSimple(buttonImage, 10, 10),

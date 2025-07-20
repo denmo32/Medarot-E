@@ -18,11 +18,11 @@ func (bl *BattleLogic) GetPartInfoProvider() *PartInfoProvider {
 }
 
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
-func NewBattleLogic(world donburi.World, config *Config) *BattleLogic {
+func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDataManager) *BattleLogic {
 	bl := &BattleLogic{}
 
 	// ヘルパーを初期化
-	bl.PartInfoProvider = NewPartInfoProvider(world, config, GlobalGameDataManager)
+	bl.PartInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
 	bl.DamageCalculator = NewDamageCalculator(world, config)
 	bl.HitCalculator = NewHitCalculator(world, config)
 	bl.TargetSelector = NewTargetSelector(world, config)

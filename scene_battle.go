@@ -42,7 +42,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		uiEventChannel:           make(chan UIEvent, 10),
 	}
 
-	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config)
+	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
 	EnsureActionQueueEntity(bs.world)
 
@@ -93,12 +93,13 @@ func (bs *BattleScene) Update() error {
 
 	// 現在のバトルステートを更新
 	battleContext := &BattleContext{
-		World:        bs.world,
-		BattleLogic:  bs.battleLogic,
-		UI:           bs.ui,
-		Config:       &bs.resources.Config,
-		SceneManager: bs.manager,
-		Tick:         bs.tickCount,
+		World:           bs.world,
+		BattleLogic:     bs.battleLogic,
+		UI:              bs.ui,
+		Config:          &bs.resources.Config,
+		SceneManager:    bs.manager,
+		GameDataManager: bs.resources.GameDataManager, // 追加
+		Tick:            bs.tickCount,
 	}
 
 	newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(

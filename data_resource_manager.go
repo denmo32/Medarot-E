@@ -92,18 +92,18 @@ func LoadFormulas() (map[Trait]ActionFormulaConfig, error) {
 }
 
 // LoadAllStaticGameData re-implements the original function using the resource loader.
-func LoadAllStaticGameData() error {
-	if err := LoadMedals(); err != nil {
+func LoadAllStaticGameData(gdm *GameDataManager) error {
+	if err := LoadMedals(gdm); err != nil {
 		return fmt.Errorf("failed to load medals.csv: %w", err)
 	}
-	if err := LoadParts(); err != nil {
+	if err := LoadParts(gdm); err != nil {
 		return fmt.Errorf("failed to load parts.csv: %w", err)
 	}
 	return nil
 }
 
 // LoadMedals loads medal definitions from the CSV resource.
-func LoadMedals() error {
+func LoadMedals(gdm *GameDataManager) error {
 	res := r.LoadRaw(RawMedalsCSV)
 	reader := csv.NewReader(bytes.NewReader(res.Data))
 	_, err := reader.Read() // Skip header
@@ -130,7 +130,7 @@ func LoadMedals() error {
 			Personality: record[2],
 			SkillLevel:  parseInt(record[6], 1),
 		}
-		if err := GlobalGameDataManager.AddMedalDefinition(&medal); err != nil {
+		if err := gdm.AddMedalDefinition(&medal); err != nil {
 			fmt.Printf("error adding medal definition %s: %v\n", medal.ID, err)
 		}
 	}
@@ -138,7 +138,7 @@ func LoadMedals() error {
 }
 
 // LoadParts loads part definitions from the CSV resource.
-func LoadParts() error {
+func LoadParts(gdm *GameDataManager) error {
 	res := r.LoadRaw(RawPartsCSV)
 	reader := csv.NewReader(bytes.NewReader(res.Data))
 	reader.Read() // Skip header
@@ -170,7 +170,7 @@ func LoadParts() error {
 			Stability:  parseInt(record[14], 0),
 			WeaponType: WeaponType(record[5]), // WeaponType型にキャスト
 		}
-		if err := GlobalGameDataManager.AddPartDefinition(partDef); err != nil {
+		if err := gdm.AddPartDefinition(partDef); err != nil {
 			fmt.Printf("error adding part definition %s: %v\n", partDef.ID, err)
 		}
 	}

@@ -11,13 +11,15 @@ import (
 type UIAnimationDrawer struct {
 	config           *Config
 	animationManager *BattleAnimationManager
+	gameDataManager  *GameDataManager // 追加
 }
 
 // NewUIAnimationDrawer は新しいUIAnimationDrawerインスタンスを作成します。
-func NewUIAnimationDrawer(config *Config, animationManager *BattleAnimationManager) *UIAnimationDrawer {
+func NewUIAnimationDrawer(config *Config, animationManager *BattleAnimationManager, gdm *GameDataManager) *UIAnimationDrawer {
 	return &UIAnimationDrawer{
 		config:           config,
 		animationManager: animationManager,
+		gameDataManager:  gdm,
 	}
 }
 
@@ -106,7 +108,7 @@ func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick int, battlefieldVM B
 			ca := float32(a) / 0xffff
 			drawOpts.DrawImageOptions.ColorScale.Scale(cr, cg, cb, ca)
 			drawOpts.DrawImageOptions.ColorScale.ScaleAlpha(alpha)
-			text.Draw(screen, fmt.Sprintf("-%d", anim.Result.OriginalDamage), GlobalGameDataManager.Font, drawOpts)
+			text.Draw(screen, fmt.Sprintf("-%d", anim.Result.OriginalDamage), d.gameDataManager.Font, drawOpts)
 		}
 	}
 }

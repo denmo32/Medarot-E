@@ -43,7 +43,6 @@ const (
 	Defense    PartParameter = "Defense"
 )
 
-// DebuffType はデバフの種類を示す型です
 type DebuffType string
 
 const (
@@ -289,7 +288,7 @@ type UIConfig struct {
 }
 
 type GameData struct {
-	Medarots []MedarotData // ここにはメダロットのロードアウトのみが残ります。この構造体も廃止可能です
+	Medarots []MedarotData
 }
 
 type MedarotData struct {

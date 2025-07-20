@@ -76,10 +76,10 @@ func NewCustomizeScene(res *SharedResources, manager *SceneManager) *CustomizeSc
 }
 
 func (cs *CustomizeScene) setupPartLists() {
-	cs.medalList = GlobalGameDataManager.GetAllMedalDefinitions()
+	cs.medalList = cs.resources.GameDataManager.GetAllMedalDefinitions()
 	sort.Slice(cs.medalList, func(i, j int) bool { return cs.medalList[i].ID < cs.medalList[j].ID })
 
-	allPartDefs := GlobalGameDataManager.GetAllPartDefinitions()
+	allPartDefs := cs.resources.GameDataManager.GetAllPartDefinitions()
 	sort.Slice(allPartDefs, func(i, j int) bool { return allPartDefs[i].ID < allPartDefs[j].ID })
 
 	cs.headPartsList = []*PartDefinition{}
@@ -333,7 +333,7 @@ func (cs *CustomizeScene) changeSelection(label CustomizeCategory, direction int
 
 func (cs *CustomizeScene) updateStatus(id string) {
 	var sb strings.Builder
-	if partDef, found := GlobalGameDataManager.GetPartDefinition(id); found {
+	if partDef, found := cs.resources.GameDataManager.GetPartDefinition(id); found {
 		sb.WriteString(fmt.Sprintf("Name: %s\n", partDef.PartName))
 		sb.WriteString(fmt.Sprintf("Type: %s\n", partDef.Type))
 		sb.WriteString(fmt.Sprintf("Category: %s\n", partDef.Category))
@@ -349,7 +349,7 @@ func (cs *CustomizeScene) updateStatus(id string) {
 			sb.WriteString(fmt.Sprintf("Stability: %d\n", partDef.Stability)) // Added Stability
 			sb.WriteString(fmt.Sprintf("Defense: %d\n", partDef.Defense))     // Added Defense for legs
 		}
-	} else if medal, found := GlobalGameDataManager.GetMedalDefinition(id); found { // Use GameDataManager
+	} else if medal, found := cs.resources.GameDataManager.GetMedalDefinition(id); found { // Use GameDataManager
 		sb.WriteString(fmt.Sprintf("Name: %s\n", medal.Name))
 		sb.WriteString(fmt.Sprintf("Personality: %s\n\n", medal.Personality))
 		sb.WriteString(fmt.Sprintf("Skill Level: %d\n", medal.SkillLevel))

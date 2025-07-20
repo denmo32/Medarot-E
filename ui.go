@@ -53,8 +53,8 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, gameD
 		config:            config,
 		gameDataManager:   gameDataManager, // 追加
 		whitePixel:        whiteImg,
-		uiFactory:         uiFactory,                                      // 追加
-		animationDrawer:   NewUIAnimationDrawer(config, animationManager), // UIAnimationDrawerを初期化
+		uiFactory:         uiFactory,                                                       // 追加
+		animationDrawer:   NewUIAnimationDrawer(config, animationManager, gameDataManager), // UIAnimationDrawerを初期化
 	}
 
 	rootContainer := widget.NewContainer(

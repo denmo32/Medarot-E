@@ -25,11 +25,6 @@ var (
 	// --- AI Components ---
 	AIComponent = donburi.NewComponentType[AI]()
 
-	// --- Debuff Components ---
-	// --- Debuff Components ---
-	// DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]() // ActiveEffectsComponentに統合
-	// EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]() // ActiveEffectsComponentに統合
-
 	// --- Team Buff Component ---
 	TeamBuffsComponent = donburi.NewComponentType[TeamBuffs]()
 
@@ -93,40 +88,12 @@ type Log struct {
 // PlayerControl はプレイヤーが操作するエンティティであることを示すタグコンポーネントです。
 type PlayerControl struct{}
 
-// Effects はメダロットにかかっている一時的な効果（バフ・デバフ）を管理します。 (現在未使用)
-// type Effects struct {
-//	EvasionRateMultiplier float64 // 回避率の倍率 (例: 0.5で半減)
-//	DefenseRateMultiplier float64 // 防御率の倍率 (例: 0.5で半減)
-//}
-
-// DefenseDebuff は防御力デバフ効果を表します。
-// ActiveEffectsComponentに統合されたため、この構造体は不要になりました。
-// type DefenseDebuff struct {
-// 	Multiplier float64 // 防御率に乗算される値 (例: 0.5)
-// }
-
-// EvasionDebuff は回避力デバフ効果を表します。
-// ActiveEffectsComponentに統合されたため、この構造体は不要になりました。
-// type EvasionDebuff struct {
-// 	Multiplier float64 // 回避率に乗算される値 (例: 0.5)
-// }
-
-// --- AIターゲティング戦略コンポーネント ---
-
-// --- AI関連コンポーネント ---
-
 // AI はAI制御エンティティのすべてのデータを集約します。
 type AI struct {
 	PersonalityID     string
 	TargetHistory     TargetHistoryData
 	LastActionHistory LastActionHistoryData
 }
-
-// --- 特性効果タグコンポーネント --- (リファクタリングにより不要に)
-
-// --- AIパーツ選択戦略コンポーネント ---
-
-// --- 履歴データコンポーネント ---
 
 // TargetHistoryData は、このエンティティを最後に攻撃したエンティティを記録します。
 type TargetHistoryData struct {
@@ -138,8 +105,6 @@ type LastActionHistoryData struct {
 	LastHitTarget   *donburi.Entry
 	LastHitPartSlot PartSlotKey
 }
-
-// --- チームバフ関連コンポーネント ---
 
 // TeamBuffs はチーム全体にかかるバフ効果を管理します。
 // このコンポーネントを持つエンティティはワールドに1つだけ存在することを想定しています。

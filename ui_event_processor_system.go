@@ -131,7 +131,7 @@ func UpdateUIEventProcessorSystem(
 }
 
 // buildActionLogMessages はアクションの結果ログを生成します。
-func buildActionLogMessages(result ActionResult) []string {
+func buildActionLogMessages(result ActionResult, gameDataManager *GameDataManager) []string {
 	messages := []string{}
 
 	// メッセージテンプレートのパラメータを準備
@@ -153,7 +153,7 @@ func buildActionLogMessages(result ActionResult) []string {
 
 	if result.ActionDidHit {
 		if messageID != "" {
-			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage(messageID, initiateParams))
+			messages = append(messages, gameDataManager.Messages.FormatMessage(messageID, initiateParams))
 		}
 
 		// ダメージや防御のメッセージを追加
@@ -161,26 +161,26 @@ func buildActionLogMessages(result ActionResult) []string {
 		case CategoryRanged, CategoryMelee:
 			if result.ActionIsDefended {
 				defendParams := map[string]interface{}{"defender_name": result.DefenderName, "defending_part_type": result.DefendingPartType}
-				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_defend", defendParams))
+				messages = append(messages, gameDataManager.Messages.FormatMessage("action_defend", defendParams))
 			}
 			damageParams := map[string]interface{}{"defender_name": result.DefenderName, "target_part_type": result.TargetPartType, "damage": result.DamageDealt}
-			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("action_damage", damageParams))
+			messages = append(messages, gameDataManager.Messages.FormatMessage("action_damage", damageParams))
 		case CategoryIntervention:
 			// 介入アクションの成功メッセージ（例：「味方チーム全体の命中率が上昇した！」）
 			// 必要であれば、ここで特性(Trait)に応じたメッセージを追加する
 			if result.ActionTrait == TraitSupport { // string() を削除
-				messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("support_action_generic", nil))
+				messages = append(messages, gameDataManager.Messages.FormatMessage("support_action_generic", nil))
 			}
 		}
 	} else {
 		// ミスした場合
 		if messageID != "" {
-			messages = append(messages, GlobalGameDataManager.Messages.FormatMessage(messageID, initiateParams))
+			messages = append(messages, gameDataManager.Messages.FormatMessage(messageID, initiateParams))
 		}
 		missParams := map[string]interface{}{
 			"target_name": result.DefenderName,
 		}
-		messages = append(messages, GlobalGameDataManager.Messages.FormatMessage("attack_miss", missParams))
+		messages = append(messages, gameDataManager.Messages.FormatMessage("attack_miss", missParams))
 	}
 	return messages
 }

@@ -89,6 +89,3 @@ func (gdm *GameDataManager) GetAllMedalDefinitions() []*Medal {
 	// UIで一貫した順序が必要な場合は、ここでソートを追加
 	return defs
 }
-
-// GameDataManagerのグローバルインスタンス。main.go などで初期化されます。
-var GlobalGameDataManager *GameDataManager

@@ -63,7 +63,7 @@ func NewPanel(opts *PanelOptions, uiFactory *UIFactory, children ...widget.Prefe
 
 		titleFont := uiFactory.Font
 		if opts.TitleFont != nil {
-			titleFont = GlobalGameDataManager.Font
+			titleFont = opts.TitleFont
 		}
 
 		title := widget.NewText(
