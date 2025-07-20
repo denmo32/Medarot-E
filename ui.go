@@ -36,7 +36,39 @@ func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, batt
 	// BattlefieldViewModel を設定
 	u.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
 
-	// InfoPanels を更新
+	// InfoPanels を更新または再構築
+	if len(battleUIState.InfoPanels) != len(u.medarotInfoPanels) {
+		// パネルの数が変わった場合のみ再構築
+		// 既存のパネルをクリア
+		mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container)
+		team1PanelContainer := mainUIContainer.Children()[0].(*widget.Container)
+		team2PanelContainer := mainUIContainer.Children()[2].(*widget.Container)
+
+		for _, panel := range u.medarotInfoPanels {
+			team1PanelContainer.RemoveChild(panel.rootContainer)
+			team2PanelContainer.RemoveChild(panel.rootContainer)
+		}
+		u.medarotInfoPanels = make(map[string]*infoPanelUI) // マップをクリア
+
+		// 新しいViewModelに基づいてパネルを再生成
+		infoPanelVMs := make([]InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
+		for _, vm := range battleUIState.InfoPanels {
+			infoPanelVMs = append(infoPanelVMs, vm)
+		}
+
+		infoPanelResults := CreateInfoPanels(config, u.uiFactory, infoPanelVMs)
+
+		for _, result := range infoPanelResults {
+			u.medarotInfoPanels[result.ID] = result.PanelUI
+			if result.Team == Team1 {
+				team1PanelContainer.AddChild(result.PanelUI.rootContainer)
+			} else {
+				team2PanelContainer.AddChild(result.PanelUI.rootContainer)
+			}
+		}
+	}
+
+	// 各パネルのデータを更新
 	for id, vm := range battleUIState.InfoPanels {
 		if panel, ok := u.medarotInfoPanels[id]; ok {
 			updateSingleInfoPanel(panel, vm, config)
@@ -50,7 +82,7 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, gameDataManager *GameDataManager, animationManager *BattleAnimationManager) *UI {
+func NewUI(config *Config, eventChannel chan UIEvent, gameDataManager *GameDataManager, animationManager *BattleAnimationManager) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
@@ -100,15 +132,8 @@ func NewUI(world donburi.World, config *Config, eventChannel chan UIEvent, gameD
 		),
 	)
 	mainUIContainer.AddChild(team2PanelContainer)
-	infoPanelResults := CreateInfoPanels(world, config, uiFactory)
-	for _, result := range infoPanelResults {
-		ui.medarotInfoPanels[result.ID] = result.PanelUI
-		if result.Team == Team1 {
-			team1PanelContainer.AddChild(result.PanelUI.rootContainer)
-		} else {
-			team2PanelContainer.AddChild(result.PanelUI.rootContainer)
-		}
-	}
+	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
+	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
 	ui.messageManager = NewUIMessageDisplayManager(uiFactory, rootContainer)
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,

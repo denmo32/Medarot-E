@@ -40,10 +40,13 @@ func BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) Inf
 	stateStr := GetStateDisplayName(StateType(state.FSM.Current()))
 
 	return InfoPanelViewModel{
-		MedarotName: settings.Name,
-		StateStr:    stateStr,
-		IsLeader:    settings.IsLeader,
-		Parts:       partViewModels,
+		ID:        settings.ID,
+		Name:      settings.Name,
+		Team:      settings.Team,
+		DrawIndex: settings.DrawIndex,
+		StateStr:  stateStr,
+		IsLeader:  settings.IsLeader,
+		Parts:     partViewModels,
 	}
 }
 

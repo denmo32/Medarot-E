@@ -45,10 +45,10 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		playerActionPendingQueue: make([]*donburi.Entry, 0),
 		winner:                   TeamNone,
 		uiEventChannel:           make(chan UIEvent, 10),
-		viewModelFactory:         NewViewModelFactory(&world), // ViewModelFactoryを初期化
 	}
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
+	bs.viewModelFactory = NewViewModelFactory(&world, bs.battleLogic) // ViewModelFactoryを初期化
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
 	EnsureActionQueueEntity(bs.world)
 
@@ -71,7 +71,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.battleLogic)
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
-	bs.ui = NewUI(bs.world, &bs.resources.Config, bs.uiEventChannel, bs.resources.GameDataManager, animationManager)
+	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.resources.GameDataManager, animationManager)
 	// ui.goでuiFactoryが初期化され、ui.messageManagerもuiFactoryを使って初期化されるため、
 	// ここでbs.messageManagerを直接初期化する必要はない。
 	// bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.ui.GetRootContainer())
@@ -95,9 +95,12 @@ func (bs *BattleScene) Update() error {
 	bs.ui.Update()
 
 	// UIイベントプロセッサシステムを更新
-	bs.playerActionPendingQueue, bs.state = UpdateUIEventProcessorSystem(
+	var uiGeneratedGameEvents []GameEvent
+	bs.playerActionPendingQueue, bs.state, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
 		bs.world, bs.battleLogic, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
 	)
+	// UIイベントプロセッサから発行されたGameEventを処理
+	bs.processGameEvents(uiGeneratedGameEvents)
 
 	// メッセージ表示状態の場合、メッセージマネージャーを更新
 	if bs.state == StateMessage {
@@ -223,6 +226,26 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			bs.ui.PostEvent(ClearAnimationUIEvent{})
 		case ClearCurrentTargetGameEvent:
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
+		case ActionConfirmedGameEvent:
+			// ActionConfirmedGameEvent を受け取ったら、ChargeRequestedGameEvent を発行
+			// これはUIEventProcessorSystemから発行されるため、ここでは直接チャージを開始しない
+			// ChargeRequestedGameEvent は ChargeInitiationSystem で処理される
+			bs.processGameEvents([]GameEvent{ChargeRequestedGameEvent{
+				ActingEntry:     e.ActingEntry,
+				SelectedSlotKey: e.SelectedSlotKey,
+				TargetEntry:     e.TargetEntry,
+				TargetPartSlot:  e.TargetPartSlot,
+			}})
+		case ChargeRequestedGameEvent:
+			// ChargeInitiationSystem を呼び出す
+			successful := StartCharge(e.ActingEntry, e.SelectedSlotKey, e.TargetEntry, e.TargetPartSlot, bs.world, bs.battleLogic)
+			if !successful {
+				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(e.ActingEntry).Name)
+				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
+			}
+		case ActionCanceledGameEvent:
+			// 行動キャンセル時の処理
+			bs.state = StatePlaying // キャンセル時は即座にPlaying状態に戻る
 		}
 	}
 	// イベント処理後に現在の状態を更新

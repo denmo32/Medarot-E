@@ -457,10 +457,13 @@ type ActionAnimationData struct {
 
 // InfoPanelViewModel は、単一の情報パネルUIが必要とするすべてのデータを保持します。
 type InfoPanelViewModel struct {
-	MedarotName string
-	StateStr    string
-	IsLeader    bool
-	Parts       map[PartSlotKey]PartViewModel
+	ID        string
+	Name      string
+	Team      TeamID
+	DrawIndex int
+	StateStr  string
+	IsLeader  bool
+	Parts     map[PartSlotKey]PartViewModel
 }
 
 // PartViewModel は、単一のパーツUIが必要とするデータを保持します。
@@ -571,6 +574,34 @@ func (e ClearAnimationGameEvent) isGameEvent() {}
 type ClearCurrentTargetGameEvent struct{}
 
 func (e ClearCurrentTargetGameEvent) isGameEvent() {}
+
+// ActionConfirmedGameEvent は、プレイヤーがアクションを確定したことを示すイベントです。
+type ActionConfirmedGameEvent struct {
+	ActingEntry     *donburi.Entry
+	SelectedPartDef *PartDefinition
+	SelectedSlotKey PartSlotKey
+	TargetEntry     *donburi.Entry
+	TargetPartSlot  PartSlotKey
+}
+
+func (e ActionConfirmedGameEvent) isGameEvent() {}
+
+// ChargeRequestedGameEvent は、チャージ開始が要求されたことを示すイベントです。
+type ChargeRequestedGameEvent struct {
+	ActingEntry     *donburi.Entry
+	SelectedSlotKey PartSlotKey
+	TargetEntry     *donburi.Entry
+	TargetPartSlot  PartSlotKey
+}
+
+func (e ChargeRequestedGameEvent) isGameEvent() {}
+
+// ActionCanceledGameEvent は、プレイヤーが行動選択をキャンセルしたことを示すイベントです。
+type ActionCanceledGameEvent struct {
+	ActingEntry *donburi.Entry
+}
+
+func (e ActionCanceledGameEvent) isGameEvent() {}
 
 // UIEvent は、UIから発行されるすべてのイベントを示すマーカーインターフェースです。
 type UIEvent interface {

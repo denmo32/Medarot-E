@@ -6,81 +6,8 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// ProcessPartSelectedUIEvent は PartSelectedUIEvent を処理し、ゲームロジックを開始します。
-func ProcessPartSelectedUIEvent(
-	world donburi.World,
-	battleLogic *BattleLogic,
-	playerActionPendingQueue []*donburi.Entry,
-	ui UIInterface,
-	event PartSelectedUIEvent,
-) []*donburi.Entry {
-	log.Printf("BattleActionProcessor: PartSelectedUIEvent を処理中 - Actor: %s, Part: %s",
-		SettingsComponent.Get(event.ActingEntry).Name,
-		event.SelectedPartDef.PartName)
-
-	actionTargetMap := ui.GetActionTargetMap() // UIからマップを取得
-
-	var targetEntry *donburi.Entry
-	var targetPartSlot PartSlotKey
-
-	switch event.SelectedPartDef.Category {
-	case CategoryRanged:
-		actionTarget, ok := actionTargetMap[event.SelectedSlotKey]
-		if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
-			log.Printf("ターゲットがいません！")
-			ui.ClearCurrentTarget()
-			// ターゲットがいない場合は行動選択をキャンセルし、キューから削除
-			if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
-				playerActionPendingQueue = playerActionPendingQueue[1:]
-			}
-			return playerActionPendingQueue
-		}
-		targetEntry = actionTarget.Target
-		targetPartSlot = actionTarget.Slot
-	case CategoryMelee, CategoryIntervention:
-		// 格闘や介入はターゲット選択が不要な場合があるため、nil, "" を渡す
-		targetEntry = nil
-		targetPartSlot = ""
-	default:
-		log.Printf("未対応のパーツカテゴリです: %s", event.SelectedPartDef.Category)
-		// 未対応のカテゴリの場合もキューから削除
-		if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
-			playerActionPendingQueue = playerActionPendingQueue[1:]
-		}
-		return playerActionPendingQueue
-	}
-
-	// ActionConfirmedUIEvent をポスト
-	ui.PostEvent(ActionConfirmedUIEvent{
-		ActingEntry:     event.ActingEntry,
-		SelectedPartDef: event.SelectedPartDef,
-		SelectedSlotKey: event.SelectedSlotKey,
-		TargetEntry:     targetEntry,
-		TargetPartSlot:  targetPartSlot,
-	})
-
-	ui.HideActionModal()
-	if len(playerActionPendingQueue) > 0 && playerActionPendingQueue[0] == event.ActingEntry {
-		playerActionPendingQueue = playerActionPendingQueue[1:]
-	}
-	return playerActionPendingQueue
-}
-
-// ProcessActionCanceledUIEvent は ActionCanceledUIEvent を処理し、保留中のキューをクリアします。
-func ProcessActionCanceledUIEvent(
-	playerActionPendingQueue []*donburi.Entry,
-	ui UIInterface,
-	event ActionCanceledUIEvent,
-) []*donburi.Entry {
-	log.Printf("BattleActionProcessor: ActionCanceledUIEvent を処理中 - Actor: %s",
-		SettingsComponent.Get(event.ActingEntry).Name)
-
-	newPlayerActionPendingQueue := make([]*donburi.Entry, 0)
-	ui.ClearCurrentTarget()
-	return newPlayerActionPendingQueue
-}
-
-// UpdateUIEventProcessorSystem はUIイベントを処理し、ゲームの状態を更新します。
+// UIEventProcessorSystem はUIイベントを処理し、対応するGameEventを発行します。
+// このシステムは直接ゲームロジックを呼び出しません。
 func UpdateUIEventProcessorSystem(
 	world donburi.World,
 	battleLogic *BattleLogic,
@@ -89,28 +16,86 @@ func UpdateUIEventProcessorSystem(
 	uiEventChannel chan UIEvent,
 	playerActionPendingQueue []*donburi.Entry,
 	currentState GameState,
-) (newPlayerActionPendingQueue []*donburi.Entry, newState GameState) {
+) (newPlayerActionPendingQueue []*donburi.Entry, newState GameState, gameEvents []GameEvent) {
 	newPlayerActionPendingQueue = playerActionPendingQueue
 	newState = currentState
+	gameEvents = []GameEvent{}
 
 	select {
 	case event := <-uiEventChannel:
 		switch e := event.(type) {
 		case PartSelectedUIEvent:
-			newPlayerActionPendingQueue = ProcessPartSelectedUIEvent(
-				world, battleLogic, playerActionPendingQueue, ui, e)
+			log.Printf("UIEventProcessor: PartSelectedUIEvent を処理中 - Actor: %s, Part: %s",
+				SettingsComponent.Get(e.ActingEntry).Name,
+				e.SelectedPartDef.PartName)
+
+			actionTargetMap := ui.GetActionTargetMap() // UIからマップを取得
+
+			var targetEntry *donburi.Entry
+			var targetPartSlot PartSlotKey
+
+			switch e.SelectedPartDef.Category {
+			case CategoryRanged:
+				actionTarget, ok := actionTargetMap[e.SelectedSlotKey]
+				if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
+					log.Printf("ターゲットがいません！")
+					ui.ClearCurrentTarget()
+					// ターゲットがいない場合は行動選択をキャンセルし、キューから削除
+					if len(newPlayerActionPendingQueue) > 0 && newPlayerActionPendingQueue[0] == e.ActingEntry {
+						newPlayerActionPendingQueue = newPlayerActionPendingQueue[1:]
+					}
+					return newPlayerActionPendingQueue, newState, gameEvents
+				}
+				targetEntry = actionTarget.Target
+				targetPartSlot = actionTarget.Slot
+			case CategoryMelee, CategoryIntervention:
+				// 格闘や介入はターゲット選択が不要な場合があるため、nil, "" を渡す
+				targetEntry = nil
+				targetPartSlot = ""
+			default:
+				log.Printf("未対応のパーツカテゴリです: %s", e.SelectedPartDef.Category)
+				// 未対応のカテゴリの場合もキューから削除
+				if len(newPlayerActionPendingQueue) > 0 && newPlayerActionPendingQueue[0] == e.ActingEntry {
+					newPlayerActionPendingQueue = newPlayerActionPendingQueue[1:]
+				}
+				return newPlayerActionPendingQueue, newState, gameEvents
+			}
+
+			// ActionConfirmedGameEvent を発行
+			gameEvents = append(gameEvents, ActionConfirmedGameEvent{
+				ActingEntry:     e.ActingEntry,
+				SelectedPartDef: e.SelectedPartDef,
+				SelectedSlotKey: e.SelectedSlotKey,
+				TargetEntry:     targetEntry,
+				TargetPartSlot:  targetPartSlot,
+			})
+
+			ui.HideActionModal()
+			if len(newPlayerActionPendingQueue) > 0 && newPlayerActionPendingQueue[0] == e.ActingEntry {
+				newPlayerActionPendingQueue = newPlayerActionPendingQueue[1:]
+			}
+
 		case TargetSelectedUIEvent:
 			// TargetSelectedUIEvent は UI がターゲットを設定する際に使用される
 			ui.SetCurrentTarget(e.TargetEntry)
+
 		case ActionConfirmedUIEvent:
-			successful := StartCharge(e.ActingEntry, e.SelectedSlotKey, e.TargetEntry, e.TargetPartSlot, world, battleLogic)
-			if !successful {
-				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(e.ActingEntry).Name)
-				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
-			}
+			// UIEventProcessorSystem は直接ゲームロジックを呼び出さず、GameEventを発行する
+			gameEvents = append(gameEvents, ChargeRequestedGameEvent{
+				ActingEntry:     e.ActingEntry,
+				SelectedSlotKey: e.SelectedSlotKey,
+				TargetEntry:     e.TargetEntry,
+				TargetPartSlot:  e.TargetPartSlot,
+			})
+
 		case ActionCanceledUIEvent:
-			newPlayerActionPendingQueue = ProcessActionCanceledUIEvent(playerActionPendingQueue, ui, e)
+			log.Printf("UIEventProcessor: ActionCanceledUIEvent を処理中 - Actor: %s",
+				SettingsComponent.Get(e.ActingEntry).Name)
+			newPlayerActionPendingQueue = make([]*donburi.Entry, 0)
+			ui.ClearCurrentTarget()
+			gameEvents = append(gameEvents, ActionCanceledGameEvent{ActingEntry: e.ActingEntry})
 			newState = StatePlaying // キャンセル時は即座にPlaying状態に戻る
+
 		case ShowActionModalUIEvent:
 			ui.ShowActionModal(e.ViewModel)
 		case HideActionModalUIEvent:

@@ -7,16 +7,10 @@ import (
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
-func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, entry *donburi.Entry) *infoPanelUI {
+func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoPanelViewModel) *infoPanelUI {
 	c := config.UI
-	settings := SettingsComponent.Get(entry)
-	partsComp := PartsComponent.Get(entry)
-	partsMap := partsComp.Map
 
 	// ヘッダー部分を作成
 	headerContainer := widget.NewContainer(
@@ -26,11 +20,11 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, entry *d
 		)),
 	)
 	nameText := widget.NewText(
-		widget.TextOpts.Text(settings.Name, uiFactory.Font, c.Colors.White),
+		widget.TextOpts.Text(vm.Name, uiFactory.Font, c.Colors.White),
 	)
 	headerContainer.AddChild(nameText)
 	stateText := widget.NewText(
-		widget.TextOpts.Text("待機", uiFactory.Font, c.Colors.Yellow),
+		widget.TextOpts.Text(vm.StateStr, uiFactory.Font, c.Colors.Yellow),
 		widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{
 			HorizontalPosition: widget.GridLayoutPositionEnd,
 		})),
@@ -41,18 +35,13 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, entry *d
 	partWidgets := []widget.PreferredSizeLocateableWidget{}
 	partSlots := make(map[PartSlotKey]*infoPanelPartUI)
 	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
-		partInst, instFound := partsMap[slotKey]
+		partVM, ok := vm.Parts[slotKey]
 		partName := "---"
 		initialArmor := 0.0
 
-		if instFound && partInst != nil {
-			partDef, defFound := uiFactory.GameDataManager.GetPartDefinition(partInst.DefinitionID)
-			if defFound {
-				partName = partDef.PartName
-				initialArmor = float64(partInst.CurrentArmor)
-			} else {
-				partName = "(定義なし)"
-			}
+		if ok {
+			partName = partVM.PartName
+			initialArmor = float64(partVM.CurrentArmor)
 		}
 
 		partContainer := widget.NewContainer(
@@ -121,29 +110,24 @@ type InfoPanelCreationResult struct {
 }
 
 // CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
-func CreateInfoPanels(world donburi.World, config *Config, uiFactory *UIFactory) []InfoPanelCreationResult {
-	var entries []*donburi.Entry
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
-		entries = append(entries, entry)
-	})
-
-	sort.Slice(entries, func(i, j int) bool {
-		iSettings := SettingsComponent.Get(entries[i])
-		jSettings := SettingsComponent.Get(entries[j])
-		if iSettings.Team != jSettings.Team {
-			return iSettings.Team < jSettings.Team
-		}
-		return iSettings.DrawIndex < jSettings.DrawIndex
-	})
-
+// この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した
+// InfoPanelViewModelのリストを受け取るように変更されます。
+func CreateInfoPanels(config *Config, uiFactory *UIFactory, infoPanelVMs []InfoPanelViewModel) []InfoPanelCreationResult {
 	var results []InfoPanelCreationResult
-	for _, entry := range entries {
-		settings := SettingsComponent.Get(entry)
-		panelUI := createSingleMedarotInfoPanel(config, uiFactory, entry)
+	// DrawIndexでソート
+	sort.Slice(infoPanelVMs, func(i, j int) bool {
+		if infoPanelVMs[i].Team != infoPanelVMs[j].Team {
+			return infoPanelVMs[i].Team < infoPanelVMs[j].Team
+		}
+		return infoPanelVMs[i].DrawIndex < infoPanelVMs[j].DrawIndex
+	})
+
+	for _, vm := range infoPanelVMs {
+		panelUI := createSingleMedarotInfoPanel(config, uiFactory, vm)
 		results = append(results, InfoPanelCreationResult{
 			PanelUI: panelUI,
-			Team:    settings.Team,
-			ID:      settings.ID,
+			Team:    vm.Team,
+			ID:      vm.ID,
 		})
 	}
 	return results

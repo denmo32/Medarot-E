@@ -109,7 +109,8 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 		// 有効で待機状態ならモーダルを表示
 		if actingEntry.Valid() && StateComponent.Get(actingEntry).FSM.Is(string(StateIdle)) {
 			actionTargetMap := make(map[PartSlotKey]ActionTarget)
-			availableParts := battleLogic.GetPartInfoProvider().GetAvailableAttackParts(actingEntry)
+			// ViewModelFactoryを介して利用可能なパーツを取得
+			availableParts := ctx.ViewModelFactory.GetAvailableAttackParts(actingEntry)
 			for _, available := range availableParts {
 				partDef := available.PartDef
 				slotKey := available.Slot
@@ -121,6 +122,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 					if !ok {
 						personality = PersonalityRegistry["リーダー"]
 					}
+					// ViewModelFactoryを介してターゲットを選択
 					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic)
 				}
 				actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}

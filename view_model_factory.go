@@ -11,17 +11,20 @@ type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) InfoPanelViewModel
 	BuildBattlefieldViewModel(battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, battleLogic *BattleLogic) ActionModalViewModel
+	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart // 追加
 }
 
 // viewModelFactoryImpl はViewModelFactoryインターフェースの実装です。
 type viewModelFactoryImpl struct {
-	world *donburi.World
+	world       *donburi.World
+	battleLogic *BattleLogic // 追加
 }
 
 // NewViewModelFactory は新しいViewModelFactoryのインスタンスを作成します。
-func NewViewModelFactory(world *donburi.World) ViewModelFactory {
+func NewViewModelFactory(world *donburi.World, battleLogic *BattleLogic) ViewModelFactory {
 	return &viewModelFactoryImpl{
-		world: world,
+		world:       world,
+		battleLogic: battleLogic,
 	}
 }
 
@@ -38,4 +41,9 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(battleUIState *BattleUI
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
 func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, battleLogic *BattleLogic) ActionModalViewModel {
 	return BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic)
+}
+
+// GetAvailableAttackParts は、指定されたエンティティが利用可能な攻撃パーツのリストを返します。
+func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
+	return f.battleLogic.GetPartInfoProvider().GetAvailableAttackParts(entry)
 }

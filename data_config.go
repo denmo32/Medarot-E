@@ -16,7 +16,7 @@ func LoadConfig() Config {
 				PropulsionEffectRate float64 // 脚部パーツの推進力がチャージ・クールダウン時間に与える影響度
 				GameSpeedMultiplier  float64 // ゲーム全体の時間進行速度（大きいほど速い）
 			}{
-				PropulsionEffectRate: 0.01,
+				PropulsionEffectRate: 0.1,
 				GameSpeedMultiplier:  50,
 			},
 			HPAnimationSpeed: 1.0, // 1フレームあたりのHP変化量
