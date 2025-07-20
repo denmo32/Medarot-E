@@ -25,6 +25,7 @@ type BattleScene struct {
 	uiEventChannel           chan UIEvent
 	battleUIState            *BattleUIState // 追加
 	statusEffectSystem       *StatusEffectSystem
+	viewModelFactory         ViewModelFactory // 追加
 
 	// State Machine
 	states       map[GameState]BattleState
@@ -44,6 +45,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		playerActionPendingQueue: make([]*donburi.Entry, 0),
 		winner:                   TeamNone,
 		uiEventChannel:           make(chan UIEvent, 10),
+		viewModelFactory:         NewViewModelFactory(&world), // ViewModelFactoryを初期化
 	}
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
@@ -109,13 +111,14 @@ func (bs *BattleScene) Update() error {
 
 	// 現在のバトルステートを更新
 	battleContext := &BattleContext{
-		World:           bs.world,
-		BattleLogic:     bs.battleLogic,
-		UI:              bs.ui,
-		Config:          &bs.resources.Config,
-		SceneManager:    bs.manager,
-		GameDataManager: bs.resources.GameDataManager, // 追加
-		Tick:            bs.tickCount,
+		World:            bs.world,
+		BattleLogic:      bs.battleLogic,
+		UI:               bs.ui,
+		Config:           &bs.resources.Config,
+		SceneManager:     bs.manager,
+		GameDataManager:  bs.resources.GameDataManager, // 追加
+		Tick:             bs.tickCount,
+		ViewModelFactory: bs.viewModelFactory,
 	}
 
 	newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(
@@ -156,10 +159,10 @@ func (bs *BattleScene) Update() error {
 	}
 	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
 
-	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic) // InfoPanelのViewModelを更新
+	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic, bs.viewModelFactory) // InfoPanelのViewModelを更新
 
 	// BattlefieldViewModelを構築し、BattleUIStateに設定
-	battleUIState.BattlefieldViewModel = BuildBattlefieldViewModel(battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
+	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
 
 	// UIにBattleUIState全体を渡して更新を委譲
 	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())

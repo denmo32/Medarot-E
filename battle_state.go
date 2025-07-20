@@ -10,13 +10,14 @@ import (
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 type BattleContext struct {
-	World           donburi.World
-	BattleLogic     *BattleLogic
-	UI              UIInterface
-	Config          *Config
-	SceneManager    *SceneManager
-	GameDataManager *GameDataManager // 追加
-	Tick            int
+	World            donburi.World
+	BattleLogic      *BattleLogic
+	UI               UIInterface
+	Config           *Config
+	SceneManager     *SceneManager
+	GameDataManager  *GameDataManager // 追加
+	Tick             int
+	ViewModelFactory ViewModelFactory // 追加
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
@@ -126,7 +127,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM := BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic)
+			actionModalVM := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic)
 			gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
 			return playerActionPendingQueue, gameEvents, nil
 		} else {
