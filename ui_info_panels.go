@@ -149,17 +149,6 @@ func CreateInfoPanels(world donburi.World, config *Config, uiFactory *UIFactory)
 	return results
 }
 
-func updateAllInfoPanels(battleUIState *BattleUIState, medarotInfoPanels map[string]*infoPanelUI, config *Config) {
-
-	for id, vm := range battleUIState.InfoPanels {
-		ui, ok := medarotInfoPanels[id]
-		if !ok {
-			continue
-		}
-		updateSingleInfoPanel(ui, vm, config)
-	}
-}
-
 func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Config) {
 	c := config.UI
 

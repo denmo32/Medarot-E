@@ -23,7 +23,7 @@ type BattleScene struct {
 	playerActionPendingQueue []*donburi.Entry
 	battleLogic              *BattleLogic
 	uiEventChannel           chan UIEvent
-	battlefieldViewModel     BattlefieldViewModel
+	battleUIState            *BattleUIState // 追加
 	statusEffectSystem       *StatusEffectSystem
 
 	// State Machine
@@ -58,9 +58,10 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	// Initialize BattleUIStateComponent
 	battleUIStateEntry := bs.world.Entry(bs.world.Create(BattleUIStateComponent))
 	if battleUIStateEntry.Valid() {
-		BattleUIStateComponent.SetValue(battleUIStateEntry, BattleUIState{
+		bs.battleUIState = &BattleUIState{
 			InfoPanels: make(map[string]InfoPanelViewModel),
-		})
+		}
+		BattleUIStateComponent.SetValue(battleUIStateEntry, *bs.battleUIState)
 		log.Println("BattleUIStateComponent successfully created and initialized.")
 	} else {
 		log.Println("ERROR: Failed to create BattleUIStateComponent entry.")
@@ -155,11 +156,13 @@ func (bs *BattleScene) Update() error {
 	}
 	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
 
-	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic) // ViewModelを更新
-	bs.ui.UpdateInfoPanels(battleUIState, &bs.resources.Config)   // 更新されたViewModelをUIに反映
+	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic) // InfoPanelのViewModelを更新
 
+	// BattlefieldViewModelを構築し、BattleUIStateに設定
 	battleUIState.BattlefieldViewModel = BuildBattlefieldViewModel(battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
-	bs.ui.SetBattlefieldViewModel(battleUIState.BattlefieldViewModel)
+
+	// UIにBattleUIState全体を渡して更新を委譲
+	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
 
 	return nil
 }
@@ -168,7 +171,8 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)
 	bs.ui.DrawBackground(screen)
 	bs.ui.Draw(screen, bs.tickCount)
-	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battlefieldViewModel, bs.ui.(*UI).battlefieldWidget)
+	// bs.battlefieldViewModel は不要になるため、直接 battleUIState.BattlefieldViewModel を渡す
+	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battleUIState.BattlefieldViewModel, bs.ui.(*UI).battlefieldWidget)
 
 	// 現在のステートに描画を委譲
 	bs.currentState.Draw(screen)

@@ -665,9 +665,8 @@ type UIInterface interface {
 	GetCurrentAnimationResult() ActionResult
 	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
-	SetBattlefieldViewModel(vm BattlefieldViewModel)
-	UpdateInfoPanels(battleUIState *BattleUIState, config *Config)
-	PostEvent(event UIEvent) // This will be implemented by the concrete UI struct
+	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle) // 単一のデータ設定メソッド
+	PostEvent(event UIEvent)                                                                        // This will be implemented by the concrete UI struct
 	IsActionModalVisible() bool
 	GetActionTargetMap() map[PartSlotKey]ActionTarget
 	SetCurrentTarget(entry *donburi.Entry)
@@ -705,7 +704,6 @@ var BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
 
 // BattleUIState is a singleton component that stores UI-specific data (ViewModels).
 type BattleUIState struct {
-	InfoPanels map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
-	BattlefieldViewModel BattlefieldViewModel // Add BattlefieldViewModel here
+	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
+	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
 }
-

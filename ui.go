@@ -14,10 +14,6 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-func (u *UI) SetBattlefieldViewModel(vm BattlefieldViewModel) {
-	u.battlefieldWidget.SetViewModel(vm)
-}
-
 type UI struct {
 	ebitenui          *ebitenui.UI
 	battlefieldWidget *BattlefieldWidget
@@ -33,6 +29,19 @@ type UI struct {
 	targetIndicatorManager *UITargetIndicatorManager
 	uiFactory              *UIFactory         // 追加
 	animationDrawer        *UIAnimationDrawer // 新しく追加
+}
+
+// SetBattleUIState はUI全体のデータソースを一元的に設定します。
+func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle) {
+	// BattlefieldViewModel を設定
+	u.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
+
+	// InfoPanels を更新
+	for id, vm := range battleUIState.InfoPanels {
+		if panel, ok := u.medarotInfoPanels[id]; ok {
+			updateSingleInfoPanel(panel, vm, config)
+		}
+	}
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。
@@ -122,11 +131,6 @@ func (u *UI) ShowActionModal(vm ActionModalViewModel) {
 // HideActionModal はアクション選択モーダルを非表示にします。
 func (u *UI) HideActionModal() {
 	u.actionModalManager.HideActionModal()
-}
-
-// UpdateInfoPanels は情報パネルを更新します。
-func (u *UI) UpdateInfoPanels(battleUIState *BattleUIState, config *Config) {
-	updateAllInfoPanels(battleUIState, u.medarotInfoPanels, config)
 }
 
 // GetActionTargetMap は現在のアクションターゲットマップを返します。

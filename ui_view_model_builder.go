@@ -50,11 +50,11 @@ func BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) Inf
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
 func BuildBattlefieldViewModel(battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel {
 	vm := BattlefieldViewModel{
-		Icons:     []*IconViewModel{},
+		Icons: []*IconViewModel{},
 		DebugMode: func() bool {
-		_, ok := query.NewQuery(filter.Contains(DebugModeComponent)).First(battleLogic.world)
-		return ok
-	}(),
+			_, ok := query.NewQuery(filter.Contains(DebugModeComponent)).First(battleLogic.world)
+			return ok
+		}(),
 	}
 
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(battleLogic.world, func(entry *donburi.Entry) {
