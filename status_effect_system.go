@@ -105,6 +105,10 @@ func (e *EvasionDebuffEffect) Duration() int {
 	return 0
 }
 
+func (e *EvasionDebuffEffect) Type() DebuffType {
+	return DebuffTypeEvasion
+}
+
 // DefenseDebuffEffect は防御力を低下させるデバフです。
 type DefenseDebuffEffect struct {
 	Multiplier float64
@@ -126,4 +130,8 @@ func (d *DefenseDebuffEffect) Description() string {
 
 func (d *DefenseDebuffEffect) Duration() int {
 	return 0
+}
+
+func (d *DefenseDebuffEffect) Type() DebuffType {
+	return DebuffTypeDefense
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"strconv"
@@ -389,7 +390,8 @@ type StatusEffect interface {
 	Apply(world donburi.World, target *donburi.Entry)
 	Remove(world donburi.World, target *donburi.Entry)
 	Description() string
-	Duration() int // 効果の持続時間（ターン数や秒数など）。0の場合は永続、または即時解除。
+	Duration() int    // 効果の持続時間（ターン数や秒数など）。0の場合は永続、または即時解除。
+	Type() DebuffType // 効果の種類を返すメソッドを追加
 }
 
 // ActiveStatusEffect は、エンティティに現在適用されている効果とその残り期間を追跡します。
@@ -397,6 +399,54 @@ type ActiveStatusEffect struct {
 	Effect       StatusEffect
 	RemainingDur int
 }
+
+// ChargeStopEffect はチャージを一時停止させるデバフです。
+type ChargeStopEffect struct {
+	DurationTurns int // ターン数での持続時間
+}
+
+func (e *ChargeStopEffect) Apply(world donburi.World, target *donburi.Entry) {
+	// この効果の適用ロジックはChargeInitiationSystemなどで処理される
+}
+func (e *ChargeStopEffect) Remove(world donburi.World, target *donburi.Entry) {
+	// この効果の解除ロジックはChargeInitiationSystemなどで処理される
+}
+func (e *ChargeStopEffect) Description() string { return "チャージ停止" }
+func (e *ChargeStopEffect) Duration() int       { return e.DurationTurns }
+func (e *ChargeStopEffect) Type() DebuffType    { return DebuffTypeChargeStop }
+
+// DamageOverTimeEffect は継続ダメージを与えるデバフです。
+type DamageOverTimeEffect struct {
+	DamagePerTurn int
+	DurationTurns int
+}
+
+func (e *DamageOverTimeEffect) Apply(world donburi.World, target *donburi.Entry) {
+	// この効果の適用ロジックはStatusEffectSystemなどで処理される
+}
+func (e *DamageOverTimeEffect) Remove(world donburi.World, target *donburi.Entry) {
+	// この効果の解除ロジックはStatusEffectSystemなどで処理される
+}
+func (e *DamageOverTimeEffect) Description() string {
+	return fmt.Sprintf("継続ダメージ (%d/ターン)", e.DamagePerTurn)
+}
+func (e *DamageOverTimeEffect) Duration() int    { return e.DurationTurns }
+func (e *DamageOverTimeEffect) Type() DebuffType { return DebuffTypeDamageOverTime }
+
+// TargetRandomEffect はターゲットをランダム化するデバフです。
+type TargetRandomEffect struct {
+	DurationTurns int
+}
+
+func (e *TargetRandomEffect) Apply(world donburi.World, target *donburi.Entry) {
+	// この効果の適用ロジックはBattleTargetSelectorなどで処理される
+}
+func (e *TargetRandomEffect) Remove(world donburi.World, target *donburi.Entry) {
+	// この効果の解除ロジックはBattleTargetSelectorなどで処理される
+}
+func (e *TargetRandomEffect) Description() string { return "ターゲットランダム化" }
+func (e *TargetRandomEffect) Duration() int       { return e.DurationTurns }
+func (e *TargetRandomEffect) Type() DebuffType    { return DebuffTypeTargetRandom }
 
 // --- End Status Effect System ---
 
