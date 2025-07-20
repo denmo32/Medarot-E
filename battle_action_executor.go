@@ -18,7 +18,6 @@ type TraitActionHandler interface {
 		battleLogic *BattleLogic,
 		gameConfig *Config,
 		actingPartDef *PartDefinition,
-		initialResult *ActionResult,
 	) ActionResult
 }
 
@@ -53,7 +52,6 @@ func (h *BaseAttackHandler) Execute(
 	battleLogic *BattleLogic, // battleLogic を再度受け取るように変更
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
-	initialResult *ActionResult,
 ) ActionResult {
 	_ = battleLogic // リンターの未使用パラメータ警告を抑制
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
@@ -253,7 +251,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 		}
 	}
 
-	actionResult := handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef, nil)
+	actionResult := handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef)
 
 	// チャージ時に生成された保留中の効果をActionResultにコピー
 	if len(intent.PendingEffects) > 0 {
@@ -283,7 +281,6 @@ func (h *SupportTraitExecutor) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
-	initialResult *ActionResult, // 新しい引数
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
 	result := ActionResult{
@@ -344,7 +341,6 @@ func (h *ObstructTraitExecutor) Execute(
 	battleLogic *BattleLogic,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
-	initialResult *ActionResult,
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
 	result := ActionResult{
