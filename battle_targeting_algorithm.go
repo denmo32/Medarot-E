@@ -31,11 +31,11 @@ type targetablePart struct {
 // この関数は ai.go から移動されました。
 func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic, includeHead bool) []targetablePart {
 	var allParts []targetablePart
-	if battleLogic.TargetSelector == nil { // targetSelector を battleLogic から取得
+	if battleLogic.GetTargetSelector() == nil { // targetSelector を battleLogic から取得
 		log.Println("エラー: getAllTargetableParts - targetSelectorがnilです。")
 		return allParts
 	}
-	candidates := battleLogic.TargetSelector.GetTargetableEnemies(actingEntry) // targetSelector を battleLogic から取得
+	candidates := battleLogic.GetTargetSelector().GetTargetableEnemies(actingEntry) // targetSelector を battleLogic から取得
 
 	for _, enemyEntry := range candidates {
 		partsComp := PartsComponent.Get(enemyEntry)
@@ -140,16 +140,16 @@ func (s *LeaderStrategy) SelectTarget(
 	actingEntry *donburi.Entry,
 	battleLogic *BattleLogic, // battleLogic を追加
 ) (*donburi.Entry, PartSlotKey) {
-	if battleLogic.TargetSelector == nil || battleLogic.PartInfoProvider == nil { // targetSelector, partInfoProvider を battleLogic から取得
+	if battleLogic.GetTargetSelector() == nil || battleLogic.GetPartInfoProvider() == nil { // targetSelector, partInfoProvider を battleLogic から取得
 		log.Println("エラー: LeaderStrategy.SelectTarget - targetSelector または partInfoProvider がnilです。")
 		return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic) // フォールバック
 	}
 
-	opponentTeamID := battleLogic.TargetSelector.GetOpponentTeam(actingEntry) // targetSelector を battleLogic から取得
+	opponentTeamID := battleLogic.GetTargetSelector().GetOpponentTeam(actingEntry) // targetSelector を battleLogic から取得
 	leader := FindLeader(world, opponentTeamID)
 
 	if leader != nil && !StateComponent.Get(leader).FSM.Is(string(StateBroken)) {
-		targetPart := battleLogic.TargetSelector.SelectPartToDamage(leader, actingEntry, battleLogic) // battleLogic を追加
+		targetPart := battleLogic.GetTargetSelector().SelectPartToDamage(leader, actingEntry, battleLogic) // battleLogic を追加
 		if targetPart != nil {
 			slotKey := battleLogic.GetPartInfoProvider().FindPartSlot(leader, targetPart) // partInfoProvider を battleLogic から取得
 			if slotKey != "" {
@@ -288,7 +288,7 @@ func (s *CounterStrategy) SelectTarget(
 			lastAttacker := ai.TargetHistory.LastAttacker
 			// 攻撃者がまだ有効で、破壊されていないことを確認
 			if lastAttacker.Valid() && !StateComponent.Get(lastAttacker).FSM.Is(string(StateBroken)) {
-				targetPart := battleLogic.TargetSelector.SelectPartToDamage(lastAttacker, actingEntry, battleLogic) // battleLogic を追加
+				targetPart := battleLogic.GetTargetSelector().SelectPartToDamage(lastAttacker, actingEntry, battleLogic) // battleLogic を追加
 				if targetPart != nil {
 					slotKey := battleLogic.GetPartInfoProvider().FindPartSlot(lastAttacker, targetPart) // partInfoProvider を battleLogic から取得
 					if slotKey != "" {
@@ -321,7 +321,7 @@ func (s *GuardStrategy) SelectTarget(
 			if ai.TargetHistory.LastAttacker != nil {
 				lastAttacker := ai.TargetHistory.LastAttacker
 				if lastAttacker.Valid() && !StateComponent.Get(lastAttacker).FSM.Is(string(StateBroken)) {
-					targetPart := battleLogic.TargetSelector.SelectPartToDamage(lastAttacker, actingEntry, battleLogic) // battleLogic を追加
+					targetPart := battleLogic.GetTargetSelector().SelectPartToDamage(lastAttacker, actingEntry, battleLogic) // battleLogic を追加
 					if targetPart != nil {
 						slotKey := battleLogic.GetPartInfoProvider().FindPartSlot(lastAttacker, targetPart) // partInfoProvider を battleLogic から取得
 						if slotKey != "" {

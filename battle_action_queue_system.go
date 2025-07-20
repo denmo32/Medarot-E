@@ -21,12 +21,12 @@ func UpdateActionQueueSystem(
 	results := []ActionResult{}
 
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
-		if battleLogic == nil || battleLogic.PartInfoProvider == nil {
+		if battleLogic == nil || battleLogic.GetPartInfoProvider() == nil {
 			log.Println("UpdateActionQueueSystem: ソート中にbattleLogicまたはpartInfoProviderがnilです")
 			return false
 		}
-		propI := battleLogic.PartInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
-		propJ := battleLogic.PartInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
+		propI := battleLogic.GetPartInfoProvider().GetOverallPropulsion(actionQueueComp.Queue[i])
+		propJ := battleLogic.GetPartInfoProvider().GetOverallPropulsion(actionQueueComp.Queue[j])
 		return propI > propJ
 	})
 

@@ -104,7 +104,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 		return result
 	}
 
-	damage, isCritical := battleLogic.DamageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef, battleLogic)
+	damage, isCritical := battleLogic.GetDamageCalculator().CalculateDamage(actingEntry, targetEntry, actingPartDef, battleLogic)
 	result.IsCritical = isCritical
 	result.OriginalDamage = damage
 
@@ -129,7 +129,7 @@ func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool
 }
 
 func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) bool {
-	return battleLogic.HitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef, battleLogic)
+	return battleLogic.GetHitCalculator().CalculateHit(actingEntry, targetEntry, actingPartDef, battleLogic)
 }
 
 func applyDamageAndDefense(
@@ -138,17 +138,17 @@ func applyDamageAndDefense(
 	actingPartDef *PartDefinition,
 	battleLogic *BattleLogic,
 ) {
-	defendingPartInst := battleLogic.TargetSelector.SelectDefensePart(result.TargetEntry, battleLogic)
+	defendingPartInst := battleLogic.GetTargetSelector().SelectDefensePart(result.TargetEntry, battleLogic)
 
-	if defendingPartInst != nil && battleLogic.HitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, battleLogic) {
+	if defendingPartInst != nil && battleLogic.GetHitCalculator().CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, battleLogic) {
 		result.ActionIsDefended = true
 		defendingPartDef, _ := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
 		result.DefendingPartType = string(defendingPartDef.Type)
-		result.ActualHitPartSlot = battleLogic.PartInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
+		result.ActualHitPartSlot = battleLogic.GetPartInfoProvider().FindPartSlot(result.TargetEntry, defendingPartInst)
 
-		finalDamage := battleLogic.DamageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry, battleLogic)
+		finalDamage := battleLogic.GetDamageCalculator().CalculateReducedDamage(result.OriginalDamage, result.TargetEntry, battleLogic)
 		result.DamageDealt = finalDamage
-		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage, battleLogic)
+		battleLogic.GetDamageCalculator().ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage, battleLogic)
 		result.TargetPartBroken = defendingPartInst.IsBroken
 	} else {
 		result.ActionIsDefended = false
@@ -156,7 +156,7 @@ func applyDamageAndDefense(
 		result.DamageDealt = result.OriginalDamage
 		result.ActualHitPartSlot = result.TargetPartSlot
 
-		battleLogic.DamageCalculator.ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage, battleLogic)
+		battleLogic.GetDamageCalculator().ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage, battleLogic)
 		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
 	}
 }
@@ -184,11 +184,11 @@ func resolveAttackTarget(
 		}
 		return targetComp.TargetEntity, targetComp.TargetPartSlot
 	case PolicyClosestAtExecution:
-		closestEnemy := battleLogic.TargetSelector.FindClosestEnemy(actingEntry, battleLogic)
+		closestEnemy := battleLogic.GetTargetSelector().FindClosestEnemy(actingEntry, battleLogic)
 		if closestEnemy == nil {
 			return nil, "" // ターゲットが見つからない場合は失敗
 		}
-		targetPart := battleLogic.TargetSelector.SelectPartToDamage(closestEnemy, actingEntry, battleLogic)
+		targetPart := battleLogic.GetTargetSelector().SelectPartToDamage(closestEnemy, actingEntry, battleLogic)
 		if targetPart == nil {
 			return nil, "" // ターゲットパーツが見つからない場合は失敗
 		}

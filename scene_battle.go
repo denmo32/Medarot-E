@@ -134,7 +134,7 @@ func (bs *BattleScene) Update() error {
 
 	// Update UI components that depend on world state
 	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config, bs.battleLogic)
-	bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.PartInfoProvider, &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
+	bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.GetPartInfoProvider(), &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
 	bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
 
 	return nil

@@ -6,15 +6,30 @@ import (
 
 // BattleLogic は戦闘関連のすべての計算ロジックをカプセル化します。
 type BattleLogic struct {
-	DamageCalculator *DamageCalculator
-	HitCalculator    *HitCalculator
-	TargetSelector   *TargetSelector
-	PartInfoProvider *PartInfoProvider
+	damageCalculator *DamageCalculator
+	hitCalculator    *HitCalculator
+	targetSelector   *TargetSelector
+	partInfoProvider *PartInfoProvider
+}
+
+// GetDamageCalculator は DamageCalculator のインスタンスを返します。
+func (bl *BattleLogic) GetDamageCalculator() *DamageCalculator {
+	return bl.damageCalculator
+}
+
+// GetHitCalculator は HitCalculator のインスタンスを返します。
+func (bl *BattleLogic) GetHitCalculator() *HitCalculator {
+	return bl.hitCalculator
+}
+
+// GetTargetSelector は TargetSelector のインスタンスを返します。
+func (bl *BattleLogic) GetTargetSelector() *TargetSelector {
+	return bl.targetSelector
 }
 
 // GetPartInfoProvider は PartInfoProvider のインスタンスを返します。
 func (bl *BattleLogic) GetPartInfoProvider() *PartInfoProvider {
-	return bl.PartInfoProvider
+	return bl.partInfoProvider
 }
 
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
@@ -22,15 +37,15 @@ func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDa
 	bl := &BattleLogic{}
 
 	// ヘルパーを初期化
-	bl.PartInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
-	bl.DamageCalculator = NewDamageCalculator(world, config)
-	bl.HitCalculator = NewHitCalculator(world, config)
-	bl.TargetSelector = NewTargetSelector(world, config)
+	bl.partInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
+	bl.damageCalculator = NewDamageCalculator(world, config)
+	bl.hitCalculator = NewHitCalculator(world, config)
+	bl.targetSelector = NewTargetSelector(world, config)
 
 	// ヘルパー間の依存性注入は不要になったため削除
-	// bl.DamageCalculator.SetPartInfoProvider(bl.PartInfoProvider)
-	// bl.HitCalculator.SetPartInfoProvider(bl.PartInfoProvider)
-	// bl.TargetSelector.SetPartInfoProvider(bl.PartInfoProvider)
+	// bl.damageCalculator.SetPartInfoProvider(bl.partInfoProvider)
+	// bl.hitCalculator.SetPartInfoProvider(bl.partInfoProvider)
+	// bl.targetSelector.SetPartInfoProvider(bl.partInfoProvider)
 
 	return bl
 }

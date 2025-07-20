@@ -108,7 +108,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 		// 有効で待機状態ならモーダルを表示
 		if actingEntry.Valid() && StateComponent.Get(actingEntry).FSM.Is(string(StateIdle)) {
 			actionTargetMap := make(map[PartSlotKey]ActionTarget)
-			availableParts := battleLogic.PartInfoProvider.GetAvailableAttackParts(actingEntry)
+			availableParts := battleLogic.GetPartInfoProvider().GetAvailableAttackParts(actingEntry)
 			for _, available := range availableParts {
 				partDef := available.PartDef
 				slotKey := available.Slot
