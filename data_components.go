@@ -26,8 +26,9 @@ var (
 	AIComponent = donburi.NewComponentType[AI]()
 
 	// --- Debuff Components ---
-	DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]()
-	EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]()
+	// --- Debuff Components ---
+	// DefenseDebuffComponent = donburi.NewComponentType[DefenseDebuff]() // ActiveEffectsComponentに統合
+	// EvasionDebuffComponent = donburi.NewComponentType[EvasionDebuff]() // ActiveEffectsComponentに統合
 
 	// --- Team Buff Component ---
 	TeamBuffsComponent = donburi.NewComponentType[TeamBuffs]()
@@ -99,14 +100,16 @@ type PlayerControl struct{}
 //}
 
 // DefenseDebuff は防御力デバフ効果を表します。
-type DefenseDebuff struct {
-	Multiplier float64 // 防御率に乗算される値 (例: 0.5)
-}
+// ActiveEffectsComponentに統合されたため、この構造体は不要になりました。
+// type DefenseDebuff struct {
+// 	Multiplier float64 // 防御率に乗算される値 (例: 0.5)
+// }
 
 // EvasionDebuff は回避力デバフ効果を表します。
-type EvasionDebuff struct {
-	Multiplier float64 // 回避率に乗算される値 (例: 0.5)
-}
+// ActiveEffectsComponentに統合されたため、この構造体は不要になりました。
+// type EvasionDebuff struct {
+// 	Multiplier float64 // 回避率に乗算される値 (例: 0.5)
+// }
 
 // --- AIターゲティング戦略コンポーネント ---
 

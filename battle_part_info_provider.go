@@ -151,9 +151,14 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
 	evasion := pip.GetPartParameterValue(entry, PartSlotLegs, Mobility)
 
-	// デバフの影響を適用
-	if entry.HasComponent(EvasionDebuffComponent) {
-		evasion *= EvasionDebuffComponent.Get(entry).Multiplier
+	// ActiveEffectsComponentから回避デバフの影響を適用
+	if entry.HasComponent(ActiveEffectsComponent) {
+		activeEffects := ActiveEffectsComponent.Get(entry)
+		for _, activeEffect := range activeEffects.Effects {
+			if evasionDebuff, ok := activeEffect.Effect.(*EvasionDebuffEffect); ok {
+				evasion *= evasionDebuff.Multiplier
+			}
+		}
 	}
 	return evasion
 }
@@ -162,9 +167,14 @@ func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
 func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
 	defense := pip.GetPartParameterValue(entry, PartSlotLegs, Defense)
 
-	// デバフの影響を適用
-	if entry.HasComponent(DefenseDebuffComponent) {
-		defense *= DefenseDebuffComponent.Get(entry).Multiplier
+	// ActiveEffectsComponentから防御デバフの影響を適用
+	if entry.HasComponent(ActiveEffectsComponent) {
+		activeEffects := ActiveEffectsComponent.Get(entry)
+		for _, activeEffect := range activeEffects.Effects {
+			if defenseDebuff, ok := activeEffect.Effect.(*DefenseDebuffEffect); ok {
+				defense *= defenseDebuff.Multiplier
+			}
+		}
 	}
 	return defense
 }

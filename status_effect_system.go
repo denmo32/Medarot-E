@@ -87,13 +87,13 @@ type EvasionDebuffEffect struct {
 }
 
 func (e *EvasionDebuffEffect) Apply(world donburi.World, target *donburi.Entry) {
-	donburi.Add(target, EvasionDebuffComponent, &EvasionDebuff{Multiplier: e.Multiplier})
+	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
+	// log.Printf("EvasionDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
 }
 
 func (e *EvasionDebuffEffect) Remove(world donburi.World, target *donburi.Entry) {
-	if target.HasComponent(EvasionDebuffComponent) {
-		target.RemoveComponent(EvasionDebuffComponent)
-	}
+	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
+	// log.Printf("EvasionDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
 }
 
 func (e *EvasionDebuffEffect) Description() string {
@@ -111,13 +111,13 @@ type DefenseDebuffEffect struct {
 }
 
 func (d *DefenseDebuffEffect) Apply(world donburi.World, target *donburi.Entry) {
-	donburi.Add(target, DefenseDebuffComponent, &DefenseDebuff{Multiplier: d.Multiplier})
+	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
+	// log.Printf("DefenseDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
 }
 
 func (d *DefenseDebuffEffect) Remove(world donburi.World, target *donburi.Entry) {
-	if target.HasComponent(DefenseDebuffComponent) {
-		target.RemoveComponent(DefenseDebuffComponent)
-	}
+	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
+	// log.Printf("DefenseDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
 }
 
 func (d *DefenseDebuffEffect) Description() string {
