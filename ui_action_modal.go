@@ -40,8 +40,8 @@ func createActionModalUI(
 				buttonTextColor,
 				func(args *widget.ButtonClickedEventArgs) {
 					if !buttonVM.IsBroken {
-						eventChannel <- ClearCurrentTargetEvent{}
-						eventChannel <- PlayerActionSelectedEvent{
+						eventChannel <- ClearCurrentTargetUIEvent{}
+						eventChannel <- PartSelectedUIEvent{
 							ActingEntry:     vm.ActingEntry,
 							SelectedPartDef: buttonVM.SelectedPartDef,
 							SelectedSlotKey: buttonVM.SlotKey,
@@ -52,7 +52,13 @@ func createActionModalUI(
 					switch buttonVM.PartCategory {
 					case CategoryRanged:
 						if buttonVM.TargetEntry != nil {
-							eventChannel <- SetCurrentTargetEvent{Target: buttonVM.TargetEntry}
+							eventChannel <- TargetSelectedUIEvent{
+								ActingEntry:     vm.ActingEntry,
+								SelectedPartDef: buttonVM.SelectedPartDef,
+								SelectedSlotKey: buttonVM.SlotKey,
+								TargetEntry:     buttonVM.TargetEntry,
+								TargetPartSlot:  "", // ターゲットパーツスロットはここでは不明
+							}
 						}
 					case CategoryIntervention:
 						// 介入の場合はターゲット表示なし
@@ -61,7 +67,7 @@ func createActionModalUI(
 					}
 				},
 				func(args *widget.ButtonHoverEventArgs) {
-					eventChannel <- ClearCurrentTargetEvent{}
+					eventChannel <- ClearCurrentTargetUIEvent{}
 				},
 			)
 			buttons = append(buttons, actionButton)

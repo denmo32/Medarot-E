@@ -6,15 +6,15 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// processPlayerActionSelected handles the PlayerActionSelectedEvent, initiating game logic.
-func ProcessPlayerActionSelected(
+// ProcessPartSelectedUIEvent は PartSelectedUIEvent を処理し、ゲームロジックを開始します。
+func ProcessPartSelectedUIEvent(
 	world donburi.World,
 	battleLogic *BattleLogic,
 	playerActionPendingQueue []*donburi.Entry,
 	ui UIInterface,
-	event PlayerActionSelectedEvent,
-) []*donburi.Entry { // 戻り値から message と postMessageCallback を削除
-	log.Printf("BattleActionProcessor: PlayerActionSelectedEvent を処理中 - Actor: %s, Part: %s",
+	event PartSelectedUIEvent,
+) []*donburi.Entry {
+	log.Printf("BattleActionProcessor: PartSelectedUIEvent を処理中 - Actor: %s, Part: %s",
 		SettingsComponent.Get(event.ActingEntry).Name,
 		event.SelectedPartDef.PartName)
 
@@ -50,10 +50,11 @@ func ProcessPlayerActionSelected(
 		return playerActionPendingQueue
 	}
 
-	// StartCharge を直接呼び出す代わりに、GameActionRequestEvent をポスト
-	ui.PostEvent(GameActionRequestEvent{
+	// ActionConfirmedUIEvent をポスト
+	ui.PostEvent(ActionConfirmedUIEvent{
 		ActingEntry:     event.ActingEntry,
-		SelectedPartKey: event.SelectedSlotKey,
+		SelectedPartDef: event.SelectedPartDef,
+		SelectedSlotKey: event.SelectedSlotKey,
 		TargetEntry:     targetEntry,
 		TargetPartSlot:  targetPartSlot,
 	})
@@ -65,13 +66,13 @@ func ProcessPlayerActionSelected(
 	return playerActionPendingQueue
 }
 
-// ProcessPlayerActionCancel handles the PlayerActionCancelEvent, clearing the pending queue.
-func ProcessPlayerActionCancel(
+// ProcessActionCanceledUIEvent は ActionCanceledUIEvent を処理し、保留中のキューをクリアします。
+func ProcessActionCanceledUIEvent(
 	playerActionPendingQueue []*donburi.Entry,
 	ui UIInterface,
-	event PlayerActionCancelEvent,
+	event ActionCanceledUIEvent,
 ) []*donburi.Entry {
-	log.Printf("BattleActionProcessor: PlayerActionCancelEvent を処理中 - Actor: %s",
+	log.Printf("BattleActionProcessor: ActionCanceledUIEvent を処理中 - Actor: %s",
 		SettingsComponent.Get(event.ActingEntry).Name)
 
 	newPlayerActionPendingQueue := make([]*donburi.Entry, 0)
@@ -95,23 +96,21 @@ func UpdateUIEventProcessorSystem(
 	select {
 	case event := <-uiEventChannel:
 		switch e := event.(type) {
-		case PlayerActionSelectedEvent:
-			// ProcessPlayerActionSelected は GameActionRequestEvent をポストする責任を持つ
-			newPlayerActionPendingQueue = ProcessPlayerActionSelected(
+		case PartSelectedUIEvent:
+			newPlayerActionPendingQueue = ProcessPartSelectedUIEvent(
 				world, battleLogic, playerActionPendingQueue, ui, e)
-		case GameActionRequestEvent:
-			successful := StartCharge(e.ActingEntry, e.SelectedPartKey, e.TargetEntry, e.TargetPartSlot, world, battleLogic)
+		case TargetSelectedUIEvent:
+			// TargetSelectedUIEvent は UI がターゲットを設定する際に使用される
+			ui.SetCurrentTarget(e.TargetEntry)
+		case ActionConfirmedUIEvent:
+			successful := StartCharge(e.ActingEntry, e.SelectedSlotKey, e.TargetEntry, e.TargetPartSlot, world, battleLogic)
 			if !successful {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(e.ActingEntry).Name)
 				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
 			}
-		case PlayerActionCancelEvent:
-			newPlayerActionPendingQueue = ProcessPlayerActionCancel(playerActionPendingQueue, ui, e)
+		case ActionCanceledUIEvent:
+			newPlayerActionPendingQueue = ProcessActionCanceledUIEvent(playerActionPendingQueue, ui, e)
 			newState = StatePlaying // キャンセル時は即座にPlaying状態に戻る
-		case SetCurrentTargetEvent:
-			ui.SetCurrentTarget(e.Target)
-		case ClearCurrentTargetEvent:
-			ui.ClearCurrentTarget()
 		case ShowActionModalUIEvent:
 			ui.ShowActionModal(e.ViewModel)
 		case HideActionModalUIEvent:

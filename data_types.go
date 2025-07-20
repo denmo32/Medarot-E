@@ -577,43 +577,47 @@ type UIEvent interface {
 	isUIEvent()
 }
 
-// PlayerActionSelectedEvent は、プレイヤーが使用するパーツを選択したときに発行されます。
-type PlayerActionSelectedEvent struct {
+// 新しい抽象化されたUIイベント
+
+// PartSelectedUIEvent は、プレイヤーがパーツを選択したときに発行されます。
+type PartSelectedUIEvent struct {
 	ActingEntry     *donburi.Entry
 	SelectedPartDef *PartDefinition
 	SelectedSlotKey PartSlotKey
 }
 
-func (e PlayerActionSelectedEvent) isUIEvent() {}
+func (e PartSelectedUIEvent) isUIEvent() {}
 
-// GameActionRequestEvent は、ゲームロジック層に行動の実行を要求するために発行されます。
-type GameActionRequestEvent struct {
+// TargetSelectedUIEvent は、プレイヤーがターゲットを選択したときに発行されます。
+type TargetSelectedUIEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedPartKey PartSlotKey
+	SelectedPartDef *PartDefinition
+	SelectedSlotKey PartSlotKey
 	TargetEntry     *donburi.Entry
 	TargetPartSlot  PartSlotKey
 }
 
-func (e GameActionRequestEvent) isUIEvent() {}
+func (e TargetSelectedUIEvent) isUIEvent() {}
 
-// PlayerActionCancelEvent は、プレイヤーが行動選択をキャンセルしたときに発行されます。
-type PlayerActionCancelEvent struct {
+// ActionConfirmedUIEvent は、プレイヤーがアクションを確定したときに発行されます。
+type ActionConfirmedUIEvent struct {
+	ActingEntry     *donburi.Entry
+	SelectedPartDef *PartDefinition
+	SelectedSlotKey PartSlotKey
+	TargetEntry     *donburi.Entry
+	TargetPartSlot  PartSlotKey
+}
+
+func (e ActionConfirmedUIEvent) isUIEvent() {}
+
+// ActionCanceledUIEvent は、プレイヤーが行動選択をキャンセルしたときに発行されます。
+type ActionCanceledUIEvent struct {
 	ActingEntry *donburi.Entry
 }
 
-func (e PlayerActionCancelEvent) isUIEvent() {}
+func (e ActionCanceledUIEvent) isUIEvent() {}
 
-// SetCurrentTargetEvent は、UIがターゲットエンティティを設定するよう要求するときに発行されます。
-type SetCurrentTargetEvent struct {
-	Target *donburi.Entry
-}
-
-func (e SetCurrentTargetEvent) isUIEvent() {}
-
-// ClearCurrentTargetEvent は、UIが現在のターゲットをクリアするよう要求するときに発行されます。
-type ClearCurrentTargetEvent struct{}
-
-func (e ClearCurrentTargetEvent) isUIEvent() {}
+// 既存のUIイベント (変更なし)
 
 // ShowActionModalUIEvent は、アクションモーダルを表示するUIイベントです。
 type ShowActionModalUIEvent struct {
