@@ -53,7 +53,11 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 	intent.PendingEffects = make([]StatusEffect, 0) // 既存の効果をクリア
 
 	target := TargetComponent.Get(entry)
-	target.TargetEntity = targetEntry
+	if targetEntry != nil { // targetEntry が nil でない場合のみIDをセット
+		target.TargetEntity = targetEntry.Entity()
+	} else {
+		target.TargetEntity = 0 // nil の場合はゼロ値
+	}
 	target.TargetPartSlot = targetPartSlot
 
 	// カテゴリに基づいてターゲット決定方針を設定
@@ -90,7 +94,8 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 	}
 
 	if actingPartDef.Category == CategoryRanged {
-		if targetEntry == nil || StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
+		// targetEntry が有効なエンティティであるか、または破壊されていないかを確認
+		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
 			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			return false
 		}

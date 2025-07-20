@@ -90,7 +90,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 							}
 							if entry.HasComponent(TargetComponent) {
 								target := TargetComponent.Get(entry)
-								target.TargetEntity = nil
+								target.TargetEntity = 0 // nil から 0 に変更
 								target.TargetPartSlot = ""
 							}
 						}
@@ -119,7 +119,6 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 		TargetComponent.SetValue(entry, Target{})
 
 		if loadout.Team != playerTeam { // AIのみ
-			
 
 			donburi.Add(entry, AIComponent, &AI{
 				PersonalityID:     medalDef.Personality,

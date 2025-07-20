@@ -178,11 +178,17 @@ func resolveAttackTarget(
 	targetComp := TargetComponent.Get(actingEntry)
 	switch targetComp.Policy {
 	case PolicyPreselected:
-		if targetComp.TargetEntity == nil {
+		if targetComp.TargetEntity == 0 { // nil から 0 に変更
 			log.Printf("エラー: PolicyPreselected なのにターゲットが設定されていません。")
 			return nil, ""
 		}
-		return targetComp.TargetEntity, targetComp.TargetPartSlot
+		// donburi.Entity から *donburi.Entry を取得
+		targetEntry := battleLogic.world.Entry(targetComp.TargetEntity)
+		if targetEntry == nil {
+			log.Printf("エラー: ターゲットエンティティID %d がワールドに見つかりません。", targetComp.TargetEntity)
+			return nil, ""
+		}
+		return targetEntry, targetComp.TargetPartSlot
 	case PolicyClosestAtExecution:
 		closestEnemy := battleLogic.GetTargetSelector().FindClosestEnemy(actingEntry, battleLogic)
 		if closestEnemy == nil {
@@ -351,12 +357,18 @@ func (h *ObstructTraitExecutor) Execute(
 		WeaponType:     actingPartDef.WeaponType,
 	}
 	targetComp := TargetComponent.Get(actingEntry)
-	if targetComp.TargetEntity == nil {
+	if targetComp.TargetEntity == 0 { // nil から 0 に変更
 		log.Printf("%s は妨害ターゲットが未選択です。", settings.Name)
 		result.ActionDidHit = false
 		return result
 	}
-	targetEntry := targetComp.TargetEntity
+	// donburi.Entity から *donburi.Entry を取得
+	targetEntry := world.Entry(targetComp.TargetEntity)
+	if targetEntry == nil {
+		log.Printf("エラー: ターゲットエンティティID %d がワールドに見つかりません。", targetComp.TargetEntity)
+		result.ActionDidHit = false
+		return result
+	}
 	result.TargetEntry = targetEntry
 	result.DefenderName = SettingsComponent.Get(targetEntry).Name
 

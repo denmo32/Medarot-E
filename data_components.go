@@ -76,7 +76,7 @@ type ActionIntent struct {
 // TargetingSystemによってActionIntentが解決された後に設定されます。
 type Target struct {
 	Policy         TargetingPolicyType
-	TargetEntity   *donburi.Entry
+	TargetEntity   donburi.Entity // *donburi.Entry から donburi.Entity に変更
 	TargetPartSlot PartSlotKey
 }
 

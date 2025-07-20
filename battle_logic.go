@@ -6,6 +6,7 @@ import (
 
 // BattleLogic は戦闘関連のすべての計算ロジックをカプセル化します。
 type BattleLogic struct {
+	world            donburi.World // worldフィールドを追加
 	damageCalculator *DamageCalculator
 	hitCalculator    *HitCalculator
 	targetSelector   *TargetSelector
@@ -34,7 +35,9 @@ func (bl *BattleLogic) GetPartInfoProvider() *PartInfoProvider {
 
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
 func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDataManager) *BattleLogic {
-	bl := &BattleLogic{}
+	bl := &BattleLogic{
+		world: world, // worldフィールドを初期化
+	}
 
 	// ヘルパーを初期化
 	bl.partInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
