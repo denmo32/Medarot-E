@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )
@@ -50,6 +52,17 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{
 		Buffs: make(map[TeamID]map[BuffType][]*BuffSource),
 	})
+
+	// Initialize BattleUIStateComponent
+	battleUIStateEntry := bs.world.Entry(bs.world.Create(BattleUIStateComponent))
+	if battleUIStateEntry.Valid() {
+		BattleUIStateComponent.SetValue(battleUIStateEntry, BattleUIState{
+			InfoPanels: make(map[string]InfoPanelViewModel),
+		})
+		log.Println("BattleUIStateComponent successfully created and initialized.")
+	} else {
+		log.Println("ERROR: Failed to create BattleUIStateComponent entry.")
+	}
 
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.battleLogic)
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
@@ -133,7 +146,9 @@ func (bs *BattleScene) Update() error {
 	// }
 
 	// Update UI components that depend on world state
-	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config, bs.battleLogic)
+	UpdateInfoPanelViewModelSystem(bs.world, bs.battleLogic) // ViewModelを更新
+	bs.ui.UpdateInfoPanels(bs.world, &bs.resources.Config)   // 更新されたViewModelをUIに反映
+
 	bs.battlefieldViewModel = BuildBattlefieldViewModel(bs.world, bs.battleLogic.GetPartInfoProvider(), &bs.resources.Config, bs.debugMode, bs.ui.GetBattlefieldWidgetRect())
 	bs.ui.SetBattlefieldViewModel(bs.battlefieldViewModel)
 

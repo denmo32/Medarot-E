@@ -666,7 +666,7 @@ type UIInterface interface {
 	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
 	SetBattlefieldViewModel(vm BattlefieldViewModel)
-	UpdateInfoPanels(world donburi.World, config *Config, battleLogic *BattleLogic)
+	UpdateInfoPanels(world donburi.World, config *Config) // battleLogic を削除
 	PostEvent(event UIEvent) // This will be implemented by the concrete UI struct
 	IsActionModalVisible() bool
 	GetActionTargetMap() map[PartSlotKey]ActionTarget
@@ -699,3 +699,12 @@ const (
 	// PolicyClosestAtExecution は、行動実行時に最も近い敵をターゲットとすることを示します。
 	PolicyClosestAtExecution TargetingPolicyType = "ClosestAtExecution"
 )
+
+// BattleUIStateComponent holds all the ViewModels for the UI.
+var BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
+
+// BattleUIState is a singleton component that stores UI-specific data (ViewModels).
+type BattleUIState struct {
+	InfoPanels map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
+	// Add other ViewModels here as needed (e.g., BattlefieldViewModel)
+}
