@@ -26,6 +26,7 @@ type BattleScene struct {
 	battleUIState            *BattleUIState // 追加
 	statusEffectSystem       *StatusEffectSystem
 	viewModelFactory         ViewModelFactory // 追加
+	uiFactory                *UIFactory // 追加
 
 	// State Machine
 	states       map[GameState]BattleState
@@ -49,6 +50,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
 	bs.viewModelFactory = NewViewModelFactory(&world, bs.battleLogic) // ViewModelFactoryを初期化
+	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.resources.GameDataManager) // UIFactoryを初期化
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
 	EnsureActionQueueEntity(bs.world)
 
@@ -71,7 +73,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.battleLogic)
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
-	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.resources.GameDataManager, animationManager)
+	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager)
 	// ui.goでuiFactoryが初期化され、ui.messageManagerもuiFactoryを使って初期化されるため、
 	// ここでbs.messageManagerを直接初期化する必要はない。
 	// bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.ui.GetRootContainer())
@@ -168,7 +170,7 @@ func (bs *BattleScene) Update() error {
 	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
 
 	// UIにBattleUIState全体を渡して更新を委譲
-	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
+	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect(), bs.uiFactory)
 
 	return nil
 }
@@ -176,9 +178,9 @@ func (bs *BattleScene) Update() error {
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)
 	bs.ui.DrawBackground(screen)
-	bs.ui.Draw(screen, bs.tickCount)
+	bs.ui.Draw(screen, bs.tickCount, bs.resources.GameDataManager)
 	// bs.battlefieldViewModel は不要になるため、直接 battleUIState.BattlefieldViewModel を渡す
-	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battleUIState.BattlefieldViewModel, bs.ui.(*UI).battlefieldWidget)
+	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battleUIState.BattlefieldViewModel, bs.ui.(*UI).battlefieldWidget, bs.resources.GameDataManager)
 
 	// 現在のステートに描画を委譲
 	bs.currentState.Draw(screen)

@@ -141,7 +141,7 @@ type BattleUIState struct {
 // BattleScene will interact with the UI through this interface.
 type UIInterface interface {
 	Update()
-	Draw(screen *ebiten.Image, tick int)
+	Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager)
 	DrawBackground(screen *ebiten.Image)
 	GetRootContainer() *widget.Container
 	SetAnimation(anim *ActionAnimationData)
@@ -150,7 +150,7 @@ type UIInterface interface {
 	GetCurrentAnimationResult() ActionResult
 	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
-	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle) // 単一のデータ設定メソッド
+	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) // 単一のデータ設定メソッド
 	PostEvent(event UIEvent)                                                                        // This will be implemented by the concrete UI struct
 	IsActionModalVisible() bool
 	GetActionTargetMap() map[PartSlotKey]ActionTarget

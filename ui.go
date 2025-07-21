@@ -22,17 +22,15 @@ type UI struct {
 	eventChannel chan UIEvent
 	// 依存性
 	config                 *Config
-	gameDataManager        *GameDataManager // 追加
 	whitePixel             *ebiten.Image
 	messageManager         *UIMessageDisplayManager
 	actionModalManager     *UIActionModalManager
 	targetIndicatorManager *UITargetIndicatorManager
-	uiFactory              *UIFactory         // 追加
-	animationDrawer        *UIAnimationDrawer // 新しく追加
+	animationDrawer        *UIAnimationDrawer // New: uiFactory and gameDataManager removed
 }
 
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
-func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle) {
+func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
 	// BattlefieldViewModel を設定
 	u.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
 
@@ -56,7 +54,7 @@ func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, batt
 			infoPanelVMs = append(infoPanelVMs, vm)
 		}
 
-		infoPanelResults := CreateInfoPanels(config, u.uiFactory, infoPanelVMs)
+		infoPanelResults := CreateInfoPanels(config, uiFactory, infoPanelVMs)
 
 		for _, result := range infoPanelResults {
 			u.medarotInfoPanels[result.ID] = result.PanelUI
@@ -82,20 +80,16 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(config *Config, eventChannel chan UIEvent, gameDataManager *GameDataManager, animationManager *BattleAnimationManager) *UI {
+func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAnimationManager, uiFactory *UIFactory, gameDataManager *GameDataManager) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
-
-	uiFactory := NewUIFactory(config, gameDataManager.Font, gameDataManager.Messages, gameDataManager) // UIFactoryを初期化
 
 	ui := &UI{
 		medarotInfoPanels: make(map[string]*infoPanelUI),
 		eventChannel:      eventChannel,
 		config:            config,
-		gameDataManager:   gameDataManager, // 追加
 		whitePixel:        whiteImg,
-		uiFactory:         uiFactory,                                                       // 追加
-		animationDrawer:   NewUIAnimationDrawer(config, animationManager, gameDataManager), // UIAnimationDrawerを初期化
+		animationDrawer:   NewUIAnimationDrawer(config, animationManager),
 	}
 
 	rootContainer := widget.NewContainer(
@@ -134,7 +128,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, gameDataManager *GameDataM
 	mainUIContainer.AddChild(team2PanelContainer)
 	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
 	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
-	ui.messageManager = NewUIMessageDisplayManager(uiFactory, rootContainer)
+	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, rootContainer, uiFactory)
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
@@ -179,7 +173,7 @@ func (u *UI) Update() {
 }
 
 // Draw はUIを描画します。
-func (u *UI) Draw(screen *ebiten.Image, tick int) {
+func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
 	var indicatorTargetVM *IconViewModel
 	if u.targetIndicatorManager.GetCurrentTarget() != nil && u.battlefieldWidget.viewModel != nil {
@@ -196,7 +190,7 @@ func (u *UI) Draw(screen *ebiten.Image, tick int) {
 
 	// アニメーションの描画
 	if u.battlefieldWidget.viewModel != nil {
-		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel, u.battlefieldWidget)
+		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel, u.battlefieldWidget, gameDataManager)
 	}
 
 	// その後でebitenuiを描画する
