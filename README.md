@@ -42,7 +42,9 @@ Battle Action (メダロットの行動)
     *   役割: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
     *   内容: `ActionQueueComponentData` 構造体（行動するエンティティのキューを持つ）と、それに関連するComponentType、取得・初期化用関数を定義します。ワールドに一つ存在する専用エンティティがこのコンポーネントを持ちます。行動実行の順序制御に関わるデータを変更する場合に編集します。
 *   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。
-*   `battle_action_executor.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の具体的な行動実行ロジックをカプセル化します。`ActionExecutor` インターフェースとその実装（`ShootActionExecutor`, `MeleeActionExecutor`など）を定義します。
+*   `battle_action_executor.go`: **[ロジック/振る舞い]** アクションの実行に関する主要なロジックをカプセル化します。特性や武器タイプごとの具体的な処理は、`battle_trait_handlers.go` および `battle_weapon_effect_handlers.go` に委譲されます。
+*   `battle_trait_handlers.go`: **[ロジック/振る舞い]** 各特性（Trait）に応じたアクションの実行ロジックを定義します。`BaseAttackHandler`、`SupportTraitExecutor`、`ObstructTraitExecutor` などが含まれます。
+*   `battle_weapon_effect_handlers.go`: **[ロジック/振る舞い]** 各武器タイプ（WeaponType）に応じた追加効果の適用ロジックを定義します。`ThunderEffectHandler`、`MeltEffectHandler`、`VirusEffectHandler` などが含まれます。
 *   `ui_event_processor_system.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、対応するゲームイベントを発行します。ゲームロジックとは直接やり取りせず、イベントを介して間接的に連携します。
 *   `battle_animation_manager.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの再生と管理を行います。
 
@@ -75,9 +77,7 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 *   `ui_animation_drawer.go`
     *   役割: 戦闘中のアクションアニメーションの具体的な描画処理。
     *   内容: `BattleAnimationManager`から受け取ったアニメーションデータに基づき、画面へのエフェクト描画（座標計算、拡大縮小、フェードなど）を行います。
-*   `ui_view_model_builder.go`
-    *   役割: ECSのデータからUI表示用のViewModelを構築するヘルパー。
-    *   内容: `InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。これにより、UIはECSの内部構造に直接依存しません。
+*   `view_model_factory.go`: **[ロジック/振る舞い]** ECSのデータからUI表示用のViewModelを構築するファクトリ。`InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。これにより、UIはECSの内部構造に直接依存しません。
 *   `ui_battlefield_widget.go`: 中央のバトルフィールド描画。ViewModelを受け取って描画します。
 *   `ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。ViewModelを受け取って描画します。
 *   `ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。UIイベントを発行し、ViewModelを使用して表示します。
@@ -89,9 +89,7 @@ Data & Utilities (データ定義と補助機能)
 
 プロジェクト全体で使用するデータ構造や補助的な機能です。
 
-*   `data_types.go`
-    *   役割: プロジェクト全体で使われる基本的な型や定数、UI用のViewModel、およびUIイベントの定義。
-    *   内容: `TeamID`, `PartSlotKey`, `StateType` のような型定義や、`const` で定義される定数を集約します。UIイベントの型定義も含まれます。
+*   `data_balance_config.go`: ゲームバランスに関する設定値を定義します。
 *   `data_config.go`
     *   役割: ゲームの固定設定値を管理します。
     *   内容: ゲームバランス（攻撃力係数など）、UIのサイズや色といった、マジックナンバーになりがちな値を一元管理します。
@@ -111,7 +109,10 @@ Data & Utilities (データ定義と補助機能)
     *   役割: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
     *   内容: CSVから読み込んだデータをもとに、戦闘に参加する全メダロットのエンティティと、その初期状態に必要な各種コンポーネント（`Settings`, `Parts`, `Medal`, `AIComponent`、`ActionIntentComponent`、`TargetComponent`等）を作成・設定します。新しいコンポーネントをエンティティの初期状態に追加する場合や、初期設定ロジックを変更する場合に編集します。
 *   `data_message_manager.go`: ゲーム内のメッセージを管理します。
+*   `data_game_events.go`: ゲーム内で発生するイベントの定義。
+*   `data_game_types.go`: ゲーム全体で使われる基本的な型や定数、UI用のViewModel、およびUIイベントの定義。
+*   `data_status_effects.go`: ステータス効果に関する定義。
+*   `data_ui_types.go`: UI関連の型定義。
 
-	
 **今後の検討事項**
 *   **テストカバレッジの向上:** リファクタリングされたUIロジックとViewModelのテストを追加することで、コードの堅牢性を高めます。
