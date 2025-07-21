@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/yohamta/donburi"
@@ -77,61 +76,4 @@ func (s *StatusEffectSystem) Update() {
 		}
 		activeEffects.Effects = newEffects
 	})
-}
-
-// --- Concrete Status Effect Implementations ---
-
-// EvasionDebuffEffect は回避率を低下させるデバフです。
-type EvasionDebuffEffect struct {
-	Multiplier float64
-}
-
-func (e *EvasionDebuffEffect) Apply(world donburi.World, target *donburi.Entry) {
-	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("EvasionDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
-}
-
-func (e *EvasionDebuffEffect) Remove(world donburi.World, target *donburi.Entry) {
-	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("EvasionDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
-}
-
-func (e *EvasionDebuffEffect) Description() string {
-	return fmt.Sprintf("Evasion Debuff (x%.2f)", e.Multiplier)
-}
-
-func (e *EvasionDebuffEffect) Duration() int {
-	// 0 means it will be removed manually (e.g., after an action).
-	return 0
-}
-
-func (e *EvasionDebuffEffect) Type() DebuffType {
-	return DebuffTypeEvasion
-}
-
-// DefenseDebuffEffect は防御力を低下させるデバフです。
-type DefenseDebuffEffect struct {
-	Multiplier float64
-}
-
-func (d *DefenseDebuffEffect) Apply(world donburi.World, target *donburi.Entry) {
-	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("DefenseDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
-}
-
-func (d *DefenseDebuffEffect) Remove(world donburi.World, target *donburi.Entry) {
-	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("DefenseDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
-}
-
-func (d *DefenseDebuffEffect) Description() string {
-	return fmt.Sprintf("Defense Debuff (x%.2f)", d.Multiplier)
-}
-
-func (d *DefenseDebuffEffect) Duration() int {
-	return 0
-}
-
-func (d *DefenseDebuffEffect) Type() DebuffType {
-	return DebuffTypeDefense
 }
