@@ -43,7 +43,7 @@ Battle Action (メダロットの行動)
     *   内容: `ActionQueueComponentData` 構造体（行動するエンティティのキューを持つ）と、それに関連するComponentType、取得・初期化用関数を定義します。ワールドに一つ存在する専用エンティティがこのコンポーネントを持ちます。行動実行の順序制御に関わるデータを変更する場合に編集します。
 *   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。
 *   `battle_action_executor.go`: **[ロジック/振る舞い]** パーツカテゴリ別（射撃、格闘など）の具体的な行動実行ロジックをカプセル化します。`ActionExecutor` インターフェースとその実装（`ShootActionExecutor`, `MeleeActionExecutor`など）を定義します。
-*   `battle_ui_event_handler.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、適切なゲームロジックを呼び出します。
+*   `ui_event_processor_system.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、対応するゲームイベントを発行します。ゲームロジックとは直接やり取りせず、イベントを介して間接的に連携します。
 *   `battle_animation_manager.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの再生と管理を行います。
 
 Battle Logic & AI (戦闘ルールと思考)
