@@ -1,0 +1,80 @@
+package battle
+
+import (
+	"log"
+	"medarot-ebiten/internal/game"
+
+	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
+)
+
+// StatusEffectSystem はステータス効果の適用、更新、解除を管理します。
+type StatusEffectSystem struct {
+	world donburi.World
+}
+
+// NewStatusEffectSystem は新しいStatusEffectSystemのインスタンスを生成します。
+func NewStatusEffectSystem(world donburi.World) *StatusEffectSystem {
+	return &StatusEffectSystem{
+		world: world,
+	}
+}
+
+// Apply はエンティティにステータス効果を適用します。
+func (s *StatusEffectSystem) Apply(entry *donburi.Entry, effect game.StatusEffect) {
+	log.Printf("Applying effect '%s' to %s", effect.Description(), game.SettingsComponent.Get(entry).Name)
+	effect.Apply(s.world, entry)
+
+	// 効果の持続時間を管理するコンポーネントを追加
+	if !entry.HasComponent(game.ActiveEffectsComponent) {
+		donburi.Add(entry, game.ActiveEffectsComponent, &game.ActiveEffects{})
+	}
+	activeEffects := game.ActiveEffectsComponent.Get(entry)
+	activeEffects.Effects = append(activeEffects.Effects, &game.ActiveStatusEffect{
+		Effect:       effect,
+		RemainingDur: effect.Duration(),
+	})
+}
+
+// Remove はエンティティからステータス効果を解除します。
+func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effect game.StatusEffect) {
+	log.Printf("Removing effect '%s' from %s", effect.Description(), game.SettingsComponent.Get(entry).Name)
+	effect.Remove(s.world, entry)
+
+	if entry.HasComponent(game.ActiveEffectsComponent) {
+		activeEffects := game.ActiveEffectsComponent.Get(entry)
+		newEffects := make([]*game.ActiveStatusEffect, 0)
+		for _, activeEffect := range activeEffects.Effects {
+			// Note: This might not work correctly if two identical effects are applied.
+			// A more robust system would use unique IDs for each applied effect instance.
+			if activeEffect.Effect != effect {
+				newEffects = append(newEffects, activeEffect)
+			}
+		}
+		activeEffects.Effects = newEffects
+	}
+}
+
+// Update は毎フレーム呼び出され、効果の持続時間を更新し、期限切れの効果を削除します。
+func (s *StatusEffectSystem) Update() {
+	query.NewQuery(filter.Contains(game.ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
+		activeEffects := game.ActiveEffectsComponent.Get(entry)
+		newEffects := make([]*game.ActiveStatusEffect, 0)
+		for _, activeEffect := range activeEffects.Effects {
+			if activeEffect.RemainingDur > 0 {
+				activeEffect.RemainingDur--
+				if activeEffect.RemainingDur == 0 {
+					log.Printf("Effect '%s' expired for %s", activeEffect.Effect.Description(), game.SettingsComponent.Get(entry).Name)
+					activeEffect.Effect.Remove(s.world, entry)
+				} else {
+					newEffects = append(newEffects, activeEffect)
+				}
+			} else {
+				// Duration 0 or less means it's not a timed effect, so keep it.
+				newEffects = append(newEffects, activeEffect)
+			}
+		}
+		activeEffects.Effects = newEffects
+	})
+}

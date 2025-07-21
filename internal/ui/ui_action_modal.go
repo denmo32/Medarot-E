@@ -1,0 +1,98 @@
+package ui
+
+import (
+	"fmt"
+	"medarot-ebiten/internal/game"
+
+	"github.com/ebitenui/ebitenui/widget"
+)
+
+func createActionModalUI(
+	vm *ActionModalViewModel,
+	uiFactory *UIFactory, // UIFactoryを追加
+	eventChannel chan game.UIEvent,
+) widget.PreferredSizeLocateableWidget {
+	c := uiFactory.Config.UI
+
+	// オーバーレイ用のコンテナ
+	overlay := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
+		// 背景色を削除し、完全に透明にする
+		// widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{0, 0, 0, 180})),
+	)
+
+	// ボタンウィジェットのスライスを作成
+	buttons := []widget.PreferredSizeLocateableWidget{}
+
+	if len(vm.Buttons) == 0 {
+		buttons = append(buttons, widget.NewText(
+			widget.TextOpts.Text(uiFactory.MessageManager.FormatMessage("ui_no_parts_available", nil), uiFactory.Font, c.Colors.White),
+		))
+	} else {
+		for _, buttonVM := range vm.Buttons {
+			buttonText := fmt.Sprintf("%s (%s)", buttonVM.PartName, buttonVM.PartCategory)
+			buttonTextColor := &widget.ButtonTextColor{Idle: c.Colors.White}
+			if buttonVM.IsBroken {
+				buttonTextColor.Idle = c.Colors.Red
+			}
+
+			actionButton := uiFactory.NewCyberpunkButton(
+				buttonText,
+				buttonTextColor,
+				func(args *widget.ButtonClickedEventArgs) {
+					if !buttonVM.IsBroken {
+						eventChannel <- game.ClearCurrentTargetUIEvent{}
+						eventChannel <- game.PartSelectedUIEvent{
+							ActingEntry:     vm.ActingEntry,
+							SelectedPartDef: buttonVM.SelectedPartDef,
+							SelectedSlotKey: buttonVM.SlotKey,
+						}
+					}
+				},
+				func(args *widget.ButtonHoverEventArgs) {
+					switch buttonVM.PartCategory {
+					case game.CategoryRanged:
+						if buttonVM.TargetEntry != nil {
+							eventChannel <- game.TargetSelectedUIEvent{
+								ActingEntry:     vm.ActingEntry,
+								SelectedPartDef: buttonVM.SelectedPartDef,
+								SelectedSlotKey: buttonVM.SlotKey,
+								TargetEntry:     buttonVM.TargetEntry,
+								TargetPartSlot:  "", // ターゲットパーツスロットはここでは不明
+							}
+						}
+					case game.CategoryIntervention:
+						// 介入の場合はターゲット表示なし
+					default:
+						// 格闘など、他のカテゴリでターゲット表示が必要な場合はここに追加
+					}
+				},
+				func(args *widget.ButtonHoverEventArgs) {
+					eventChannel <- game.ClearCurrentTargetUIEvent{}
+				},
+			)
+			buttons = append(buttons, actionButton)
+		}
+	}
+
+	// NewPanel を使用してモーダルを作成
+	panel := NewPanel(&PanelOptions{
+		Title:           uiFactory.MessageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}),
+		Padding:         widget.NewInsetsSimple(15),
+		Spacing:         c.ActionModal.ButtonSpacing,
+		PanelWidth:      int(c.ActionModal.ButtonWidth) + 30,
+		TitleFont:       uiFactory.Font,
+		BackgroundColor: c.Colors.Background, // 背景色を設定
+		BorderColor:     c.Colors.Gray,       // 枠線の色
+		BorderThickness: 5,                   // 枠線の太さ
+	}, uiFactory, buttons...) // uiFactoryを渡す
+
+	// パネルをオーバーレイの中央に配置
+	panel.GetWidget().LayoutData = widget.AnchorLayoutData{
+		HorizontalPosition: widget.AnchorLayoutPositionCenter,
+		VerticalPosition:   widget.AnchorLayoutPositionCenter,
+	}
+	overlay.AddChild(panel)
+
+	return overlay
+}
