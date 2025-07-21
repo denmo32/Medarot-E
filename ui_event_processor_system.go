@@ -61,10 +61,9 @@ func UpdateUIEventProcessorSystem(
 				return newPlayerActionPendingQueue, newState, gameEvents
 			}
 
-			// ActionConfirmedGameEvent を発行
-			gameEvents = append(gameEvents, ActionConfirmedGameEvent{
+			// ChargeRequestedGameEvent を発行
+			gameEvents = append(gameEvents, ChargeRequestedGameEvent{
 				ActingEntry:     e.ActingEntry,
-				SelectedPartDef: e.SelectedPartDef,
 				SelectedSlotKey: e.SelectedSlotKey,
 				TargetEntry:     targetEntry,
 				TargetPartSlot:  targetPartSlot,

@@ -226,16 +226,6 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			bs.ui.PostEvent(ClearAnimationUIEvent{})
 		case ClearCurrentTargetGameEvent:
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
-		case ActionConfirmedGameEvent:
-			// ActionConfirmedGameEvent を受け取ったら、ChargeRequestedGameEvent を発行
-			// これはUIEventProcessorSystemから発行されるため、ここでは直接チャージを開始しない
-			// ChargeRequestedGameEvent は ChargeInitiationSystem で処理される
-			bs.processGameEvents([]GameEvent{ChargeRequestedGameEvent{
-				ActingEntry:     e.ActingEntry,
-				SelectedSlotKey: e.SelectedSlotKey,
-				TargetEntry:     e.TargetEntry,
-				TargetPartSlot:  e.TargetPartSlot,
-			}})
 		case ChargeRequestedGameEvent:
 			// ChargeInitiationSystem を呼び出す
 			successful := StartCharge(e.ActingEntry, e.SelectedSlotKey, e.TargetEntry, e.TargetPartSlot, bs.world, bs.battleLogic)
