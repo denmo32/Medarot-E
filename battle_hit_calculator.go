@@ -21,9 +21,9 @@ func NewHitCalculator(world donburi.World, config *Config) *HitCalculator {
 
 
 // CalculateHit は新しいルールに基づいて命中判定を行います。
-func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition, battleLogic *BattleLogic) bool {
+func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) bool {
 	// 攻撃側の成功度
-	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, partDef)
+	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, partDef, selectedPartKey)
 
 	// チームバフによる成功度の上昇
 	successRate *= battleLogic.GetPartInfoProvider().GetTeamAccuracyBuffMultiplier(attacker)
@@ -50,9 +50,9 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 }
 
 // CalculateDefense は防御の成否を判定します。
-func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) bool {
+func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) bool {
 	// 攻撃側の成功度
-	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, actingPartDef)
+	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, actingPartDef, selectedPartKey)
 
 	// 防御側の防御度
 	defenseRate := battleLogic.GetPartInfoProvider().GetDefenseRate(target)

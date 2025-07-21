@@ -56,7 +56,7 @@ func (h *BaseAttackHandler) Execute(
 	_ = battleLogic // リンターの未使用パラメータ警告を抑制
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
-	return h.performAttackLogic(actingEntry, battleLogic, actingPartDef)
+	return h.performAttackLogic(actingEntry, intent, battleLogic, actingPartDef)
 }
 
 // initializeAttackResult は ActionResult を初期化します。
@@ -76,6 +76,7 @@ func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefin
 // performAttackLogic は攻撃アクションの主要なロジックを実行します。
 func (h *BaseAttackHandler) performAttackLogic(
 	actingEntry *donburi.Entry,
+	intent *ActionIntent,
 	battleLogic *BattleLogic,
 	actingPartDef *PartDefinition,
 ) ActionResult {
@@ -96,17 +97,17 @@ func (h *BaseAttackHandler) performAttackLogic(
 		return result
 	}
 
-	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, battleLogic)
+	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, intent.SelectedPartKey, battleLogic)
 	result.ActionDidHit = didHit
 	if !didHit {
 		return result
 	}
 
-	damage, isCritical := battleLogic.GetDamageCalculator().CalculateDamage(actingEntry, targetEntry, actingPartDef, battleLogic)
+	damage, isCritical := battleLogic.GetDamageCalculator().CalculateDamage(actingEntry, targetEntry, actingPartDef, intent.SelectedPartKey, battleLogic)
 	result.IsCritical = isCritical
 	result.OriginalDamage = damage
 
-	applyDamageAndDefense(&result, actingEntry, actingPartDef, battleLogic)
+	applyDamageAndDefense(&result, actingEntry, actingPartDef, intent.SelectedPartKey, battleLogic)
 
 	finalizeActionResult(&result, battleLogic)
 
@@ -126,19 +127,20 @@ func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool
 	return true
 }
 
-func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) bool {
-	return battleLogic.GetHitCalculator().CalculateHit(actingEntry, targetEntry, actingPartDef, battleLogic)
+func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) bool {
+	return battleLogic.GetHitCalculator().CalculateHit(actingEntry, targetEntry, actingPartDef, selectedPartKey, battleLogic)
 }
 
 func applyDamageAndDefense(
 	result *ActionResult,
 	actingEntry *donburi.Entry,
 	actingPartDef *PartDefinition,
+	selectedPartKey PartSlotKey,
 	battleLogic *BattleLogic,
 ) {
 	defendingPartInst := battleLogic.GetTargetSelector().SelectDefensePart(result.TargetEntry, battleLogic)
 
-	if defendingPartInst != nil && battleLogic.GetHitCalculator().CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, battleLogic) {
+	if defendingPartInst != nil && battleLogic.GetHitCalculator().CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey, battleLogic) {
 		result.ActionIsDefended = true
 		defendingPartDef, _ := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
 		result.DefendingPartType = string(defendingPartDef.Type)

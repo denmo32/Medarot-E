@@ -133,7 +133,7 @@ func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*PartD
 }
 
 // GetSuccessRate はエンティティの成功度を計算します。
-func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition) float64 {
+func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey) float64 {
 	successRate := float64(actingPartDef.Accuracy)
 
 	// 特性によるボーナスを加算
@@ -141,7 +141,7 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 	if ok {
 		for _, bonus := range formula.SuccessRateBonuses {
 			// 攻撃パーツのパラメータを参照するように変更
-			successRate += pip.GetPartParameterValue(entry, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
+			successRate += pip.GetPartParameterValue(entry, selectedPartKey, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
 	return successRate

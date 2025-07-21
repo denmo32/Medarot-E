@@ -51,7 +51,7 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 }
 
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
-func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) (int, bool) {
+func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) (int, bool) {
 	// 1. 計算式の取得
 	formula, ok := FormulaManager[actingPartDef.Trait]
 	if !ok {
@@ -60,13 +60,13 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	}
 
 	// 2. 基本パラメータの取得
-	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, actingPartDef)
+	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, actingPartDef, selectedPartKey)
 	power := float64(actingPartDef.Power)
 
 	// 特性による威力ボーナスを加算
 	if formula != nil {
 		for _, bonus := range formula.PowerBonuses {
-			power += battleLogic.GetPartInfoProvider().GetPartParameterValue(attacker, actingPartDef.PartSlot, bonus.SourceParam) * bonus.Multiplier
+			power += battleLogic.GetPartInfoProvider().GetPartParameterValue(attacker, selectedPartKey, bonus.SourceParam) * bonus.Multiplier
 		}
 	}
 	evasion := battleLogic.GetPartInfoProvider().GetEvasionRate(target)
