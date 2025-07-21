@@ -13,21 +13,19 @@ import (
 // ViewModelFactory は各種ViewModelを生成するためのインターフェースです。
 type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) InfoPanelViewModel
-	BuildBattlefieldViewModel(battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
+	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, battleLogic *BattleLogic) ActionModalViewModel
 	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart // 追加
 }
 
 // viewModelFactoryImpl はViewModelFactoryインターフェースの実装です。
 type viewModelFactoryImpl struct {
-	world       *donburi.World
-	battleLogic *BattleLogic // 追加
+	battleLogic *BattleLogic
 }
 
 // NewViewModelFactory は新しいViewModelFactoryのインスタンスを作成します。
-func NewViewModelFactory(world *donburi.World, battleLogic *BattleLogic) ViewModelFactory {
+func NewViewModelFactory(world donburi.World, battleLogic *BattleLogic) ViewModelFactory { // world の型を donburi.World に変更
 	return &viewModelFactoryImpl{
-		world:       world,
 		battleLogic: battleLogic,
 	}
 }
@@ -73,16 +71,16 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, bat
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel {
+func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel {
 	vm := BattlefieldViewModel{
 		Icons: []*IconViewModel{},
 		DebugMode: func() bool {
-			_, ok := query.NewQuery(filter.Contains(DebugModeComponent)).First(battleLogic.world)
+			_, ok := query.NewQuery(filter.Contains(DebugModeComponent)).First(world) // f.world の代わりに world を使用
 			return ok
 		}(),
 	}
 
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(battleLogic.world, func(entry *donburi.Entry) {
+	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) { // f.world の代わりに world を使用
 		settings := SettingsComponent.Get(entry)
 		state := StateComponent.Get(entry)
 		gauge := GaugeComponent.Get(entry)

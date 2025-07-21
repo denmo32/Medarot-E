@@ -84,7 +84,7 @@ func createActionModalUI(
 		BackgroundColor: c.Colors.Background, // 背景色を設定
 		BorderColor:     c.Colors.Gray,       // 枠線の色
 		BorderThickness: 5,                   // 枠線の太さ
-	}, uiFactory, buttons...) // uiFactoryを渡す
+	}, uiFactory.imageGenerator, uiFactory.Font, buttons...) // uiFactory.imageGeneratorとuiFactory.Fontを渡す
 
 	// パネルをオーバーレイの中央に配置
 	panel.GetWidget().LayoutData = widget.AnchorLayoutData{

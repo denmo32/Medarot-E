@@ -57,7 +57,7 @@ func (mm *UIMessageDisplayManager) ShowMessageWindow(message string) {
 	if mm.messageWindow != nil {
 		mm.HideMessageWindow()
 	}
-	win := createMessageWindow(message, mm.messageManager, mm.config, mm.font, mm.uiFactory) // uiFactoryを渡す
+	win := createMessageWindow(message, mm.uiFactory) // uiFactoryを渡す
 	mm.messageWindow = win
 	mm.uiContainer.AddChild(mm.messageWindow)
 }

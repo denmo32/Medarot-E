@@ -7,21 +7,19 @@ import (
 
 // UIFactory はUIコンポーネントの生成とスタイリングを一元的に管理します。
 type UIFactory struct {
-	Config          *Config
-	Font            text.Face
-	MessageManager  *MessageManager
-	GameDataManager *GameDataManager  // 追加
-	imageGenerator  *UIImageGenerator // 追加
+	Config         *Config
+	Font           text.Face
+	MessageManager *MessageManager
+	imageGenerator *UIImageGenerator
 }
 
 // NewUIFactory は新しいUIFactoryのインスタンスを作成します。
-func NewUIFactory(config *Config, font text.Face, messageManager *MessageManager, gameDataManager *GameDataManager) *UIFactory {
+func NewUIFactory(config *Config, font text.Face, messageManager *MessageManager) *UIFactory {
 	return &UIFactory{
-		Config:          config,
-		Font:            font,
-		MessageManager:  messageManager,
-		GameDataManager: gameDataManager, // 追加
-		imageGenerator:  NewUIImageGenerator(config),
+		Config:         config,
+		Font:           font,
+		MessageManager: messageManager,
+		imageGenerator: NewUIImageGenerator(config),
 	}
 }
 

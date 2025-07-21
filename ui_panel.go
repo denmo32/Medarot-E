@@ -24,7 +24,7 @@ type PanelOptions struct {
 }
 
 // NewPanel は、指定されたオプションに基づいて汎用的なパネルウィジェットを作成します。
-func NewPanel(opts *PanelOptions, uiFactory *UIFactory, children ...widget.PreferredSizeLocateableWidget) *widget.Container {
+func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Face, children ...widget.PreferredSizeLocateableWidget) *widget.Container {
 	var bg *image.NineSlice
 	if opts.BackgroundImage != nil {
 		bg = opts.BackgroundImage
@@ -38,7 +38,7 @@ func NewPanel(opts *PanelOptions, uiFactory *UIFactory, children ...widget.Prefe
 
 	// 枠線が指定されている場合、サイバーパンク風のパネル画像を生成
 	if opts.BorderThickness > 0 {
-		bg = uiFactory.imageGenerator.createCyberpunkPanelNineSlice(opts.BorderThickness)
+		bg = imageGenerator.createCyberpunkPanelNineSlice(opts.BorderThickness)
 	}
 
 	widgetOpts := []widget.WidgetOpt{
@@ -61,7 +61,7 @@ func NewPanel(opts *PanelOptions, uiFactory *UIFactory, children ...widget.Prefe
 			titleColor = opts.TitleColor
 		}
 
-		titleFont := uiFactory.Font
+		titleFont := font // uiFactory.Font の代わりに直接 font を使用
 		if opts.TitleFont != nil {
 			titleFont = opts.TitleFont
 		}

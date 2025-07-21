@@ -89,7 +89,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAn
 		eventChannel:      eventChannel,
 		config:            config,
 		whitePixel:        whiteImg,
-		animationDrawer:   NewUIAnimationDrawer(config, animationManager),
+		animationDrawer:   NewUIAnimationDrawer(config, animationManager, gameDataManager.Font), // gameDataManager.Fontを渡す
 	}
 
 	rootContainer := widget.NewContainer(
@@ -190,7 +190,7 @@ func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManag
 
 	// アニメーションの描画
 	if u.battlefieldWidget.viewModel != nil {
-		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel, u.battlefieldWidget, gameDataManager)
+		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel, u.battlefieldWidget) // gameDataManagerを削除
 	}
 
 	// その後でebitenuiを描画する

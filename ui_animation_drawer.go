@@ -11,18 +11,20 @@ import (
 type UIAnimationDrawer struct {
 	config           *Config
 	animationManager *BattleAnimationManager
+	font             text.Face // 追加
 }
 
 // NewUIAnimationDrawer は新しいUIAnimationDrawerインスタンスを作成します。
-func NewUIAnimationDrawer(config *Config, animationManager *BattleAnimationManager) *UIAnimationDrawer {
+func NewUIAnimationDrawer(config *Config, animationManager *BattleAnimationManager, font text.Face) *UIAnimationDrawer {
 	return &UIAnimationDrawer{
 		config:           config,
 		animationManager: animationManager,
+		font:             font, // 追加
 	}
 }
 
 // Draw は現在のアニメーションを画面に描画します。
-func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel, battlefieldWidget *BattlefieldWidget, gameDataManager *GameDataManager) {
+func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel, battlefieldWidget *BattlefieldWidget) {
 	anim := d.animationManager.currentAnimation
 	if anim == nil {
 		return
@@ -106,7 +108,7 @@ func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick int, battlefieldVM B
 			ca := float32(a) / 0xffff
 			drawOpts.DrawImageOptions.ColorScale.Scale(cr, cg, cb, ca)
 			drawOpts.DrawImageOptions.ColorScale.ScaleAlpha(alpha)
-			text.Draw(screen, fmt.Sprintf("-%d", anim.Result.OriginalDamage), gameDataManager.Font, drawOpts)
+			text.Draw(screen, fmt.Sprintf("-%d", anim.Result.OriginalDamage), d.font, drawOpts) // d.fontを使用
 		}
 	}
 }

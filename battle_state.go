@@ -17,12 +17,12 @@ type BattleContext struct {
 	SceneManager     *SceneManager
 	GameDataManager  *GameDataManager // 追加
 	Tick             int
-	ViewModelFactory ViewModelFactory // 追加
+	// ViewModelFactory ViewModelFactory // 削除
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error)
+	Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -30,7 +30,7 @@ type BattleState interface {
 
 type PlayingState struct{}
 
-func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	battleLogic := ctx.BattleLogic
 	ui := ctx.UI
@@ -90,7 +90,7 @@ func (s *PlayingState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	battleLogic := ctx.BattleLogic
 	ui := ctx.UI
@@ -110,7 +110,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 		if actingEntry.Valid() && StateComponent.Get(actingEntry).FSM.Is(string(StateIdle)) {
 			actionTargetMap := make(map[PartSlotKey]ActionTarget)
 			// ViewModelFactoryを介して利用可能なパーツを取得
-			availableParts := ctx.ViewModelFactory.GetAvailableAttackParts(actingEntry)
+			availableParts := viewModelFactory.GetAvailableAttackParts(actingEntry)
 			for _, available := range availableParts {
 				partDef := available.PartDef
 				slotKey := available.Slot
@@ -129,14 +129,14 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic)
+			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic)
 			gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
 			return playerActionPendingQueue, gameEvents, nil
 		} else {
 			// 無効または待機状態でないならキューから削除して次のプレイヤーを処理
 			playerActionPendingQueue = playerActionPendingQueue[1:]
 			// 即座に次のプレイヤーを評価するため、再帰的に呼び出す
-			return s.Update(ctx, playerActionPendingQueue)
+			return s.Update(ctx, playerActionPendingQueue, viewModelFactory)
 		}
 	}
 
@@ -150,7 +150,7 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	ui := ctx.UI
 	tick := ctx.Tick
@@ -175,7 +175,7 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
 	// MessageStateはMessageDisplayFinishedGameEventを返すのみで、MessageManagerのUpdateはBattleSceneで行う
 	var gameEvents []GameEvent
 
@@ -194,7 +194,7 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
 	sceneManager := ctx.SceneManager
 	var gameEvents []GameEvent
 

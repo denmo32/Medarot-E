@@ -49,8 +49,8 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	}
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
-	bs.viewModelFactory = NewViewModelFactory(&world, bs.battleLogic) // ViewModelFactoryを初期化
-	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.resources.GameDataManager) // UIFactoryを初期化
+	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic) // worldをそのまま渡す
+	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages) // UIFactoryを初期化
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
 	EnsureActionQueueEntity(bs.world)
 
@@ -123,12 +123,13 @@ func (bs *BattleScene) Update() error {
 		SceneManager:     bs.manager,
 		GameDataManager:  bs.resources.GameDataManager, // 追加
 		Tick:             bs.tickCount,
-		ViewModelFactory: bs.viewModelFactory,
+		// ViewModelFactory: bs.viewModelFactory,
 	}
 
 	newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(
 		battleContext,
 		bs.playerActionPendingQueue,
+		bs.viewModelFactory, // ViewModelFactoryを渡す
 	)
 	if err != nil {
 		return err
@@ -167,7 +168,7 @@ func (bs *BattleScene) Update() error {
 	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic, bs.viewModelFactory) // InfoPanelのViewModelを更新
 
 	// BattlefieldViewModelを構築し、BattleUIStateに設定
-	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect())
+	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect()) // worldを渡す
 
 	// UIにBattleUIState全体を渡して更新を委譲
 	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect(), bs.uiFactory)
@@ -180,7 +181,7 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	bs.ui.DrawBackground(screen)
 	bs.ui.Draw(screen, bs.tickCount, bs.resources.GameDataManager)
 	// bs.battlefieldViewModel は不要になるため、直接 battleUIState.BattlefieldViewModel を渡す
-	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battleUIState.BattlefieldViewModel, bs.ui.(*UI).battlefieldWidget, bs.resources.GameDataManager)
+	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battleUIState.BattlefieldViewModel, bs.ui.(*UI).battlefieldWidget)
 
 	// 現在のステートに描画を委譲
 	bs.currentState.Draw(screen)

@@ -92,7 +92,9 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 		Padding:         widget.NewInsetsSimple(5),
 		Spacing:         2,
 		BackgroundColor: color.NRGBA{50, 50, 70, 200}, // 背景色を設定
-	}, uiFactory, append([]widget.PreferredSizeLocateableWidget{headerContainer}, partWidgets...)...)
+		BorderColor:     c.Colors.Gray,       // 枠線の色
+		BorderThickness: 5,                   // 枠線の太さ
+	}, uiFactory.imageGenerator, uiFactory.Font, append([]widget.PreferredSizeLocateableWidget{headerContainer}, partWidgets...)...)
 
 	return &infoPanelUI{
 		rootContainer: panelContainer,
