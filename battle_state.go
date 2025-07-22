@@ -12,17 +12,15 @@ import (
 type BattleContext struct {
 	World            donburi.World
 	BattleLogic      *BattleLogic
-	UI               UIInterface
 	Config           *Config
-	SceneManager     *SceneManager
-	GameDataManager  *GameDataManager // 追加
+	GameDataManager  *GameDataManager
 	Tick             int
-	// ViewModelFactory ViewModelFactory // 削除
+	ViewModelFactory ViewModelFactory
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error)
+	Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -30,17 +28,17 @@ type BattleState interface {
 
 type PlayingState struct{}
 
-func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
+func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	battleLogic := ctx.BattleLogic
-	ui := ctx.UI
+	// ui := ctx.UI // 削除
 	config := ctx.Config
-	tick := ctx.Tick
+	tick := ctx.Tick // ctx.Tick を使用
 
 	var gameEvents []GameEvent
 
 	// AIの行動選択
-	if !ui.IsActionModalVisible() && len(playerActionPendingQueue) == 0 {
+	if len(playerActionPendingQueue) == 0 { // UIの表示状態はBattleSceneで管理
 		UpdateAIInputSystem(world, battleLogic)
 	}
 
@@ -54,7 +52,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 
 	// ゲージ進行
 	actionQueueComp := GetActionQueueComponent(world)
-	if !ui.IsActionModalVisible() && len(playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
+	if len(playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 { // UIの表示状態はBattleSceneで管理
 		UpdateGaugeSystem(world)
 	}
 
@@ -90,17 +88,12 @@ func (s *PlayingState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
+func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	battleLogic := ctx.BattleLogic
-	ui := ctx.UI
+	viewModelFactory := ctx.ViewModelFactory
 
 	var gameEvents []GameEvent
-
-	// モーダル表示中は何もしない
-	if ui.IsActionModalVisible() {
-		return playerActionPendingQueue, gameEvents, nil
-	}
 
 	// 待機中のプレイヤーがいるかチェック
 	if len(playerActionPendingQueue) > 0 {
@@ -136,7 +129,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			// 無効または待機状態でないならキューから削除して次のプレイヤーを処理
 			playerActionPendingQueue = playerActionPendingQueue[1:]
 			// 即座に次のプレイヤーを評価するため、再帰的に呼び出す
-			return s.Update(ctx, playerActionPendingQueue, viewModelFactory)
+			return s.Update(ctx, playerActionPendingQueue)
 		}
 	}
 
@@ -150,22 +143,21 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
-	world := ctx.World
-	ui := ctx.UI
-	tick := ctx.Tick
+func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+	// world := ctx.World // 削除
+	// ui := ctx.UI // UIへの直接参照を削除
+	// tick := ctx.Tick // tickはBattleSceneで管理
 
 	var gameEvents []GameEvent
 
-	if ui.IsAnimationFinished(tick) {
-		result := ui.GetCurrentAnimationResult()
-		gameEvents = append(gameEvents, ClearAnimationGameEvent{})
-		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: buildActionLogMessages(result, ctx.GameDataManager), Callback: func() {
-			UpdateHistorySystem(world, &result)
-		}})
-		gameEvents = append(gameEvents, ActionAnimationFinishedGameEvent{Result: result, ActingEntry: result.ActingEntry})
-		return playerActionPendingQueue, gameEvents, nil
-	}
+	// アニメーションの終了はBattleSceneで判定し、ActionAnimationFinishedGameEventを発行する
+	// ここではアニメーションが進行中であることを前提とする
+	// アニメーション終了時にBattleSceneがこの状態からPlaying状態へ遷移させる
+
+	// アニメーション終了判定はBattleSceneで行われるため、ここでは何もしない
+	// BattleSceneがActionAnimationFinishedGameEventを受け取った際に、
+	// MessageDisplayRequestGameEventとClearAnimationGameEventを発行する
+
 	return playerActionPendingQueue, gameEvents, nil
 }
 
@@ -175,16 +167,10 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
-	// MessageStateはMessageDisplayFinishedGameEventを返すのみで、MessageManagerのUpdateはBattleSceneで行う
-	var gameEvents []GameEvent
-
-	// MessageManagerのIsFinished()はBattleSceneでチェックされるため、ここではイベントを生成するのみ
-	// if ctx.MessageManager.IsFinished() { // このチェックはBattleSceneに移動
-	// 	gameEvents = append(gameEvents, MessageDisplayFinishedGameEvent{})
-	// }
+func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	// MessageStateはメッセージ表示の完了を待つ状態なので、ここではイベントを生成しない
 	// 完了はBattleSceneでMessageManager.IsFinished()をチェックして判断する
+	var gameEvents []GameEvent
 	return playerActionPendingQueue, gameEvents, nil
 }
 
@@ -194,12 +180,14 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry, viewModelFactory ViewModelFactory) ([]*donburi.Entry, []GameEvent, error) {
-	sceneManager := ctx.SceneManager
+func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+	// sceneManager := ctx.SceneManager // SceneManagerへの直接参照を削除
 	var gameEvents []GameEvent
 
+	// ここではクリックイベントを直接処理せず、GameEventとして発行する
+	// BattleSceneがこのイベントを受け取り、シーン遷移を行う
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		sceneManager.GoToTitleScene()
+		gameEvents = append(gameEvents, GoToTitleSceneGameEvent{})
 	}
 	return playerActionPendingQueue, gameEvents, nil
 }

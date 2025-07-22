@@ -96,6 +96,23 @@ func (bs *BattleScene) Update() error {
 	bs.tickCount++
 	bs.ui.Update()
 
+	// アニメーション再生中の場合、アニメーションの終了をチェック
+	if bs.state == StateAnimatingAction && bs.ui.IsAnimationFinished(bs.tickCount) {
+		// currentAnimationがnilでないことを確認してから結果を取得
+		if bs.ui.(*UI).animationDrawer.animationManager.currentAnimation != nil {
+			result := bs.ui.GetCurrentAnimationResult()
+			gameEvents := []GameEvent{
+				ClearAnimationGameEvent{},
+				MessageDisplayRequestGameEvent{Messages: buildActionLogMessages(result, bs.resources.GameDataManager), Callback: func() {
+					UpdateHistorySystem(bs.world, &result)
+				}},
+				ActionAnimationFinishedGameEvent{Result: result, ActingEntry: result.ActingEntry},
+			}
+			bs.processGameEvents(gameEvents)
+			return nil // アニメーション終了イベントを処理したので、このフレームの更新は終了
+		}
+	}
+
 	// UIイベントプロセッサシステムを更新
 	var uiGeneratedGameEvents []GameEvent
 	bs.playerActionPendingQueue, bs.state, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
@@ -118,18 +135,15 @@ func (bs *BattleScene) Update() error {
 	battleContext := &BattleContext{
 		World:            bs.world,
 		BattleLogic:      bs.battleLogic,
-		UI:               bs.ui,
 		Config:           &bs.resources.Config,
-		SceneManager:     bs.manager,
-		GameDataManager:  bs.resources.GameDataManager, // 追加
+		GameDataManager:  bs.resources.GameDataManager,
 		Tick:             bs.tickCount,
-		// ViewModelFactory: bs.viewModelFactory,
+		ViewModelFactory: bs.viewModelFactory,
 	}
 
 	newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(
 		battleContext,
 		bs.playerActionPendingQueue,
-		bs.viewModelFactory, // ViewModelFactoryを渡す
 	)
 	if err != nil {
 		return err
@@ -147,8 +161,6 @@ func (bs *BattleScene) Update() error {
 	if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
 		bs.state = StatePlaying
 		bs.currentState = bs.states[bs.state]
-	} else if bs.state == StateAnimatingAction && bs.ui.IsAnimationFinished(bs.tickCount) {
-		// この条件はActionAnimationFinishedGameEventで処理されるため、削除
 	}
 
 	// Transition to new state if changed (processGameEventsでbs.stateが更新されるため、このブロックは不要になる)
@@ -224,7 +236,10 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case HideActionModalGameEvent:
 			bs.ui.PostEvent(HideActionModalUIEvent{})
 		case ShowActionModalGameEvent:
-			bs.ui.PostEvent(ShowActionModalUIEvent(e))
+			// アクションモーダルが既に表示されている場合は無視
+			if !bs.ui.IsActionModalVisible() {
+				bs.ui.PostEvent(ShowActionModalUIEvent(e))
+			}
 		case ClearAnimationGameEvent:
 			bs.ui.PostEvent(ClearAnimationUIEvent{})
 		case ClearCurrentTargetGameEvent:
@@ -239,6 +254,8 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case ActionCanceledGameEvent:
 			// 行動キャンセル時の処理
 			bs.state = StatePlaying // キャンセル時は即座にPlaying状態に戻る
+		case GoToTitleSceneGameEvent:
+			bs.manager.GoToTitleScene()
 		}
 	}
 	// イベント処理後に現在の状態を更新

@@ -99,6 +99,10 @@ type ActionCanceledGameEvent struct {
 
 func (e ActionCanceledGameEvent) isGameEvent() {}
 
+type GoToTitleSceneGameEvent struct{}
+
+func (e GoToTitleSceneGameEvent) isGameEvent() {}
+
 // UIEvent は、UIから発行されるすべてのイベントを示すマーカーインターフェースです。
 type UIEvent interface {
 	isUIEvent()
