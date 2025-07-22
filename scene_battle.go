@@ -71,7 +71,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		log.Println("ERROR: Failed to create BattleUIStateComponent entry.")
 	}
 
-	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.battleLogic)
+	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.resources.GameDataManager)
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
 	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager)
 	// ui.goでuiFactoryが初期化され、ui.messageManagerもuiFactoryを使って初期化されるため、
@@ -99,7 +99,7 @@ func (bs *BattleScene) Update() error {
 	// UIイベントプロセッサシステムを更新
 	var uiGeneratedGameEvents []GameEvent
 	bs.playerActionPendingQueue, bs.state, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
-		bs.world, bs.battleLogic, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
+		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
 	)
 	// UIイベントプロセッサから発行されたGameEventを処理
 	bs.processGameEvents(uiGeneratedGameEvents)

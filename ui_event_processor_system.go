@@ -10,7 +10,6 @@ import (
 // このシステムは直接ゲームロジックを呼び出しません。
 func UpdateUIEventProcessorSystem(
 	world donburi.World,
-	battleLogic *BattleLogic,
 	ui UIInterface,
 	messageManager *UIMessageDisplayManager,
 	uiEventChannel chan UIEvent,
@@ -34,31 +33,10 @@ func UpdateUIEventProcessorSystem(
 			var targetEntry *donburi.Entry
 			var targetPartSlot PartSlotKey
 
-			switch e.SelectedPartDef.Category {
-			case CategoryRanged:
-				actionTarget, ok := actionTargetMap[e.SelectedSlotKey]
-				if !ok || actionTarget.Target == nil || actionTarget.Slot == "" {
-					log.Printf("ターゲットがいません！")
-					ui.ClearCurrentTarget()
-					// ターゲットがいない場合は行動選択をキャンセルし、キューから削除
-					if len(newPlayerActionPendingQueue) > 0 && newPlayerActionPendingQueue[0] == e.ActingEntry {
-						newPlayerActionPendingQueue = newPlayerActionPendingQueue[1:]
-					}
-					return newPlayerActionPendingQueue, newState, gameEvents
-				}
+			actionTarget, ok := actionTargetMap[e.SelectedSlotKey]
+			if ok {
 				targetEntry = actionTarget.Target
 				targetPartSlot = actionTarget.Slot
-			case CategoryMelee, CategoryIntervention:
-				// 格闘や介入はターゲット選択が不要な場合があるため、nil, "" を渡す
-				targetEntry = nil
-				targetPartSlot = ""
-			default:
-				log.Printf("未対応のパーツカテゴリです: %s", e.SelectedPartDef.Category)
-				// 未対応のカテゴリの場合もキューから削除
-				if len(newPlayerActionPendingQueue) > 0 && newPlayerActionPendingQueue[0] == e.ActingEntry {
-					newPlayerActionPendingQueue = newPlayerActionPendingQueue[1:]
-				}
-				return newPlayerActionPendingQueue, newState, gameEvents
 			}
 
 			// ChargeRequestedGameEvent を発行
