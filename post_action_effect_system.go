@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-	"log"
-
 	"github.com/yohamta/donburi"
 )
 
@@ -42,12 +39,7 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 	// 2. パーツ破壊による状態遷移
 	if result.TargetEntry != nil && result.TargetPartBroken && result.ActualHitPartSlot == PartSlotHead {
 		state := StateComponent.Get(result.TargetEntry)
-		if state.FSM.Can("break") {
-			err := state.FSM.Event(context.Background(), "break", result.TargetEntry)
-			if err != nil {
-				log.Printf("Error breaking medarot %s: %v", SettingsComponent.Get(result.TargetEntry).Name, err)
-			}
-		}
+		state.CurrentState = StateBroken
 	}
 
 	// 3. 行動後のクリーンアップ

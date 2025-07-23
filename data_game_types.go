@@ -196,7 +196,7 @@ type SharedResources struct {
 	GameData        *GameData
 	Config          Config
 	Font            text.Face
-	GameDataManager *GameDataManager // 追加
+	GameDataManager *GameDataManager
 	ButtonImage     *widget.ButtonImage
 }
 

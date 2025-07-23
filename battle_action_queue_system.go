@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"sort"
 
@@ -71,10 +70,8 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, battleLogic 
 	gauge.CurrentGauge = 0
 
 	state := StateComponent.Get(entry)
-	err := state.FSM.Event(context.Background(), "cooldown", entry)
-	if err != nil {
-		log.Printf("Error starting cooldown for %s: %v", SettingsComponent.Get(entry).Name, err)
-	}
+	gauge.ProgressCounter = 0
+	state.CurrentState = StateCooldown
 }
 
 // StartCharge はチャージ状態を開始します。

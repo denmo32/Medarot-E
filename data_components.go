@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/looplab/fsm"
 	"github.com/yohamta/donburi"
 )
 
@@ -58,7 +57,7 @@ type PartsComponentData struct {
 
 // State はエンティティの現在の状態と関連データを保持します。
 type State struct {
-	FSM *fsm.FSM
+	CurrentState StateType
 }
 
 // Gauge はチャージやクールダウンの進行状況を保持します。

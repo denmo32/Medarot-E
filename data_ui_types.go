@@ -1,11 +1,8 @@
 package main
 
 import (
-	"image"
 	"image/color"
 
-	"github.com/ebitenui/ebitenui/widget"
-	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )
 
@@ -15,7 +12,6 @@ type UIConfig struct {
 		Height int
 	}
 	Battlefield struct {
-		Rect                   *widget.Container
 		Height                 float32
 		Team1HomeX             float32
 		Team2HomeX             float32
@@ -58,20 +54,7 @@ type UIConfig struct {
 	}
 }
 
-type infoPanelUI struct {
-	rootContainer *widget.Container
-	nameText      *widget.Text
-	stateText     *widget.Text
-	partSlots     map[PartSlotKey]*infoPanelPartUI
-}
 
-type infoPanelPartUI struct {
-	partNameText *widget.Text
-	hpText       *widget.Text
-	hpBar        *widget.ProgressBar
-	displayedHP  float64 // 現在表示されているHP
-	targetHP     float64 // 目標とするHP
-}
 
 // --- ViewModels ---
 
@@ -137,24 +120,6 @@ type BattleUIState struct {
 	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
 }
 
-// UIInterface defines the interface for the game's user interface.
-// BattleScene will interact with the UI through this interface.
-type UIInterface interface {
-	Update()
-	Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager)
-	DrawBackground(screen *ebiten.Image)
-	GetRootContainer() *widget.Container
-	SetAnimation(anim *ActionAnimationData)
-	IsAnimationFinished(tick int) bool
-	ClearAnimation()
-	GetCurrentAnimationResult() ActionResult
-	ShowActionModal(vm ActionModalViewModel)
-	HideActionModal()
-	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) // 単一のデータ設定メソッド
-	PostEvent(event UIEvent)                                                                        // This will be implemented by the concrete UI struct
-	IsActionModalVisible() bool
-	GetActionTargetMap() map[PartSlotKey]ActionTarget
-	SetCurrentTarget(entry *donburi.Entry)
-	ClearCurrentTarget()
-	GetBattlefieldWidgetRect() image.Rectangle
-}
+
+
+

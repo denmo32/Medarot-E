@@ -70,7 +70,7 @@ func UpdateUIEventProcessorSystem(
 				SettingsComponent.Get(e.ActingEntry).Name)
 			newPlayerActionPendingQueue = make([]*donburi.Entry, 0)
 			ui.ClearCurrentTarget()
-			gameEvents = append(gameEvents, ActionCanceledGameEvent{ActingEntry: e.ActingEntry})
+			gameEvents = append(gameEvents, ActionCanceledGameEvent(e))
 			newState = StatePlaying // キャンセル時は即座にPlaying状態に戻る
 
 		case ShowActionModalUIEvent:

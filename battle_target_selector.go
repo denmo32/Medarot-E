@@ -129,7 +129,7 @@ func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*do
 	opponentTeamID := ts.GetOpponentTeam(actingEntry)
 	candidates := []*donburi.Entry{}
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).FSM.Is(string(StateBroken)) {
+		if StateComponent.Get(entry).CurrentState == StateBroken {
 			return
 		}
 		settings := SettingsComponent.Get(entry)

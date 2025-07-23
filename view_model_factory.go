@@ -57,7 +57,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, bat
 		}
 	}
 
-	stateStr := GetStateDisplayName(StateType(state.FSM.Current()))
+	stateStr := GetStateDisplayName(state.CurrentState)
 
 	return InfoPanelViewModel{
 		ID:        settings.ID,
@@ -99,7 +99,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		y += offsetY
 
 		var iconColor color.Color
-		if state.FSM.Is(string(StateBroken)) {
+		if state.CurrentState == StateBroken {
 			iconColor = config.UI.Colors.Broken
 		} else if settings.Team == Team1 {
 			iconColor = config.UI.Colors.Team1
@@ -109,7 +109,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 
 		var debugText string
 		if vm.DebugMode { // ViewModelのDebugModeを使用
-			stateStr := GetStateDisplayName(StateType(state.FSM.Current()))
+			stateStr := GetStateDisplayName(state.CurrentState)
 			debugText = fmt.Sprintf(`State: %s\nGauge: %.1f\nProg: %.1f / %.1f`,
 				stateStr, gauge.CurrentGauge, gauge.ProgressCounter, gauge.TotalDuration)
 		}
@@ -120,7 +120,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 			Y:             y,
 			Color:         iconColor,
 			IsLeader:      settings.IsLeader,
-			State:         StateType(state.FSM.Current()),
+			State:         state.CurrentState,
 			GaugeProgress: gauge.CurrentGauge / 100.0,
 			DebugText:     debugText,
 		})

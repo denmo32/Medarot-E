@@ -42,7 +42,7 @@ func (e *ChargeStopEffect) Apply(world donburi.World, target *donburi.Entry) {
 func (e *ChargeStopEffect) Remove(world donburi.World, target *donburi.Entry) {
 	// この効果の解除ロジックはChargeInitiationSystemなどで処理される
 }
-func (e *ChargeStopEffect) Description() string { return "チャージ停止" }
+func (e *ChargeStopEffect) Description() string { return fmt.Sprintf("チャージ停止 (Duration: %d)", e.DurationTurns) }
 func (e *ChargeStopEffect) Duration() int       { return e.DurationTurns }
 func (e *ChargeStopEffect) Type() DebuffType    { return DebuffTypeChargeStop }
 
@@ -75,7 +75,7 @@ func (e *TargetRandomEffect) Apply(world donburi.World, target *donburi.Entry) {
 func (e *TargetRandomEffect) Remove(world donburi.World, target *donburi.Entry) {
 	// この効果の解除ロジックはBattleTargetSelectorなどで処理される
 }
-func (e *TargetRandomEffect) Description() string { return "ターゲットランダム化" }
+func (e *TargetRandomEffect) Description() string { return fmt.Sprintf("ターゲットランダム化 (Duration: %d)", e.DurationTurns) }
 func (e *TargetRandomEffect) Duration() int       { return e.DurationTurns }
 func (e *TargetRandomEffect) Type() DebuffType    { return DebuffTypeTargetRandom }
 

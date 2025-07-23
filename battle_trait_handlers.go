@@ -99,7 +99,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 // --- attack action helpers ---
 
 func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool {
-	if StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
+	if StateComponent.Get(targetEntry).CurrentState == StateBroken {
 		return false
 	}
 	targetParts := PartsComponent.Get(targetEntry)

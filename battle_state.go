@@ -100,7 +100,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 		actingEntry := playerActionPendingQueue[0]
 
 		// 有効で待機状態ならモーダルを表示
-		if actingEntry.Valid() && StateComponent.Get(actingEntry).FSM.Is(string(StateIdle)) {
+		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == StateIdle {
 			actionTargetMap := make(map[PartSlotKey]ActionTarget)
 			// ViewModelFactoryを介して利用可能なパーツを取得
 			availableParts := viewModelFactory.GetAvailableAttackParts(actingEntry)

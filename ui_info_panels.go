@@ -9,6 +9,21 @@ import (
 	"github.com/ebitenui/ebitenui/widget"
 )
 
+type infoPanelUI struct {
+	rootContainer *widget.Container
+	nameText      *widget.Text
+	stateText     *widget.Text
+	partSlots     map[PartSlotKey]*infoPanelPartUI
+}
+
+type infoPanelPartUI struct {
+	partNameText *widget.Text
+	hpText       *widget.Text
+	hpBar        *widget.ProgressBar
+	displayedHP  float64 // 現在表示されているHP
+	targetHP     float64 // 目標とするHP
+}
+
 func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoPanelViewModel) *infoPanelUI {
 	c := config.UI
 

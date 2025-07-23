@@ -18,7 +18,7 @@ func UpdatePlayerInputSystem(world donburi.World) PlayerInputSystemResult {
 	var playersToAct []*donburi.Entry
 
 	query.NewQuery(filter.Contains(PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).FSM.Is(string(StateIdle)) {
+		if StateComponent.Get(entry).CurrentState == StateIdle {
 			playersToAct = append(playersToAct, entry)
 		}
 	})
@@ -44,7 +44,7 @@ func UpdateAIInputSystem(
 	query.NewQuery(
 		filter.Not(filter.Contains(PlayerControlComponent)), // プレイヤー制御ではないエンティティ
 	).Each(world, func(entry *donburi.Entry) {
-		if !entry.HasComponent(StateComponent) || !StateComponent.Get(entry).FSM.Is(string(StateIdle)) {
+		if !entry.HasComponent(StateComponent) || StateComponent.Get(entry).CurrentState != StateIdle {
 			return
 		}
 		// aiSelectAction のシグネチャが (world donburi.World, actingEntry *donburi.Entry, pip *PartInfoProvider, ts *TargetSelector, conf *Config) のようになっていると仮定します。

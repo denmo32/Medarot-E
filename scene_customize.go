@@ -61,7 +61,7 @@ func NewCustomizeScene(res *SharedResources, manager *SceneManager) *CustomizeSc
 
 	if len(cs.playerMedarots) == 0 {
 		rootContainer := widget.NewContainer()
-		rootContainer.AddChild(widget.NewText(widget.TextOpts.Text("Player team not found.", res.Font, color.White)))
+		rootContainer.AddChild(widget.NewText(widget.TextOpts.Text("Player team not found.", cs.resources.GameDataManager.Font, color.White)))
 		cs.ui = &ebitenui.UI{Container: rootContainer}
 		return cs
 	}
@@ -129,7 +129,7 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 	rootContainer.AddChild(rightPanel)
 
 	cs.statusText = widget.NewText(
-		widget.TextOpts.Text("", cs.resources.Font, color.White),
+		widget.TextOpts.Text("", cs.resources.GameDataManager.Font, color.White),
 	)
 	rightPanel.AddChild(cs.statusText)
 
@@ -149,7 +149,7 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 		idx := i
 		button := widget.NewButton(
 			widget.ButtonOpts.Image(buttonImage),
-			widget.ButtonOpts.Text(cs.playerMedarots[idx].Name, cs.resources.Font, &widget.ButtonTextColor{Idle: color.White}),
+			widget.ButtonOpts.Text(cs.playerMedarots[idx].Name, cs.resources.GameDataManager.Font, &widget.ButtonTextColor{Idle: color.White}),
 			widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 				cs.selectMedarot(idx)
@@ -171,7 +171,7 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 			Hover:   image.NewNineSliceColor(color.NRGBA{180, 180, 180, 255}),
 			Pressed: image.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
 		}),
-		widget.ButtonOpts.Text("Save & Back to Title", cs.resources.Font, &widget.ButtonTextColor{Idle: color.White}),
+		widget.ButtonOpts.Text("Save & Back to Title", cs.resources.GameDataManager.Font, &widget.ButtonTextColor{Idle: color.White}),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(10)),
 		widget.ButtonOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
 			Position: widget.RowLayoutPositionEnd,
@@ -262,14 +262,14 @@ func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label
 
 	leftButton := widget.NewButton(
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("◀", cs.resources.Font, textColor),
+		widget.ButtonOpts.Text("◀", cs.resources.GameDataManager.Font, textColor),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) { cs.changeSelection(label, -1) }),
 	)
 	rowContainer.AddChild(leftButton)
 
 	nameButton := widget.NewButton(
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("", cs.resources.Font, textColor),
+		widget.ButtonOpts.Text("", cs.resources.GameDataManager.Font, textColor),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
 			currentID := cs.getCurrentID(label)
@@ -280,7 +280,7 @@ func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label
 
 	rightButton := widget.NewButton(
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("▶", cs.resources.Font, textColor),
+		widget.ButtonOpts.Text("▶", cs.resources.GameDataManager.Font, textColor),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) { cs.changeSelection(label, 1) }),
 	)
 	rowContainer.AddChild(rightButton)

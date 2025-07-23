@@ -1,7 +1,6 @@
 package main
 
-import (
-	"github.com/ebitenui/ebitenui/widget"
+import(
 	"image/color"
 )
 
@@ -94,7 +93,6 @@ func LoadConfig() Config {
 				Height: screenHeight,
 			},
 			Battlefield: struct {
-				Rect                   *widget.Container
 				Height                 float32
 				Team1HomeX             float32
 				Team2HomeX             float32
@@ -177,8 +175,6 @@ func LoadConfig() Config {
 			},
 		},
 	}
-
 	
-
 	return cfg
 }

@@ -216,7 +216,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case ActionAnimationFinishedGameEvent:
 			// アニメーション終了後、クールダウン開始とターゲットクリア
 			actingEntry := e.ActingEntry
-			if actingEntry.Valid() && !StateComponent.Get(actingEntry).FSM.Is(string(StateBroken)) {
+			if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
 				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic)
 			}
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})

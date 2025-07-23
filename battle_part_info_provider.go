@@ -277,15 +277,16 @@ func (pip *PartInfoProvider) CalculateMedarotXPosition(entry *donburi.Entry, bat
 	}
 
 	var xPos float32
-	if state.FSM.Is(string(StateCharging)) {
+	switch state.CurrentState {
+	case StateCharging:
 		xPos = homeX + (execX-homeX)*progress
-	} else if state.FSM.Is(string(StateReady)) {
+	case StateReady:
 		xPos = execX
-	} else if state.FSM.Is(string(StateCooldown)) {
+	case StateCooldown:
 		xPos = execX - (execX-homeX)*progress
-	} else if state.FSM.Is(string(StateIdle)) || state.FSM.Is(string(StateBroken)) {
+	case StateIdle, StateBroken:
 		xPos = homeX
-	} else {
+	default:
 		xPos = homeX // 不明な状態の場合はホームポジション
 	}
 	return xPos

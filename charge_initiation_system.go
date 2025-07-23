@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"log"
 
-	// "github.com/looplab/fsm"
 	"github.com/yohamta/donburi"
 )
 
@@ -30,7 +28,7 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 	targetPartSlot PartSlotKey,
 ) bool {
 	state := StateComponent.Get(entry)
-	if !state.FSM.Is(string(StateIdle)) {
+	if state.CurrentState != StateIdle {
 		return false // アイドル状態でない場合は開始できない
 	}
 
@@ -95,7 +93,7 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 
 	if actingPartDef.Category == CategoryRanged {
 		// targetEntry が有効なエンティティであるか、または破壊されていないかを確認
-		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).FSM.Is(string(StateBroken)) {
+		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).CurrentState == StateBroken {
 			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			return false
 		}
@@ -110,11 +108,8 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
+	gauge.ProgressCounter = 0
 
-	err := state.FSM.Event(context.Background(), "charge", entry)
-	if err != nil {
-		log.Printf("Error starting charge for %s: %v", settings.Name, err)
-		return false
-	}
+	state.CurrentState = StateCharging
 	return true
 }

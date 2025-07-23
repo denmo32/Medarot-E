@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"log"
 
-	"github.com/looplab/fsm"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
@@ -60,59 +58,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			log.Fatalf("エラー: ID %s のメダル定義が見つかりません。", loadout.MedalID)
 		}
 
-		// FSMのセットアップ
-		fsmInstance := fsm.NewFSM(
-			string(StateIdle),
-			fsm.Events{
-				// イベント名, 遷移元, 遷移先
-				{Name: "charge", Src: []string{string(StateIdle)}, Dst: string(StateCharging)},
-				{Name: "action_ready", Src: []string{string(StateCharging)}, Dst: string(StateReady)},
-				{Name: "cooldown", Src: []string{string(StateReady)}, Dst: string(StateCooldown)},
-				{Name: "cooldown_finish", Src: []string{string(StateCooldown)}, Dst: string(StateIdle)},
-				{Name: "break", Src: []string{string(StateIdle), string(StateCharging), string(StateReady), string(StateCooldown)}, Dst: string(StateBroken)},
-			},
-			fsm.Callbacks{
-
-				string(StateIdle): func(ctx context.Context, e *fsm.Event) {
-					// e.Args[0] には donburi.Entry が渡される想定
-					if len(e.Args) > 0 {
-						if entry, ok := e.Args[0].(*donburi.Entry); ok {
-							// ゲージをリセット
-							if gauge := GaugeComponent.Get(entry); gauge != nil {
-								gauge.ProgressCounter = 0
-								gauge.TotalDuration = 0
-								gauge.CurrentGauge = 0
-							}
-							// 選択されていたアクションをクリア
-							if entry.HasComponent(ActionIntentComponent) {
-								intent := ActionIntentComponent.Get(entry)
-								intent.SelectedPartKey = ""
-							}
-							if entry.HasComponent(TargetComponent) {
-								target := TargetComponent.Get(entry)
-								target.TargetEntity = 0 // nil から 0 に変更
-								target.TargetPartSlot = ""
-							}
-						}
-					}
-				},
-				string(StateBroken): func(ctx context.Context, e *fsm.Event) {
-					// e.Args[0] には donburi.Entry が渡される想定
-					if len(e.Args) > 0 {
-						if entry, ok := e.Args[0].(*donburi.Entry); ok {
-							// ゲージをリセット
-							if gauge := GaugeComponent.Get(entry); gauge != nil {
-								gauge.ProgressCounter = 0
-								gauge.TotalDuration = 0
-								gauge.CurrentGauge = 100 // 破壊されたことを示す
-							}
-						}
-					}
-				},
-			},
-		)
-
-		StateComponent.SetValue(entry, State{FSM: fsmInstance})
+		StateComponent.SetValue(entry, State{CurrentState: StateIdle})
 		GaugeComponent.SetValue(entry, Gauge{})
 		LogComponent.SetValue(entry, Log{})
 		ActionIntentComponent.SetValue(entry, ActionIntent{})
