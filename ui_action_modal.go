@@ -40,11 +40,16 @@ func createActionModalUI(
 				buttonTextColor,
 				func(args *widget.ButtonClickedEventArgs) {
 					if !buttonVM.IsBroken {
+						// ターゲットインジケーターをクリア
 						eventChannel <- ClearCurrentTargetUIEvent{}
-						eventChannel <- PartSelectedUIEvent{
+
+						// 選択されたパーツとターゲット情報をGameEventとして発行
+						eventChannel <- ActionConfirmedUIEvent{
 							ActingEntry:     vm.ActingEntry,
 							SelectedPartDef: buttonVM.SelectedPartDef,
 							SelectedSlotKey: buttonVM.SlotKey,
+							TargetEntry:     buttonVM.TargetEntry,
+							TargetPartSlot:  buttonVM.TargetPartSlot,
 						}
 					}
 				},

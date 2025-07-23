@@ -84,6 +84,7 @@ type ActionModalButtonViewModel struct {
 	SlotKey         PartSlotKey
 	IsBroken        bool
 	TargetEntry     *donburi.Entry // 射撃などのターゲットが必要な場合
+	TargetPartSlot  PartSlotKey    // 追加
 	SelectedPartDef *PartDefinition
 }
 

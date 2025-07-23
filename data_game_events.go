@@ -115,6 +115,7 @@ type PartSelectedUIEvent struct {
 	ActingEntry     *donburi.Entry
 	SelectedPartDef *PartDefinition
 	SelectedSlotKey PartSlotKey
+	TargetEntry     *donburi.Entry // 追加
 }
 
 func (e PartSelectedUIEvent) isUIEvent() {}
@@ -147,6 +148,7 @@ type ActionCanceledUIEvent struct {
 }
 
 func (e ActionCanceledUIEvent) isUIEvent() {}
+func (e ActionCanceledUIEvent) isGameEvent() {}
 
 // 既存のUIイベント (変更なし)
 

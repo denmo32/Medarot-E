@@ -165,6 +165,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 				SlotKey:         available.Slot,
 				IsBroken:        available.IsBroken,
 				TargetEntry:     targetInfo.Target,
+				TargetPartSlot:  targetInfo.Slot, // ここを追加
 				SelectedPartDef: available.PartDef,
 			})
 		}

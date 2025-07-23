@@ -6,73 +6,58 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// UIEventProcessorSystem はUIイベントを処理し、対応するGameEventを発行します。
-// このシステムは直接ゲームロジックを呼び出しません。
+// UpdateUIEventProcessorSystem はUIイベントを処理し、対応するゲームイベントを発行します。
 func UpdateUIEventProcessorSystem(
 	world donburi.World,
 	ui UIInterface,
 	messageManager *UIMessageDisplayManager,
-	uiEventChannel chan UIEvent,
+	eventChannel chan UIEvent,
 	playerActionPendingQueue []*donburi.Entry,
 	currentState GameState,
-) (newPlayerActionPendingQueue []*donburi.Entry, newState GameState, gameEvents []GameEvent) {
-	newPlayerActionPendingQueue = playerActionPendingQueue
-	newState = currentState
-	gameEvents = []GameEvent{}
+) ([]*donburi.Entry, GameState, []GameEvent) {
+	var gameEvents []GameEvent
+	var nextState = currentState
 
 	select {
-	case event := <-uiEventChannel:
-		switch e := event.(type) {
+	case uiEvent := <-eventChannel:
+		switch e := uiEvent.(type) {
 		case PartSelectedUIEvent:
-			log.Printf("UIEventProcessor: PartSelectedUIEvent を処理中 - Actor: %s, Part: %s",
-				SettingsComponent.Get(e.ActingEntry).Name,
-				e.SelectedPartDef.PartName)
-
-			actionTargetMap := ui.GetActionTargetMap() // UIからマップを取得
-
-			var targetEntry *donburi.Entry
-			var targetPartSlot PartSlotKey
-
-			actionTarget, ok := actionTargetMap[e.SelectedSlotKey]
-			if ok {
-				targetEntry = actionTarget.Target
-				targetPartSlot = actionTarget.Slot
-			}
-
-			// ChargeRequestedGameEvent を発行
-			gameEvents = append(gameEvents, ChargeRequestedGameEvent{
-				ActingEntry:     e.ActingEntry,
-				SelectedSlotKey: e.SelectedSlotKey,
-				TargetEntry:     targetEntry,
-				TargetPartSlot:  targetPartSlot,
-			})
-
-			ui.HideActionModal()
-			if len(newPlayerActionPendingQueue) > 0 && newPlayerActionPendingQueue[0] == e.ActingEntry {
-				newPlayerActionPendingQueue = newPlayerActionPendingQueue[1:]
-			}
-
-		case TargetSelectedUIEvent:
-			// TargetSelectedUIEvent は UI がターゲットを設定する際に使用される
+			// ターゲットインジケーターを表示
 			ui.SetCurrentTarget(e.TargetEntry)
-
+			// アクションモーダルを更新（ターゲット選択ボタンの有効化など）
+			// 現状はViewModelを再構築してモーダルを再表示する
+			// TODO: ViewModelFactoryを引数で渡すか、UIから取得できるようにする
+			// gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: updatedVM})
+			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", SettingsComponent.Get(e.ActingEntry).Name, e.SelectedPartDef.PartName)
+		case TargetSelectedUIEvent:
+			ui.SetCurrentTarget(e.TargetEntry)
+			log.Printf("UI Event: TargetSelectedUIEvent - %s selected target %s", SettingsComponent.Get(e.ActingEntry).Name, SettingsComponent.Get(e.TargetEntry).Name)
 		case ActionConfirmedUIEvent:
-			// UIEventProcessorSystem は直接ゲームロジックを呼び出さず、GameEventを発行する
+			// プレイヤーの行動が確定されたので、チャージ開始イベントを発行
 			gameEvents = append(gameEvents, ChargeRequestedGameEvent{
 				ActingEntry:     e.ActingEntry,
 				SelectedSlotKey: e.SelectedSlotKey,
 				TargetEntry:     e.TargetEntry,
 				TargetPartSlot:  e.TargetPartSlot,
 			})
-
+			// アクションモーダルを非表示にする
+			gameEvents = append(gameEvents, HideActionModalGameEvent{})
+			// プレイヤーの行動キューから現在のエンティティを削除
+			playerActionPendingQueue = playerActionPendingQueue[1:]
+			// ターゲットインジケーターをクリア
+			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
+			nextState = StatePlaying // 行動確定後はPlaying状態に戻る
+			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(e.ActingEntry).Name)
 		case ActionCanceledUIEvent:
-			log.Printf("UIEventProcessor: ActionCanceledUIEvent を処理中 - Actor: %s",
-				SettingsComponent.Get(e.ActingEntry).Name)
-			newPlayerActionPendingQueue = make([]*donburi.Entry, 0)
-			ui.ClearCurrentTarget()
-			gameEvents = append(gameEvents, ActionCanceledGameEvent(e))
-			newState = StatePlaying // キャンセル時は即座にPlaying状態に戻る
-
+			// アクションモーダルを非表示にする
+			gameEvents = append(gameEvents, HideActionModalGameEvent{})
+			// ターゲットインジケーターをクリア
+			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
+			// プレイヤーの行動キューから現在のエンティティを削除
+			playerActionPendingQueue = playerActionPendingQueue[1:]
+			gameEvents = append(gameEvents, e) // GameEventとしてActionCanceledGameEventを発行
+			nextState = StatePlaying // 行動キャンセル後はPlaying状態に戻る
+			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(e.ActingEntry).Name)
 		case ShowActionModalUIEvent:
 			ui.ShowActionModal(e.ViewModel)
 		case HideActionModalUIEvent:
@@ -85,63 +70,12 @@ func UpdateUIEventProcessorSystem(
 			ui.ClearCurrentTarget()
 		case MessageDisplayRequestUIEvent:
 			messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
+		default:
+			log.Printf("Unknown UI Event: %T", uiEvent)
 		}
 	default:
-	}
-	return
-}
-
-// buildActionLogMessages はアクションの結果ログを生成します。
-func buildActionLogMessages(result ActionResult, gameDataManager *GameDataManager) []string {
-	messages := []string{}
-
-	// メッセージテンプレートのパラメータを準備
-	// action_name には特性名(Trait)を渡す
-	initiateParams := map[string]interface{}{
-		"attacker_name": result.AttackerName,
-		"action_name":   result.ActionTrait,
-		"weapon_type":   result.WeaponType,
+		// イベントがない場合は何もしない
 	}
 
-	// カテゴリに応じてメッセージIDを切り替え
-	messageID := ""
-	switch result.ActionCategory {
-	case CategoryRanged, CategoryMelee:
-		messageID = "action_initiate_attack"
-	case CategoryIntervention:
-		messageID = "action_initiate_intervention"
-	}
-
-	if result.ActionDidHit {
-		if messageID != "" {
-			messages = append(messages, gameDataManager.Messages.FormatMessage(messageID, initiateParams))
-		}
-
-		// ダメージや防御のメッセージを追加
-		switch result.ActionCategory {
-		case CategoryRanged, CategoryMelee:
-			if result.ActionIsDefended {
-				defendParams := map[string]interface{}{"defender_name": result.DefenderName, "defending_part_type": result.DefendingPartType}
-				messages = append(messages, gameDataManager.Messages.FormatMessage("action_defend", defendParams))
-			}
-			damageParams := map[string]interface{}{"defender_name": result.DefenderName, "target_part_type": result.TargetPartType, "damage": result.DamageDealt}
-			messages = append(messages, gameDataManager.Messages.FormatMessage("action_damage", damageParams))
-		case CategoryIntervention:
-			// 介入アクションの成功メッセージ（例：「味方チーム全体の命中率が上昇した！」）
-			// 必要であれば、ここで特性(Trait)に応じたメッセージを追加する
-			if result.ActionTrait == TraitSupport { // string() を削除
-				messages = append(messages, gameDataManager.Messages.FormatMessage("support_action_generic", nil))
-			}
-		}
-	} else {
-		// ミスした場合
-		if messageID != "" {
-			messages = append(messages, gameDataManager.Messages.FormatMessage(messageID, initiateParams))
-		}
-		missParams := map[string]interface{}{
-			"target_name": result.DefenderName,
-		}
-		messages = append(messages, gameDataManager.Messages.FormatMessage("attack_miss", missParams))
-	}
-	return messages
+	return playerActionPendingQueue, nextState, gameEvents
 }

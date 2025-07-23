@@ -9,7 +9,7 @@
   },
   {
     "id": "action_defend",
-    "text": "{defender_name}は{defending_part_type}パーツで防御した！"
+    "text": "{defending_part_type}パーツで防御！"
   },
   {
     "id": "action_damage",
@@ -30,10 +30,6 @@
   {
     "id": "part_broken_on_defense",
     "text": "しかし、{target_name}の{target_part_name}は破壊された！"
-  },
-  {
-    "id": "defense_success",
-    "text": "{target_name}は{defense_part_name}で防御し、ダメージを{original_damage}から{actual_damage}に抑えた！"
   },
   {
     "id": "defense_success_critical",

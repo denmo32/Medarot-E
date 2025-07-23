@@ -103,11 +103,13 @@ func (bs *BattleScene) Update() error {
 			result := bs.ui.GetCurrentAnimationResult()
 			gameEvents := []GameEvent{
 				ClearAnimationGameEvent{},
-				MessageDisplayRequestGameEvent{Messages: buildActionLogMessages(result, bs.resources.GameDataManager), Callback: func() {
+				MessageDisplayRequestGameEvent{Messages: buildActionLogMessagesFromActionResult(result, bs.resources.GameDataManager), Callback: func() {
 					UpdateHistorySystem(bs.world, &result)
 				}},
 				ActionAnimationFinishedGameEvent{Result: result, ActingEntry: result.ActingEntry},
 			}
+
+
 			bs.processGameEvents(gameEvents)
 			return nil // アニメーション終了イベントを処理したので、このフレームの更新は終了
 		}
