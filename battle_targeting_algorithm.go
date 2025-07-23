@@ -9,23 +9,7 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// TargetingStrategy はAIのターゲット選択アルゴリズムをカプセル化するインターフェースです。
-type TargetingStrategy interface {
-	SelectTarget(
-		world donburi.World,
-		actingEntry *donburi.Entry,
-		battleLogic *BattleLogic, // battleLogic を追加
-	) (*donburi.Entry, PartSlotKey)
-}
-
 // --- 内部ヘルパー ---
-
-type targetablePart struct {
-	entity   *donburi.Entry
-	partInst *PartInstanceData
-	partDef  *PartDefinition
-	slot     PartSlotKey
-}
 
 // getAllTargetableParts はAIがターゲット可能な全パーツのインスタンスと定義のリストを返します。
 // この関数は ai.go から移動されました。

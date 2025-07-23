@@ -8,21 +8,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// PanelOptions は、汎用パネルを作成するための設定を保持します。
-type PanelOptions struct {
-	PanelWidth      int
-	PanelHeight     int
-	Title           string
-	Padding         widget.Insets
-	Spacing         int
-	BackgroundColor color.Color      // 新しく追加
-	BackgroundImage *image.NineSlice // これはカスタム画像用
-	TitleColor      color.Color
-	TitleFont       text.Face
-	BorderColor     color.Color // 枠線の色
-	BorderThickness float32     // 枠線の太さ
-}
-
 // NewPanel は、指定されたオプションに基づいて汎用的なパネルウィジェットを作成します。
 func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Face, children ...widget.PreferredSizeLocateableWidget) *widget.Container {
 	var bg *image.NineSlice

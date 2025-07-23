@@ -6,12 +6,6 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// WeaponTypeEffectHandler は weapon_type 固有の追加効果を処理します。
-// ActionResult を受け取り、デバフ付与などの副作用を適用します。
-type WeaponTypeEffectHandler interface {
-	ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition)
-}
-
 // --- WeaponTypeEffectHandlers ---
 // 以下は構想案であり、名称や効果は変更の可能性があります。
 // ThunderEffectHandler はサンダー効果（チャージ停止）を付与します。

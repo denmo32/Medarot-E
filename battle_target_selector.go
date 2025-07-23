@@ -22,8 +22,6 @@ func NewTargetSelector(world donburi.World, config *Config) *TargetSelector {
 	return &TargetSelector{world: world, config: config}
 }
 
-
-
 // SelectDefensePart は防御に使用するパーツのインスタンスを選択します。
 func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry, battleLogic *BattleLogic) *PartInstanceData {
 	partsComp := PartsComponent.Get(target)

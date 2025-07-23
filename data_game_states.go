@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	inpututil "github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
 )
 
@@ -31,14 +31,13 @@ type PlayingState struct{}
 func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
 	battleLogic := ctx.BattleLogic
-	// ui := ctx.UI // 削除
 	config := ctx.Config
-	tick := ctx.Tick // ctx.Tick を使用
+	tick := ctx.Tick
 
 	var gameEvents []GameEvent
 
 	// AIの行動選択
-	if len(playerActionPendingQueue) == 0 { // UIの表示状態はBattleSceneで管理
+	if len(playerActionPendingQueue) == 0 {
 		UpdateAIInputSystem(world, battleLogic)
 	}
 
@@ -52,7 +51,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 
 	// ゲージ進行
 	actionQueueComp := GetActionQueueComponent(world)
-	if len(playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 { // UIの表示状態はBattleSceneで管理
+	if len(playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
 		UpdateGaugeSystem(world)
 	}
 
@@ -77,7 +76,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 		return playerActionPendingQueue, gameEvents, nil
 	}
 
-	return playerActionPendingQueue, gameEvents, nil // 状態は維持
+	return playerActionPendingQueue, gameEvents, nil
 }
 
 func (s *PlayingState) Draw(screen *ebiten.Image) {
@@ -144,20 +143,7 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 type AnimatingActionState struct{}
 
 func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
-	// world := ctx.World // 削除
-	// ui := ctx.UI // UIへの直接参照を削除
-	// tick := ctx.Tick // tickはBattleSceneで管理
-
 	var gameEvents []GameEvent
-
-	// アニメーションの終了はBattleSceneで判定し、ActionAnimationFinishedGameEventを発行する
-	// ここではアニメーションが進行中であることを前提とする
-	// アニメーション終了時にBattleSceneがこの状態からPlaying状態へ遷移させる
-
-	// アニメーション終了判定はBattleSceneで行われるため、ここでは何もしない
-	// BattleSceneがActionAnimationFinishedGameEventを受け取った際に、
-	// MessageDisplayRequestGameEventとClearAnimationGameEventを発行する
-
 	return playerActionPendingQueue, gameEvents, nil
 }
 
@@ -168,8 +154,6 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 type MessageState struct{}
 
 func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
-	// MessageStateはメッセージ表示の完了を待つ状態なので、ここではイベントを生成しない
-	// 完了はBattleSceneでMessageManager.IsFinished()をチェックして判断する
 	var gameEvents []GameEvent
 	return playerActionPendingQueue, gameEvents, nil
 }
@@ -181,11 +165,7 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 type GameOverState struct{}
 
 func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
-	// sceneManager := ctx.SceneManager // SceneManagerへの直接参照を削除
 	var gameEvents []GameEvent
-
-	// ここではクリックイベントを直接処理せず、GameEventとして発行する
-	// BattleSceneがこのイベントを受け取り、シーン遷移を行う
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		gameEvents = append(gameEvents, GoToTitleSceneGameEvent{})
 	}

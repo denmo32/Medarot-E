@@ -16,9 +16,6 @@ type ActionQueueComponentData struct {
 // ActionQueueComponentType は ActionQueueComponentData のコンポーネントタイプです。
 var ActionQueueComponentType = donburi.NewComponentType[ActionQueueComponentData]()
 
-// worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
-var worldStateTag = donburi.NewComponentType[struct{}]()
-
 // GetActionQueueComponent はワールド状態エンティティから ActionQueueComponentData を取得します。
 // ActionQueueComponentType を持つエンティティが1つだけ存在することを期待します。
 // 注意: worldStateTag のチェックは EnsureActionQueueEntity で行われます。

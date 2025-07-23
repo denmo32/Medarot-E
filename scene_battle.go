@@ -26,7 +26,7 @@ type BattleScene struct {
 	battleUIState            *BattleUIState // 追加
 	statusEffectSystem       *StatusEffectSystem
 	viewModelFactory         ViewModelFactory // 追加
-	uiFactory                *UIFactory // 追加
+	uiFactory                *UIFactory       // 追加
 
 	// State Machine
 	states       map[GameState]BattleState
@@ -49,7 +49,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	}
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
-	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic) // worldをそのまま渡す
+	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic)                                                         // worldをそのまま渡す
 	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages) // UIFactoryを初期化
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
 	EnsureActionQueueEntity(bs.world)
@@ -108,7 +108,6 @@ func (bs *BattleScene) Update() error {
 				}},
 				ActionAnimationFinishedGameEvent{Result: result, ActingEntry: result.ActingEntry},
 			}
-
 
 			bs.processGameEvents(gameEvents)
 			return nil // アニメーション終了イベントを処理したので、このフレームの更新は終了

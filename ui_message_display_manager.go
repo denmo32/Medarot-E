@@ -23,12 +23,12 @@ type UIMessageDisplayManager struct {
 // NewUIMessageDisplayManager は新しいUIMessageDisplayManagerのインスタンスを作成します。
 func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, uiContainer *widget.Container, uiFactory *UIFactory) *UIMessageDisplayManager {
 	return &UIMessageDisplayManager{
-		messageQueue: make([]string, 0),
+		messageQueue:   make([]string, 0),
 		messageManager: messageManager,
-		config: config,
-		font: font,
-		uiContainer:  uiContainer,
-		uiFactory: uiFactory, // 追加
+		config:         config,
+		font:           font,
+		uiContainer:    uiContainer,
+		uiFactory:      uiFactory, // 追加
 	}
 }
 

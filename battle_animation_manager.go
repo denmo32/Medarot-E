@@ -1,12 +1,5 @@
 package main
 
-import (
-	// "fmt"
-
-	// "github.com/hajimehoshi/ebiten/v2"
-	// "github.com/hajimehoshi/ebiten/v2/text/v2"
-)
-
 // BattleAnimationManager はゲーム内のアクションアニメーションを管理します。
 type BattleAnimationManager struct {
 	currentAnimation *ActionAnimationData
@@ -44,5 +37,3 @@ func (am *BattleAnimationManager) ClearAnimation() {
 func (am *BattleAnimationManager) GetCurrentAnimationResult() ActionResult {
 	return am.currentAnimation.Result
 }
-
-

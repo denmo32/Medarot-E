@@ -18,8 +18,6 @@ func NewHitCalculator(world donburi.World, config *Config) *HitCalculator {
 	return &HitCalculator{world: world, config: config}
 }
 
-
-
 // CalculateHit は新しいルールに基づいて命中判定を行います。
 func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) bool {
 	// 攻撃側の成功度

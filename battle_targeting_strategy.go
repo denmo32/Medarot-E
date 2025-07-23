@@ -6,69 +6,6 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// AIPartSelectionStrategyFunc はAIパーツ選択戦略の関数シグネチャを定義します。
-// 行動するAIエンティティと利用可能なパーツのリストを受け取り、選択されたパーツとそのスロットを返します。
-type AIPartSelectionStrategyFunc func(
-	actingEntry *donburi.Entry,
-	availableParts []AvailablePart,
-	world donburi.World, // より複雑な戦略でワールドアクセスが必要な場合
-	battleLogic *BattleLogic, // battleLogic を追加
-) (PartSlotKey, *PartDefinition) // 選択されたパーツのスロットキーとその定義を返します。
-
-// AIPersonality はAIの性格に関連する戦略をカプセル化します。
-type AIPersonality struct {
-	TargetingStrategy     TargetingStrategy
-	PartSelectionStrategy AIPartSelectionStrategyFunc
-}
-
-// PersonalityRegistry は、性格名をキーとしてAIPersonalityを保持するグローバルなマップです。
-var PersonalityRegistry = map[string]AIPersonality{
-	"ハンター": {
-		TargetingStrategy:     &HunterStrategy{},
-		PartSelectionStrategy: SelectHighestPowerPart,
-	},
-	"クラッシャー": {
-		TargetingStrategy:     &CrusherStrategy{},
-		PartSelectionStrategy: SelectHighestPowerPart,
-	},
-	"ジョーカー": {
-		TargetingStrategy:     &JokerStrategy{},
-		PartSelectionStrategy: SelectFastestChargePart,
-	},
-	"リーダー": { // デフォルト/フォールバック用
-		TargetingStrategy:     &LeaderStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-	"アシスト": {
-		TargetingStrategy:     &AssistStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-	"カウンター": {
-		TargetingStrategy:     &CounterStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-	"チェイス": {
-		TargetingStrategy:     &ChaseStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-	"デュエル": {
-		TargetingStrategy:     &DuelStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-	"フォーカス": {
-		TargetingStrategy:     &FocusStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-	"ガード": {
-		TargetingStrategy:     &GuardStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-	"インターセプト": {
-		TargetingStrategy:     &InterceptStrategy{},
-		PartSelectionStrategy: SelectFirstAvailablePart,
-	},
-}
-
 // aiSelectAction はAI制御のメダロットの行動を決定します。
 // BattleScene への依存をなくし、必要な情報を引数で受け取ります。
 func aiSelectAction(

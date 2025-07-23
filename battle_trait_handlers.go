@@ -8,19 +8,6 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// TraitActionHandler はカテゴリ固有のアクション処理全体をカプセル化します。
-// ActionResultを返し、副作用をなくします。
-type TraitActionHandler interface {
-	Execute(
-		actingEntry *donburi.Entry,
-		world donburi.World,
-		intent *ActionIntent,
-		battleLogic *BattleLogic,
-		gameConfig *Config,
-		actingPartDef *PartDefinition,
-	) ActionResult
-}
-
 // --- BaseAttackHandler ---
 
 // BaseAttackHandler は、すべての攻撃アクションに共通するロジックをカプセル化します。

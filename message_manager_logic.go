@@ -11,12 +11,6 @@ import (
 
 var placeholderRegex = regexp.MustCompile(`{(\w+)}`)
 
-// MessageTemplate defines the structure for a single message in the JSON file.
-type MessageTemplate struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-}
-
 // MessageManager handles loading and retrieving formatted messages.
 type MessageManager struct {
 	messages map[string]string

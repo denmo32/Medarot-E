@@ -8,13 +8,6 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// GameEndResult はゲーム終了チェックの結果を保持します。
-type GameEndResult struct {
-	IsGameOver bool
-	Winner     TeamID
-	Message    string
-}
-
 // CheckGameEndSystem はゲーム終了条件をチェックします。
 // BattleScene への依存をなくし、結果を構造体で返します。
 func CheckGameEndSystem(world donburi.World) GameEndResult {

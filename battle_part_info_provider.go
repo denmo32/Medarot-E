@@ -75,13 +75,6 @@ func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstan
 	return ""
 }
 
-// AvailablePart now holds PartDefinition for AI/UI to see base stats.
-type AvailablePart struct {
-	PartDef  *PartDefinition // Changed from Part to PartDefinition
-	Slot     PartSlotKey
-	IsBroken bool // パーツが破壊されているか
-}
-
 // GetAvailableAttackParts は攻撃に使用可能なパーツの定義リストを返します。
 func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
 	partsComp := PartsComponent.Get(entry)

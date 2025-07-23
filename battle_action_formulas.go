@@ -9,7 +9,7 @@ var FormulaManager = make(map[Trait]*ActionFormula)
 func SetupFormulaManager(cfg *Config) {
 	FormulaManager = make(map[Trait]*ActionFormula)
 	for trait, formulaCfg := range cfg.Balance.Formulas {
-				FormulaManager[trait] = &ActionFormula{
+		FormulaManager[trait] = &ActionFormula{
 			ID:                 string(trait),
 			SuccessRateBonuses: formulaCfg.SuccessRateBonuses,
 			PowerBonuses:       formulaCfg.PowerBonuses,

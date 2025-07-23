@@ -4,35 +4,12 @@ import (
 	"image"
 	"image/color"
 
-	// "log"
-
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 
-	// "github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/yohamta/donburi"
 )
-
-type UIInterface interface {
-	Update()
-	Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager)
-	DrawBackground(screen *ebiten.Image)
-	GetRootContainer() *widget.Container
-	SetAnimation(anim *ActionAnimationData)
-	IsAnimationFinished(tick int) bool
-	ClearAnimation()
-	GetCurrentAnimationResult() ActionResult
-	ShowActionModal(vm ActionModalViewModel)
-	HideActionModal()
-	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) // 単一のデータ設定メソッド
-	PostEvent(event UIEvent)                                                                        // This will be implemented by the concrete UI struct
-	IsActionModalVisible() bool
-	GetActionTargetMap() map[PartSlotKey]ActionTarget
-	SetCurrentTarget(entry *donburi.Entry)
-	ClearCurrentTarget()
-	GetBattlefieldWidgetRect() image.Rectangle
-}
 
 type UI struct {
 	ebitenui          *ebitenui.UI

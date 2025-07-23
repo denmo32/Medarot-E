@@ -56,7 +56,7 @@ func UpdateUIEventProcessorSystem(
 			// プレイヤーの行動キューから現在のエンティティを削除
 			playerActionPendingQueue = playerActionPendingQueue[1:]
 			gameEvents = append(gameEvents, e) // GameEventとしてActionCanceledGameEventを発行
-			nextState = StatePlaying // 行動キャンセル後はPlaying状態に戻る
+			nextState = StatePlaying           // 行動キャンセル後はPlaying状態に戻る
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(e.ActingEntry).Name)
 		case ShowActionModalUIEvent:
 			ui.ShowActionModal(e.ViewModel)

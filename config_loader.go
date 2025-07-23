@@ -1,6 +1,6 @@
 package main
 
-import(
+import (
 	"image/color"
 )
 
@@ -175,6 +175,6 @@ func LoadConfig() Config {
 			},
 		},
 	}
-	
+
 	return cfg
 }

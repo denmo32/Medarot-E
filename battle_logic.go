@@ -37,7 +37,7 @@ func (bl *BattleLogic) GetPartInfoProvider() *PartInfoProvider {
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
 func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDataManager) *BattleLogic {
 	bl := &BattleLogic{
-		world: world, // worldフィールドを初期化
+		world:  world,  // worldフィールドを初期化
 		config: config, // configフィールドを初期化
 	}
 

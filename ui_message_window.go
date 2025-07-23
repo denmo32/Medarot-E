@@ -4,7 +4,6 @@ import (
 	"image/color"
 
 	"github.com/ebitenui/ebitenui/widget"
-	// "github.com/hajimehoshi/ebiten/v2/text/v2" // 削除
 )
 
 func createMessageWindow(message string, uiFactory *UIFactory) widget.PreferredSizeLocateableWidget {

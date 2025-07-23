@@ -1,6 +1,5 @@
 package main
 
-
 // PartParameter はパーツのどの数値を参照するかを示す型です
 type PartParameter string
 
@@ -94,4 +93,3 @@ type BalanceConfig struct {
 	}
 	Formulas map[Trait]ActionFormulaConfig // 新しく追加
 }
-

@@ -5,26 +5,11 @@ import (
 	"image/color"
 	"math"
 
-	// uiimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
-
-type BattlefieldWidget struct {
-	*widget.Container
-	config          *Config
-	whitePixel      *ebiten.Image
-	viewModel       *BattlefieldViewModel
-	backgroundImage *ebiten.Image
-}
-
-type CustomIconWidget struct {
-	viewModel *IconViewModel
-	config    *Config
-	rect      image.Rectangle
-}
 
 func NewBattlefieldWidget(config *Config) *BattlefieldWidget {
 	whiteImg := ebiten.NewImage(1, 1)

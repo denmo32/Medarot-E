@@ -69,7 +69,7 @@ func NewTestUIScene(res *SharedResources, manager *SceneManager) *TestUIScene {
 	bottomPanel := widget.NewContainer(
 		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})),
 		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.RGBA{R: 0xFF, G: 0xFF, B: 0x00, A: 0x80})), // 黄色
-		widget.ContainerOpts.Layout(widget.NewAnchorLayout()), // ボタンの配置のためのレイアウト
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),                                                         // ボタンの配置のためのレイアウト
 	)
 	rootContainer.AddChild(bottomPanel)
 

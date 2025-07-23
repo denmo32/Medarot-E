@@ -34,6 +34,9 @@ var (
 	DebugModeComponent = donburi.NewComponentType[struct{}]()
 )
 
+// worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
+var worldStateTag = donburi.NewComponentType[struct{}]()
+
 // ActiveEffects はエンティティに現在適用されているすべてのステータス効果を保持します。
 type ActiveEffects struct {
 	Effects []*ActiveStatusEffect

@@ -147,7 +147,7 @@ type ActionCanceledUIEvent struct {
 	ActingEntry *donburi.Entry
 }
 
-func (e ActionCanceledUIEvent) isUIEvent() {}
+func (e ActionCanceledUIEvent) isUIEvent()   {}
 func (e ActionCanceledUIEvent) isGameEvent() {}
 
 // 既存のUIイベント (変更なし)

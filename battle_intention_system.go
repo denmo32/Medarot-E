@@ -6,11 +6,6 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-// PlayerInputSystemResult はプレイヤーの入力が必要なエンティティのリストを保持します。
-type PlayerInputSystemResult struct {
-	PlayerMedarotsToAct []*donburi.Entry
-}
-
 // UpdatePlayerInputSystem はアイドル状態のすべてのプレイヤー制御メダロットを見つけます。
 // このシステムは BattleScene に直接依存しません。
 // 行動が必要なプレイヤーエンティティのリストを返します。
