@@ -30,8 +30,10 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 		// 将来的には効果ごとに対象を指定できるように拡張可能
 		targetEntry := result.ActingEntry
 		if targetEntry != nil {
-			for _, effect := range result.AppliedEffects {
-				s.statusEffectSystem.Apply(targetEntry, effect)
+			for _, effectData := range result.AppliedEffects {
+				if effect, ok := effectData.(StatusEffect); ok {
+					s.statusEffectSystem.Apply(targetEntry, effect)
+				}
 			}
 		}
 	}
@@ -51,7 +53,7 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 		effectsToRemove := []StatusEffect{}
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.RemainingDur == 0 {
-				effectsToRemove = append(effectsToRemove, activeEffect.Effect)
+				effectsToRemove = append(effectsToRemove, activeEffect.EffectData.(StatusEffect))
 			}
 		}
 		// リストアップしたエフェクトを安全に解除する

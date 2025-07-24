@@ -212,7 +212,7 @@ type ActionResult struct {
 	TargetPartType    string // e.g., "頭部", "脚部"
 	DefendingPartType string // e.g., "頭部", "脚部"
 
-	AppliedEffects []StatusEffect // アクションによって適用されるステータス効果
+	AppliedEffects []interface{} // アクションによって適用されるステータス効果のデータ
 }
 
 // ActionAnimationData はアニメーションの再生に必要なデータを保持します。

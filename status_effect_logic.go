@@ -6,6 +6,21 @@ import (
 	"github.com/yohamta/donburi"
 )
 
+// StatusEffect は、すべてのステータス効果（バフ・デバフ）が実装すべきインターフェースです。
+type StatusEffect interface {
+	Apply(world donburi.World, target *donburi.Entry)
+	Remove(world donburi.World, target *donburi.Entry)
+	Description() string
+	Duration() int    // 効果の持続時間（ターン数や秒数など）。0の場合は永続、または即時解除。
+	Type() DebuffType // 効果の種類を返すメソッドを追加
+}
+
+// ActiveStatusEffect は、エンティティに現在適用されている効果とその残り期間を追跡します。
+type ActiveStatusEffect struct {
+	Effect       StatusEffect
+	RemainingDur int
+}
+
 // ChargeStopEffect はチャージを一時停止させるデバフです。
 func (e *ChargeStopEffect) Apply(world donburi.World, target *donburi.Entry) {
 	// この効果の適用ロジックはChargeInitiationSystemなどで処理される

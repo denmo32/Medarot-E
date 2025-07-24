@@ -27,11 +27,13 @@ func (s *StatusEffectSystem) Apply(entry *donburi.Entry, effect StatusEffect) {
 
 	// 効果の持続時間を管理するコンポーネントを追加
 	if !entry.HasComponent(ActiveEffectsComponent) {
-		donburi.Add(entry, ActiveEffectsComponent, &ActiveEffects{})
+		donburi.Add(entry, ActiveEffectsComponent, &ActiveEffects{
+			Effects: make([]*ActiveStatusEffectData, 0),
+		})
 	}
 	activeEffects := ActiveEffectsComponent.Get(entry)
-	activeEffects.Effects = append(activeEffects.Effects, &ActiveStatusEffect{
-		Effect:       effect,
+	activeEffects.Effects = append(activeEffects.Effects, &ActiveStatusEffectData{
+		EffectData:   effect,
 		RemainingDur: effect.Duration(),
 	})
 }
@@ -43,11 +45,9 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effect StatusEffect) {
 
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
-		newEffects := make([]*ActiveStatusEffect, 0)
+		newEffects := make([]*ActiveStatusEffectData, 0)
 		for _, activeEffect := range activeEffects.Effects {
-			// Note: This might not work correctly if two identical effects are applied.
-			// A more robust system would use unique IDs for each applied effect instance.
-			if activeEffect.Effect != effect {
+			if activeEffect.EffectData != effect {
 				newEffects = append(newEffects, activeEffect)
 			}
 		}
@@ -59,13 +59,14 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effect StatusEffect) {
 func (s *StatusEffectSystem) Update() {
 	query.NewQuery(filter.Contains(ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
-		newEffects := make([]*ActiveStatusEffect, 0)
+		newEffects := make([]*ActiveStatusEffectData, 0)
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.RemainingDur > 0 {
 				activeEffect.RemainingDur--
 				if activeEffect.RemainingDur == 0 {
-					log.Printf("Effect '%s' expired for %s", activeEffect.Effect.Description(), SettingsComponent.Get(entry).Name)
-					activeEffect.Effect.Remove(s.world, entry)
+					effect := activeEffect.EffectData.(StatusEffect)
+					log.Printf("Effect '%s' expired for %s", effect.Description(), SettingsComponent.Get(entry).Name)
+					effect.Remove(s.world, entry)
 				} else {
 					newEffects = append(newEffects, activeEffect)
 				}

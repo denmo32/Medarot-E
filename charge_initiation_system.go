@@ -48,7 +48,7 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 
 	intent := ActionIntentComponent.Get(entry)
 	intent.SelectedPartKey = partKey
-	intent.PendingEffects = make([]StatusEffect, 0) // 既存の効果をクリア
+	intent.PendingEffects = make([]interface{}, 0) // 既存の効果をクリア
 
 	target := TargetComponent.Get(entry)
 	if targetEntry != nil { // targetEntry が nil でない場合のみIDをセット

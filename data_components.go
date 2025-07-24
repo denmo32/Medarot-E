@@ -37,9 +37,9 @@ var (
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
 var worldStateTag = donburi.NewComponentType[struct{}]()
 
-// ActiveEffects はエンティティに現在適用されているすべてのステータス効果を保持します。
+// ActiveEffects はエンティティに現在適用されているすべてのステータス効果のデータを保持します。
 type ActiveEffects struct {
-	Effects []*ActiveStatusEffect
+	Effects []*ActiveStatusEffectData
 }
 
 // --- コンポーネントの構造体定義 ---
@@ -74,7 +74,7 @@ type Gauge struct {
 // これは、ターゲットがまだ解決されていない段階です。
 type ActionIntent struct {
 	SelectedPartKey PartSlotKey
-	PendingEffects  []StatusEffect // チャージ開始時などに適用が予定される効果
+	PendingEffects  []interface{} // チャージ開始時などに適用が予定される効果のデータ
 }
 
 // Target は、行動の対象となるエンティティとパーツ、およびその決定方針を表します。

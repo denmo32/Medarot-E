@@ -66,7 +66,11 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 
 	// チャージ時に生成された保留中の効果をActionResultにコピー
 	if len(intent.PendingEffects) > 0 {
-		actionResult.AppliedEffects = append(actionResult.AppliedEffects, intent.PendingEffects...)
+		for _, effectData := range intent.PendingEffects {
+			if effect, ok := effectData.(StatusEffect); ok {
+				actionResult.AppliedEffects = append(actionResult.AppliedEffects, effect)
+			}
+		}
 		// 保留中の効果をクリア
 		intent.PendingEffects = nil
 	}
