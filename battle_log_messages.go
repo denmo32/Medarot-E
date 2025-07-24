@@ -6,19 +6,20 @@ func buildActionLogMessagesFromActionResult(result ActionResult, gameDataManager
 
 	// 攻撃開始メッセージ
 	var actionInitiateMsg string
-	if result.ActionCategory == CategoryRanged || result.ActionCategory == CategoryMelee {
+	switch result.ActionCategory {
+	case CategoryRanged, CategoryMelee:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_attack", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正
 			"weapon_type":   result.WeaponType,
 		})
-	} else if result.ActionCategory == CategoryIntervention {
+	case CategoryIntervention:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_intervention", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正
 			"weapon_type":   result.WeaponType,
 		})
-	} else {
+	default:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_generic", map[string]interface{}{
 			"actor_name":  result.AttackerName,
 			"action_name": result.ActionName,
