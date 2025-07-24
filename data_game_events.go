@@ -119,39 +119,39 @@ type UIEvent interface {
 
 // PartSelectedUIEvent は、プレイヤーがパーツを選択したときに発行されます。
 type PartSelectedUIEvent struct {
-	ActingEntry     *donburi.Entry
-	SelectedPartDef *PartDefinition
-	SelectedSlotKey PartSlotKey
-	TargetEntry     *donburi.Entry // 追加
+	ActingEntityID    donburi.Entity
+	SelectedPartDefID string
+	SelectedSlotKey   PartSlotKey
+	TargetEntityID    donburi.Entity // 追加
 }
 
 func (e PartSelectedUIEvent) isUIEvent() {}
 
 // TargetSelectedUIEvent は、プレイヤーがターゲットを選択したときに発行されます。
 type TargetSelectedUIEvent struct {
-	ActingEntry     *donburi.Entry
-	SelectedPartDef *PartDefinition
-	SelectedSlotKey PartSlotKey
-	TargetEntry     *donburi.Entry
-	TargetPartSlot  PartSlotKey
+	ActingEntityID    donburi.Entity
+	SelectedPartDefID string
+	SelectedSlotKey   PartSlotKey
+	TargetEntityID    donburi.Entity
+	TargetPartSlot    PartSlotKey
 }
 
 func (e TargetSelectedUIEvent) isUIEvent() {}
 
 // ActionConfirmedUIEvent は、プレイヤーがアクションを確定したときに発行されます。
 type ActionConfirmedUIEvent struct {
-	ActingEntry     *donburi.Entry
-	SelectedPartDef *PartDefinition
-	SelectedSlotKey PartSlotKey
-	TargetEntry     *donburi.Entry
-	TargetPartSlot  PartSlotKey
+	ActingEntityID    donburi.Entity
+	SelectedPartDefID string
+	SelectedSlotKey   PartSlotKey
+	TargetEntityID    donburi.Entity
+	TargetPartSlot    PartSlotKey
 }
 
 func (e ActionConfirmedUIEvent) isUIEvent() {}
 
 // ActionCanceledUIEvent は、プレイヤーが行動選択をキャンセルしたときに発行されます。
 type ActionCanceledUIEvent struct {
-	ActingEntry *donburi.Entry
+	ActingEntityID donburi.Entity
 }
 
 func (e ActionCanceledUIEvent) isUIEvent()   {}

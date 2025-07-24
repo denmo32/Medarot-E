@@ -49,15 +49,15 @@ type ActionModalButtonViewModel struct {
 	PartCategory    PartCategory
 	SlotKey         PartSlotKey
 	IsBroken        bool
-	TargetEntry     *donburi.Entry // 射撃などのターゲットが必要な場合
-	TargetPartSlot  PartSlotKey    // 追加
-	SelectedPartDef *PartDefinition
+	TargetEntityID  donburi.Entity // 射撃などのターゲットが必要な場合
+	TargetPartSlot  PartSlotKey
+	SelectedPartDefID string
 }
 
 // ActionModalViewModel は、アクション選択モーダル全体の表示に必要なデータを保持します。
 type ActionModalViewModel struct {
 	ActingMedarotName string
-	ActingEntry       *donburi.Entry // イベント発行時に必要
+	ActingEntityID    donburi.Entity // イベント発行時に必要
 	Buttons           []ActionModalButtonViewModel
 }
 

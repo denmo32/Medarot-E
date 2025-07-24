@@ -73,7 +73,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.resources.GameDataManager)
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
-	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager)
+	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager, bs.world)
 	// ui.goでuiFactoryが初期化され、ui.messageManagerもuiFactoryを使って初期化されるため、
 	// ここでbs.messageManagerを直接初期化する必要はない。
 	// bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.ui.GetRootContainer())
@@ -246,17 +246,40 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case ClearCurrentTargetGameEvent:
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
 		case ChargeRequestedGameEvent:
+			actingEntry := e.ActingEntry
+			if actingEntry == nil || !actingEntry.Valid() {
+				log.Printf("Error: ChargeRequestedGameEvent - ActingEntry is invalid or nil")
+				break
+			}
+			var targetEntry *donburi.Entry
+			if e.TargetEntry != nil && e.TargetEntry.Valid() {
+				targetEntry = e.TargetEntry
+			}
+			if targetEntry == nil && e.TargetPartSlot != "" { // TargetPartSlotがあるのにTargetEntryがない場合はエラー
+				log.Printf("Error: ChargeRequestedGameEvent - TargetEntry is nil but TargetPartSlot is provided")
+				break
+			}
 			// ChargeInitiationSystem を呼び出す
-			successful := StartCharge(e.ActingEntry, e.SelectedSlotKey, e.TargetEntry, e.TargetPartSlot, bs.world, bs.battleLogic)
+			successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, bs.battleLogic)
 			if !successful {
-				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(e.ActingEntry).Name)
+				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
 			}
 		case PlayerActionProcessedGameEvent:
+			actingEntry := e.ActingEntry
+			if actingEntry == nil || !actingEntry.Valid() {
+				log.Printf("Error: PlayerActionProcessedGameEvent - ActingEntry is invalid or nil")
+				break
+			}
 			// プレイヤーの行動キューから現在のエンティティを削除
 			bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
 			bs.state = StatePlaying // 行動処理後はPlaying状態に戻る
 		case ActionCanceledGameEvent:
+			actingEntry := e.ActingEntry
+			if actingEntry == nil || !actingEntry.Valid() {
+				log.Printf("Error: ActionCanceledGameEvent - ActingEntry is invalid or nil")
+				break
+			}
 			// 行動キャンセル時の処理（PlayerActionProcessedGameEventでキュー操作は行われる）
 			bs.state = StatePlaying // キャンセル時は即座にPlaying状態に戻る
 		case GoToTitleSceneGameEvent:

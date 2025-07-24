@@ -22,40 +22,77 @@ func UpdateUIEventProcessorSystem(
 	case uiEvent := <-eventChannel:
 		switch e := uiEvent.(type) {
 		case PartSelectedUIEvent:
+			actingEntry := world.Entry(e.ActingEntityID)
+			if actingEntry == nil {
+				log.Printf("Error: PartSelectedUIEvent - ActingEntry not found for ID %d", e.ActingEntityID)
+				break
+			}
+			var targetEntry *donburi.Entry
+			if e.TargetEntityID != 0 {
+				targetEntry = world.Entry(e.TargetEntityID)
+				if targetEntry == nil {
+					log.Printf("Error: PartSelectedUIEvent - TargetEntry not found for ID %d", e.TargetEntityID)
+					break
+				}
+			}
 			// ターゲットインジケーターを表示
-			ui.SetCurrentTarget(e.TargetEntry)
-			// アクションモーダルを更新（ターゲット選択ボタンの有効化など）
-			// 現状はViewModelを再構築してモーダルを再表示する
-			// TODO: ViewModelFactoryを引数で渡すか、UIから取得できるようにする
-			// gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: updatedVM})
-			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", SettingsComponent.Get(e.ActingEntry).Name, e.SelectedPartDef.PartName)
+			ui.SetCurrentTarget(targetEntry)
+			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", SettingsComponent.Get(actingEntry).Name, e.SelectedPartDefID)
 		case TargetSelectedUIEvent:
-			ui.SetCurrentTarget(e.TargetEntry)
-			log.Printf("UI Event: TargetSelectedUIEvent - %s selected target %s", SettingsComponent.Get(e.ActingEntry).Name, SettingsComponent.Get(e.TargetEntry).Name)
+			actingEntry := world.Entry(e.ActingEntityID)
+			if actingEntry == nil {
+				log.Printf("Error: TargetSelectedUIEvent - ActingEntry not found for ID %d", e.ActingEntityID)
+				break
+			}
+			targetEntry := world.Entry(e.TargetEntityID)
+			if targetEntry == nil {
+				log.Printf("Error: TargetSelectedUIEvent - TargetEntry not found for ID %d", e.TargetEntityID)
+				break
+			}
+			ui.SetCurrentTarget(targetEntry)
+			log.Printf("UI Event: TargetSelectedUIEvent - %s selected target %s", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(targetEntry).Name)
 		case ActionConfirmedUIEvent:
+			actingEntry := world.Entry(e.ActingEntityID)
+			if actingEntry == nil {
+				log.Printf("Error: ActionConfirmedUIEvent - ActingEntry not found for ID %d", e.ActingEntityID)
+				break
+			}
+			var targetEntry *donburi.Entry
+			if e.TargetEntityID != 0 {
+				targetEntry = world.Entry(e.TargetEntityID)
+				if targetEntry == nil {
+					log.Printf("Error: ActionConfirmedUIEvent - TargetEntry not found for ID %d", e.TargetEntityID)
+					break
+				}
+			}
 			// プレイヤーの行動が確定されたので、チャージ開始イベントを発行
 			gameEvents = append(gameEvents, ChargeRequestedGameEvent{
-				ActingEntry:     e.ActingEntry,
+				ActingEntry:     actingEntry,
 				SelectedSlotKey: e.SelectedSlotKey,
-				TargetEntry:     e.TargetEntry,
+				TargetEntry:     targetEntry,
 				TargetPartSlot:  e.TargetPartSlot,
 			})
 			// アクションモーダルを非表示にする
 			gameEvents = append(gameEvents, HideActionModalGameEvent{})
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
-			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: e.ActingEntry})
+			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
 			nextState = StatePlaying // 行動確定後はPlaying状態に戻る
-			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(e.ActingEntry).Name)
+			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(actingEntry).Name)
 		case ActionCanceledUIEvent:
+			actingEntry := world.Entry(e.ActingEntityID)
+			if actingEntry == nil {
+				log.Printf("Error: ActionCanceledUIEvent - ActingEntry not found for ID %d", e.ActingEntityID)
+				break
+			}
 			// アクションモーダルを非表示にする
 			gameEvents = append(gameEvents, HideActionModalGameEvent{})
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
-			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: e.ActingEntry})
+			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
 			gameEvents = append(gameEvents, e) // GameEventとしてActionCanceledGameEventを発行
 			nextState = StatePlaying           // 行動キャンセル後はPlaying状態に戻る
-			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(e.ActingEntry).Name)
+			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:
 			ui.ShowActionModal(e.ViewModel)
 		case HideActionModalUIEvent:

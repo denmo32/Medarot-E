@@ -45,24 +45,24 @@ func createActionModalUI(
 
 						// 選択されたパーツとターゲット情報をGameEventとして発行
 						eventChannel <- ActionConfirmedUIEvent{
-							ActingEntry:     vm.ActingEntry,
-							SelectedPartDef: buttonVM.SelectedPartDef,
-							SelectedSlotKey: buttonVM.SlotKey,
-							TargetEntry:     buttonVM.TargetEntry,
-							TargetPartSlot:  buttonVM.TargetPartSlot,
+							ActingEntityID:    vm.ActingEntityID,
+							SelectedPartDefID: buttonVM.SelectedPartDefID,
+							SelectedSlotKey:   buttonVM.SlotKey,
+							TargetEntityID:    buttonVM.TargetEntityID,
+							TargetPartSlot:    buttonVM.TargetPartSlot,
 						}
 					}
 				},
 				func(args *widget.ButtonHoverEventArgs) {
 					switch buttonVM.PartCategory {
 					case CategoryRanged:
-						if buttonVM.TargetEntry != nil {
+						if buttonVM.TargetEntityID != 0 {
 							eventChannel <- TargetSelectedUIEvent{
-								ActingEntry:     vm.ActingEntry,
-								SelectedPartDef: buttonVM.SelectedPartDef,
-								SelectedSlotKey: buttonVM.SlotKey,
-								TargetEntry:     buttonVM.TargetEntry,
-								TargetPartSlot:  "", // ターゲットパーツスロットはここでは不明
+								ActingEntityID:    vm.ActingEntityID,
+								SelectedPartDefID: buttonVM.SelectedPartDefID,
+								SelectedSlotKey:   buttonVM.SlotKey,
+								TargetEntityID:    buttonVM.TargetEntityID,
+								TargetPartSlot:    "", // ターゲットパーツスロットはここでは不明
 							}
 						}
 					case CategoryIntervention:

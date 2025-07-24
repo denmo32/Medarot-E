@@ -5,6 +5,7 @@ import (
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
 )
 
 // UIActionModalManager はアクション選択モーダルの表示と状態を管理します。
@@ -15,16 +16,18 @@ type UIActionModalManager struct {
 	actionTargetMap      map[PartSlotKey]ActionTarget // 選択可能なアクションとターゲットのマップ
 	eventChannel         chan UIEvent                 // UIイベント通知用
 	uiFactory            *UIFactory                   // 追加
+	world                donburi.World                // 追加
 }
 
 // NewUIActionModalManager は新しいUIActionModalManagerのインスタンスを作成します。
-func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, uiFactory *UIFactory) *UIActionModalManager {
+func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, uiFactory *UIFactory, world donburi.World) *UIActionModalManager {
 	return &UIActionModalManager{
 		ebitenui:             ebitenui,
 		isActionModalVisible: false,
 		actionTargetMap:      make(map[PartSlotKey]ActionTarget),
 		eventChannel:         eventChannel,
-		uiFactory:            uiFactory, // 追加
+		uiFactory:            uiFactory,
+		world:                world,
 	}
 }
 
@@ -38,7 +41,11 @@ func (m *UIActionModalManager) ShowActionModal(vm ActionModalViewModel) {
 	// actionTargetMap を ViewModel の情報から再構築
 	m.actionTargetMap = make(map[PartSlotKey]ActionTarget)
 	for _, btn := range vm.Buttons {
-		m.actionTargetMap[btn.SlotKey] = ActionTarget{Target: btn.TargetEntry, Slot: btn.SlotKey}
+		var targetEntry *donburi.Entry
+		if btn.TargetEntityID != 0 {
+			targetEntry = m.world.Entry(btn.TargetEntityID)
+		}
+		m.actionTargetMap[btn.SlotKey] = ActionTarget{Target: targetEntry, Slot: btn.SlotKey}
 	}
 
 	// ViewModel を直接 createActionModalUI に渡す

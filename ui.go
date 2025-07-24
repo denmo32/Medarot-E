@@ -77,7 +77,7 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAnimationManager, uiFactory *UIFactory, gameDataManager *GameDataManager) *UI {
+func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAnimationManager, uiFactory *UIFactory, gameDataManager *GameDataManager, world donburi.World) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
@@ -129,7 +129,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAn
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
-	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory) // uiFactoryを渡す
+	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, world)
 	ui.targetIndicatorManager = NewUITargetIndicatorManager()
 	return ui
 }

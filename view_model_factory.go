@@ -159,21 +159,25 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 
 		for _, available := range displayableParts {
 			targetInfo := actionTargetMap[available.Slot]
+			var targetEntityID donburi.Entity
+			if targetInfo.Target != nil {
+				targetEntityID = targetInfo.Target.Entity()
+			}
 			buttons = append(buttons, ActionModalButtonViewModel{
 				PartName:        available.PartDef.PartName,
 				PartCategory:    available.PartDef.Category,
 				SlotKey:         available.Slot,
 				IsBroken:        available.IsBroken,
-				TargetEntry:     targetInfo.Target,
-				TargetPartSlot:  targetInfo.Slot, // ここを追加
-				SelectedPartDef: available.PartDef,
+				TargetEntityID:  targetEntityID,
+				TargetPartSlot:  targetInfo.Slot,
+				SelectedPartDefID: available.PartDef.ID,
 			})
 		}
 	}
 
 	return ActionModalViewModel{
 		ActingMedarotName: settings.Name,
-		ActingEntry:       actingEntry,
+		ActingEntityID:    actingEntry.Entity(),
 		Buttons:           buttons,
 	}
 }
