@@ -99,6 +99,13 @@ type ActionCanceledGameEvent struct {
 
 func (e ActionCanceledGameEvent) isGameEvent() {}
 
+// PlayerActionProcessedGameEvent は、プレイヤーの行動が処理されたことを示すイベントです。
+type PlayerActionProcessedGameEvent struct {
+	ActingEntry *donburi.Entry
+}
+
+func (e PlayerActionProcessedGameEvent) isGameEvent() {}
+
 type GoToTitleSceneGameEvent struct{}
 
 func (e GoToTitleSceneGameEvent) isGameEvent() {}

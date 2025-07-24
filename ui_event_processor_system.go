@@ -42,10 +42,9 @@ func UpdateUIEventProcessorSystem(
 			})
 			// アクションモーダルを非表示にする
 			gameEvents = append(gameEvents, HideActionModalGameEvent{})
-			// プレイヤーの行動キューから現在のエンティティを削除
-			playerActionPendingQueue = playerActionPendingQueue[1:]
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
+			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: e.ActingEntry})
 			nextState = StatePlaying // 行動確定後はPlaying状態に戻る
 			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(e.ActingEntry).Name)
 		case ActionCanceledUIEvent:
@@ -53,8 +52,7 @@ func UpdateUIEventProcessorSystem(
 			gameEvents = append(gameEvents, HideActionModalGameEvent{})
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
-			// プレイヤーの行動キューから現在のエンティティを削除
-			playerActionPendingQueue = playerActionPendingQueue[1:]
+			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: e.ActingEntry})
 			gameEvents = append(gameEvents, e) // GameEventとしてActionCanceledGameEventを発行
 			nextState = StatePlaying           // 行動キャンセル後はPlaying状態に戻る
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(e.ActingEntry).Name)

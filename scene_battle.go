@@ -252,8 +252,12 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(e.ActingEntry).Name)
 				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
 			}
+		case PlayerActionProcessedGameEvent:
+			// プレイヤーの行動キューから現在のエンティティを削除
+			bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
+			bs.state = StatePlaying // 行動処理後はPlaying状態に戻る
 		case ActionCanceledGameEvent:
-			// 行動キャンセル時の処理
+			// 行動キャンセル時の処理（PlayerActionProcessedGameEventでキュー操作は行われる）
 			bs.state = StatePlaying // キャンセル時は即座にPlaying状態に戻る
 		case GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
