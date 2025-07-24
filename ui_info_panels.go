@@ -9,6 +9,28 @@ import (
 	"github.com/ebitenui/ebitenui/widget"
 )
 
+type infoPanelUI struct {
+	rootContainer *widget.Container
+	nameText      *widget.Text
+	stateText     *widget.Text
+	partSlots     map[PartSlotKey]*infoPanelPartUI
+}
+
+type infoPanelPartUI struct {
+	partNameText *widget.Text
+	hpText       *widget.Text
+	hpBar        *widget.ProgressBar
+	displayedHP  float64 // 現在表示されているHP
+	targetHP     float64 // 目標とするHP
+}
+
+// InfoPanelCreationResult は生成された情報パネルとそのチーム情報を持つ構造体です。
+type InfoPanelCreationResult struct {
+	PanelUI *infoPanelUI
+	Team    TeamID
+	ID      string
+}
+
 func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoPanelViewModel) *infoPanelUI {
 	c := config.UI
 
@@ -103,8 +125,6 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 		partSlots:     partSlots,
 	}
 }
-
-
 
 // CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
 // この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した

@@ -11,6 +11,22 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
+// BattlefieldWidget はバトルフィールドの描画に必要なデータを保持します。
+type BattlefieldWidget struct {
+	*widget.Container
+	config          *Config
+	whitePixel      *ebiten.Image
+	viewModel       *BattlefieldViewModel
+	backgroundImage *ebiten.Image
+}
+
+// CustomIconWidget は個々のメダロットアイコンの描画に必要なデータを保持します。
+type CustomIconWidget struct {
+	viewModel *IconViewModel
+	config    *Config
+	rect      image.Rectangle
+}
+
 func NewBattlefieldWidget(config *Config) *BattlefieldWidget {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)

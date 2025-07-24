@@ -1,13 +1,8 @@
 package main
 
 import (
-	"image"
 	"image/color"
 
-	ebitenuiimage "github.com/ebitenui/ebitenui/image"
-	"github.com/ebitenui/ebitenui/widget"
-	"github.com/hajimehoshi/ebiten/v2"
-	text "github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/yohamta/donburi"
 )
 
@@ -81,59 +76,6 @@ type IconViewModel struct {
 	State         StateType
 	GaugeProgress float64 // 0.0 to 1.0
 	DebugText     string
-}
-
-// BattlefieldWidget はバトルフィールドの描画に必要なデータを保持します。
-type BattlefieldWidget struct {
-	*widget.Container
-	config          *Config
-	whitePixel      *ebiten.Image
-	viewModel       *BattlefieldViewModel
-	backgroundImage *ebiten.Image
-}
-
-// CustomIconWidget は個々のメダロットアイコンの描画に必要なデータを保持します。
-type CustomIconWidget struct {
-	viewModel *IconViewModel
-	config    *Config
-	rect      image.Rectangle
-}
-
-type infoPanelUI struct {
-	rootContainer *widget.Container
-	nameText      *widget.Text
-	stateText     *widget.Text
-	partSlots     map[PartSlotKey]*infoPanelPartUI
-}
-
-type infoPanelPartUI struct {
-	partNameText *widget.Text
-	hpText       *widget.Text
-	hpBar        *widget.ProgressBar
-	displayedHP  float64 // 現在表示されているHP
-	targetHP     float64 // 目標とするHP
-}
-
-// InfoPanelCreationResult は生成された情報パネルとそのチーム情報を持つ構造体です。
-type InfoPanelCreationResult struct {
-	PanelUI *infoPanelUI
-	Team    TeamID
-	ID      string
-}
-
-// PanelOptions は、汎用パネルを作成するための設定を保持します。
-type PanelOptions struct {
-	PanelWidth      int
-	PanelHeight     int
-	Title           string
-	Padding         widget.Insets
-	Spacing         int
-	BackgroundColor color.Color
-	BackgroundImage *ebitenuiimage.NineSlice
-	TitleColor      color.Color
-	TitleFont       text.Face
-	BorderColor     color.Color
-	BorderThickness float32
 }
 
 // BattleUIStateComponent holds all the ViewModels for the UI.
