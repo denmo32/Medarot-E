@@ -56,16 +56,10 @@ func main() {
 	}
 
 	config := LoadConfig()
-	formulas, err := LoadFormulas()
-	if err != nil {
-		log.Fatalf("アクション計算式の読み込みに失敗しました: %v", err)
-	}
-	config.Balance.Formulas = formulas
 	SetupFormulaManager(&config)
 
 	// bamennを使ったシーンマネージャをセットアップします
 	// 共有リソースを作成
-	// ボタン用のシンプルな画像を作成
 	// ボタン用のシンプルな画像を作成
 	buttonImage := ebiten.NewImage(30, 30)                           // 適当なサイズ
 	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色

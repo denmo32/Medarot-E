@@ -1,0 +1,108 @@
+{
+  "Time": {
+    "PropulsionEffectRate": 0.1,
+    "GameSpeedMultiplier": 10.0
+  },
+  "HPAnimationSpeed": 1.0,
+  "Factors": {
+    "AccuracyStabilityFactor": 0.5,
+    "EvasionStabilityFactor": 0.5,
+    "DefenseStabilityFactor": 0.5,
+    "PowerStabilityFactor": 0.2,
+    "MeleeAccuracyMobilityFactor": 1.0,
+    "BerserkPowerPropulsionFactor": 1.0
+  },
+  "Effects": {
+    "Melee": {
+      "DefenseRateDebuff": 0.0,
+      "CriticalRateBonus": 0
+    },
+    "Berserk": {
+      "DefenseRateDebuff": 0.0,
+      "EvasionRateDebuff": 0.0
+    },
+    "Shoot": {},
+    "Aim": {
+      "EvasionRateDebuff": 0.0,
+      "CriticalRateBonus": 0
+    }
+  },
+  "Damage": {
+    "CriticalMultiplier": 1.5,
+    "MedalSkillFactor": 2,
+    "DamageAdjustmentFactor": 10.0,
+    "Critical": {
+      "BaseChance": 5.0,
+      "SuccessRateFactor": 0.5,
+      "MinChance": 5.0,
+      "MaxChance": 95.0
+    }
+  },
+  "Hit": {
+    "BaseChance": 50.0,
+    "MinChance": 5.0,
+    "MaxChance": 95.0
+  },
+  "Defense": {
+    "BaseChance": 10.0,
+    "MinChance": 5.0,
+    "MaxChance": 95.0
+  },
+  "Formulas": {
+    "狙い撃ち": {
+      "SuccessRateBonuses": [],
+      "PowerBonuses": [],
+      "CriticalRateBonus": 0.0,
+      "UserDebuffs": [
+        {
+          "Type": "Evasion",
+          "Multiplier": 0.5
+        }
+      ]
+    },
+    "殴る": {
+      "SuccessRateBonuses": [],
+      "PowerBonuses": [],
+      "CriticalRateBonus": 0.0,
+      "UserDebuffs": [
+        {
+          "Type": "Defense",
+          "Multiplier": 0.5
+        }
+      ]
+    },
+    "我武者羅": {
+      "SuccessRateBonuses": [],
+      "PowerBonuses": [],
+      "CriticalRateBonus": 0.0,
+      "UserDebuffs": [
+        {
+          "Type": "Defense",
+          "Multiplier": 0.5
+        },
+        {
+          "Type": "Evasion",
+          "Multiplier": 0.5
+        }
+      ]
+    },
+    "撃つ": {
+      "SuccessRateBonuses": [],
+      "PowerBonuses": [],
+      "CriticalRateBonus": 0.0,
+      "UserDebuffs": []
+    },
+    "支援": {
+      "SuccessRateBonuses": [],
+      "PowerBonuses": [],
+      "CriticalRateBonus": 0.0,
+      "UserDebuffs": []
+    },
+    "妨害": {
+      "SuccessRateBonuses": [],
+      "PowerBonuses": [],
+      "CriticalRateBonus": 0.0,
+      "UserDebuffs": []
+    }
+  }
+}

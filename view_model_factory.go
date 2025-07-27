@@ -42,7 +42,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, bat
 			if partInst == nil {
 				continue
 			}
-			partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
 				partViewModels[slotKey] = PartViewModel{PartName: "(不明)"}
 				continue
@@ -131,7 +131,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 
 // CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // worldWidth はバトルフィールドの表示幅です。
-func (f *viewModelFactoryImpl) CalculateIconXPosition(entry *donburi.Entry, partInfoProvider *PartInfoProvider, battlefieldWidth float32) float32 {
+func (f *viewModelFactoryImpl) CalculateIconXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32) float32 {
 	return partInfoProvider.CalculateMedarotXPosition(entry, battlefieldWidth)
 }
 
@@ -147,7 +147,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 	} else {
 		var displayableParts []AvailablePart
 		for slotKey, partInst := range partsComp.Map {
-			partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
 				continue
 			}
@@ -164,12 +164,12 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 				targetEntityID = targetInfo.Target.Entity()
 			}
 			buttons = append(buttons, ActionModalButtonViewModel{
-				PartName:        available.PartDef.PartName,
-				PartCategory:    available.PartDef.Category,
-				SlotKey:         available.Slot,
-				IsBroken:        available.IsBroken,
-				TargetEntityID:  targetEntityID,
-				TargetPartSlot:  targetInfo.Slot,
+				PartName:          available.PartDef.PartName,
+				PartCategory:      available.PartDef.Category,
+				SlotKey:           available.Slot,
+				IsBroken:          available.IsBroken,
+				TargetEntityID:    targetEntityID,
+				TargetPartSlot:    targetInfo.Slot,
 				SelectedPartDefID: available.PartDef.ID,
 			})
 		}

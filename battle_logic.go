@@ -11,7 +11,7 @@ type BattleLogic struct {
 	damageCalculator *DamageCalculator
 	hitCalculator    *HitCalculator
 	targetSelector   *TargetSelector
-	partInfoProvider *PartInfoProvider
+	partInfoProvider PartInfoProviderInterface
 }
 
 // GetDamageCalculator は DamageCalculator のインスタンスを返します。
@@ -30,7 +30,7 @@ func (bl *BattleLogic) GetTargetSelector() *TargetSelector {
 }
 
 // GetPartInfoProvider は PartInfoProvider のインスタンスを返します。
-func (bl *BattleLogic) GetPartInfoProvider() *PartInfoProvider {
+func (bl *BattleLogic) GetPartInfoProvider() PartInfoProviderInterface {
 	return bl.partInfoProvider
 }
 
@@ -43,9 +43,9 @@ func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDa
 
 	// ヘルパーを初期化
 	bl.partInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
-	bl.damageCalculator = NewDamageCalculator(world, config)
-	bl.hitCalculator = NewHitCalculator(world, config)
-	bl.targetSelector = NewTargetSelector(world, config)
+	bl.damageCalculator = NewDamageCalculator(world, config, bl.partInfoProvider)
+	bl.hitCalculator = NewHitCalculator(world, config, bl.partInfoProvider)
+	bl.targetSelector = NewTargetSelector(world, config, bl.partInfoProvider)
 
 	// ヘルパー間の依存性注入は不要になったため削除
 	// bl.damageCalculator.SetPartInfoProvider(bl.partInfoProvider)

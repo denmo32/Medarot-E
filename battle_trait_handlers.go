@@ -111,7 +111,7 @@ func applyDamageAndDefense(
 
 	if defendingPartInst != nil && battleLogic.GetHitCalculator().CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey, battleLogic) {
 		result.ActionIsDefended = true
-		defendingPartDef, _ := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(defendingPartInst.DefinitionID)
+		defendingPartDef, _ := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(defendingPartInst.DefinitionID)
 		result.DefendingPartType = string(defendingPartDef.Type)
 		result.ActualHitPartSlot = battleLogic.GetPartInfoProvider().FindPartSlot(result.TargetEntry, defendingPartInst)
 
@@ -132,7 +132,7 @@ func applyDamageAndDefense(
 
 func finalizeActionResult(result *ActionResult, battleLogic *BattleLogic) {
 	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
-	actualHitPartDef, _ := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(actualHitPartInst.DefinitionID)
+	actualHitPartDef, _ := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(actualHitPartInst.DefinitionID)
 
 	result.TargetPartType = string(actualHitPartDef.Type)
 }

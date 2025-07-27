@@ -9,11 +9,11 @@ import (
 // ChargeInitiationSystem はチャージ状態の開始ロジックをカプセル化します。
 type ChargeInitiationSystem struct {
 	world            donburi.World
-	partInfoProvider *PartInfoProvider
+	partInfoProvider PartInfoProviderInterface
 }
 
 // NewChargeInitiationSystem は新しいChargeInitiationSystemのインスタンスを生成します。
-func NewChargeInitiationSystem(world donburi.World, partInfoProvider *PartInfoProvider) *ChargeInitiationSystem {
+func NewChargeInitiationSystem(world donburi.World, partInfoProvider PartInfoProviderInterface) *ChargeInitiationSystem {
 	return &ChargeInitiationSystem{
 		world:            world,
 		partInfoProvider: partInfoProvider,
@@ -40,7 +40,7 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 		log.Printf("%s: 選択されたパーツ %s は存在しません。", settings.Name, partKey)
 		return false
 	}
-	actingPartDef, defFound := s.partInfoProvider.gameDataManager.GetPartDefinition(actingPartInstance.DefinitionID)
+	actingPartDef, defFound := s.partInfoProvider.GetGameDataManager().GetPartDefinition(actingPartInstance.DefinitionID)
 	if !defFound {
 		log.Printf("%s: パーツ定義(%s)が見つかりません。", settings.Name, actingPartInstance.DefinitionID)
 		return false

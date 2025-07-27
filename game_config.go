@@ -170,6 +170,8 @@ type Config struct {
 	UI      UIConfig
 }
 
+var FormulaManager map[Trait]ActionFormula
+
 type UIConfig struct {
 	Screen struct {
 		Width  int

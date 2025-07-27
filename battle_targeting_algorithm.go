@@ -30,7 +30,7 @@ func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic,
 			if partInst.IsBroken {
 				continue
 			}
-			partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID) // GlobalGameDataManager を battleLogic から取得
+			partDef, defFound := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(partInst.DefinitionID) // GlobalGameDataManager を battleLogic から取得
 			if !defFound {
 				log.Printf("警告: getAllTargetableParts - PartDefinition %s が見つかりません。", partInst.DefinitionID)
 				continue

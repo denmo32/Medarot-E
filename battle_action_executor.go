@@ -51,7 +51,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	intent := ActionIntentComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
-	actingPartDef, _ := e.battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(actingPartInst.DefinitionID)
+	actingPartDef, _ := e.battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(actingPartInst.DefinitionID)
 
 	handler, ok := e.handlers[actingPartDef.Trait]
 	if !ok {

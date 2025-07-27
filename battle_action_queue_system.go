@@ -47,7 +47,7 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, battleLogic 
 	var actingPartDef *PartDefinition
 
 	if actingPartInstance, ok := partsComp.Map[intent.SelectedPartKey]; ok {
-		if def, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(actingPartInstance.DefinitionID); defFound {
+		if def, defFound := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(actingPartInstance.DefinitionID); defFound {
 			actingPartDef = def
 		} else {
 			log.Printf("エラー: StartCooldownSystem - ID %s のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID)

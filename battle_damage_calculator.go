@@ -9,14 +9,14 @@ import (
 
 // DamageCalculator はダメージ計算に関連するロジックを担当します。
 type DamageCalculator struct {
-	world  donburi.World
-	config *Config
-	// partInfoProvider *PartInfoProvider // 削除
+	world            donburi.World
+	config           *Config
+	partInfoProvider PartInfoProviderInterface
 }
 
 // NewDamageCalculator は新しい DamageCalculator のインスタンスを生成します。
-func NewDamageCalculator(world donburi.World, config *Config) *DamageCalculator {
-	return &DamageCalculator{world: world, config: config}
+func NewDamageCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface) *DamageCalculator {
+	return &DamageCalculator{world: world, config: config, partInfoProvider: pip}
 }
 
 // SetPartInfoProvider は PartInfoProvider の依存性を設定します。 // 削除
@@ -35,40 +35,39 @@ func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInst
 		partInst.IsBroken = true
 		settings := SettingsComponent.Get(entry)
 		// Get PartDefinition for logging PartName
-		partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partDef, defFound := dc.partInfoProvider.GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
 		partNameForLog := "(不明パーツ)"
 		if defFound {
 			partNameForLog = partDef.PartName
 		}
-		log.Print(battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
+		log.Print(dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
 			"ordered_args": []interface{}{settings.Name, partNameForLog, partInst.DefinitionID},
 		}))
 
 		// パーツ破壊時にバフを解除する
-		battleLogic.GetPartInfoProvider().RemoveBuffsFromSource(entry, partInst)
+		dc.partInfoProvider.RemoveBuffsFromSource(entry, partInst)
 	}
 }
 
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
 func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) (int, bool) {
 	// 1. 計算式の取得
-	formula, ok := FormulaManager[actingPartDef.Trait]
-	if !ok {
+	formula := FormulaManager[actingPartDef.Trait] // okチェックは不要、ゼロ値が返る
+	if formula.ID == "" {                          // IDがゼロ値の場合は見つからなかったと判断
 		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。デフォルトを使用します。", actingPartDef.Trait)
 		formula = FormulaManager[TraitShoot]
 	}
 
 	// 2. 基本パラメータの取得
-	successRate := battleLogic.GetPartInfoProvider().GetSuccessRate(attacker, actingPartDef, selectedPartKey)
+	successRate := dc.partInfoProvider.GetSuccessRate(attacker, actingPartDef, selectedPartKey)
 	power := float64(actingPartDef.Power)
 
 	// 特性による威力ボーナスを加算
-	if formula != nil {
-		for _, bonus := range formula.PowerBonuses {
-			power += battleLogic.GetPartInfoProvider().GetPartParameterValue(attacker, selectedPartKey, bonus.SourceParam) * bonus.Multiplier
-		}
+	// formula は常に有効な ActionFormula 構造体なので nil チェックは不要
+	for _, bonus := range formula.PowerBonuses {
+		power += dc.partInfoProvider.GetPartParameterValue(attacker, selectedPartKey, bonus.SourceParam) * bonus.Multiplier
 	}
-	evasion := battleLogic.GetPartInfoProvider().GetEvasionRate(target)
+	evasion := dc.partInfoProvider.GetEvasionRate(target)
 
 	// クリティカル判定
 	isCritical := false
@@ -113,7 +112,7 @@ func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, a
 	}
 
 	if !didHit {
-		return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("attack_miss", map[string]interface{}{
+		return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("attack_miss", map[string]interface{}{
 			"attacker_name": attackerSettings.Name,
 			"skill_name":    skillName,
 			"target_name":   targetSettings.Name,
@@ -134,15 +133,15 @@ func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, a
 	}
 
 	if isCritical {
-		return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("critical_hit", params)
+		return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("critical_hit", params)
 	}
-	return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("attack_hit", params)
+	return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("attack_hit", params)
 }
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
 func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry, battleLogic *BattleLogic) int {
 	// ダメージ軽減ロジック: ダメージ = 元ダメージ - 脚部パーツの防御力
-	defenseValue := battleLogic.GetPartInfoProvider().GetPartParameterValue(targetEntry, PartSlotLegs, Defense)
+	defenseValue := dc.partInfoProvider.GetPartParameterValue(targetEntry, PartSlotLegs, Defense)
 	reducedDamage := originalDamage - int(defenseValue)
 	if reducedDamage < 1 {
 		reducedDamage = 1 // 最低でも1ダメージは保証
@@ -168,7 +167,7 @@ func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defe
 	}
 
 	if isCritical {
-		return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("defense_success_critical", params)
+		return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("defense_success_critical", params)
 	}
-	return battleLogic.GetPartInfoProvider().gameDataManager.Messages.FormatMessage("defense_success", params)
+	return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("defense_success", params)
 }

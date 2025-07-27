@@ -12,12 +12,17 @@ import (
 type PartInfoProvider struct {
 	world           donburi.World
 	config          *Config
-	gameDataManager *GameDataManager // GlobalGameDataManagerを注入
+	gameDataManager *GameDataManager
 }
 
 // NewPartInfoProvider は新しい PartInfoProvider のインスタンスを生成します。
-func NewPartInfoProvider(world donburi.World, config *Config, gdm *GameDataManager) *PartInfoProvider {
+func NewPartInfoProvider(world donburi.World, config *Config, gdm *GameDataManager) PartInfoProviderInterface {
 	return &PartInfoProvider{world: world, config: config, gameDataManager: gdm}
+}
+
+// GetGameDataManager は GameDataManager のインスタンスを返します。
+func (pip *PartInfoProvider) GetGameDataManager() *GameDataManager {
+	return pip.gameDataManager
 }
 
 // GetPartParameterValue は指定されたパーツスロットとパラメータの値を取得する汎用ヘルパー関数です。

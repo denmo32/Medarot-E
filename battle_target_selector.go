@@ -12,14 +12,14 @@ import (
 
 // TargetSelector はターゲット選択やパーツ選択に関連するロジックを担当します。
 type TargetSelector struct {
-	world  donburi.World
-	config *Config
-	// partInfoProvider *PartInfoProvider // 削除
+	world            donburi.World
+	config           *Config
+	partInfoProvider PartInfoProviderInterface
 }
 
 // NewTargetSelector は新しい TargetSelector のインスタンスを生成します。
-func NewTargetSelector(world donburi.World, config *Config) *TargetSelector {
-	return &TargetSelector{world: world, config: config}
+func NewTargetSelector(world donburi.World, config *Config, pip PartInfoProviderInterface) *TargetSelector {
+	return &TargetSelector{world: world, config: config, partInfoProvider: pip}
 }
 
 // SelectDefensePart は防御に使用するパーツのインスタンスを選択します。
@@ -38,7 +38,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry, battleLogic *
 		if partInst.IsBroken {
 			continue
 		}
-		partDef, defFound := battleLogic.GetPartInfoProvider().gameDataManager.GetPartDefinition(partInst.DefinitionID)
+		partDef, defFound := ts.partInfoProvider.GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
 		if !defFound {
 			log.Printf("SelectDefensePart: PartDefinition not found for ID %s", partInst.DefinitionID)
 			continue
@@ -108,10 +108,10 @@ func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry, battleLog
 	var closestEnemy *donburi.Entry
 	var minDiff float32 = math.MaxFloat32 // float32 を使用するため、MaxFloat32 に変更
 
-	actingX := battleLogic.GetPartInfoProvider().CalculateMedarotXPosition(actingEntry, float32(ts.config.UI.Screen.Width))
+	actingX := ts.partInfoProvider.CalculateMedarotXPosition(actingEntry, float32(ts.config.UI.Screen.Width))
 
 	for _, enemy := range ts.GetTargetableEnemies(actingEntry) {
-		enemyX := battleLogic.GetPartInfoProvider().CalculateMedarotXPosition(enemy, float32(ts.config.UI.Screen.Width))
+		enemyX := ts.partInfoProvider.CalculateMedarotXPosition(enemy, float32(ts.config.UI.Screen.Width))
 		diff := float32(math.Abs(float64(actingX - enemyX))) // float32 の差を計算
 		if diff < minDiff {
 			minDiff = diff
