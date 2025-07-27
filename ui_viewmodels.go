@@ -1,8 +1,6 @@
 package main
 
 import (
-	"image/color"
-
 	"github.com/yohamta/donburi"
 )
 
@@ -20,27 +18,6 @@ const (
 type ActionTarget struct {
 	Target *donburi.Entry
 	Slot   PartSlotKey
-}
-
-// --- ViewModels ---
-
-// InfoPanelViewModel は、単一の情報パネルUIが必要とするすべてのデータを保持します。
-type InfoPanelViewModel struct {
-	ID        string
-	Name      string
-	Team      TeamID
-	DrawIndex int
-	StateStr  string
-	IsLeader  bool
-	Parts     map[PartSlotKey]PartViewModel
-}
-
-// PartViewModel は、単一のパーツUIが必要とするデータを保持します。
-type PartViewModel struct {
-	PartName     string
-	CurrentArmor int
-	MaxArmor     int
-	IsBroken     bool
 }
 
 // ActionModalButtonViewModel は、アクション選択モーダルのボタン一つ分のデータを保持します。
@@ -61,28 +38,8 @@ type ActionModalViewModel struct {
 	Buttons           []ActionModalButtonViewModel
 }
 
-// BattlefieldViewModel は、バトルフィールド全体の描画に必要なデータを保持します。
-type BattlefieldViewModel struct {
-	Icons     []*IconViewModel
-	DebugMode bool
-}
+// --- ViewModels ---
 
-// IconViewModel は、個々のメダロットアイコンの描画に必要なデータを保持します。
-type IconViewModel struct {
-	EntryID       uint32 // 元のdonburi.Entryを特定するためのID
-	X, Y          float32
-	Color         color.Color
-	IsLeader      bool
-	State         StateType
-	GaugeProgress float64 // 0.0 to 1.0
-	DebugText     string
-}
 
-// BattleUIStateComponent holds all the ViewModels for the UI.
-var BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
 
-// BattleUIState is a singleton component that stores UI-specific data (ViewModels).
-type BattleUIState struct {
-	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
-	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
-}
+

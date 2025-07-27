@@ -25,6 +25,7 @@ type BattleScene struct {
 	uiEventChannel           chan UIEvent
 	battleUIState            *BattleUIState // 追加
 	statusEffectSystem       *StatusEffectSystem
+	postActionEffectSystem   *PostActionEffectSystem
 	viewModelFactory         ViewModelFactory // 追加
 	uiFactory                *UIFactory       // 追加
 
@@ -53,6 +54,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic)
 	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
+bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.resources.GameDataManager, bs.battleLogic.GetPartInfoProvider())
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
@@ -121,6 +123,8 @@ func (bs *BattleScene) Update() error {
 		GameDataManager:  bs.resources.GameDataManager,
 		Tick:             bs.tickCount,
 		ViewModelFactory: bs.viewModelFactory,
+		statusEffectSystem: bs.statusEffectSystem,
+		postActionEffectSystem: bs.postActionEffectSystem,
 	}
 
 	newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(

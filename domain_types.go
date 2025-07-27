@@ -174,6 +174,12 @@ const (
 	DebuffTypeTargetRandom   DebuffType = "TargetRandom"   // ターゲットのランダム化
 )
 
+// ActiveStatusEffectData は、エンティティに現在適用されている効果のデータとその残り期間を追跡します。
+type ActiveStatusEffectData struct {
+	EffectData   interface{} // ChargeStopEffect, DamageOverTimeEffect などのインスタンス
+	RemainingDur int
+}
+
 // ChargeStopEffect はチャージを一時停止させるデバフのデータです。
 type ChargeStopEffect struct {
 	DurationTurns int // ターン数での持続時間
@@ -198,10 +204,4 @@ type EvasionDebuffEffect struct {
 // DefenseDebuffEffect は防御力を低下させるデバフのデータです。
 type DefenseDebuffEffect struct {
 	Multiplier float64
-}
-
-// ActiveStatusEffectData は、エンティティに現在適用されている効果のデータとその残り期間を追跡します。
-type ActiveStatusEffectData struct {
-	EffectData   interface{} // ChargeStopEffect, DamageOverTimeEffect などのインスタンス
-	RemainingDur int
 }

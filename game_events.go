@@ -4,6 +4,8 @@ import (
 	"github.com/yohamta/donburi"
 )
 
+
+
 // GameEvent は、ゲームロジックから発行されるすべてのイベントを示すマーカーインターフェースです。
 type GameEvent interface {
 	isGameEvent()
@@ -110,90 +112,7 @@ type GoToTitleSceneGameEvent struct{}
 
 func (e GoToTitleSceneGameEvent) isGameEvent() {}
 
-// UIEvent は、UIから発行されるすべてのイベントを示すマーカーインターフェースです。
-type UIEvent interface {
-	isUIEvent()
-}
 
-// 新しい抽象化されたUIイベント
-
-// PartSelectedUIEvent は、プレイヤーがパーツを選択したときに発行されます。
-type PartSelectedUIEvent struct {
-	ActingEntityID    donburi.Entity
-	SelectedPartDefID string
-	SelectedSlotKey   PartSlotKey
-	TargetEntityID    donburi.Entity // 追加
-}
-
-func (e PartSelectedUIEvent) isUIEvent() {}
-
-// TargetSelectedUIEvent は、プレイヤーがターゲットを選択したときに発行されます。
-type TargetSelectedUIEvent struct {
-	ActingEntityID    donburi.Entity
-	SelectedPartDefID string
-	SelectedSlotKey   PartSlotKey
-	TargetEntityID    donburi.Entity
-	TargetPartSlot    PartSlotKey
-}
-
-func (e TargetSelectedUIEvent) isUIEvent() {}
-
-// ActionConfirmedUIEvent は、プレイヤーがアクションを確定したときに発行されます。
-type ActionConfirmedUIEvent struct {
-	ActingEntityID    donburi.Entity
-	SelectedPartDefID string
-	SelectedSlotKey   PartSlotKey
-	TargetEntityID    donburi.Entity
-	TargetPartSlot    PartSlotKey
-}
-
-func (e ActionConfirmedUIEvent) isUIEvent() {}
-
-// ActionCanceledUIEvent は、プレイヤーが行動選択をキャンセルしたときに発行されます。
-type ActionCanceledUIEvent struct {
-	ActingEntityID donburi.Entity
-}
-
-func (e ActionCanceledUIEvent) isUIEvent()   {}
-
-// 既存のUIイベント (変更なし)
-
-// ShowActionModalUIEvent は、アクションモーダルを表示するUIイベントです。
-type ShowActionModalUIEvent struct {
-	ViewModel ActionModalViewModel
-}
-
-func (e ShowActionModalUIEvent) isUIEvent() {}
-
-// HideActionModalUIEvent は、アクションモーダルを隠すUIイベントです。
-type HideActionModalUIEvent struct{}
-
-func (e HideActionModalUIEvent) isUIEvent() {}
-
-// SetAnimationUIEvent は、アニメーションを設定するUIイベントです。
-type SetAnimationUIEvent struct {
-	AnimationData ActionAnimationData
-}
-
-func (e SetAnimationUIEvent) isUIEvent() {}
-
-// ClearAnimationUIEvent は、アニメーションをクリアするUIイベントです。
-type ClearAnimationUIEvent struct{}
-
-func (e ClearAnimationUIEvent) isUIEvent() {}
-
-// ClearCurrentTargetUIEvent は、現在のターゲットをクリアするUIイベントです。
-type ClearCurrentTargetUIEvent struct{}
-
-func (e ClearCurrentTargetUIEvent) isUIEvent() {}
-
-// MessageDisplayRequestUIEvent は、メッセージ表示を要求するUIイベントです。
-type MessageDisplayRequestUIEvent struct {
-	Messages []string
-	Callback func()
-}
-
-func (e MessageDisplayRequestUIEvent) isUIEvent() {}
 
 // ActionResult はアクション実行の詳細な結果を保持します。
 type ActionResult struct {

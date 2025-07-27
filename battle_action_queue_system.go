@@ -12,6 +12,8 @@ func UpdateActionQueueSystem(
 	world donburi.World,
 	battleLogic *BattleLogic,
 	gameConfig *Config,
+	statusEffectSystem *StatusEffectSystem,
+	postActionEffectSystem *PostActionEffectSystem,
 ) ([]ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
@@ -33,7 +35,7 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
-		executor := NewActionExecutor(world, battleLogic, gameConfig)
+		executor := NewActionExecutor(world, battleLogic, gameConfig, statusEffectSystem, postActionEffectSystem)
 		actionResult := executor.ExecuteAction(actingEntry)
 		results = append(results, actionResult)
 	}

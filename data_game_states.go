@@ -16,6 +16,8 @@ type BattleContext struct {
 	GameDataManager  *GameDataManager
 	Tick             int
 	ViewModelFactory ViewModelFactory
+	statusEffectSystem *StatusEffectSystem
+	postActionEffectSystem *PostActionEffectSystem
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
@@ -56,7 +58,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 	}
 
 	// アクション実行
-	actionResults, err := UpdateActionQueueSystem(world, battleLogic, config)
+	actionResults, err := UpdateActionQueueSystem(world, battleLogic, config, ctx.statusEffectSystem, ctx.postActionEffectSystem)
 	if err != nil {
 		fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
 	}
