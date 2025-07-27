@@ -48,6 +48,53 @@
     "MinChance": 5.0,
     "MaxChance": 95.0
   },
+  "UI": {
+    "Screen": {
+      "Width": 1280,
+      "Height": 720
+    },
+    "Battlefield": {
+      "Height": 0.5,
+      "Team1HomeX": 0.1,
+      "Team2HomeX": 0.9,
+      "Team1ExecutionLineX": 0.4,
+      "Team2ExecutionLineX": 0.6,
+      "IconRadius": 12,
+      "HomeMarkerRadius": 15,
+      "LineWidth": 2,
+      "MedarotVerticalSpacingFactor": 0.5,
+      "TargetIndicator": {
+        "Width": 15,
+        "Height": 12
+      }
+    },
+    "InfoPanel": {
+      "Padding": 10,
+      "BlockWidth": 200,
+      "BlockHeight": 200,
+      "PartHPGaugeWidth": 120,
+      "PartHPGaugeHeight": 10
+    },
+    "ActionModal": {
+      "ButtonWidth": 250,
+      "ButtonHeight": 40,
+      "ButtonSpacing": 10
+    },
+    "Colors": {
+      "White": "FFFFFF",
+      "Red": "FF6464",
+      "Blue": "6464FF",
+      "Yellow": "FFFF64",
+      "Gray": "969696",
+      "Team1": "3296FF",
+      "Team2": "FF3232",
+      "Leader": "FFD700",
+      "Broken": "505050",
+      "HP": "00C864",
+      "HPCritical": "FF6400",
+      "Background": "1E1E28"
+    }
+  },
   "Formulas": {
     "狙い撃ち": {
       "SuccessRateBonuses": [],

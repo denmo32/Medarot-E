@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"io/ioutil"
 	"log"
+	"fmt" // fmtパッケージを追加
 )
 
 // GameSettings は game_settings.json の構造を定義します。
@@ -59,12 +60,56 @@ type GameSettings struct {
 		MaxChance  float64
 	}
 	Formulas map[Trait]ActionFormulaConfig
+	UI       struct {
+		Screen struct {
+			Width  int
+			Height int
+		}
+		Battlefield struct {
+			Height                       float32
+			Team1HomeX                   float32
+			Team2HomeX                   float32
+			Team1ExecutionLineX          float32
+			Team2ExecutionLineX          float32
+			IconRadius                   float32
+			HomeMarkerRadius             float32
+			LineWidth                    float32
+			MedarotVerticalSpacingFactor float32
+			TargetIndicator              struct {
+				Width  float32
+				Height float32
+			}
+		}
+		InfoPanel struct {
+			Padding           int
+			BlockWidth        float32
+			BlockHeight       float32
+			PartHPGaugeWidth  float32
+			PartHPGaugeHeight float32
+		}
+		ActionModal struct {
+			ButtonWidth   float32
+			ButtonHeight  float32
+			ButtonSpacing int
+		}
+		Colors struct {
+			White        string
+			Red          string
+			Blue         string
+			Yellow       string
+			Gray         string
+			Team1        string
+			Team2        string
+			Leader       string
+			Broken       string
+			HP           string
+			HPCritical   string
+			Background   string
+		}
+	}
 }
 
 func LoadConfig() Config {
-	screenWidth := 1280
-	screenHeight := 720
-
 	// game_settings.json から設定をロード
 	var gameSettings GameSettings
 	assetPaths := AssetPaths{
@@ -88,46 +133,55 @@ func LoadConfig() Config {
 	}
 
 	cfg := Config{
-		Balance:    BalanceConfig(gameSettings),
+		Balance: BalanceConfig{
+			Time: gameSettings.Time,
+			HPAnimationSpeed: gameSettings.HPAnimationSpeed,
+			Factors: gameSettings.Factors,
+			Effects: gameSettings.Effects,
+			Damage: gameSettings.Damage,
+			Hit: gameSettings.Hit,
+			Defense: gameSettings.Defense,
+			Formulas: gameSettings.Formulas,
+		},
 		AssetPaths: assetPaths,
 		UI: UIConfig{
 			Screen: struct {
 				Width  int
 				Height int
 			}{
-				Width:  screenWidth,
-				Height: screenHeight,
+				Width:  gameSettings.UI.Screen.Width,
+				Height: gameSettings.UI.Screen.Height,
 			},
 			Battlefield: struct {
-				Height                 float32
-				Team1HomeX             float32
-				Team2HomeX             float32
-				Team1ExecutionLineX    float32
-				Team2ExecutionLineX    float32
-				IconRadius             float32
-				HomeMarkerRadius       float32
-				LineWidth              float32
-				MedarotVerticalSpacing float32
-				TargetIndicator        struct {
+				Height                       float32
+				Team1HomeX                   float32
+				Team2HomeX                   float32
+				Team1ExecutionLineX          float32
+				Team2ExecutionLineX          float32
+				IconRadius                   float32
+				HomeMarkerRadius             float32
+				LineWidth                    float32
+				MedarotVerticalSpacingFactor float32
+				TargetIndicator              struct {
 					Width  float32
 					Height float32
 				}
 			}{
-				Height:                 float32(screenHeight) * 0.5,
-				Team1HomeX:             float32(screenWidth) * 0.1,
-				Team2HomeX:             float32(screenWidth) * 0.9,
-				Team1ExecutionLineX:    float32(screenWidth) * 0.4,
-				Team2ExecutionLineX:    float32(screenWidth) * 0.6,
-				IconRadius:             12,
-				HomeMarkerRadius:       15,
-				LineWidth:              2,
-				MedarotVerticalSpacing: float32(screenHeight) * 0.5 / float32(PlayersPerTeam+1),
+				Height:                       float32(gameSettings.UI.Screen.Height) * gameSettings.UI.Battlefield.Height,
+				Team1HomeX:                   float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team1HomeX,
+				Team2HomeX:                   float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team2HomeX,
+				Team1ExecutionLineX:          float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team1ExecutionLineX,
+				Team2ExecutionLineX:          float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team2ExecutionLineX,
+				IconRadius:                   gameSettings.UI.Battlefield.IconRadius,
+				HomeMarkerRadius:             gameSettings.UI.Battlefield.HomeMarkerRadius,
+				LineWidth:                    gameSettings.UI.Battlefield.LineWidth,
+				MedarotVerticalSpacingFactor: float32(gameSettings.UI.Screen.Height) * gameSettings.UI.Battlefield.MedarotVerticalSpacingFactor / float32(PlayersPerTeam+1),
 				TargetIndicator: struct {
 					Width  float32
 					Height float32
 				}{
-					Width:  15,
-					Height: 12,
+					Width:  gameSettings.UI.Battlefield.TargetIndicator.Width,
+					Height: gameSettings.UI.Battlefield.TargetIndicator.Height,
 				},
 			},
 			InfoPanel: struct {
@@ -137,20 +191,20 @@ func LoadConfig() Config {
 				PartHPGaugeWidth  float32
 				PartHPGaugeHeight float32
 			}{
-				Padding:           10,
-				BlockWidth:        200,
-				BlockHeight:       200,
-				PartHPGaugeWidth:  120,
-				PartHPGaugeHeight: 10,
+				Padding:           gameSettings.UI.InfoPanel.Padding,
+				BlockWidth:        gameSettings.UI.InfoPanel.BlockWidth,
+				BlockHeight:       gameSettings.UI.InfoPanel.BlockHeight,
+				PartHPGaugeWidth:  gameSettings.UI.InfoPanel.PartHPGaugeWidth,
+				PartHPGaugeHeight: gameSettings.UI.InfoPanel.PartHPGaugeHeight,
 			},
 			ActionModal: struct {
 				ButtonWidth   float32
 				ButtonHeight  float32
 				ButtonSpacing int
 			}{
-				ButtonWidth:   250,
-				ButtonHeight:  40,
-				ButtonSpacing: 10,
+				ButtonWidth:   gameSettings.UI.ActionModal.ButtonWidth,
+				ButtonHeight:  gameSettings.UI.ActionModal.ButtonHeight,
+				ButtonSpacing: gameSettings.UI.ActionModal.ButtonSpacing,
 			},
 			Colors: struct {
 				White      color.Color
@@ -166,21 +220,34 @@ func LoadConfig() Config {
 				HPCritical color.Color
 				Background color.Color
 			}{
-				White:      color.White,
-				Red:        color.RGBA{R: 255, G: 100, B: 100, A: 255},
-				Blue:       color.RGBA{R: 100, G: 100, B: 255, A: 255},
-				Yellow:     color.RGBA{R: 255, G: 255, B: 100, A: 255},
-				Gray:       color.RGBA{R: 150, G: 150, B: 150, A: 255},
-				Team1:      color.RGBA{R: 50, G: 150, B: 255, A: 255},
-				Team2:      color.RGBA{R: 255, G: 50, B: 50, A: 255},
-				Leader:     color.RGBA{R: 255, G: 215, B: 0, A: 255},
-				Broken:     color.RGBA{R: 80, G: 80, B: 80, A: 255},
-				HP:         color.RGBA{R: 0, G: 200, B: 100, A: 255},
-				HPCritical: color.RGBA{R: 255, G: 100, B: 0, A: 255},
-				Background: color.RGBA{R: 30, G: 30, B: 40, A: 255},
+				White:      parseHexColor(gameSettings.UI.Colors.White),
+				Red:        parseHexColor(gameSettings.UI.Colors.Red),
+				Blue:       parseHexColor(gameSettings.UI.Colors.Blue),
+				Yellow:     parseHexColor(gameSettings.UI.Colors.Yellow),
+				Gray:       parseHexColor(gameSettings.UI.Colors.Gray),
+				Team1:      parseHexColor(gameSettings.UI.Colors.Team1),
+				Team2:      parseHexColor(gameSettings.UI.Colors.Team2),
+				Leader:     parseHexColor(gameSettings.UI.Colors.Leader),
+				Broken:     parseHexColor(gameSettings.UI.Colors.Broken),
+				HP:         parseHexColor(gameSettings.UI.Colors.HP),
+				HPCritical: parseHexColor(gameSettings.UI.Colors.HPCritical),
+				Background: parseHexColor(gameSettings.UI.Colors.Background),
 			},
 		},
 	}
 
 	return cfg
+}
+
+// parseHexColor は16進数文字列からcolor.Colorをパースします。
+func parseHexColor(s string) color.Color {
+	var r, g, b uint8
+	if len(s) == 6 {
+		_, err := fmt.Sscanf(s, "%02x%02x%02x", &r, &g, &b)
+		if err != nil {
+			log.Printf("Failed to parse hex color %s: %v", s, err)
+			return color.White // エラー時はデフォルト色
+		}
+	}
+	return color.RGBA{R: r, G: g, B: b, A: 255}
 }

@@ -128,16 +128,16 @@ type UIConfig struct {
 		Height int
 	}
 	Battlefield struct {
-		Height                 float32
-		Team1HomeX             float32
-		Team2HomeX             float32
-		Team1ExecutionLineX    float32
-		Team2ExecutionLineX    float32
-		IconRadius             float32
-		HomeMarkerRadius       float32
-		LineWidth              float32
-		MedarotVerticalSpacing float32
-		TargetIndicator        struct {
+		Height                       float32
+		Team1HomeX                   float32
+		Team2HomeX                   float32
+		Team1ExecutionLineX          float32
+		Team2ExecutionLineX          float32
+		IconRadius                   float32
+		HomeMarkerRadius             float32
+		LineWidth                    float32
+				MedarotVerticalSpacingFactor float32
+		TargetIndicator              struct {
 			Width  float32
 			Height float32
 		}
