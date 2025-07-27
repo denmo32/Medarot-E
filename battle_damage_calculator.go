@@ -24,30 +24,7 @@ func NewDamageCalculator(world donburi.World, config *Config, pip PartInfoProvid
 // 	dc.partInfoProvider = pip
 // }
 
-// ApplyDamage はパーツインスタンスにダメージを適用し、メダロットの状態を更新します。
-func (dc *DamageCalculator) ApplyDamage(entry *donburi.Entry, partInst *PartInstanceData, damage int, battleLogic *BattleLogic) {
-	if damage < 0 {
-		damage = 0
-	}
-	partInst.CurrentArmor -= damage
-	if partInst.CurrentArmor <= 0 {
-		partInst.CurrentArmor = 0
-		partInst.IsBroken = true
-		settings := SettingsComponent.Get(entry)
-		// Get PartDefinition for logging PartName
-		partDef, defFound := dc.partInfoProvider.GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
-		partNameForLog := "(不明パーツ)"
-		if defFound {
-			partNameForLog = partDef.PartName
-		}
-		log.Print(dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
-			"ordered_args": []interface{}{settings.Name, partNameForLog, partInst.DefinitionID},
-		}))
 
-		// パーツ破壊時にバフを解除する
-		dc.partInfoProvider.RemoveBuffsFromSource(entry, partInst)
-	}
-}
 
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
 func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) (int, bool) {

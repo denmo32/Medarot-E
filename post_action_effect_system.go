@@ -1,20 +1,26 @@
 package main
 
 import (
+	"log"
+
 	"github.com/yohamta/donburi"
 )
 
 // PostActionEffectSystem は、アクション実行後の効果を処理するECSシステムです。
 type PostActionEffectSystem struct {
 	world              donburi.World
-	statusEffectSystem *StatusEffectSystem // StatusEffectSystemへの参照
+	statusEffectSystem *StatusEffectSystem
+	gameDataManager    *GameDataManager          // 追加
+	partInfoProvider   PartInfoProviderInterface // 追加
 }
 
 // NewPostActionEffectSystem は新しいPostActionEffectSystemのインスタンスを生成します。
-func NewPostActionEffectSystem(world donburi.World, statusEffectSystem *StatusEffectSystem) *PostActionEffectSystem {
+func NewPostActionEffectSystem(world donburi.World, statusEffectSystem *StatusEffectSystem, gameDataManager *GameDataManager, partInfoProvider PartInfoProviderInterface) *PostActionEffectSystem {
 	return &PostActionEffectSystem{
 		world:              world,
 		statusEffectSystem: statusEffectSystem,
+		gameDataManager:    gameDataManager,
+		partInfoProvider:   partInfoProvider,
 	}
 }
 
@@ -38,25 +44,48 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 		}
 	}
 
-	// 2. パーツ破壊による状態遷移
+	// 2. ダメージ適用とパーツ破壊の状態遷移
+	if result.TargetPartInstance != nil && result.DamageToApply > 0 {
+		// ダメージを適用
+		result.TargetPartInstance.CurrentArmor -= result.DamageToApply
+		if result.TargetPartInstance.CurrentArmor <= 0 {
+			result.TargetPartInstance.CurrentArmor = 0
+			result.TargetPartInstance.IsBroken = true
+		}
+		result.IsTargetPartBroken = result.TargetPartInstance.IsBroken // 結果に反映
+
+		// パーツ破壊時のログメッセージ
+		if result.TargetPartInstance.IsBroken {
+			settings := SettingsComponent.Get(result.TargetEntry)
+			partDef, defFound := s.gameDataManager.GetPartDefinition(result.TargetPartInstance.DefinitionID)
+			partNameForLog := "(不明パーツ)"
+			if defFound {
+				partNameForLog = partDef.PartName
+			}
+			log.Print(s.gameDataManager.Messages.FormatMessage("log_part_broken_notification", map[string]interface{}{
+				"ordered_args": []interface{}{settings.Name, partNameForLog, result.TargetPartInstance.DefinitionID},
+			}))
+
+			// パーツ破壊時にバフを解除する
+			s.partInfoProvider.RemoveBuffsFromSource(result.TargetEntry, result.TargetPartInstance)
+		}
+	}
+
+	// 3. 頭部パーツ破壊による機能停止
 	if result.TargetEntry != nil && result.TargetPartBroken && result.ActualHitPartSlot == PartSlotHead {
 		state := StateComponent.Get(result.TargetEntry)
 		state.CurrentState = StateBroken
 	}
 
-	// 3. 行動後のクリーンアップ
-	//    チャージ中に付与された効果で、持続時間が0のものを解除する
+	// 4. 行動後のクリーンアップ
 	if result.ActingEntry != nil && result.ActingEntry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(result.ActingEntry)
-		// このループ内でRemoveを呼ぶとスライスが変更されて危険なので、
-		// 解除すべきエフェクトを一旦リストアップする
 		effectsToRemove := []StatusEffect{}
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.RemainingDur == 0 {
 				effectsToRemove = append(effectsToRemove, activeEffect.EffectData.(StatusEffect))
 			}
 		}
-		// リストアップしたエフェクトを安全に解除する
 		for _, effect := range effectsToRemove {
 			s.statusEffectSystem.Remove(result.ActingEntry, effect)
 		}

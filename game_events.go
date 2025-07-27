@@ -220,6 +220,9 @@ type ActionResult struct {
 	DefendingPartType string // e.g., "頭部", "脚部"
 
 	AppliedEffects []interface{} // アクションによって適用されるステータス効果のデータ
+	DamageToApply      int                // 実際に適用するダメージ量
+	TargetPartInstance *PartInstanceData  // ダメージを受けるパーツインスタンスへのポインタ
+	IsTargetPartBroken bool               // ダメージ適用後にパーツが破壊されたか
 }
 
 // ActionAnimationData はアニメーションの再生に必要なデータを保持します。

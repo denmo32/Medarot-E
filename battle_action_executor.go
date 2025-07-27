@@ -20,8 +20,8 @@ type ActionExecutor struct {
 
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
 func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig *Config) *ActionExecutor {
-	statusEffectSystem := NewStatusEffectSystem(world)                             // Create once
-	postActionEffectSystem := NewPostActionEffectSystem(world, statusEffectSystem) // Use the created instance
+	statusEffectSystem := NewStatusEffectSystem(world)                                                              // Create once
+	postActionEffectSystem := NewPostActionEffectSystem(world, statusEffectSystem, battleLogic.GetPartInfoProvider().GetGameDataManager(), battleLogic.GetPartInfoProvider()) // Use the created instance
 
 	return &ActionExecutor{
 		world:                  world,

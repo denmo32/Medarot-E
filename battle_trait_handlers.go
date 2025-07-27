@@ -117,16 +117,20 @@ func applyDamageAndDefense(
 
 		finalDamage := battleLogic.GetDamageCalculator().CalculateReducedDamage(result.OriginalDamage, result.TargetEntry, battleLogic)
 		result.DamageDealt = finalDamage
-		battleLogic.GetDamageCalculator().ApplyDamage(result.TargetEntry, defendingPartInst, finalDamage, battleLogic)
-		result.TargetPartBroken = defendingPartInst.IsBroken
+		// ここで直接ダメージを適用せず、ActionResultに情報を格納
+		result.DamageToApply = finalDamage
+		result.TargetPartInstance = defendingPartInst
+		// result.TargetPartBroken はPostActionEffectSystemで設定される
 	} else {
 		result.ActionIsDefended = false
 		intendedTargetPartInstance := PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
 		result.DamageDealt = result.OriginalDamage
 		result.ActualHitPartSlot = result.TargetPartSlot
 
-		battleLogic.GetDamageCalculator().ApplyDamage(result.TargetEntry, intendedTargetPartInstance, result.OriginalDamage, battleLogic)
-		result.TargetPartBroken = intendedTargetPartInstance.IsBroken
+		// ここで直接ダメージを適用せず、ActionResultに情報を格納
+		result.DamageToApply = result.OriginalDamage
+		result.TargetPartInstance = intendedTargetPartInstance
+		// result.TargetPartBroken はPostActionEffectSystemで設定される
 	}
 }
 
