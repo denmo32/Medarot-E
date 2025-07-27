@@ -165,9 +165,21 @@ var PersonalityRegistry = map[string]AIPersonality{
 	},
 }
 
+type AssetPaths struct {
+	GameSettings string
+	Messages     string
+	MedalsCSV    string
+	PartsCSV     string
+	MedarotsCSV  string
+	FormulasJSON string
+	Font         string
+	Image        string
+}
+
 type Config struct {
-	Balance BalanceConfig
-	UI      UIConfig
+	Balance    BalanceConfig
+	UI         UIConfig
+	AssetPaths AssetPaths // 新しく追加
 }
 
 var FormulaManager map[Trait]ActionFormula

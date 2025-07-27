@@ -16,7 +16,7 @@ import (
 // Global resource loader
 var r *resource.Loader
 
-func initResources(audioContext *audio.Context) {
+func initResources(audioContext *audio.Context, assetPaths *AssetPaths) {
 	r = resource.NewLoader(audioContext)
 
 	// In a real application, you would use something like go:embed
@@ -36,22 +36,22 @@ func initResources(audioContext *audio.Context) {
 
 	// Register raw resources (our CSV files).
 	rawResources := map[resource.RawID]resource.RawInfo{
-		RawMedalsCSV:    {Path: "assets/databases/medals.csv"},
-		RawPartsCSV:     {Path: "assets/databases/parts.csv"},
-		RawMedarotsCSV:  {Path: "assets/databases/medarots.csv"},
-		RawFormulasJSON: {Path: "assets/configs/formulas.json"},
+		RawMedalsCSV:    {Path: assetPaths.MedalsCSV},
+		RawPartsCSV:     {Path: assetPaths.PartsCSV},
+		RawMedarotsCSV:  {Path: assetPaths.MedarotsCSV},
+		RawFormulasJSON: {Path: assetPaths.FormulasJSON},
 	}
 	r.RawRegistry.Assign(rawResources)
 
 	// Register font resources.
 	fontResources := map[resource.FontID]resource.FontInfo{
-		FontMPLUS1pRegular: {Path: "assets/fonts/MPLUS1p-Regular.ttf", Size: 9}, // フォントサイズ
+		FontMPLUS1pRegular: {Path: assetPaths.Font, Size: 9}, // フォントサイズ
 	}
 	r.FontRegistry.Assign(fontResources)
 
 	// Register image resources.
 	imageResources := map[resource.ImageID]resource.ImageInfo{
-		ImageBattleBackground: {Path: "assets/images/Gemini_Generated_Image_hojkprhojkprhojk.png"},
+		ImageBattleBackground: {Path: assetPaths.Image},
 	}
 	r.ImageRegistry.Assign(imageResources)
 }

@@ -67,7 +67,18 @@ func LoadConfig() Config {
 
 	// game_settings.json から設定をロード
 	var gameSettings GameSettings
-	jsonFile, err := ioutil.ReadFile("assets/configs/game_settings.json")
+	assetPaths := AssetPaths{
+		GameSettings: "assets/configs/game_settings.json",
+		Messages:     "assets/texts/messages.json",
+		MedalsCSV:    "assets/databases/medals.csv",
+		PartsCSV:     "assets/databases/parts.csv",
+		MedarotsCSV:  "assets/databases/medarots.csv",
+		FormulasJSON: "assets/configs/formulas.json",
+		Font:         "assets/fonts/MPLUS1p-Regular.ttf",
+		Image:        "assets/images/Gemini_Generated_Image_hojkprhojkprhojk.png",
+	}
+
+	jsonFile, err := ioutil.ReadFile(assetPaths.GameSettings)
 	if err != nil {
 		log.Fatalf("Error reading game_settings.json: %v", err)
 	}
@@ -77,7 +88,8 @@ func LoadConfig() Config {
 	}
 
 	cfg := Config{
-		Balance: BalanceConfig(gameSettings),
+		Balance:    BalanceConfig(gameSettings),
+		AssetPaths: assetPaths,
 		UI: UIConfig{
 			Screen: struct {
 				Width  int

@@ -20,6 +20,7 @@ var globalRand *rand.Rand
 func main() {
 	globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	config := LoadConfig()
 	wd, err := os.Getwd()
 	if err != nil {
 		// ここは標準のlogをそのまま使います
@@ -30,14 +31,21 @@ func main() {
 
 	// Initialize audio context for the resource loader
 	audioContext := audio.NewContext(44100)
-	initResources(audioContext)
+	initResources(audioContext, &config.AssetPaths)
+
+	formulas, err := LoadFormulas()
+	if err != nil {
+		log.Fatalf("Failed to load formulas: %v", err)
+	}
+	config.Balance.Formulas = formulas
+	SetupFormulaManager(&config)
 
 	fontFace, err := LoadFont(FontMPLUS1pRegular)
 	if err != nil {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	gameDataManager, err := NewGameDataManager(fontFace)
+	gameDataManager, err := NewGameDataManager(fontFace, &config.AssetPaths)
 	if err != nil {
 		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
 	}
@@ -51,21 +59,17 @@ func main() {
 		log.Fatalf("メダロットロードアウトの読み込みに失敗しました: %v", err)
 	}
 
-	gameData := &GameData{
-		Medarots: medarotLoadouts,
-	}
-
-	config := LoadConfig()
-	SetupFormulaManager(&config)
-
-	// bamennを使ったシーンマネージャをセットアップします
+		// bamennを使ったシーンマネージャをセットアップします
 	// 共有リソースを作成
 	// ボタン用のシンプルな画像を作成
 	buttonImage := ebiten.NewImage(30, 30)                           // 適当なサイズ
 	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色
 
-	res := &SharedResources{
-		GameData:        gameData,
+	// シーンマネージャを作成
+	manager := NewSceneManager(&SharedResources{
+		GameData: &GameData{
+			Medarots: medarotLoadouts,
+		},
 		Config:          config,
 		Font:            fontFace,
 		GameDataManager: gameDataManager,
@@ -74,10 +78,7 @@ func main() {
 			Hover:   image.NewNineSliceSimple(buttonImage, 10, 10),
 			Pressed: image.NewNineSliceSimple(buttonImage, 10, 10),
 		},
-	}
-
-	// シーンマネージャを作成
-	manager := NewSceneManager(res)
+	})
 
 	// Ebitenのゲームを実行します。渡すのはbamennのシーケンスです。
 	ebiten.SetWindowSize(config.UI.Screen.Width, config.UI.Screen.Height)
