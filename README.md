@@ -18,6 +18,12 @@ Core & Entry Point (中核・起動)
 *   `main.go`
     *   役割: プログラムの起動点（エントリーポイント）。
     *   内容: ウィンドウの初期化、フォントや設定ファイルの読み込み、ゲーム全体のメインループを開始し、`SceneManager` をセットアップします。
+*   `scene_manager.go`
+    *   役割: シーンの切り替えと管理を行います。
+    *   内容: `bamenn` ライブラリを使用して、ゲーム内の異なるシーン（タイトル、バトル、カスタマイズなど）間の遷移を制御します。
+*   `game_interfaces.go`
+    *   役割: ゲーム全体で利用される主要なインターフェースを定義します。
+    *   内容: `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。
 
 Scene (各画面の実装)
 -------------------
@@ -31,21 +37,21 @@ Scene (各画面の実装)
 *   `scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）、UI、ゲーム状態（StatePlaying, StateGameOverなど）を管理します。戦闘のコアロジックは`BattleLogic`構造体に集約されており、`BattleScene`はそれを介してダメージ計算やターゲット選択を行います。また、各戦闘システム（ゲージ進行、行動キュー処理など）を適切なタイミングで呼び出します。
 *   `scene_customize.go`: メダロットのカスタマイズ画面の実装。
 *   `scene_placeholder.go`: 未実装画面などのための、汎用的なプレースホルダー画面。
+*   `scene_test_ui.go`: UIのテストと検証のためのシーン。
 
 Battle Action (メダロットの行動)
 ---------------------------------------
 
 戦闘中の各メダロットが実行するアクション定義や処理です。
 
-*   `battle_action_formulas.go`: **[データ]** 戦闘アクション(行動)の計算式定義と管理。
-*   `battle_action_queue_component.go`
-    *   役割: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
-    *   内容: `ActionQueueComponentData` 構造体（行動するエンティティのキューを持つ）と、それに関連するComponentType、取得・初期化用関数を定義します。ワールドに一つ存在する専用エンティティがこのコンポーネントを持ちます。行動実行の順序制御に関わるデータを変更する場合に編集します。
+*   `battle_action_formulas.go`: 戦闘アクション(行動)の計算式定義と管理。
+*   `battle_action_queue_component.go`: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
 *   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。
 *   `battle_action_executor.go`: **[ロジック/振る舞い]** アクションの実行に関する主要なロジックをカプセル化します。特性や武器タイプごとの具体的な処理は、`battle_trait_handlers.go` および `battle_weapon_effect_handlers.go` に委譲されます。
 *   `battle_trait_handlers.go`: **[ロジック/振る舞い]** 各特性（Trait）に応じたアクションの実行ロジックを定義します。`BaseAttackHandler`、`SupportTraitExecutor`、`ObstructTraitExecutor` などが含まれます。
 *   `battle_weapon_effect_handlers.go`: **[ロジック/振る舞い]** 各武器タイプ（WeaponType）に応じた追加効果の適用ロジックを定義します。`ThunderEffectHandler`、`MeltEffectHandler`、`VirusEffectHandler` などが含まれます。
-*   `ui_event_processor_system.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、対応するゲームイベントを発行します。ゲームロジックとは直接やり取りせず、イベントを介して間接的に連携します。
+*   `charge_initiation_system.go`: **[ロジック/振る舞い]** メダロットが行動を開始する際のチャージ状態の開始ロジックを管理します。
+*   `post_action_effect_system.go`: **[ロジック/振る舞い]** アクション実行後のステータス効果の適用やパーツ破壊による状態遷移などを処理します。
 *   `battle_animation_manager.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの再生と管理を行います。
 
 Battle Logic & AI (戦闘ルールと思考)
@@ -56,11 +62,18 @@ Battle Logic & AI (戦闘ルールと思考)
 *   `battle_logic.go`
     *   役割: 戦闘中のコアな計算ロジック（Calculator群）。
     *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
+*   `battle_damage_calculator.go`: **[ロジック/振る舞い]** ダメージ計算に関するロジックを扱います。
+*   `battle_hit_calculator.go`: **[ロジック/振る舞い]** 命中・回避・防御判定に関するロジックを扱います。
+*   `battle_part_info_provider.go`: **[ロジック/振る舞い]** パーツの状態や情報を取得・操作するロジックを扱います。
+*   `battle_target_selector.go`: **[ロジック/振る舞い]** ターゲット選択やパーツ選択に関するロジックを扱います。
 *   `battle_end_system.go`: **[ロジック/振る舞い]** ゲーム終了条件判定システム。`CheckGameEndSystem` を定義します。
 *   `battle_gauge_system.go`: **[ロジック/振る舞い]** チャージゲージおよびクールダウンゲージの進行管理システム。`UpdateGaugeSystem` を定義します。
 *   `battle_intention_system.go`: **[ロジック/振る舞い]** プレイヤーとAIの入力を処理し、行動の「意図（Intention）」を生成するシステムです。
 *   `battle_targeting_algorithm.go`: **[ロジック/振る舞い]** ターゲット選択の具体的なアルゴリズムを定義します。
 *   `battle_targeting_strategy.go`: **[ロジック/振る舞い]** AIのターゲット選択戦略を定義します。
+*   `status_effect_logic.go`: **[データ/ロジック]** ステータス効果のインターフェースと具体的な効果（チャージ停止、継続ダメージなど）の定義。
+*   `status_effect_system.go`: **[ロジック/振る舞い]** ステータス効果の適用、更新、解除を管理するシステム。
+*   `battle_history_system.go`: **[ロジック/振る舞い]** アクションの結果に基づいてAIの行動履歴を更新するシステム。
 
 UI (ユーザーインターフェース)
 -----------------------
@@ -68,51 +81,61 @@ UI (ユーザーインターフェース)
 ゲームのユーザーインターフェース関連のファイルです。
 UIはECSアーキテクチャの原則に基づき、ゲームロジックから明確に分離することを目標にしています。
 
-*   `ui_panel.go`
-    *   役割: 汎用的なUIパネル（枠付きウィンドウ）の作成と管理。
-    *   内容: 他のUI要素（情報パネル、アクションモーダル、メッセージウィンドウなど）の基盤となる、再利用可能なパネルコンポーネントを提供します。
 *   `ui.go`
     *   役割: UI全体のレイアウトと管理、およびUIの状態管理（モーダルの表示状態など）。
     *   内容: EbitenUIのルートコンテナを構築し、各UI要素を配置します。UIイベントのハブとしても機能し、`BattleScene`に抽象化されたUIイベントを通知します。アニメーション描画の責務は`ui_animation_drawer.go`に委譲されています。
-*   `ui_animation_drawer.go`
-    *   役割: 戦闘中のアクションアニメーションの具体的な描画処理。
-    *   内容: `BattleAnimationManager`から受け取ったアニメーションデータに基づき、画面へのエフェクト描画（座標計算、拡大縮小、フェードなど）を行います。
+*   `ui_interfaces.go`
+    *   役割: UIコンポーネントが満たすべきインターフェースを定義します。
+    *   内容: `UIInterface`など、UIの描画とイベント処理に必要なメソッドを定義します。
+*   `ui_factory.go`
+    *   役割: UIコンポーネントの生成とスタイリングを一元的に管理するファクトリ。
+    *   内容: `NewCyberpunkButton`など、共通のスタイルを持つUI要素を生成するメソッドを提供します。
+*   `ui_image_generator.go`
+    *   役割: UIコンポーネントの画像生成ロジックをカプセル化します。
+    *   内容: サイバーパンク風のボタンやパネルの背景画像を生成するメソッドを提供します。
+*   `ui_panel.go`
+    *   役割: 汎用的なUIパネル（枠付きウィンドウ）の作成と管理。
+    *   内容: 他のUI要素（情報パネル、アクションモーダル、メッセージウィンドウなど）の基盤となる、再利用可能なパネルコンポーネントを提供します。
+*   `ui_viewmodels.go`
+    *   役割: UI表示に必要な整形済みデータ（ViewModel）の定義。
+    *   内容: `InfoPanelViewModel`, `ActionModalViewModel`, `BattlefieldViewModel`など、UIがECSの内部構造に直接依存しないためのデータ構造を定義します。
 *   `view_model_factory.go`: **[ロジック/振る舞い]** ECSのデータからUI表示用のViewModelを構築するファクトリ。`InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。これにより、UIはECSの内部構造に直接依存しません。
 *   `ui_battlefield_widget.go`: 中央のバトルフィールド描画。ViewModelを受け取って描画します。
 *   `ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。ViewModelを受け取って描画します。
 *   `ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。UIイベントを発行し、ViewModelを使用して表示します。
+*   `ui_action_modal_manager.go`: **[ロジック/振る舞い]** アクション選択モーダルの表示と状態を管理します。
 *   `ui_message_window.go`: 画面下のメッセージウィンドウ。
 *   `ui_message_display_manager.go`: **[ロジック/振る舞い]** ゲーム内のメッセージ表示（キュー管理、ウィンドウ表示/非表示、進行）を管理します。
+*   `ui_animation_drawer.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの具体的な描画処理。
+*   `ui_event_processor_system.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、対応するゲームイベントを発行します。ゲームロジックとは直接やり取りせず、イベントを介して間接的に連携します。
+*   `ui_system.go`: **[ロジック/振る舞い]** UI関連のECSシステムを定義します。主に`UpdateInfoPanelViewModelSystem`が含まれ、情報パネルのViewModelを更新します。
+*   `ui_target_indicator_manager.go`: **[ロジック/振る舞い]** ターゲットインジケーターの表示と状態を管理します。
 
-Data & Utilities (データ定義と補助機能)
+Core Data & Utilities (コアデータとユーティリティ)
 ------------------------------------
 
-プロジェクト全体で使用するデータ構造や補助的な機能です。
+プロジェクト全体で使用する基本的なデータ構造や補助的な機能です。
 
-*   `data_balance_config.go`: ゲームバランスに関する設定値を定義します。
-*   `data_config.go`
-    *   役割: ゲームの固定設定値を管理します。
-    *   内容: ゲームバランス（攻撃力係数など）、UIのサイズや色といった、マジックナンバーになりがちな値を一元管理します。
-*   `data_csv_saver.go`
-    *   役割: メダロット構成のデータをCSVファイルに保存します。
-    *   内容: `scene_customize.go` から呼び出され、現在のメダロットのロードアウトを `data/medarots.csv` に保存します。
-*   `data_resource_manager.go`
-    *   役割: `ebitengine-resource` を使用したゲームリソース（CSVデータ、フォントなど）の読み込みと管理。
-    *   内容: リソースの登録、キャッシュ、および `text.Face` への変換機能を提供します。CSVファイルのロード機能もここに集約されています。
-*   `data_game_manager.go`
-    *   役割: 静的なゲームデータ（パーツ定義、メダル定義、フォントなど）の管理。
-    *   内容: `GlobalGameDataManager` インスタンスを通じて、ロードされた各種定義データへのアクセスを提供します。
-*   `data_components.go`
-    *   役割: **[データ]** の定義。ECSの「C（コンポーネント）」。
-    *   内容: エンティティを構成する部品（`Settings`, `PartsComponentData`, `Gauge`など）、状態を示すタグ（`DefenseDebuffComponent`, `EvasionDebuffComponent`など）、行動の意図（`ActionIntent`）、ターゲット情報（`Target`）、AI関連データ（`AI`）のデータ構造をすべて定義します。新しいデータ、状態、エンティティに持たせる特性を追加したい場合は、まずこのファイルを編集します。
-*   `data_setup.go`
-    *   役割: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
-    *   内容: CSVから読み込んだデータをもとに、戦闘に参加する全メダロットのエンティティと、その初期状態に必要な各種コンポーネント（`Settings`, `Parts`, `Medal`, `AIComponent`、`ActionIntentComponent`、`TargetComponent`等）を作成・設定します。新しいコンポーネントをエンティティの初期状態に追加する場合や、初期設定ロジックを変更する場合に編集します。
-*   `data_message_manager.go`: ゲーム内のメッセージを管理します。
-*   `data_game_events.go`: ゲーム内で発生するイベントの定義。
-*   `data_game_types.go`: ゲーム全体で使われる基本的な型や定数、UI用のViewModel、およびUIイベントの定義。
-*   `data_status_effects.go`: ステータス効果に関する定義。
-*   `data_ui_types.go`: UI関連の型定義。
+*   `domain_types.go`: ゲーム全体で使われる基本的な型や定数、UI用のViewModel、およびUIイベントの定義。
+*   `ecs_components.go`: **[データ]** ECSの「C（コンポーネント）」の定義。エンティティを構成する部品や状態を示すタグのデータ構造を定義します。
+*   `ecs_setup_logic.go`: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
+*   `game_events.go`: ゲーム内で発生するイベントの定義。
+*   `utils.go`: 文字列のパースや状態表示名取得などの汎用ユーティリティ関数。
+
+Configuration & Resources (設定とリソース)
+------------------------------------
+
+ゲームの設定値や外部リソースの読み込み・管理に関するファイル群です。
+
+*   `config_loader.go`: ゲームの固定設定値（画面サイズ、色など）をロードします。
+*   `game_config.go`: ゲームバランスに関する設定値やUIの固定値を定義します。
+*   `resource_ids.go`: `ebitengine-resource` ライブラリで使用するリソースIDを定義します。
+*   `resource_loader.go`: `ebitengine-resource` を使用したゲームリソース（CSVデータ、フォントなど）の読み込みと管理。
+*   `game_data_manager_logic.go`: 静的なゲームデータ（パーツ定義、メダル定義など）の管理とアクセスを提供します。
+*   `message_manager_logic.go`: ゲーム内のメッセージテンプレートの読み込みとフォーマットを管理します。
+*   `csv_saver_logic.go`: メダロット構成のデータをCSVファイルに保存します。
 
 **今後の検討事項**
-*   **テストカバレッジの向上:** リファクタリングされたUIロジックとViewModelのテストを追加することで、コードの堅牢性を高めます。
+*   **依存関係の逆転:** `BattleLogic`が`PartInfoProvider`などのヘルパーを直接保持しているが、これらをインターフェースとして抽出し、依存関係を逆転させることで、テスト容易性と柔軟性を向上させる。
+*   **UIイベントの粒度:** UIイベントが`donburi.Entity`のIDを直接持つのではなく、より抽象的な情報を持つように変更し、UI層とECS層の結合度をさらに下げる。
+*   **設定値の外部化:** `game_config.go`で定義されているゲームバランスに関する設定値を、JSONやYAMLなどの外部ファイルに完全に移行し、コードの再コンパイルなしで調整可能にする。
