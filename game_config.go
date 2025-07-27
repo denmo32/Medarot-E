@@ -182,7 +182,7 @@ type Config struct {
 	AssetPaths AssetPaths // 新しく追加
 }
 
-var FormulaManager map[Trait]ActionFormula
+
 
 type UIConfig struct {
 	Screen struct {

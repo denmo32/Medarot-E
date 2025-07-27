@@ -8,6 +8,29 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
+// InitializeBattleWorld は戦闘ワールドのECSエンティティを初期化します。
+func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam TeamID) {
+	EnsureActionQueueEntity(world)
+
+	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
+	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{
+		Buffs: make(map[TeamID]map[BuffType][]*BuffSource),
+	})
+
+	// Initialize BattleUIStateComponent
+	battleUIStateEntry := world.Entry(world.Create(BattleUIStateComponent))
+	if battleUIStateEntry.Valid() {
+		BattleUIStateComponent.SetValue(battleUIStateEntry, BattleUIState{
+			InfoPanels: make(map[string]InfoPanelViewModel),
+		})
+		log.Println("BattleUIStateComponent successfully created and initialized.")
+	} else {
+		log.Println("ERROR: Failed to create BattleUIStateComponent entry.")
+	}
+
+	CreateMedarotEntities(world, res.GameData, playerTeam, res.GameDataManager)
+}
+
 // CreateMedarotEntities はゲームデータからECSのエンティティを生成します。
 func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam TeamID, gameDataManager *GameDataManager) {
 	for _, loadout := range gameData.Medarots {

@@ -228,3 +228,8 @@ func (u *UI) ClearAnimation() {
 func (u *UI) GetCurrentAnimationResult() ActionResult {
 	return u.animationDrawer.animationManager.currentAnimation.Result
 }
+
+// GetMessageDisplayManager はメッセージ表示マネージャーを返します。
+func (u *UI) GetMessageDisplayManager() *UIMessageDisplayManager {
+	return u.messageManager
+}

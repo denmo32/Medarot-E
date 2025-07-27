@@ -27,4 +27,5 @@ type UIInterface interface {
 	SetCurrentTarget(entry *donburi.Entry)
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle
+	GetMessageDisplayManager() *UIMessageDisplayManager // 追加
 }

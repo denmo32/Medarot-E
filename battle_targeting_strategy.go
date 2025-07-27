@@ -78,16 +78,16 @@ func aiSelectAction(
 			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
 			return
 		}
-		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, battleLogic)
+		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, battleLogic, battleLogic.GetPartInfoProvider().GetGameDataManager())
 	case CategoryMelee:
 		// 格闘の場合はターゲット選択が不要なので、nilを渡す
-		StartCharge(entry, slotKey, nil, "", world, battleLogic)
+		StartCharge(entry, slotKey, nil, "", world, battleLogic, battleLogic.GetPartInfoProvider().GetGameDataManager())
 	case CategoryIntervention:
 		if targetEntry == nil {
 			log.Printf("%s: AIは[介入]の対象がいないため待機。", settings.Name)
 			return
 		}
-		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, battleLogic)
+		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, battleLogic, battleLogic.GetPartInfoProvider().GetGameDataManager())
 	default:
 		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
 	}

@@ -10,13 +10,15 @@ import (
 type ChargeInitiationSystem struct {
 	world            donburi.World
 	partInfoProvider PartInfoProviderInterface
+	gameDataManager  *GameDataManager
 }
 
 // NewChargeInitiationSystem は新しいChargeInitiationSystemのインスタンスを生成します。
-func NewChargeInitiationSystem(world donburi.World, partInfoProvider PartInfoProviderInterface) *ChargeInitiationSystem {
+func NewChargeInitiationSystem(world donburi.World, partInfoProvider PartInfoProviderInterface, gdm *GameDataManager) *ChargeInitiationSystem {
 	return &ChargeInitiationSystem{
 		world:            world,
 		partInfoProvider: partInfoProvider,
+		gameDataManager:  gdm,
 	}
 }
 
@@ -69,7 +71,7 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 	}
 
 	// 1. 計算式の取得
-	formula, ok := FormulaManager[actingPartDef.Trait]
+	formula, ok := s.gameDataManager.Formulas[actingPartDef.Trait]
 	if !ok {
 		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。", actingPartDef.Trait)
 	} else {

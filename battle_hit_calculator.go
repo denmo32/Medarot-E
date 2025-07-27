@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/yohamta/donburi"
 )
@@ -11,11 +12,12 @@ type HitCalculator struct {
 	world            donburi.World
 	config           *Config
 	partInfoProvider PartInfoProviderInterface
+	rand             *rand.Rand // 追加
 }
 
 // NewHitCalculator は新しい HitCalculator のインスタンスを生成します。
-func NewHitCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface) *HitCalculator {
-	return &HitCalculator{world: world, config: config, partInfoProvider: pip}
+func NewHitCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface, r *rand.Rand) *HitCalculator {
+	return &HitCalculator{world: world, config: config, partInfoProvider: pip, rand: r}
 }
 
 // CalculateHit は新しいルールに基づいて命中判定を行います。
@@ -40,7 +42,7 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 		chance = hc.config.Balance.Hit.MaxChance
 	}
 
-	roll := globalRand.Intn(100)
+	roll := hc.rand.Intn(100)
 	log.Print(hc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("log_hit_roll", map[string]interface{}{
 		"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, successRate, evasion, roll},
 	}))
@@ -48,7 +50,7 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 }
 
 // CalculateDefense は防御の成否を判定します。
-func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) bool {
+func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey) bool {
 	// 攻撃側の成功度
 	successRate := hc.partInfoProvider.GetSuccessRate(attacker, actingPartDef, selectedPartKey)
 
@@ -66,7 +68,7 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 		chance = hc.config.Balance.Defense.MaxChance
 	}
 
-	roll := globalRand.Intn(100)
+	roll := hc.rand.Intn(100)
 	log.Print(hc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("log_defense_roll", map[string]interface{}{
 		"ordered_args": []interface{}{SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll},
 	}))

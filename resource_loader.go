@@ -62,12 +62,23 @@ func LoadFont(id resource.FontID) (text.Face, error) {
 }
 
 // LoadFormulas loads action formulas from the JSON resource.
-func LoadFormulas() (map[Trait]ActionFormulaConfig, error) {
+func LoadFormulas() (map[Trait]ActionFormula, error) {
 	res := r.LoadRaw(RawFormulasJSON)
-	var formulas map[Trait]ActionFormulaConfig
-	err := json.Unmarshal(res.Data, &formulas)
+	var formulasConfig map[Trait]ActionFormulaConfig
+	err := json.Unmarshal(res.Data, &formulasConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal formulas data: %w", err)
+	}
+
+	formulas := make(map[Trait]ActionFormula)
+	for trait, formulaCfg := range formulasConfig {
+		formulas[trait] = ActionFormula{
+			ID:                 string(trait),
+			SuccessRateBonuses: formulaCfg.SuccessRateBonuses,
+			PowerBonuses:       formulaCfg.PowerBonuses,
+			CriticalRateBonus:  formulaCfg.CriticalRateBonus,
+			UserDebuffs:        formulaCfg.UserDebuffs,
+		}
 	}
 	return formulas, nil
 }

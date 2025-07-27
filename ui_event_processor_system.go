@@ -90,7 +90,6 @@ func UpdateUIEventProcessorSystem(
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
 			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
-			gameEvents = append(gameEvents, e) // GameEventとしてActionCanceledGameEventを発行
 			nextState = StatePlaying           // 行動キャンセル後はPlaying状態に戻る
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:

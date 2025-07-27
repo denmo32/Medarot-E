@@ -12,15 +12,17 @@ type GameDataManager struct {
 	medalDefinitions map[string]*Medal // Medal構造体は今のところ主に定義情報と仮定
 	Messages         *MessageManager   // メッセージマネージャー
 	Font             text.Face         // UIで使用するフォント
+	Formulas         map[Trait]ActionFormula // 追加: アクション計算式
 	// 他のゲームデータ定義もここに追加できます
 }
 
 // NewGameDataManager はGameDataManagerの新しいインスタンスを作成し、初期化します。
 func NewGameDataManager(font text.Face, assetPaths *AssetPaths) (*GameDataManager, error) {
-	gdm := &GameDataManager{
+		gdm := &GameDataManager{
 		partDefinitions:  make(map[string]*PartDefinition),
 		medalDefinitions: make(map[string]*Medal),
 		Font:             font,
+		Formulas:         make(map[Trait]ActionFormula), // 初期化
 	}
 
 	// メッセージマネージャーの初期化

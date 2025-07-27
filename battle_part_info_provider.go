@@ -135,7 +135,7 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 	successRate := float64(actingPartDef.Accuracy)
 
 	// 特性によるボーナスを加算
-	formula, ok := FormulaManager[actingPartDef.Trait]
+	formula, ok := pip.gameDataManager.Formulas[actingPartDef.Trait]
 	if ok {
 		for _, bonus := range formula.SuccessRateBonuses {
 			// 攻撃パーツのパラメータを参照するように変更

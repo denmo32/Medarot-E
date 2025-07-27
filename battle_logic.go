@@ -1,6 +1,9 @@
 package main
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -12,6 +15,7 @@ type BattleLogic struct {
 	hitCalculator    *HitCalculator
 	targetSelector   *TargetSelector
 	partInfoProvider PartInfoProviderInterface
+	rand             *rand.Rand // 追加: 乱数生成器
 }
 
 // GetDamageCalculator は DamageCalculator のインスタンスを返します。
@@ -39,18 +43,14 @@ func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDa
 	bl := &BattleLogic{
 		world:  world,  // worldフィールドを初期化
 		config: config, // configフィールドを初期化
+		rand:   rand.New(rand.NewSource(time.Now().UnixNano())), // 乱数生成器を初期化
 	}
 
 	// ヘルパーを初期化
 	bl.partInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
-	bl.damageCalculator = NewDamageCalculator(world, config, bl.partInfoProvider)
-	bl.hitCalculator = NewHitCalculator(world, config, bl.partInfoProvider)
+		bl.damageCalculator = NewDamageCalculator(world, config, bl.partInfoProvider, gameDataManager, bl.rand)
+			bl.hitCalculator = NewHitCalculator(world, config, bl.partInfoProvider, bl.rand)
 	bl.targetSelector = NewTargetSelector(world, config, bl.partInfoProvider)
-
-	// ヘルパー間の依存性注入は不要になったため削除
-	// bl.damageCalculator.SetPartInfoProvider(bl.partInfoProvider)
-	// bl.hitCalculator.SetPartInfoProvider(bl.partInfoProvider)
-	// bl.targetSelector.SetPartInfoProvider(bl.partInfoProvider)
 
 	return bl
 }

@@ -99,7 +99,7 @@ func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry,
 		})
 		return vulnerableInstances[0]
 	default: // "ジョーカー" やその他の性格
-		return vulnerableInstances[globalRand.Intn(len(vulnerableInstances))]
+		return vulnerableInstances[battleLogic.rand.Intn(len(vulnerableInstances))]
 	}
 }
 

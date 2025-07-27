@@ -3,9 +3,7 @@ package main
 import (
 	"image/color"
 	"log"
-	"math/rand"
 	"os"
-	"time"
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -14,11 +12,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
-var globalRand *rand.Rand
-
 // main関数がエントリーポイントであることは変わりません
 func main() {
-	globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	config := LoadConfig()
 	wd, err := os.Getwd()
@@ -33,13 +28,6 @@ func main() {
 	audioContext := audio.NewContext(44100)
 	initResources(audioContext, &config.AssetPaths)
 
-	formulas, err := LoadFormulas()
-	if err != nil {
-		log.Fatalf("Failed to load formulas: %v", err)
-	}
-	config.Balance.Formulas = formulas
-	SetupFormulaManager(&config)
-
 	fontFace, err := LoadFont(FontMPLUS1pRegular)
 	if err != nil {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
@@ -49,6 +37,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
 	}
+
+	formulas, err := LoadFormulas()
+	if err != nil {
+		log.Fatalf("Failed to load formulas: %v", err)
+	}
+	gameDataManager.Formulas = formulas
 
 	if err := LoadAllStaticGameData(gameDataManager); err != nil {
 		log.Fatalf("静的ゲームデータの読み込みに失敗しました: %v", err)

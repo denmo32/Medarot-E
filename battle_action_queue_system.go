@@ -82,7 +82,8 @@ func StartCharge(
 	targetPartSlot PartSlotKey,
 	world donburi.World,
 	battleLogic *BattleLogic, // battleLogic を追加
+	gameDataManager *GameDataManager,
 ) bool {
-	system := NewChargeInitiationSystem(world, battleLogic.GetPartInfoProvider()) // battleLogic から取得
+	system := NewChargeInitiationSystem(world, battleLogic.GetPartInfoProvider(), gameDataManager) // battleLogic から取得
 	return system.ProcessChargeRequest(entry, partKey, targetEntry, targetPartSlot)
 }

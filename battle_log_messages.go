@@ -51,7 +51,7 @@ func buildActionLogMessagesFromActionResult(result ActionResult, gameDataManager
 		}
 
 		// パーツ破壊メッセージ
-		if result.TargetPartBroken {
+		if result.IsTargetPartBroken {
 			messages = append(messages, gameDataManager.Messages.FormatMessage("part_broken", map[string]interface{}{
 				"target_name":      result.DefenderName,
 				"target_part_name": result.TargetPartType,

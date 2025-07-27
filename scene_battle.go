@@ -46,38 +46,19 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		playerActionPendingQueue: make([]*donburi.Entry, 0),
 		winner:                   TeamNone,
 		uiEventChannel:           make(chan UIEvent, 10),
+		battleUIState:            &BattleUIState{}, // ← これを追加
 	}
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
-	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic)                                                         // worldをそのまま渡す
-	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages) // UIFactoryを初期化
+	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic)
+	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
-	EnsureActionQueueEntity(bs.world)
 
-	teamBuffsEntry := bs.world.Entry(bs.world.Create(TeamBuffsComponent))
-	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{
-		Buffs: make(map[TeamID]map[BuffType][]*BuffSource),
-	})
+	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
-	// Initialize BattleUIStateComponent
-	battleUIStateEntry := bs.world.Entry(bs.world.Create(BattleUIStateComponent))
-	if battleUIStateEntry.Valid() {
-		bs.battleUIState = &BattleUIState{
-			InfoPanels: make(map[string]InfoPanelViewModel),
-		}
-		BattleUIStateComponent.SetValue(battleUIStateEntry, *bs.battleUIState)
-		log.Println("BattleUIStateComponent successfully created and initialized.")
-	} else {
-		log.Println("ERROR: Failed to create BattleUIStateComponent entry.")
-	}
-
-	CreateMedarotEntities(bs.world, res.GameData, bs.playerTeam, bs.resources.GameDataManager)
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
 	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager, bs.world)
-	// ui.goでuiFactoryが初期化され、ui.messageManagerもuiFactoryを使って初期化されるため、
-	// ここでbs.messageManagerを直接初期化する必要はない。
-	// bs.messageManager = NewUIMessageDisplayManager(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages, bs.ui.GetRootContainer())
-	bs.messageManager = bs.ui.(*UI).messageManager // uiからmessageManagerを取得
+	bs.messageManager = bs.ui.GetMessageDisplayManager() // uiからmessageManagerを取得
 
 	// Initialize state machine
 	bs.states = map[GameState]BattleState{
@@ -260,7 +241,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 				break
 			}
 			// ChargeInitiationSystem を呼び出す
-			successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, bs.battleLogic)
+			successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, bs.battleLogic, bs.resources.GameDataManager)
 			if !successful {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加

@@ -109,13 +109,13 @@ func applyDamageAndDefense(
 ) {
 	defendingPartInst := battleLogic.GetTargetSelector().SelectDefensePart(result.TargetEntry, battleLogic)
 
-	if defendingPartInst != nil && battleLogic.GetHitCalculator().CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey, battleLogic) {
+	if defendingPartInst != nil && battleLogic.GetHitCalculator().CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey) {
 		result.ActionIsDefended = true
 		defendingPartDef, _ := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(defendingPartInst.DefinitionID)
 		result.DefendingPartType = string(defendingPartDef.Type)
 		result.ActualHitPartSlot = battleLogic.GetPartInfoProvider().FindPartSlot(result.TargetEntry, defendingPartInst)
 
-		finalDamage := battleLogic.GetDamageCalculator().CalculateReducedDamage(result.OriginalDamage, result.TargetEntry, battleLogic)
+		finalDamage := battleLogic.GetDamageCalculator().CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
 		result.DamageDealt = finalDamage
 		// ここで直接ダメージを適用せず、ActionResultに情報を格納
 		result.DamageToApply = finalDamage
