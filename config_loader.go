@@ -67,7 +67,7 @@ func LoadConfig() Config {
 
 	// game_settings.json から設定をロード
 	var gameSettings GameSettings
-	jsonFile, err := ioutil.ReadFile("data/game_settings.json")
+	jsonFile, err := ioutil.ReadFile("assets/configs/game_settings.json")
 	if err != nil {
 		log.Fatalf("Error reading game_settings.json: %v", err)
 	}

@@ -36,22 +36,22 @@ func initResources(audioContext *audio.Context) {
 
 	// Register raw resources (our CSV files).
 	rawResources := map[resource.RawID]resource.RawInfo{
-		RawMedalsCSV:    {Path: "data/medals.csv"},
-		RawPartsCSV:     {Path: "data/parts.csv"},
-		RawMedarotsCSV:  {Path: "data/medarots.csv"},
-		RawFormulasJSON: {Path: "data/formulas.json"},
+		RawMedalsCSV:    {Path: "assets/databases/medals.csv"},
+		RawPartsCSV:     {Path: "assets/databases/parts.csv"},
+		RawMedarotsCSV:  {Path: "assets/databases/medarots.csv"},
+		RawFormulasJSON: {Path: "assets/configs/formulas.json"},
 	}
 	r.RawRegistry.Assign(rawResources)
 
 	// Register font resources.
 	fontResources := map[resource.FontID]resource.FontInfo{
-		FontMPLUS1pRegular: {Path: "MPLUS1p-Regular.ttf", Size: 9}, // フォントサイズ
+		FontMPLUS1pRegular: {Path: "assets/fonts/MPLUS1p-Regular.ttf", Size: 9}, // フォントサイズ
 	}
 	r.FontRegistry.Assign(fontResources)
 
 	// Register image resources.
 	imageResources := map[resource.ImageID]resource.ImageInfo{
-		ImageBattleBackground: {Path: "image/Gemini_Generated_Image_hojkprhojkprhojk.png"},
+		ImageBattleBackground: {Path: "assets/images/Gemini_Generated_Image_hojkprhojkprhojk.png"},
 	}
 	r.ImageRegistry.Assign(imageResources)
 }

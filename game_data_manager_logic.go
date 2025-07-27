@@ -24,7 +24,7 @@ func NewGameDataManager(font text.Face) (*GameDataManager, error) {
 	}
 
 	// メッセージマネージャーの初期化
-	messageManager, err := NewMessageManager("data/messages.json")
+	messageManager, err := NewMessageManager("assets/texts/messages.json")
 	if err != nil {
 		return nil, fmt.Errorf("メッセージマネージャーの初期化に失敗しました: %w", err)
 	}
