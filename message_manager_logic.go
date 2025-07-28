@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"regexp"
 	"strings"
+
+	resource "github.com/quasilyte/ebitengine-resource" // resource パッケージを追加
 )
 
 var placeholderRegex = regexp.MustCompile(`{(\w+)}`)
@@ -14,12 +15,14 @@ var placeholderRegex = regexp.MustCompile(`{(\w+)}`)
 // MessageManager handles loading and retrieving formatted messages.
 type MessageManager struct {
 	messages map[string]string
+	loader   *resource.Loader // resource.Loader を追加
 }
 
 // NewMessageManager creates and initializes a new MessageManager.
-func NewMessageManager(filePath string) (*MessageManager, error) {
+func NewMessageManager(filePath string, loader *resource.Loader) (*MessageManager, error) {
 	mm := &MessageManager{
 		messages: make(map[string]string),
+		loader:   loader, // loader を設定
 	}
 	err := mm.LoadMessages(filePath)
 	if err != nil {
@@ -28,23 +31,19 @@ func NewMessageManager(filePath string) (*MessageManager, error) {
 	return mm, nil
 }
 
-// LoadMessages loads message templates from a JSON file.
+// LoadMessages loads message templates from a JSON file using the resource loader.
 func (mm *MessageManager) LoadMessages(filePath string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("could not open message file %s: %w", filePath, err)
-	}
-	defer file.Close()
-
-	bytes, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("could not read message file %s: %w", filePath, err)
+	// resource loader を使用してメッセージデータをロード
+	// filePath は assetPaths.Messages から来るので、RawMessagesJSON を使用
+	res := mm.loader.LoadRaw(RawMessagesJSON)
+	if res.Data == nil { // res.Data が nil かどうかでチェック
+		return fmt.Errorf("could not load message resource %s: data is nil", filePath)
 	}
 
 	var templates []MessageTemplate
-	err = json.Unmarshal(bytes, &templates)
+	err := json.Unmarshal(res.Data, &templates)
 	if err != nil {
-		return fmt.Errorf("could not parse message file %s: %w", filePath, err)
+		return fmt.Errorf("could not parse message data from %s: %w", filePath, err)
 	}
 
 	for _, t := range templates {

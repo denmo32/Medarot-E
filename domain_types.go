@@ -205,3 +205,9 @@ type EvasionDebuffEffect struct {
 type DefenseDebuffEffect struct {
 	Multiplier float64
 }
+
+// ActionTarget はUIが選択したアクションのターゲット情報を保持します。
+type ActionTarget struct {
+	TargetEntityID donburi.Entity // ターゲットエンティティのID
+	Slot           PartSlotKey    // ターゲットパーツのスロット
+}

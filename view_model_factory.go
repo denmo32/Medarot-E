@@ -115,7 +115,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		}
 
 		vm.Icons = append(vm.Icons, &IconViewModel{
-			EntryID:       uint32(entry.Id()),
+			EntryID:       entry.Entity(), // uint32(entry.Id()) から entry.Entity() に変更
 			X:             x,
 			Y:             y,
 			Color:         iconColor,
@@ -159,16 +159,12 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 
 		for _, available := range displayableParts {
 			targetInfo := actionTargetMap[available.Slot]
-			var targetEntityID donburi.Entity
-			if targetInfo.Target != nil {
-				targetEntityID = targetInfo.Target.Entity()
-			}
 			buttons = append(buttons, ActionModalButtonViewModel{
 				PartName:          available.PartDef.PartName,
 				PartCategory:      available.PartDef.Category,
 				SlotKey:           available.Slot,
 				IsBroken:          available.IsBroken,
-				TargetEntityID:    targetEntityID,
+				TargetEntityID:    targetInfo.TargetEntityID, // TargetEntityID を直接使用
 				TargetPartSlot:    targetInfo.Slot,
 				SelectedPartDefID: available.PartDef.ID,
 			})

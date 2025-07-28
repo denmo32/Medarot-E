@@ -6,7 +6,7 @@ import (
 
 // UITargetIndicatorManager はターゲットインジケーターの表示と状態を管理します。
 type UITargetIndicatorManager struct {
-	currentTarget *donburi.Entry // 現在ターゲットとして表示されているエンティティ
+	currentTarget donburi.Entity // 現在ターゲットとして表示されているエンティティのID
 }
 
 // NewUITargetIndicatorManager は新しいUITargetIndicatorManagerのインスタンスを作成します。
@@ -15,16 +15,16 @@ func NewUITargetIndicatorManager() *UITargetIndicatorManager {
 }
 
 // SetCurrentTarget は現在のターゲットを設定します。
-func (m *UITargetIndicatorManager) SetCurrentTarget(entry *donburi.Entry) {
-	m.currentTarget = entry
+func (m *UITargetIndicatorManager) SetCurrentTarget(entityID donburi.Entity) {
+	m.currentTarget = entityID
 }
 
 // ClearCurrentTarget は現在のターゲットをクリアします。
 func (m *UITargetIndicatorManager) ClearCurrentTarget() {
-	m.currentTarget = nil
+	m.currentTarget = 0 // donburi.Entity のゼロ値
 }
 
-// GetCurrentTarget は現在のターゲットエンティティを返します。
-func (m *UITargetIndicatorManager) GetCurrentTarget() *donburi.Entry {
+// GetCurrentTarget は現在のターゲットエンティティのIDを返します。
+func (m *UITargetIndicatorManager) GetCurrentTarget() donburi.Entity {
 	return m.currentTarget
 }

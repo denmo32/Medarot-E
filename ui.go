@@ -77,7 +77,7 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAnimationManager, uiFactory *UIFactory, gameDataManager *GameDataManager, world donburi.World) *UI {
+func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAnimationManager, uiFactory *UIFactory, gameDataManager *GameDataManager) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
@@ -129,7 +129,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAn
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
-	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, world)
+	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory)
 	ui.targetIndicatorManager = NewUITargetIndicatorManager()
 	return ui
 }
@@ -155,8 +155,8 @@ func (u *UI) GetActionTargetMap() map[PartSlotKey]ActionTarget {
 }
 
 // SetCurrentTarget は現在のターゲットを設定します。
-func (u *UI) SetCurrentTarget(entry *donburi.Entry) {
-	u.targetIndicatorManager.SetCurrentTarget(entry)
+func (u *UI) SetCurrentTarget(entityID donburi.Entity) {
+	u.targetIndicatorManager.SetCurrentTarget(entityID)
 }
 
 // ClearCurrentTarget は現在のターゲットをクリアします。
@@ -173,9 +173,9 @@ func (u *UI) Update() {
 func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
 	var indicatorTargetVM *IconViewModel
-	if u.targetIndicatorManager.GetCurrentTarget() != nil && u.battlefieldWidget.viewModel != nil {
+	if u.targetIndicatorManager.GetCurrentTarget() != 0 && u.battlefieldWidget.viewModel != nil { // 0はdonburi.Entityのゼロ値
 		for _, iconVM := range u.battlefieldWidget.viewModel.Icons {
-			if iconVM.EntryID == uint32(u.targetIndicatorManager.GetCurrentTarget().Id()) {
+			if iconVM.EntryID == u.targetIndicatorManager.GetCurrentTarget() { // uint32 へのキャストを削除
 				indicatorTargetVM = iconVM
 				break
 			}

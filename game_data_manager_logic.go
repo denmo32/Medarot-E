@@ -4,21 +4,22 @@ import (
 	"fmt"
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	resource "github.com/quasilyte/ebitengine-resource" // resource パッケージを追加
 )
 
 // GameDataManager はパーツやメダルなどのすべての静적ゲームデータ定義とメッセージを保持します。
 type GameDataManager struct {
 	partDefinitions  map[string]*PartDefinition
-	medalDefinitions map[string]*Medal // Medal構造体は今のところ主に定義情報と仮定
-	Messages         *MessageManager   // メッセージマネージャー
-	Font             text.Face         // UIで使用するフォント
+	medalDefinitions map[string]*Medal       // Medal構造体は今のところ主に定義情報と仮定
+	Messages         *MessageManager         // メッセージマネージャー
+	Font             text.Face               // UIで使用するフォント
 	Formulas         map[Trait]ActionFormula // 追加: アクション計算式
 	// 他のゲームデータ定義もここに追加できます
 }
 
 // NewGameDataManager はGameDataManagerの新しいインスタンスを作成し、初期化します。
-func NewGameDataManager(font text.Face, assetPaths *AssetPaths) (*GameDataManager, error) {
-		gdm := &GameDataManager{
+func NewGameDataManager(font text.Face, assetPaths *AssetPaths, r *resource.Loader) (*GameDataManager, error) {
+	gdm := &GameDataManager{
 		partDefinitions:  make(map[string]*PartDefinition),
 		medalDefinitions: make(map[string]*Medal),
 		Font:             font,
@@ -26,7 +27,7 @@ func NewGameDataManager(font text.Face, assetPaths *AssetPaths) (*GameDataManage
 	}
 
 	// メッセージマネージャーの初期化
-	messageManager, err := NewMessageManager(assetPaths.Messages)
+	messageManager, err := NewMessageManager(assetPaths.Messages, r) // r を渡す
 	if err != nil {
 		return nil, fmt.Errorf("メッセージマネージャーの初期化に失敗しました: %w", err)
 	}

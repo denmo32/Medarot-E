@@ -21,20 +21,14 @@ const (
 	CustomizeCategoryLegs  CustomizeCategory = "Legs"
 )
 
-// ActionTarget はUIで使用するための一時的なターゲット情報です。
-type ActionTarget struct {
-	Target *donburi.Entry
-	Slot   PartSlotKey
-}
-
 // ActionModalButtonViewModel は、アクション選択モーダルのボタン一つ分のデータを保持します。
 type ActionModalButtonViewModel struct {
-	PartName        string
-	PartCategory    PartCategory
-	SlotKey         PartSlotKey
-	IsBroken        bool
-	TargetEntityID  donburi.Entity // 射撃などのターゲットが必要な場合
-	TargetPartSlot  PartSlotKey
+	PartName          string
+	PartCategory      PartCategory
+	SlotKey           PartSlotKey
+	IsBroken          bool
+	TargetEntityID    donburi.Entity // 射撃などのターゲットが必要な場合
+	TargetPartSlot    PartSlotKey
 	SelectedPartDefID string
 }
 
@@ -74,7 +68,7 @@ type BattlefieldViewModel struct {
 
 // IconViewModel は、個々のメダロットアイコンの描画に必要なデータを保持します。
 type IconViewModel struct {
-	EntryID       uint32 // 元のdonburi.Entryを特定するためのID
+	EntryID       donburi.Entity // 元のdonburi.Entryを特定するためのID (uint32 から donburi.Entity に変更)
 	X, Y          float32
 	Color         color.Color
 	IsLeader      bool
@@ -88,7 +82,3 @@ type BattleUIState struct {
 	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
 	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
 }
-
-
-
-

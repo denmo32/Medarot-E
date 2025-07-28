@@ -21,4 +21,5 @@ const (
 	RawPartsCSV
 	RawMedarotsCSV
 	RawFormulasJSON
+	RawMessagesJSON // 追加
 )

@@ -54,12 +54,12 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic)
 	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
-bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.resources.GameDataManager, bs.battleLogic.GetPartInfoProvider())
+	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.resources.GameDataManager, bs.battleLogic.GetPartInfoProvider())
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
 	animationManager := NewBattleAnimationManager(&bs.resources.Config)
-	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager, bs.world)
+	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager)
 	bs.messageManager = bs.ui.GetMessageDisplayManager() // uiからmessageManagerを取得
 
 	// Initialize state machine
@@ -117,13 +117,13 @@ func (bs *BattleScene) Update() error {
 
 	// 現在のバトルステートを更新
 	battleContext := &BattleContext{
-		World:            bs.world,
-		BattleLogic:      bs.battleLogic,
-		Config:           &bs.resources.Config,
-		GameDataManager:  bs.resources.GameDataManager,
-		Tick:             bs.tickCount,
-		ViewModelFactory: bs.viewModelFactory,
-		statusEffectSystem: bs.statusEffectSystem,
+		World:                  bs.world,
+		BattleLogic:            bs.battleLogic,
+		Config:                 &bs.resources.Config,
+		GameDataManager:        bs.resources.GameDataManager,
+		Tick:                   bs.tickCount,
+		ViewModelFactory:       bs.viewModelFactory,
+		statusEffectSystem:     bs.statusEffectSystem,
 		postActionEffectSystem: bs.postActionEffectSystem,
 	}
 
@@ -178,8 +178,6 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	screen.Fill(bs.resources.Config.UI.Colors.Background)
 	bs.ui.DrawBackground(screen)
 	bs.ui.Draw(screen, bs.tickCount, bs.resources.GameDataManager)
-	// bs.battlefieldViewModel は不要になるため、直接 battleUIState.BattlefieldViewModel を渡す
-	bs.ui.(*UI).animationDrawer.Draw(screen, bs.tickCount, bs.battleUIState.BattlefieldViewModel, bs.ui.(*UI).battlefieldWidget)
 
 	// 現在のステートに描画を委譲
 	bs.currentState.Draw(screen)

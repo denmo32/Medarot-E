@@ -24,7 +24,7 @@ type UIInterface interface {
 	PostEvent(event UIEvent)
 	IsActionModalVisible() bool
 	GetActionTargetMap() map[PartSlotKey]ActionTarget
-	SetCurrentTarget(entry *donburi.Entry)
+	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle
 	GetMessageDisplayManager() *UIMessageDisplayManager // 追加

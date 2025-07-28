@@ -10,13 +10,13 @@ import (
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 type BattleContext struct {
-	World            donburi.World
-	BattleLogic      *BattleLogic
-	Config           *Config
-	GameDataManager  *GameDataManager
-	Tick             int
-	ViewModelFactory ViewModelFactory
-	statusEffectSystem *StatusEffectSystem
+	World                  donburi.World
+	BattleLogic            *BattleLogic
+	Config                 *Config
+	GameDataManager        *GameDataManager
+	Tick                   int
+	ViewModelFactory       ViewModelFactory
+	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem
 }
 
@@ -119,7 +119,11 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 					// ViewModelFactoryを介してターゲットを選択
 					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic)
 				}
-				actionTargetMap[slotKey] = ActionTarget{Target: targetEntity, Slot: targetPartSlot}
+				var targetID donburi.Entity
+				if targetEntity != nil {
+					targetID = targetEntity.Entity()
+				}
+				actionTargetMap[slotKey] = ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot}
 			}
 
 			// ここでViewModelを構築し、UIに渡す

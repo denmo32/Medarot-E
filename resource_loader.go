@@ -13,9 +13,6 @@ import (
 	resource "github.com/quasilyte/ebitengine-resource"
 )
 
-// Global resource loader
-var r *resource.Loader
-
 func initResources(audioContext *audio.Context, assetPaths *AssetPaths) {
 	r = resource.NewLoader(audioContext)
 
@@ -40,6 +37,7 @@ func initResources(audioContext *audio.Context, assetPaths *AssetPaths) {
 		RawPartsCSV:     {Path: assetPaths.PartsCSV},
 		RawMedarotsCSV:  {Path: assetPaths.MedarotsCSV},
 		RawFormulasJSON: {Path: assetPaths.FormulasJSON},
+		RawMessagesJSON: {Path: assetPaths.Messages}, // 追加
 	}
 	r.RawRegistry.Assign(rawResources)
 

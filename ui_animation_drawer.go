@@ -34,10 +34,10 @@ func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick int, battlefieldVM B
 
 	var attackerVM, targetVM *IconViewModel
 	for _, icon := range battlefieldVM.Icons {
-		if icon.EntryID == uint32(anim.Result.ActingEntry.Id()) {
+		if icon.EntryID == anim.Result.ActingEntry.Entity() { // uint32 へのキャストを削除
 			attackerVM = icon
 		}
-		if anim.Result.TargetEntry != nil && icon.EntryID == uint32(anim.Result.TargetEntry.Id()) {
+		if anim.Result.TargetEntry != nil && icon.EntryID == anim.Result.TargetEntry.Entity() { // uint32 へのキャストを削除
 			targetVM = icon
 		}
 	}

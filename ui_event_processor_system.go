@@ -36,7 +36,7 @@ func UpdateUIEventProcessorSystem(
 				}
 			}
 			// ターゲットインジケーターを表示
-			ui.SetCurrentTarget(targetEntry)
+			ui.SetCurrentTarget(e.TargetEntityID) // donburi.Entity を渡す
 			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", SettingsComponent.Get(actingEntry).Name, e.SelectedPartDefID)
 		case TargetSelectedUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
@@ -49,7 +49,7 @@ func UpdateUIEventProcessorSystem(
 				log.Printf("Error: TargetSelectedUIEvent - TargetEntry not found for ID %d", e.TargetEntityID)
 				break
 			}
-			ui.SetCurrentTarget(targetEntry)
+			ui.SetCurrentTarget(e.TargetEntityID) // donburi.Entity を渡す
 			log.Printf("UI Event: TargetSelectedUIEvent - %s selected target %s", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(targetEntry).Name)
 		case ActionConfirmedUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
@@ -90,7 +90,7 @@ func UpdateUIEventProcessorSystem(
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
 			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
-			nextState = StatePlaying           // 行動キャンセル後はPlaying状態に戻る
+			nextState = StatePlaying // 行動キャンセル後はPlaying状態に戻る
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:
 			ui.ShowActionModal(e.ViewModel)
