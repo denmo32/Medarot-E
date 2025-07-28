@@ -187,7 +187,7 @@ func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManag
 
 	// アニメーションの描画
 	if u.battlefieldWidget.viewModel != nil {
-		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel, u.battlefieldWidget) // gameDataManagerを削除
+		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel) // gameDataManagerを削除
 	}
 
 	// その後でebitenuiを描画する

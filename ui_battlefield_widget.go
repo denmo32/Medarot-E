@@ -266,38 +266,3 @@ func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 		bf.config.UI.Battlefield.LineWidth,
 		bf.config.UI.Colors.White, true)
 }
-
-// drawPingAnimation は、指定された中心にレーダーのようなピングアニメーションを描画します。
-// progress は 0.0 から 1.0 の値で、アニメーションの進行状況を示します。
-// expandがtrueの場合は拡大、falseの場合は縮小アニメーションになります。
-func (bf *BattlefieldWidget) drawPingAnimation(screen *ebiten.Image, centerX, centerY float32, progress float64, expand bool) {
-	if progress < 0 || progress > 1 {
-		return
-	}
-
-	// アニメーションのパラメータ
-	maxRadius := float32(40.0)
-	pingColor := color.RGBA{R: 0, G: 255, B: 255, A: 255} // ネオン風の水色
-
-	// 進行状況に基づいて半径とアルファ値を計算
-	var radius float32
-	if expand {
-		radius = maxRadius * float32(progress) // 拡大
-	} else {
-		radius = maxRadius * (1.0 - float32(progress)) // 縮小
-	}
-	alpha := 1.0 - progress // 徐々にフェードアウト
-
-	// アルファ値を適用した色を作成
-	r, g, b, _ := pingColor.RGBA()
-	finalColor := color.RGBA{
-		R: uint8(r >> 8),
-		G: uint8(g >> 8),
-		B: uint8(b >> 8),
-		A: uint8(255 * alpha),
-	}
-
-	// 二重丸(◎)を描画
-	vector.StrokeCircle(screen, centerX, centerY, radius, 2, finalColor, true)
-	vector.StrokeCircle(screen, centerX, centerY, radius*0.4, 1.5, finalColor, true)
-}
