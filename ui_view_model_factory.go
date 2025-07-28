@@ -91,7 +91,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		offsetX := float32(battlefieldRect.Min.X)
 		offsetY := float32(battlefieldRect.Min.Y)
 
-		x := f.CalculateIconXPosition(entry, battleLogic.GetPartInfoProvider(), bfWidth)
+		x := f.CalculateMedarotScreenXPosition(entry, battleLogic.GetPartInfoProvider(), bfWidth)
 		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
@@ -129,10 +129,31 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 	return vm
 }
 
-// CalculateIconXPosition はバトルフィールド上のアイコンのX座標を計算します。
-// worldWidth はバトルフィールドの表示幅です。
-func (f *viewModelFactoryImpl) CalculateIconXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32) float32 {
-	return partInfoProvider.CalculateMedarotXPosition(entry, battlefieldWidth)
+// CalculateMedarotScreenXPosition はバトルフィールド上のアイコンのX座標を計算します。
+// battlefieldWidth はバトルフィールドの表示幅です。
+func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32) float32 {
+	settings := SettingsComponent.Get(entry)
+	progress := partInfoProvider.GetNormalizedActionProgress(entry)
+
+	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
+	if settings.Team == Team2 {
+		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
+	}
+
+	var xPos float32
+	switch StateComponent.Get(entry).CurrentState {
+	case StateCharging:
+		xPos = homeX + (execX-homeX)*progress
+	case StateReady:
+		xPos = execX
+	case StateCooldown:
+		xPos = execX + (homeX - execX) * (1.0 - progress)
+	case StateIdle, StateBroken:
+		xPos = homeX
+	default:
+		xPos = homeX // 不明な状態の場合はホームポジション
+	}
+	return xPos
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。

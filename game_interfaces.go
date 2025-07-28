@@ -13,6 +13,17 @@ type TargetingStrategy interface {
 	) (*donburi.Entry, PartSlotKey)
 }
 
+type BattleLogger interface {
+	LogHitCheck(attackerName, targetName string, chance, successRate, evasion float64, roll int)
+	LogDefenseCheck(targetName string, defenseRate, successRate, chance float64, roll int)
+	LogCriticalHit(attackerName string, chance float64)
+	LogPartBroken(medarotName, partName, partID string)
+	LogActionInitiated(attackerName string, actionTrait Trait, weaponType WeaponType, category PartCategory)
+	LogAttackMiss(attackerName, skillName, targetName string)
+	LogDamageDealt(defenderName, targetPartType string, damage int)
+	LogDefenseSuccess(targetName, defensePartName string, originalDamage, actualDamage int, isCritical bool)
+}
+
 // TraitActionHandler はカテゴリ固有のアクション処理全体をカプセル化します。
 // ActionResultを返し、副作用をなくします。
 type TraitActionHandler interface {
@@ -64,8 +75,8 @@ type PartInfoProviderInterface interface {
 	// ゲージの持続時間を計算するメソッド
 	CalculateGaugeDuration(baseSeconds float64, entry *donburi.Entry) float64
 
-	// メダロットのX座標を計算するメソッド
-	CalculateMedarotXPosition(entry *donburi.Entry, battlefieldWidth float32) float32
+	// メダロットの正規化された行動進行度を取得するメソッド
+	GetNormalizedActionProgress(entry *donburi.Entry) float32
 
 	// GameDataManagerへのアクセスを提供するメソッド
 	GetGameDataManager() *GameDataManager

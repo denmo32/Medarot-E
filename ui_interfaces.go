@@ -28,4 +28,6 @@ type UIInterface interface {
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle
 	GetMessageDisplayManager() *UIMessageDisplayManager // 追加
+	ShowMessagePanel(panel widget.PreferredSizeLocateableWidget)
+	HideMessagePanel()
 }

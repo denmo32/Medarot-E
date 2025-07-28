@@ -257,35 +257,27 @@ func (pip *PartInfoProvider) CalculateGaugeDuration(baseSeconds float64, entry *
 	return totalTicks
 }
 
-// CalculateMedarotXPosition はメダロットのX座標を計算します。
-// battlefieldWidth はバトルフィールドの論理的な幅です。
-func (pip *PartInfoProvider) CalculateMedarotXPosition(entry *donburi.Entry, battlefieldWidth float32) float32 {
-	settings := SettingsComponent.Get(entry)
-	gauge := GaugeComponent.Get(entry)
+// GetNormalizedActionProgress は、メダロットの行動ゲージの進行度を0.0〜1.0の正規化された値で返します。
+// これはUIのピクセル座標に依存せず、ゲームロジック内で抽象的な位置を計算するために使用されます。
+func (pip *PartInfoProvider) GetNormalizedActionProgress(entry *donburi.Entry) float32 {
 	state := StateComponent.Get(entry)
+	gauge := GaugeComponent.Get(entry)
 
 	progress := float32(0)
 	if gauge.TotalDuration > 0 { // TotalDurationが0の場合のゼロ除算を避ける
-		progress = float32(gauge.CurrentGauge / 100.0)
+		progress = float32(gauge.ProgressCounter / gauge.TotalDuration)
 	}
 
-	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
-	if settings.Team == Team2 {
-		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
-	}
-
-	var xPos float32
 	switch state.CurrentState {
 	case StateCharging:
-		xPos = homeX + (execX-homeX)*progress
+		return progress
 	case StateReady:
-		xPos = execX
+		return 1.0
 	case StateCooldown:
-		xPos = execX - (execX-homeX)*progress
+		return 1.0 - progress
 	case StateIdle, StateBroken:
-		xPos = homeX
+		return 0.0
 	default:
-		xPos = homeX // 不明な状態の場合はホームポジション
+		return 0.0 // 不明な状態の場合はホームポジション
 	}
-	return xPos
 }

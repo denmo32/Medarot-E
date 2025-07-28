@@ -24,11 +24,60 @@ type infoPanelPartUI struct {
 	targetHP     float64 // 目標とするHP
 }
 
+type InfoPanelManager struct {
+	panels    map[string]*infoPanelUI
+	config    *Config
+	uiFactory *UIFactory
+}
+
+func NewInfoPanelManager(config *Config, uiFactory *UIFactory) *InfoPanelManager {
+	return &InfoPanelManager{
+		panels:    make(map[string]*infoPanelUI),
+		config:    config,
+		uiFactory: uiFactory,
+	}
+}
+
 // InfoPanelCreationResult は生成された情報パネルとそのチーム情報を持つ構造体です。
 type InfoPanelCreationResult struct {
 	PanelUI *infoPanelUI
 	Team    TeamID
 	ID      string
+}
+
+func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, team1Container, team2Container *widget.Container) {
+	// 既存のパネルをクリア
+	for _, panel := range ipm.panels {
+		team1Container.RemoveChild(panel.rootContainer)
+		team2Container.RemoveChild(panel.rootContainer)
+	}
+	ipm.panels = make(map[string]*infoPanelUI) // マップをクリア
+
+	// 新しいViewModelに基づいてパネルを再生成
+	// DrawIndexでソート
+	sort.Slice(infoPanelVMs, func(i, j int) bool {
+		if infoPanelVMs[i].Team != infoPanelVMs[j].Team {
+			return infoPanelVMs[i].Team < infoPanelVMs[j].Team
+		}
+		return infoPanelVMs[i].DrawIndex < infoPanelVMs[j].DrawIndex
+	})
+
+	for _, vm := range infoPanelVMs {
+		panelUI := createSingleMedarotInfoPanel(ipm.config, ipm.uiFactory, vm)
+		ipm.panels[vm.ID] = panelUI
+		if vm.Team == Team1 {
+			team1Container.AddChild(panelUI.rootContainer)
+		} else {
+			team2Container.AddChild(panelUI.rootContainer)
+		}
+	}
+
+	// 各パネルのデータを更新
+	for _, vm := range infoPanelVMs {
+		if panel, ok := ipm.panels[vm.ID]; ok {
+			updateSingleInfoPanel(panel, vm, ipm.config)
+		}
+	}
 }
 
 func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoPanelViewModel) *infoPanelUI {
@@ -129,26 +178,7 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 // CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
 // この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した
 // InfoPanelViewModelのリストを受け取るように変更されます。
-func CreateInfoPanels(config *Config, uiFactory *UIFactory, infoPanelVMs []InfoPanelViewModel) []InfoPanelCreationResult {
-	var results []InfoPanelCreationResult
-	// DrawIndexでソート
-	sort.Slice(infoPanelVMs, func(i, j int) bool {
-		if infoPanelVMs[i].Team != infoPanelVMs[j].Team {
-			return infoPanelVMs[i].Team < infoPanelVMs[j].Team
-		}
-		return infoPanelVMs[i].DrawIndex < infoPanelVMs[j].DrawIndex
-	})
 
-	for _, vm := range infoPanelVMs {
-		panelUI := createSingleMedarotInfoPanel(config, uiFactory, vm)
-		results = append(results, InfoPanelCreationResult{
-			PanelUI: panelUI,
-			Team:    vm.Team,
-			ID:      vm.ID,
-		})
-	}
-	return results
-}
 
 func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Config) {
 	c := config.UI

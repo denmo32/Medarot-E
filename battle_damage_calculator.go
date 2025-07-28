@@ -14,12 +14,13 @@ type DamageCalculator struct {
 	config           *Config
 	partInfoProvider PartInfoProviderInterface
 	gameDataManager  *GameDataManager
-	rand             *rand.Rand // 追加
+	rand             *rand.Rand
+	logger           BattleLogger // 追加
 }
 
 // NewDamageCalculator は新しい DamageCalculator のインスタンスを生成します。
-func NewDamageCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface, gdm *GameDataManager, r *rand.Rand) *DamageCalculator {
-	return &DamageCalculator{world: world, config: config, partInfoProvider: pip, gameDataManager: gdm, rand: r}
+func NewDamageCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface, gdm *GameDataManager, r *rand.Rand, logger BattleLogger) *DamageCalculator {
+	return &DamageCalculator{world: world, config: config, partInfoProvider: pip, gameDataManager: gdm, rand: r, logger: logger}
 }
 
 // SetPartInfoProvider は PartInfoProvider の依存性を設定します。 // 削除
@@ -59,7 +60,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 
 	if dc.rand.Intn(100) < int(criticalChance) {
 		isCritical = true
-		log.Printf("%s の攻撃がクリティカル！ (確率: %.1f%%)", SettingsComponent.Get(attacker).Name, criticalChance)
+		dc.logger.LogCriticalHit(SettingsComponent.Get(attacker).Name, criticalChance)
 		// クリティカル時は回避度を0にする
 		evasion = 0
 	}
@@ -84,38 +85,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 // targetPartDef はダメージを受けたパーツの定義 (nilの場合あり)
 // actingPartDef は攻撃に使用されたパーツの定義
 func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, actingPartDef *PartDefinition, targetPartDef *PartDefinition, damage int, isCritical bool, didHit bool) string {
-	attackerSettings := SettingsComponent.Get(attacker)
-	targetSettings := SettingsComponent.Get(target)
-	skillName := "(不明なスキル)"
-	if actingPartDef != nil {
-		skillName = actingPartDef.PartName
-	}
-
-	if !didHit {
-		return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("attack_miss", map[string]interface{}{
-			"attacker_name": attackerSettings.Name,
-			"skill_name":    skillName,
-			"target_name":   targetSettings.Name,
-		})
-	}
-
-	targetPartNameStr := "(不明部位)"
-	if targetPartDef != nil {
-		targetPartNameStr = targetPartDef.PartName
-	}
-
-	params := map[string]interface{}{
-		"attacker_name":    attackerSettings.Name,
-		"skill_name":       skillName,
-		"target_name":      targetSettings.Name,
-		"target_part_name": targetPartNameStr,
-		"damage":           damage,
-	}
-
-	if isCritical {
-		return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("critical_hit", params)
-	}
-	return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("attack_hit", params)
+	panic("GenerateActionLog should not be called directly. Use BattleLogger.")
 }
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
@@ -133,21 +103,5 @@ func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEnt
 // GenerateActionLogDefense は防御時のアクションログを生成します。
 // defensePartDef は防御に使用されたパーツの定義
 func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePartDef *PartDefinition, damageDealt int, originalDamage int, isCritical bool) string {
-	targetSettings := SettingsComponent.Get(target)
-	defensePartNameStr := "(不明なパーツ)"
-	if defensePartDef != nil {
-		defensePartNameStr = defensePartDef.PartName
-	}
-
-	params := map[string]interface{}{
-		"target_name":       targetSettings.Name,
-		"defense_part_name": defensePartNameStr,
-		"original_damage":   originalDamage,
-		"actual_damage":     damageDealt,
-	}
-
-	if isCritical {
-		return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("defense_success_critical", params)
-	}
-	return dc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("defense_success", params)
+	panic("GenerateActionLogDefense should not be called directly. Use BattleLogger.")
 }

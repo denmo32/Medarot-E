@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"math/rand"
 
 	"github.com/yohamta/donburi"
@@ -12,12 +11,13 @@ type HitCalculator struct {
 	world            donburi.World
 	config           *Config
 	partInfoProvider PartInfoProviderInterface
-	rand             *rand.Rand // 追加
+	rand             *rand.Rand
+	logger           BattleLogger // 追加
 }
 
 // NewHitCalculator は新しい HitCalculator のインスタンスを生成します。
-func NewHitCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface, r *rand.Rand) *HitCalculator {
-	return &HitCalculator{world: world, config: config, partInfoProvider: pip, rand: r}
+func NewHitCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface, r *rand.Rand, logger BattleLogger) *HitCalculator {
+	return &HitCalculator{world: world, config: config, partInfoProvider: pip, rand: r, logger: logger}
 }
 
 // CalculateHit は新しいルールに基づいて命中判定を行います。
@@ -43,9 +43,7 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 	}
 
 	roll := hc.rand.Intn(100)
-	log.Print(hc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("log_hit_roll", map[string]interface{}{
-		"ordered_args": []interface{}{SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, successRate, evasion, roll},
-	}))
+	hc.logger.LogHitCheck(SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, successRate, evasion, roll)
 	return float64(roll) < chance
 }
 
@@ -69,8 +67,6 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 	}
 
 	roll := hc.rand.Intn(100)
-	log.Print(hc.partInfoProvider.GetGameDataManager().Messages.FormatMessage("log_defense_roll", map[string]interface{}{
-		"ordered_args": []interface{}{SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll},
-	}))
+	hc.logger.LogDefenseCheck(SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll)
 	return float64(roll) < chance
 }

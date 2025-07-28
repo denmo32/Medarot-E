@@ -106,13 +106,13 @@ func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry,
 // FindClosestEnemy は指定されたエンティティに最も近い敵エンティティを見つけます。
 func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry, battleLogic *BattleLogic) *donburi.Entry {
 	var closestEnemy *donburi.Entry
-	var minDiff float32 = math.MaxFloat32 // float32 を使用するため、MaxFloat32 に変更
+	var minDiff float32 = math.MaxFloat32
 
-	actingX := ts.partInfoProvider.CalculateMedarotXPosition(actingEntry, float32(ts.config.UI.Screen.Width))
+	actingProgress := ts.partInfoProvider.GetNormalizedActionProgress(actingEntry)
 
 	for _, enemy := range ts.GetTargetableEnemies(actingEntry) {
-		enemyX := ts.partInfoProvider.CalculateMedarotXPosition(enemy, float32(ts.config.UI.Screen.Width))
-		diff := float32(math.Abs(float64(actingX - enemyX))) // float32 の差を計算
+		enemyProgress := ts.partInfoProvider.GetNormalizedActionProgress(enemy)
+		diff := float32(math.Abs(float64(actingProgress - enemyProgress))) // 抽象的な進行度の差を計算
 		if diff < minDiff {
 			minDiff = diff
 			closestEnemy = enemy

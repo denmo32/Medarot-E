@@ -14,7 +14,7 @@ import (
 type UI struct {
 	ebitenui          *ebitenui.UI
 	battlefieldWidget *BattlefieldWidget
-	medarotInfoPanels map[string]*infoPanelUI
+	infoPanelManager  *InfoPanelManager // infoPanelManager に変更
 	// イベント通知用チャネル
 	eventChannel chan UIEvent
 	// 依存性
@@ -32,43 +32,17 @@ func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, batt
 	u.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
 
 	// InfoPanels を更新または再構築
-	if len(battleUIState.InfoPanels) != len(u.medarotInfoPanels) {
-		// パネルの数が変わった場合のみ再構築
-		// 既存のパネルをクリア
-		mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container)
-		team1PanelContainer := mainUIContainer.Children()[0].(*widget.Container)
-		team2PanelContainer := mainUIContainer.Children()[2].(*widget.Container)
+	mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container)
+	team1PanelContainer := mainUIContainer.Children()[0].(*widget.Container)
+	team2PanelContainer := mainUIContainer.Children()[2].(*widget.Container)
 
-		for _, panel := range u.medarotInfoPanels {
-			team1PanelContainer.RemoveChild(panel.rootContainer)
-			team2PanelContainer.RemoveChild(panel.rootContainer)
-		}
-		u.medarotInfoPanels = make(map[string]*infoPanelUI) // マップをクリア
-
-		// 新しいViewModelに基づいてパネルを再生成
-		infoPanelVMs := make([]InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
-		for _, vm := range battleUIState.InfoPanels {
-			infoPanelVMs = append(infoPanelVMs, vm)
-		}
-
-		infoPanelResults := CreateInfoPanels(config, uiFactory, infoPanelVMs)
-
-		for _, result := range infoPanelResults {
-			u.medarotInfoPanels[result.ID] = result.PanelUI
-			if result.Team == Team1 {
-				team1PanelContainer.AddChild(result.PanelUI.rootContainer)
-			} else {
-				team2PanelContainer.AddChild(result.PanelUI.rootContainer)
-			}
-		}
+	// マップからスライスに変換
+	infoPanelVMs := make([]InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
+	for _, vm := range battleUIState.InfoPanels {
+		infoPanelVMs = append(infoPanelVMs, vm)
 	}
 
-	// 各パネルのデータを更新
-	for id, vm := range battleUIState.InfoPanels {
-		if panel, ok := u.medarotInfoPanels[id]; ok {
-			updateSingleInfoPanel(panel, vm, config)
-		}
-	}
+	u.infoPanelManager.UpdatePanels(infoPanelVMs, team1PanelContainer, team2PanelContainer)
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。
@@ -82,11 +56,11 @@ func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAn
 	whiteImg.Fill(color.White)
 
 	ui := &UI{
-		medarotInfoPanels: make(map[string]*infoPanelUI),
+		infoPanelManager:  NewInfoPanelManager(config, uiFactory), // InfoPanelManager を初期化
 		eventChannel:      eventChannel,
 		config:            config,
 		whitePixel:        whiteImg,
-		animationDrawer:   NewUIAnimationDrawer(config, animationManager, gameDataManager.Font), // gameDataManager.Fontを渡す
+		animationDrawer:   NewUIAnimationDrawer(config, animationManager, gameDataManager.Font),
 	}
 
 	rootContainer := widget.NewContainer(
@@ -125,7 +99,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAn
 	mainUIContainer.AddChild(team2PanelContainer)
 	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
 	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
-	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, rootContainer, uiFactory)
+	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, ui, uiFactory) // ui を渡す
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
@@ -232,4 +206,16 @@ func (u *UI) GetCurrentAnimationResult() ActionResult {
 // GetMessageDisplayManager はメッセージ表示マネージャーを返します。
 func (u *UI) GetMessageDisplayManager() *UIMessageDisplayManager {
 	return u.messageManager
+}
+
+// ShowMessagePanel はメッセージパネルをルートコンテナに追加します。
+func (u *UI) ShowMessagePanel(panel widget.PreferredSizeLocateableWidget) {
+	u.ebitenui.Container.AddChild(panel)
+}
+
+// HideMessagePanel はメッセージパネルをルートコンテナから削除します。
+func (u *UI) HideMessagePanel() {
+	if u.messageManager.messageWindow != nil {
+		u.ebitenui.Container.RemoveChild(u.messageManager.messageWindow)
+	}
 }

@@ -46,10 +46,12 @@ func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDa
 		rand:   rand.New(rand.NewSource(time.Now().UnixNano())), // 乱数生成器を初期化
 	}
 
+	logger := NewBattleLogger(gameDataManager) // BattleLoggerを初期化
+
 	// ヘルパーを初期化
 	bl.partInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
-		bl.damageCalculator = NewDamageCalculator(world, config, bl.partInfoProvider, gameDataManager, bl.rand)
-			bl.hitCalculator = NewHitCalculator(world, config, bl.partInfoProvider, bl.rand)
+	bl.damageCalculator = NewDamageCalculator(world, config, bl.partInfoProvider, gameDataManager, bl.rand, logger)
+	bl.hitCalculator = NewHitCalculator(world, config, bl.partInfoProvider, bl.rand, logger)
 	bl.targetSelector = NewTargetSelector(world, config, bl.partInfoProvider)
 
 	return bl
