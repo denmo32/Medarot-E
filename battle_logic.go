@@ -9,8 +9,6 @@ import (
 
 // BattleLogic は戦闘関連のすべての計算ロジックをカプセル化します。
 type BattleLogic struct {
-	world            donburi.World // worldフィールドを追加
-	config           *Config       // configフィールドを追加
 	damageCalculator *DamageCalculator
 	hitCalculator    *HitCalculator
 	targetSelector   *TargetSelector
@@ -40,19 +38,17 @@ func (bl *BattleLogic) GetPartInfoProvider() PartInfoProviderInterface {
 
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
 func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDataManager) *BattleLogic {
-	bl := &BattleLogic{
-		world:  world,  // worldフィールドを初期化
-		config: config, // configフィールドを初期化
-		rand:   rand.New(rand.NewSource(time.Now().UnixNano())), // 乱数生成器を初期化
-	}
-
 	logger := NewBattleLogger(gameDataManager) // BattleLoggerを初期化
+	partInfoProvider := NewPartInfoProvider(world, config, gameDataManager)
+	damageCalculator := NewDamageCalculator(world, config, partInfoProvider, gameDataManager, rand.New(rand.NewSource(time.Now().UnixNano())), logger)
+	hitCalculator := NewHitCalculator(world, config, partInfoProvider, rand.New(rand.NewSource(time.Now().UnixNano())), logger)
+	targetSelector := NewTargetSelector(world, config, partInfoProvider)
 
-	// ヘルパーを初期化
-	bl.partInfoProvider = NewPartInfoProvider(world, config, gameDataManager)
-	bl.damageCalculator = NewDamageCalculator(world, config, bl.partInfoProvider, gameDataManager, bl.rand, logger)
-	bl.hitCalculator = NewHitCalculator(world, config, bl.partInfoProvider, bl.rand, logger)
-	bl.targetSelector = NewTargetSelector(world, config, bl.partInfoProvider)
-
-	return bl
+	return &BattleLogic{
+		damageCalculator: damageCalculator,
+		hitCalculator:    hitCalculator,
+		targetSelector:   targetSelector,
+		partInfoProvider: partInfoProvider,
+		rand:             rand.New(rand.NewSource(time.Now().UnixNano())), // 乱数生成器を初期化
+	}
 }

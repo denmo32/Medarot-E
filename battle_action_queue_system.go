@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"sort"
 
 	"github.com/yohamta/donburi"
@@ -10,10 +11,14 @@ import (
 // UpdateActionQueueSystem は行動準備完了キューを処理します。
 func UpdateActionQueueSystem(
 	world donburi.World,
-	battleLogic *BattleLogic,
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
 	gameConfig *Config,
 	statusEffectSystem *StatusEffectSystem,
 	postActionEffectSystem *PostActionEffectSystem,
+	rand *rand.Rand,
 ) ([]ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
@@ -22,12 +27,12 @@ func UpdateActionQueueSystem(
 	results := []ActionResult{}
 
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
-		if battleLogic == nil || battleLogic.GetPartInfoProvider() == nil {
-			log.Println("UpdateActionQueueSystem: ソート中にbattleLogicまたはpartInfoProviderがnilです")
+		if partInfoProvider == nil {
+			log.Println("UpdateActionQueueSystem: ソート中にpartInfoProviderがnilです")
 			return false
 		}
-		propI := battleLogic.GetPartInfoProvider().GetOverallPropulsion(actionQueueComp.Queue[i])
-		propJ := battleLogic.GetPartInfoProvider().GetOverallPropulsion(actionQueueComp.Queue[j])
+		propI := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[i])
+		propJ := partInfoProvider.GetOverallPropulsion(actionQueueComp.Queue[j])
 		return propI > propJ
 	})
 
@@ -35,7 +40,7 @@ func UpdateActionQueueSystem(
 		actingEntry := actionQueueComp.Queue[0]
 		actionQueueComp.Queue = actionQueueComp.Queue[1:]
 
-		executor := NewActionExecutor(world, battleLogic, gameConfig, statusEffectSystem, postActionEffectSystem)
+		executor := NewActionExecutor(world, damageCalculator, hitCalculator, targetSelector, partInfoProvider, gameConfig, statusEffectSystem, postActionEffectSystem, rand)
 		actionResult := executor.ExecuteAction(actingEntry)
 		results = append(results, actionResult)
 	}
@@ -43,13 +48,13 @@ func UpdateActionQueueSystem(
 }
 
 // StartCooldownSystem はクールダウン状態を開始します。
-func StartCooldownSystem(entry *donburi.Entry, world donburi.World, battleLogic *BattleLogic) {
+func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProvider PartInfoProviderInterface) {
 	intent := ActionIntentComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 	var actingPartDef *PartDefinition
 
 	if actingPartInstance, ok := partsComp.Map[intent.SelectedPartKey]; ok {
-		if def, defFound := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(actingPartInstance.DefinitionID); defFound {
+		if def, defFound := partInfoProvider.GetGameDataManager().GetPartDefinition(actingPartInstance.DefinitionID); defFound {
 			actingPartDef = def
 		} else {
 			log.Printf("エラー: StartCooldownSystem - ID %s のPartDefinitionが見つかりません。", actingPartInstance.DefinitionID)
@@ -64,7 +69,7 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, battleLogic 
 	}
 
 	// 新しい共通関数を呼び出す
-	totalTicks := battleLogic.GetPartInfoProvider().CalculateGaugeDuration(baseSeconds, entry)
+	totalTicks := partInfoProvider.CalculateGaugeDuration(baseSeconds, entry)
 
 	gauge := GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
@@ -83,9 +88,9 @@ func StartCharge(
 	targetEntry *donburi.Entry,
 	targetPartSlot PartSlotKey,
 	world donburi.World,
-	battleLogic *BattleLogic, // battleLogic を追加
+	partInfoProvider PartInfoProviderInterface, // battleLogic から変更
 	gameDataManager *GameDataManager,
 ) bool {
-	system := NewChargeInitiationSystem(world, battleLogic.GetPartInfoProvider(), gameDataManager) // battleLogic から取得
+	system := NewChargeInitiationSystem(world, partInfoProvider, gameDataManager) // battleLogic から取得
 	return system.ProcessChargeRequest(entry, partKey, targetEntry, targetPartSlot)
 }

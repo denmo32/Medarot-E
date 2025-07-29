@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/yohamta/donburi"
 )
@@ -9,23 +10,30 @@ import (
 // ActionExecutor はアクションの実行に関するロジックをカプセル化します。
 type ActionExecutor struct {
 	world                  donburi.World
-	battleLogic            *BattleLogic
+	damageCalculator       *DamageCalculator
+	hitCalculator          *HitCalculator
+	targetSelector         *TargetSelector
+	partInfoProvider       PartInfoProviderInterface
 	gameConfig             *Config
 	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem // 新しく追加したシステム
 	handlers               map[Trait]TraitActionHandler
 	weaponHandlers         map[WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
-
+	rand                   *rand.Rand
 }
 
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
-func NewActionExecutor(world donburi.World, battleLogic *BattleLogic, gameConfig *Config, statusEffectSystem *StatusEffectSystem, postActionEffectSystem *PostActionEffectSystem) *ActionExecutor {
+func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, gameConfig *Config, statusEffectSystem *StatusEffectSystem, postActionEffectSystem *PostActionEffectSystem, rand *rand.Rand) *ActionExecutor {
 	return &ActionExecutor{
 		world:                  world,
-		battleLogic:            battleLogic,
+		damageCalculator:       damageCalculator,
+		hitCalculator:          hitCalculator,
+		targetSelector:         targetSelector,
+		partInfoProvider:       partInfoProvider,
 		gameConfig:             gameConfig,
 		statusEffectSystem:     statusEffectSystem,
 		postActionEffectSystem: postActionEffectSystem,
+		rand:                   rand,
 
 		handlers: map[Trait]TraitActionHandler{
 			TraitShoot:    &BaseAttackHandler{},
@@ -48,7 +56,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	intent := ActionIntentComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
-	actingPartDef, _ := e.battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(actingPartInst.DefinitionID)
+	actingPartDef, _ := e.partInfoProvider.GetGameDataManager().GetPartDefinition(actingPartInst.DefinitionID)
 
 	handler, ok := e.handlers[actingPartDef.Trait]
 	if !ok {
@@ -59,7 +67,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 		}
 	}
 
-	actionResult := handler.Execute(actingEntry, e.world, intent, e.battleLogic, e.gameConfig, actingPartDef)
+	actionResult := handler.Execute(actingEntry, e.world, intent, e.damageCalculator, e.hitCalculator, e.targetSelector, e.partInfoProvider, e.gameConfig, actingPartDef, e.rand)
 
 	// チャージ時に生成された保留中の効果をActionResultにコピー
 	if len(intent.PendingEffects) > 0 {
@@ -70,7 +78,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 
 	// WeaponType に基づく追加効果を適用 (Traitの処理から独立)
 	if weaponHandler, ok := e.weaponHandlers[actingPartDef.WeaponType]; ok {
-		weaponHandler.ApplyEffect(&actionResult, e.world, e.battleLogic, actingPartDef)
+		weaponHandler.ApplyEffect(&actionResult, e.world, e.damageCalculator, e.hitCalculator, e.targetSelector, e.partInfoProvider, actingPartDef, e.rand)
 	}
 
 	// アクション後の共通処理を実行

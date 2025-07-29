@@ -31,7 +31,7 @@ func NewDamageCalculator(world donburi.World, config *Config, pip PartInfoProvid
 
 
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
-func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) (int, bool) {
+func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey) (int, bool) {
 	// 1. 計算式の取得
 	formula, ok := dc.gameDataManager.Formulas[actingPartDef.Trait]
 	if !ok || formula.ID == "" { // IDがゼロ値の場合は見つからなかったと判断

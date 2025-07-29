@@ -21,7 +21,7 @@ func NewHitCalculator(world donburi.World, config *Config, pip PartInfoProviderI
 }
 
 // CalculateHit は新しいルールに基づいて命中判定を行います。
-func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) bool {
+func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition, selectedPartKey PartSlotKey) bool {
 	// 攻撃側の成功度
 	successRate := hc.partInfoProvider.GetSuccessRate(attacker, partDef, selectedPartKey)
 

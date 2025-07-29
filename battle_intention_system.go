@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math/rand"
+
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
@@ -30,7 +32,10 @@ func UpdatePlayerInputSystem(world donburi.World) PlayerInputSystemResult {
 // aiSelectAction は BattleScene ではなく、world と必要なヘルパーを引数に取るように変更されることを想定しています。
 func UpdateAIInputSystem(
 	world donburi.World,
-	battleLogic *BattleLogic, // battleLogic を追加
+	partInfoProvider PartInfoProviderInterface,
+	targetSelector *TargetSelector,
+	gameDataManager *GameDataManager,
+	rand *rand.Rand,
 ) {
 	// BattleScene の state や playerMedarotToAct に相当する条件をどのように扱うか検討が必要です。
 	// 例えば、ワールドリソースでゲームの状態（PlayerTurn, AITurnなど）を管理します。
@@ -44,6 +49,6 @@ func UpdateAIInputSystem(
 		}
 		// aiSelectAction のシグネチャが (world donburi.World, actingEntry *donburi.Entry, pip *PartInfoProvider, ts *TargetSelector, conf *Config) のようになっていると仮定します。
 		// もし aiSelectAction が BattleScene 全体を必要とする場合、そのリファクタリングも必要です。
-		aiSelectAction(world, entry, battleLogic) // battleLogic を追加
+		aiSelectAction(world, entry, partInfoProvider, targetSelector, gameDataManager, rand) // battleLogic を追加
 	})
 }

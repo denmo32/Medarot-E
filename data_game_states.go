@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	inpututil "github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -11,9 +12,13 @@ import (
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 type BattleContext struct {
 	World                  donburi.World
-	BattleLogic            *BattleLogic
+	DamageCalculator       *DamageCalculator
+	HitCalculator          *HitCalculator
+	TargetSelector         *TargetSelector
+	PartInfoProvider       PartInfoProviderInterface
 	Config                 *Config
 	GameDataManager        *GameDataManager
+	Rand                   *rand.Rand
 	Tick                   int
 	ViewModelFactory       ViewModelFactory
 	statusEffectSystem     *StatusEffectSystem
@@ -32,7 +37,6 @@ type PlayingState struct{}
 
 func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
-	battleLogic := ctx.BattleLogic
 	config := ctx.Config
 	tick := ctx.Tick
 
@@ -40,7 +44,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 
 	// AIの行動選択
 	if len(playerActionPendingQueue) == 0 {
-		UpdateAIInputSystem(world, battleLogic)
+		UpdateAIInputSystem(world, ctx.PartInfoProvider, ctx.TargetSelector, ctx.GameDataManager, ctx.Rand)
 	}
 
 	// プレイヤーの行動選択が必要かチェック
@@ -58,7 +62,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 	}
 
 	// アクション実行
-	actionResults, err := UpdateActionQueueSystem(world, battleLogic, config, ctx.statusEffectSystem, ctx.postActionEffectSystem)
+	actionResults, err := UpdateActionQueueSystem(world, ctx.DamageCalculator, ctx.HitCalculator, ctx.TargetSelector, ctx.PartInfoProvider, config, ctx.statusEffectSystem, ctx.postActionEffectSystem, ctx.Rand)
 	if err != nil {
 		fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
 	}
@@ -91,7 +95,6 @@ type PlayerActionSelectState struct{}
 
 func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
 	world := ctx.World
-	battleLogic := ctx.BattleLogic
 	viewModelFactory := ctx.ViewModelFactory
 
 	var gameEvents []GameEvent
@@ -117,7 +120,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 						personality = PersonalityRegistry["リーダー"]
 					}
 					// ViewModelFactoryを介してターゲットを選択
-					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic)
+					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, ctx.PartInfoProvider, ctx.TargetSelector, ctx.GameDataManager, ctx.Rand)
 				}
 				var targetID donburi.Entity
 				if targetEntity != nil {
@@ -127,7 +130,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic)
+			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, ctx.PartInfoProvider, ctx.GameDataManager, ctx.Rand)
 			gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
 			return playerActionPendingQueue, gameEvents, nil
 		} else {

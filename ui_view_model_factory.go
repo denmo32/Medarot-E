@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math/rand"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -12,26 +13,30 @@ import (
 
 // ViewModelFactory は各種ViewModelを生成するためのインターフェースです。
 type ViewModelFactory interface {
-	BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) InfoPanelViewModel
-	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, battleLogic *BattleLogic) ActionModalViewModel
+	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel
+	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand) ActionModalViewModel
 	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart // 追加
 }
 
 // viewModelFactoryImpl はViewModelFactoryインターフェースの実装です。
 type viewModelFactoryImpl struct {
-	battleLogic *BattleLogic
+	partInfoProvider PartInfoProviderInterface
+	gameDataManager  *GameDataManager
+	rand             *rand.Rand
 }
 
 // NewViewModelFactory は新しいViewModelFactoryのインスタンスを作成します。
-func NewViewModelFactory(world donburi.World, battleLogic *BattleLogic) ViewModelFactory { // world の型を donburi.World に変更
+func NewViewModelFactory(world donburi.World, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand) ViewModelFactory { // world の型を donburi.World に変更
 	return &viewModelFactoryImpl{
-		battleLogic: battleLogic,
+		partInfoProvider: partInfoProvider,
+		gameDataManager:  gameDataManager,
+		rand:             rand,
 	}
 }
 
 // BuildInfoPanelViewModel は、指定されたエンティティからInfoPanelViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, battleLogic *BattleLogic) InfoPanelViewModel {
+func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel {
 	settings := SettingsComponent.Get(entry)
 	state := StateComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
@@ -42,7 +47,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, bat
 			if partInst == nil {
 				continue
 			}
-			partDef, defFound := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := partInfoProvider.GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
 				partViewModels[slotKey] = PartViewModel{PartName: "(不明)"}
 				continue
@@ -71,7 +76,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, bat
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, battleLogic *BattleLogic, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel {
+func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel {
 	vm := BattlefieldViewModel{
 		Icons: []*IconViewModel{},
 		DebugMode: func() bool {
@@ -91,7 +96,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		offsetX := float32(battlefieldRect.Min.X)
 		offsetY := float32(battlefieldRect.Min.Y)
 
-		x := f.CalculateMedarotScreenXPosition(entry, battleLogic.GetPartInfoProvider(), bfWidth)
+		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth)
 		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
@@ -157,7 +162,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, battleLogic *BattleLogic) ActionModalViewModel {
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand) ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 
@@ -168,7 +173,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 	} else {
 		var displayableParts []AvailablePart
 		for slotKey, partInst := range partsComp.Map {
-			partDef, defFound := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
+			partDef, defFound := gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
 				continue
 			}
@@ -201,5 +206,5 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 
 // GetAvailableAttackParts は、指定されたエンティティが利用可能な攻撃パーツのリストを返します。
 func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
-	return f.battleLogic.GetPartInfoProvider().GetAvailableAttackParts(entry)
+	return f.partInfoProvider.GetAvailableAttackParts(entry)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
@@ -21,7 +22,12 @@ type BattleScene struct {
 	messageManager           *UIMessageDisplayManager
 	winner                   TeamID
 	playerActionPendingQueue []*donburi.Entry
-	battleLogic              *BattleLogic
+	damageCalculator         *DamageCalculator
+	hitCalculator            *HitCalculator
+	targetSelector           *TargetSelector
+	partInfoProvider         PartInfoProviderInterface
+	gameDataManager          *GameDataManager
+	rand                     *rand.Rand
 	uiEventChannel           chan UIEvent
 	battleUIState            *BattleUIState // 追加
 	statusEffectSystem       *StatusEffectSystem
@@ -39,6 +45,12 @@ type BattleScene struct {
 func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	world := donburi.NewWorld()
 
+	// Initialize BattleLogic components
+	partInfoProvider := NewPartInfoProvider(world, &res.Config, res.GameDataManager)
+	damageCalculator := NewDamageCalculator(world, &res.Config, partInfoProvider, res.GameDataManager, res.Rand, res.BattleLogger)
+	hitCalculator := NewHitCalculator(world, &res.Config, partInfoProvider, res.Rand, res.BattleLogger)
+	targetSelector := NewTargetSelector(world, &res.Config, partInfoProvider)
+
 	bs := &BattleScene{
 		resources:                res,
 		manager:                  manager,
@@ -48,15 +60,20 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		playerTeam:               Team1,
 		playerActionPendingQueue: make([]*donburi.Entry, 0),
 		winner:                   TeamNone,
+		damageCalculator:         damageCalculator,
+		hitCalculator:            hitCalculator,
+		targetSelector:           targetSelector,
+		partInfoProvider:         partInfoProvider,
+		gameDataManager:          res.GameDataManager,
+		rand:                     res.Rand,
 		uiEventChannel:           make(chan UIEvent, 10),
 		battleUIState:            &BattleUIState{}, // ← これを追加
 	}
 
-	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
-	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic)
+	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.partInfoProvider, bs.gameDataManager, bs.rand)
 	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
-	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, NewBattleDamageCalculator(bs.world, &bs.resources.Config, bs.battleLogic.GetPartInfoProvider(), bs.resources.GameDataManager, bs.resources.Rand, bs.resources.BattleLogger))
-	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.resources.GameDataManager, bs.battleLogic.GetPartInfoProvider())
+	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, bs.damageCalculator)
+	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.partInfoProvider)
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
@@ -97,7 +114,7 @@ func (bs *BattleScene) Update() error {
 
 			// クールダウン開始とターゲットクリア
 			if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
-				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic)
+				StartCooldownSystem(actingEntry, bs.world, bs.partInfoProvider)
 			}
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
 
@@ -122,9 +139,13 @@ func (bs *BattleScene) Update() error {
 		// 現在のバトルステートを更新
 		battleContext := &BattleContext{
 			World:                  bs.world,
-			BattleLogic:            bs.battleLogic,
+			DamageCalculator:       bs.damageCalculator,
+			HitCalculator:          bs.hitCalculator,
+			TargetSelector:         bs.targetSelector,
+			PartInfoProvider:       bs.partInfoProvider,
 			Config:                 &bs.resources.Config,
-			GameDataManager:        bs.resources.GameDataManager,
+			GameDataManager:        bs.gameDataManager,
+			Rand:                   bs.rand,
 			Tick:                   bs.tickCount,
 			ViewModelFactory:       bs.viewModelFactory,
 			statusEffectSystem:     bs.statusEffectSystem,
@@ -168,10 +189,10 @@ func (bs *BattleScene) Update() error {
 	}
 	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
 
-	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic, bs.viewModelFactory) // InfoPanelのViewModelを更新
+	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.partInfoProvider, bs.viewModelFactory) // InfoPanelのViewModelを更新
 
 	// BattlefieldViewModelを構築し、BattleUIStateに設定
-	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, battleUIState, bs.battleLogic, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect()) // worldを渡す
+	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, battleUIState, bs.partInfoProvider, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect()) // worldを渡す
 
 	// UIにBattleUIState全体を渡して更新を委譲
 	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect(), bs.uiFactory)
@@ -244,7 +265,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 				break
 			}
 			// ChargeInitiationSystem を呼び出す
-			successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, bs.battleLogic, bs.resources.GameDataManager)
+			successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, bs.partInfoProvider, bs.gameDataManager)
 			if !successful {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加

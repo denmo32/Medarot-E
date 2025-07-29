@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/yohamta/donburi"
 )
@@ -11,7 +12,10 @@ import (
 func aiSelectAction(
 	world donburi.World,
 	entry *donburi.Entry,
-	battleLogic *BattleLogic, // battleLogic を追加
+	partInfoProvider PartInfoProviderInterface, // battleLogic から変更
+	targetSelector *TargetSelector, // battleLogic から変更
+	gameDataManager *GameDataManager, // StartCharge のために追加
+	rand *rand.Rand, // StartCharge のために追加
 ) {
 	settings := SettingsComponent.Get(entry)
 
@@ -20,11 +24,11 @@ func aiSelectAction(
 	var targetingStrategy TargetingStrategy
 	var partSelectionStrategy AIPartSelectionStrategyFunc
 
-	if battleLogic.GetPartInfoProvider() == nil { // battleLogic から取得
+	if partInfoProvider == nil { // battleLogic から変更
 		log.Printf("%s: AI行動選択エラー - PartInfoProviderが初期化されていません。", settings.Name)
 		return
 	}
-	availableParts := battleLogic.GetPartInfoProvider().GetAvailableAttackParts(entry) // battleLogic から取得
+	availableParts := partInfoProvider.GetAvailableAttackParts(entry) // battleLogic から変更
 
 	if len(availableParts) == 0 {
 		log.Printf("%s: AIは攻撃可能なパーツがないため待機。", settings.Name)
@@ -48,7 +52,7 @@ func aiSelectAction(
 	}
 
 	if partSelectionStrategy != nil {
-		slotKey, selectedPartDef = partSelectionStrategy(entry, availableParts, world, battleLogic) // battleLogic を追加
+		slotKey, selectedPartDef = partSelectionStrategy(entry, availableParts, world, partInfoProvider, gameDataManager, rand) // battleLogic から変更
 	} else {
 		log.Printf("%s: AIエラー - PartSelectionStrategyがnilです。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
 		if len(availableParts) > 0 {
@@ -66,10 +70,10 @@ func aiSelectAction(
 	var targetPartSlot PartSlotKey
 
 	if targetingStrategy != nil {
-		targetEntry, targetPartSlot = targetingStrategy.SelectTarget(world, entry, battleLogic) // battleLogic を追加
+		targetEntry, targetPartSlot = targetingStrategy.SelectTarget(world, entry, partInfoProvider, targetSelector, gameDataManager, rand) // battleLogic から変更
 	} else {
 		log.Printf("%s: AIエラー - TargetingStrategyがnilです。デフォルトのターゲット選択（リーダー）を使用します。", settings.Name)
-		targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, battleLogic) // battleLogic を追加
+		targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, partInfoProvider, targetSelector, gameDataManager, rand) // battleLogic から変更
 	}
 
 	switch selectedPartDef.Category {
@@ -78,16 +82,16 @@ func aiSelectAction(
 			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
 			return
 		}
-		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, battleLogic, battleLogic.GetPartInfoProvider().GetGameDataManager())
+		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, partInfoProvider, gameDataManager)
 	case CategoryMelee:
 		// 格闘の場合はターゲット選択が不要なので、nilを渡す
-		StartCharge(entry, slotKey, nil, "", world, battleLogic, battleLogic.GetPartInfoProvider().GetGameDataManager())
+		StartCharge(entry, slotKey, nil, "", world, partInfoProvider, gameDataManager)
 	case CategoryIntervention:
 		if targetEntry == nil {
 			log.Printf("%s: AIは[介入]の対象がいないため待機。", settings.Name)
 			return
 		}
-		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, battleLogic, battleLogic.GetPartInfoProvider().GetGameDataManager())
+		StartCharge(entry, slotKey, targetEntry, targetPartSlot, world, partInfoProvider, gameDataManager)
 	default:
 		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
 	}
@@ -100,7 +104,9 @@ func SelectFirstAvailablePart(
 	actingEntry *donburi.Entry,
 	availableParts []AvailablePart,
 	world donburi.World,
-	battleLogic *BattleLogic, // battleLogic を追加
+	partInfoProvider PartInfoProviderInterface,
+	gameDataManager *GameDataManager,
+	rand *rand.Rand,
 ) (PartSlotKey, *PartDefinition) {
 	if len(availableParts) > 0 {
 		return availableParts[0].Slot, availableParts[0].PartDef
@@ -113,7 +119,9 @@ func SelectHighestPowerPart(
 	actingEntry *donburi.Entry,
 	availableParts []AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
-	battleLogic *BattleLogic, // battleLogic を追加
+	partInfoProvider PartInfoProviderInterface,
+	gameDataManager *GameDataManager,
+	rand *rand.Rand,
 ) (PartSlotKey, *PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil
@@ -134,7 +142,9 @@ func SelectFastestChargePart(
 	actingEntry *donburi.Entry,
 	availableParts []AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
-	battleLogic *BattleLogic, // battleLogic を追加
+	partInfoProvider PartInfoProviderInterface,
+	gameDataManager *GameDataManager,
+	rand *rand.Rand,
 ) (PartSlotKey, *PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"math"
+	"math/rand"
 	"sort"
 
 	"github.com/yohamta/donburi"
@@ -23,7 +24,7 @@ func NewTargetSelector(world donburi.World, config *Config, pip PartInfoProvider
 }
 
 // SelectDefensePart は防御に使用するパーツのインスタンスを選択します。
-func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry, battleLogic *BattleLogic) *PartInstanceData {
+func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *PartInstanceData {
 	partsComp := PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
@@ -64,7 +65,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry, battleLogic *
 }
 
 // SelectPartToDamage は、行動者の性格に基づいて攻撃対象のパーツインスタンスを選択します。
-func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry, battleLogic *BattleLogic) *PartInstanceData {
+func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry, rand *rand.Rand) *PartInstanceData {
 	partsComp := PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
@@ -99,19 +100,19 @@ func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry,
 		})
 		return vulnerableInstances[0]
 	default: // "ジョーカー" やその他の性格
-		return vulnerableInstances[battleLogic.rand.Intn(len(vulnerableInstances))]
+		return vulnerableInstances[rand.Intn(len(vulnerableInstances))]
 	}
 }
 
 // FindClosestEnemy は指定されたエンティティに最も近い敵エンティティを見つけます。
-func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry, battleLogic *BattleLogic) *donburi.Entry {
+func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry, partInfoProvider PartInfoProviderInterface) *donburi.Entry {
 	var closestEnemy *donburi.Entry
 	var minDiff float32 = math.MaxFloat32
 
-	actingProgress := ts.partInfoProvider.GetNormalizedActionProgress(actingEntry)
+	actingProgress := partInfoProvider.GetNormalizedActionProgress(actingEntry)
 
 	for _, enemy := range ts.GetTargetableEnemies(actingEntry) {
-		enemyProgress := ts.partInfoProvider.GetNormalizedActionProgress(enemy)
+		enemyProgress := partInfoProvider.GetNormalizedActionProgress(enemy)
 		diff := float32(math.Abs(float64(actingProgress - enemyProgress))) // 抽象的な進行度の差を計算
 		if diff < minDiff {
 			minDiff = diff

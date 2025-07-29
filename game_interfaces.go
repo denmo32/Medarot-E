@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math/rand"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -9,7 +11,10 @@ type TargetingStrategy interface {
 	SelectTarget(
 		world donburi.World,
 		actingEntry *donburi.Entry,
-		battleLogic *BattleLogic,
+		partInfoProvider PartInfoProviderInterface,
+		targetSelector *TargetSelector,
+		gameDataManager *GameDataManager,
+		rand *rand.Rand,
 	) (*donburi.Entry, PartSlotKey)
 }
 
@@ -31,16 +36,20 @@ type TraitActionHandler interface {
 		actingEntry *donburi.Entry,
 		world donburi.World,
 		intent *ActionIntent,
-		battleLogic *BattleLogic,
+		damageCalculator *DamageCalculator,
+		hitCalculator *HitCalculator,
+		targetSelector *TargetSelector,
+		partInfoProvider PartInfoProviderInterface,
 		gameConfig *Config,
 		actingPartDef *PartDefinition,
+		rand *rand.Rand,
 	) ActionResult
 }
 
 // WeaponTypeEffectHandler は weapon_type 固有の追加効果を処理します。
 // ActionResult を受け取り、デバフ付与などの副作用を適用します。
 type WeaponTypeEffectHandler interface {
-	ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition)
+	ApplyEffect(result *ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *PartDefinition, rand *rand.Rand)
 }
 
 // PartInfoProviderInterface はパーツの状態や情報を取得・操作するロジックのインターフェースです。

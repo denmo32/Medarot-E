@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -18,19 +19,21 @@ func (h *BaseAttackHandler) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
-	battleLogic *BattleLogic,
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	rand *rand.Rand,
 ) ActionResult {
-	_ = battleLogic // リンターの未使用パラメータ警告を抑制
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
-	return h.performAttackLogic(actingEntry, intent, battleLogic, actingPartDef)
+	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, gameConfig, actingPartDef, rand)
 }
 
 // initializeAttackResult は ActionResult を初期化します。
-func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefinition, battleLogic *BattleLogic) ActionResult {
-	_ = battleLogic // リンターの未使用パラメータ警告を抑制
+func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefinition) ActionResult {
 	return ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   false, // 初期値はfalse
@@ -45,13 +48,19 @@ func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefin
 // performAttackLogic は攻撃アクションの主要なロジックを実行します。
 func (h *BaseAttackHandler) performAttackLogic(
 	actingEntry *donburi.Entry,
+	world donburi.World,
 	intent *ActionIntent,
-	battleLogic *BattleLogic,
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	rand *rand.Rand,
 ) ActionResult {
-	result := initializeAttackResult(actingEntry, actingPartDef, battleLogic)
+	result := initializeAttackResult(actingEntry, actingPartDef)
 
-	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, battleLogic)
+	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, world, targetSelector, partInfoProvider, rand)
 	if targetEntry == nil {
 		return result // ターゲットが見つからない場合は、ActionDidHit: false のまま返す
 	}
@@ -66,19 +75,19 @@ func (h *BaseAttackHandler) performAttackLogic(
 		return result
 	}
 
-	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, intent.SelectedPartKey, battleLogic)
+	didHit := performHitCheck(actingEntry, targetEntry, actingPartDef, intent.SelectedPartKey, hitCalculator)
 	result.ActionDidHit = didHit
 	if !didHit {
 		return result
 	}
 
-	damage, isCritical := battleLogic.GetDamageCalculator().CalculateDamage(actingEntry, targetEntry, actingPartDef, intent.SelectedPartKey, battleLogic)
+	damage, isCritical := damageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef, intent.SelectedPartKey)
 	result.IsCritical = isCritical
 	result.OriginalDamage = damage
 
-	applyDamageAndDefense(&result, actingEntry, actingPartDef, intent.SelectedPartKey, battleLogic)
+	applyDamageAndDefense(&result, actingEntry, actingPartDef, intent.SelectedPartKey, damageCalculator, hitCalculator, targetSelector, partInfoProvider)
 
-	finalizeActionResult(&result, battleLogic)
+	finalizeActionResult(&result, partInfoProvider)
 
 	return result
 }
@@ -96,8 +105,8 @@ func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool
 	return true
 }
 
-func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, battleLogic *BattleLogic) bool {
-	return battleLogic.GetHitCalculator().CalculateHit(actingEntry, targetEntry, actingPartDef, selectedPartKey, battleLogic)
+func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, hitCalculator *HitCalculator) bool {
+	return hitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef, selectedPartKey)
 }
 
 func applyDamageAndDefense(
@@ -105,17 +114,20 @@ func applyDamageAndDefense(
 	actingEntry *donburi.Entry,
 	actingPartDef *PartDefinition,
 	selectedPartKey PartSlotKey,
-	battleLogic *BattleLogic,
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
 ) {
-	defendingPartInst := battleLogic.GetTargetSelector().SelectDefensePart(result.TargetEntry, battleLogic)
+	defendingPartInst := targetSelector.SelectDefensePart(result.TargetEntry)
 
-	if defendingPartInst != nil && battleLogic.GetHitCalculator().CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey) {
+	if defendingPartInst != nil && hitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey) {
 		result.ActionIsDefended = true
-		defendingPartDef, _ := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(defendingPartInst.DefinitionID)
+		defendingPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(defendingPartInst.DefinitionID)
 		result.DefendingPartType = string(defendingPartDef.Type)
-		result.ActualHitPartSlot = battleLogic.GetPartInfoProvider().FindPartSlot(result.TargetEntry, defendingPartInst)
+		result.ActualHitPartSlot = partInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
 
-		finalDamage := battleLogic.GetDamageCalculator().CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
+		finalDamage := damageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
 		result.DamageDealt = finalDamage
 		// ここで直接ダメージを適用せず、ActionResultに情報を格納
 		result.DamageToApply = finalDamage
@@ -134,9 +146,9 @@ func applyDamageAndDefense(
 	}
 }
 
-func finalizeActionResult(result *ActionResult, battleLogic *BattleLogic) {
+func finalizeActionResult(result *ActionResult, partInfoProvider PartInfoProviderInterface) {
 	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
-	actualHitPartDef, _ := battleLogic.GetPartInfoProvider().GetGameDataManager().GetPartDefinition(actualHitPartInst.DefinitionID)
+	actualHitPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(actualHitPartInst.DefinitionID)
 
 	result.TargetPartType = string(actualHitPartDef.Type)
 }
@@ -144,7 +156,10 @@ func finalizeActionResult(result *ActionResult, battleLogic *BattleLogic) {
 // resolveAttackTarget は攻撃アクションのターゲットを解決します。
 func resolveAttackTarget(
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	world donburi.World,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (targetEntry *donburi.Entry, targetPartSlot PartSlotKey) {
 	targetComp := TargetComponent.Get(actingEntry)
 	switch targetComp.Policy {
@@ -154,22 +169,22 @@ func resolveAttackTarget(
 			return nil, ""
 		}
 		// donburi.Entity から *donburi.Entry を取得
-		targetEntry := battleLogic.world.Entry(targetComp.TargetEntity)
+		targetEntry := world.Entry(targetComp.TargetEntity)
 		if targetEntry == nil {
 			log.Printf("エラー: ターゲットエンティティID %d がワールドに見つかりません。", targetComp.TargetEntity)
 			return nil, ""
 		}
 		return targetEntry, targetComp.TargetPartSlot
 	case PolicyClosestAtExecution:
-		closestEnemy := battleLogic.GetTargetSelector().FindClosestEnemy(actingEntry, battleLogic)
+		closestEnemy := targetSelector.FindClosestEnemy(actingEntry, partInfoProvider)
 		if closestEnemy == nil {
 			return nil, "" // ターゲットが見つからない場合は失敗
 		}
-		targetPart := battleLogic.GetTargetSelector().SelectPartToDamage(closestEnemy, actingEntry, battleLogic)
+		targetPart := targetSelector.SelectPartToDamage(closestEnemy, actingEntry, rand)
 		if targetPart == nil {
 			return nil, "" // ターゲットパーツが見つからない場合は失敗
 		}
-		slot := battleLogic.GetPartInfoProvider().FindPartSlot(closestEnemy, targetPart)
+		slot := partInfoProvider.FindPartSlot(closestEnemy, targetPart)
 		if slot == "" {
 			return nil, "" // ターゲットスロットが見つからない場合は失敗
 		}
@@ -187,9 +202,13 @@ func (h *SupportTraitExecutor) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
-	battleLogic *BattleLogic,
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	rand *rand.Rand,
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
 	result := ActionResult{
@@ -247,9 +266,13 @@ func (h *ObstructTraitExecutor) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
 	intent *ActionIntent,
-	battleLogic *BattleLogic,
+	damageCalculator *DamageCalculator,
+	hitCalculator *HitCalculator,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
 	gameConfig *Config,
 	actingPartDef *PartDefinition,
+	rand *rand.Rand,
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
 	result := ActionResult{
