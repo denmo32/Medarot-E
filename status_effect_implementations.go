@@ -6,92 +6,122 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-
-
-
-
-// ChargeStopEffect はチャージを一時停止させるデバフです。
-func (e *ChargeStopEffect) Apply(world donburi.World, target *donburi.Entry) {
+// ApplyChargeStopEffect はChargeStopEffectDataを適用するロジックです。
+func ApplyChargeStopEffect(world donburi.World, target *donburi.Entry, data *ChargeStopEffectData) {
 	// この効果の適用ロジックはChargeInitiationSystemなどで処理される
 }
-func (e *ChargeStopEffect) Remove(world donburi.World, target *donburi.Entry) {
+
+// RemoveChargeStopEffect はChargeStopEffectDataを解除するロジックです。
+func RemoveChargeStopEffect(world donburi.World, target *donburi.Entry, data *ChargeStopEffectData) {
 	// この効果の解除ロジックはChargeInitiationSystemなどで処理される
 }
-func (e *ChargeStopEffect) Description() string {
-	return fmt.Sprintf("チャージ停止 (Duration: %d)", e.DurationTurns)
-}
-func (e *ChargeStopEffect) Duration() int    { return e.DurationTurns }
-func (e *ChargeStopEffect) Type() DebuffType { return DebuffTypeChargeStop }
 
-// DamageOverTimeEffect は継続ダメージを与えるデバフです。
-func (e *DamageOverTimeEffect) Apply(world donburi.World, target *donburi.Entry) {
+// DescriptionChargeStopEffect はChargeStopEffectDataの説明を返します。
+func DescriptionChargeStopEffect(data *ChargeStopEffectData) string {
+	return fmt.Sprintf("チャージ停止 (Duration: %d)", data.DurationTurns)
+}
+
+// DurationChargeStopEffect はChargeStopEffectDataの持続時間を返します。
+func DurationChargeStopEffect(data *ChargeStopEffectData) int { return data.DurationTurns }
+
+// TypeChargeStopEffect はChargeStopEffectDataの種類を返します。
+func TypeChargeStopEffect(data *ChargeStopEffectData) DebuffType { return DebuffTypeChargeStop }
+
+// ApplyDamageOverTimeEffect はDamageOverTimeEffectDataを適用するロジックです。
+func ApplyDamageOverTimeEffect(world donburi.World, target *donburi.Entry, data *DamageOverTimeEffectData) {
 	// この効果の適用ロジックはStatusEffectSystemなどで処理される
 }
-func (e *DamageOverTimeEffect) Remove(world donburi.World, target *donburi.Entry) {
+
+// RemoveDamageOverTimeEffect はDamageOverTimeEffectDataを解除するロジックです。
+func RemoveDamageOverTimeEffect(world donburi.World, target *donburi.Entry, data *DamageOverTimeEffectData) {
 	// この効果の解除ロジックはStatusEffectSystemなどで処理される
 }
-func (e *DamageOverTimeEffect) Description() string {
-	return fmt.Sprintf("継続ダメージ (%d/ターン)", e.DamagePerTurn)
-}
-func (e *DamageOverTimeEffect) Duration() int    { return e.DurationTurns }
-func (e *DamageOverTimeEffect) Type() DebuffType { return DebuffTypeDamageOverTime }
 
-// TargetRandomEffect はターゲットをランダム化するデバフです。
-func (e *TargetRandomEffect) Apply(world donburi.World, target *donburi.Entry) {
+// DescriptionDamageOverTimeEffect はDamageOverTimeEffectDataの説明を返します。
+func DescriptionDamageOverTimeEffect(data *DamageOverTimeEffectData) string {
+	return fmt.Sprintf("継続ダメージ (%d/ターン)", data.DamagePerTurn)
+}
+
+// DurationDamageOverTimeEffect はDamageOverTimeEffectDataの持続時間を返します。
+func DurationDamageOverTimeEffect(data *DamageOverTimeEffectData) int { return data.DurationTurns }
+
+// TypeDamageOverTimeEffect はDamageOverTimeEffectDataの種類を返します。
+func TypeDamageOverTimeEffect(data *DamageOverTimeEffectData) DebuffType {
+	return DebuffTypeDamageOverTime
+}
+
+// ApplyTargetRandomEffect はTargetRandomEffectDataを適用するロジックです。
+func ApplyTargetRandomEffect(world donburi.World, target *donburi.Entry, data *TargetRandomEffectData) {
 	// この効果の適用ロジックはBattleTargetSelectorなどで処理される
 }
-func (e *TargetRandomEffect) Remove(world donburi.World, target *donburi.Entry) {
+
+// RemoveTargetRandomEffect はTargetRandomEffectDataを解除するロジックです。
+func RemoveTargetRandomEffect(world donburi.World, target *donburi.Entry, data *TargetRandomEffectData) {
 	// この効果の解除ロジックはBattleTargetSelectorなどで処理される
 }
-func (e *TargetRandomEffect) Description() string {
-	return fmt.Sprintf("ターゲットランダム化 (Duration: %d)", e.DurationTurns)
-}
-func (e *TargetRandomEffect) Duration() int    { return e.DurationTurns }
-func (e *TargetRandomEffect) Type() DebuffType { return DebuffTypeTargetRandom }
 
-// EvasionDebuffEffect は回避率を低下させるデバフです。
-func (e *EvasionDebuffEffect) Apply(world donburi.World, target *donburi.Entry) {
+// DescriptionTargetRandomEffect はTargetRandomEffectDataの説明を返します。
+func DescriptionTargetRandomEffect(data *TargetRandomEffectData) string {
+	return fmt.Sprintf("ターゲットランダム化 (Duration: %d)", data.DurationTurns)
+}
+
+// DurationTargetRandomEffect はTargetRandomEffectDataの持続時間を返します。
+func DurationTargetRandomEffect(data *TargetRandomEffectData) int { return data.DurationTurns }
+
+// TypeTargetRandomEffect はTargetRandomEffectDataの種類を返します。
+func TypeTargetRandomEffect(data *TargetRandomEffectData) DebuffType { return DebuffTypeTargetRandom }
+
+// ApplyEvasionDebuffEffect はEvasionDebuffEffectDataを適用するロジックです。
+func ApplyEvasionDebuffEffect(world donburi.World, target *donburi.Entry, data *EvasionDebuffEffectData) {
 	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
 	// log.Printf("EvasionDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
 }
 
-func (e *EvasionDebuffEffect) Remove(world donburi.World, target *donburi.Entry) {
+// RemoveEvasionDebuffEffect はEvasionDebuffEffectDataを解除するロジックです。
+func RemoveEvasionDebuffEffect(world donburi.World, target *donburi.Entry, data *EvasionDebuffEffectData) {
 	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
 	// log.Printf("EvasionDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
 }
 
-func (e *EvasionDebuffEffect) Description() string {
-	return fmt.Sprintf("Evasion Debuff (x%.2f)", e.Multiplier)
+// DescriptionEvasionDebuffEffect はEvasionDebuffEffectDataの説明を返します。
+func DescriptionEvasionDebuffEffect(data *EvasionDebuffEffectData) string {
+	return fmt.Sprintf("Evasion Debuff (x%.2f)", data.Multiplier)
 }
 
-func (e *EvasionDebuffEffect) Duration() int {
+// DurationEvasionDebuffEffect はEvasionDebuffEffectDataの持続時間を返します。
+func DurationEvasionDebuffEffect(data *EvasionDebuffEffectData) int {
 	// 0 means it will be removed manually (e.g., after an action).
 	return 0
 }
 
-func (e *EvasionDebuffEffect) Type() DebuffType {
+// TypeEvasionDebuffEffect はEvasionDebuffEffectDataの種類を返します。
+func TypeEvasionDebuffEffect(data *EvasionDebuffEffectData) DebuffType {
 	return DebuffTypeEvasion
 }
 
-// DefenseDebuffEffect は防御力を低下させるデバフです。
-func (d *DefenseDebuffEffect) Apply(world donburi.World, target *donburi.Entry) {
+// ApplyDefenseDebuffEffect はDefenseDebuffEffectDataを適用するロジックです。
+func ApplyDefenseDebuffEffect(world donburi.World, target *donburi.Entry, data *DefenseDebuffEffectData) {
 	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
 	// log.Printf("DefenseDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
 }
 
-func (d *DefenseDebuffEffect) Remove(world donburi.World, target *donburi.Entry) {
+// RemoveDefenseDebuffEffect はDefenseDebuffEffectDataを解除するロジックです。
+func RemoveDefenseDebuffEffect(world donburi.World, target *donburi.Entry, data *DefenseDebuffEffectData) {
 	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
 	// log.Printf("DefenseDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
 }
 
-func (d *DefenseDebuffEffect) Description() string {
-	return fmt.Sprintf("Defense Debuff (x%.2f)", d.Multiplier)
+// DescriptionDefenseDebuffEffect はDefenseDebuffEffectDataの説明を返します。
+func DescriptionDefenseDebuffEffect(data *DefenseDebuffEffectData) string {
+	return fmt.Sprintf("Defense Debuff (x%.2f)", data.Multiplier)
 }
 
-func (d *DefenseDebuffEffect) Duration() int {
+// DurationDefenseDebuffEffect はDefenseDebuffEffectDataの持続時間を返します。
+func DurationDefenseDebuffEffect(data *DefenseDebuffEffectData) int {
 	return 0
 }
 
-func (d *DefenseDebuffEffect) Type() DebuffType {
+// TypeDefenseDebuffEffect はDefenseDebuffEffectDataの種類を返します。
+func TypeDefenseDebuffEffect(data *DefenseDebuffEffectData) DebuffType {
 	return DebuffTypeDefense
 }

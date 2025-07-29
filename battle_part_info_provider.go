@@ -153,7 +153,7 @@ func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
 		for _, activeEffect := range activeEffects.Effects {
-			if evasionDebuff, ok := activeEffect.EffectData.(*EvasionDebuffEffect); ok {
+			if evasionDebuff, ok := activeEffect.EffectData.(*EvasionDebuffEffectData); ok {
 				evasion *= evasionDebuff.Multiplier
 			}
 		}
@@ -169,7 +169,7 @@ func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
 		for _, activeEffect := range activeEffects.Effects {
-			if defenseDebuff, ok := activeEffect.EffectData.(*DefenseDebuffEffect); ok {
+			if defenseDebuff, ok := activeEffect.EffectData.(*DefenseDebuffEffectData); ok {
 				defense *= defenseDebuff.Multiplier
 			}
 		}

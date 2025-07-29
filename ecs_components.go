@@ -33,7 +33,8 @@ var (
 	// --- Debug Components ---
 	DebugModeComponent = donburi.NewComponentType[struct{}]()
 
-	
+	// --- UI State Component ---
+	BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
 )
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
@@ -44,7 +45,37 @@ type ActiveEffects struct {
 	Effects []*ActiveStatusEffectData
 }
 
+// ChargeStopEffectData はチャージを一時停止させるデバフのデータです。
+type ChargeStopEffectData struct {
+	DurationTurns int // ターン数での持続時間
+}
 
+// DamageOverTimeEffectData は継続ダメージを与えるデバフのデータです。
+type DamageOverTimeEffectData struct {
+	DamagePerTurn int
+	DurationTurns int
+}
+
+// TargetRandomEffectData はターゲットをランダム化するデバフのデータです。
+type TargetRandomEffectData struct {
+	DurationTurns int
+}
+
+// EvasionDebuffEffectData は回避率を低下させるデバフのデータです。
+type EvasionDebuffEffectData struct {
+	Multiplier float64
+}
+
+// DefenseDebuffEffectData は防御力を低下させるデバフのデータです。
+type DefenseDebuffEffectData struct {
+	Multiplier float64
+}
+
+// BattleUIState is a singleton component that stores UI-specific data (ViewModels).
+type BattleUIState struct {
+	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
+	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
+}
 
 // --- コンポーネントの構造体定義 ---
 

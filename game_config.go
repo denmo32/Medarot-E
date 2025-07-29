@@ -2,6 +2,7 @@ package main
 
 import (
 	"image/color"
+	"math/rand" // 追加
 
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -101,8 +102,6 @@ type BalanceConfig struct {
 	Formulas map[Trait]ActionFormulaConfig // 新しく追加
 }
 
-
-
 type AssetPaths struct {
 	GameSettings string
 	Messages     string
@@ -118,9 +117,12 @@ type Config struct {
 	Balance    BalanceConfig
 	UI         UIConfig
 	AssetPaths AssetPaths // 新しく追加
+	Game       GameConfig // 追加
 }
 
-
+type GameConfig struct {
+	RandomSeed int64
+}
 
 type UIConfig struct {
 	Screen struct {
@@ -136,7 +138,7 @@ type UIConfig struct {
 		IconRadius                   float32
 		HomeMarkerRadius             float32
 		LineWidth                    float32
-				MedarotVerticalSpacingFactor float32
+		MedarotVerticalSpacingFactor float32
 		TargetIndicator              struct {
 			Width  float32
 			Height float32
@@ -176,4 +178,6 @@ type SharedResources struct {
 	Font            text.Face
 	GameDataManager *GameDataManager
 	ButtonImage     *widget.ButtonImage
+	Rand            *rand.Rand   // 追加
+	BattleLogger    BattleLogger // 追加
 }

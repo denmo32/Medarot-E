@@ -70,7 +70,7 @@ type PartInfoProviderInterface interface {
 	GetTeamAccuracyBuffMultiplier(entry *donburi.Entry) float64
 
 	// バフを削除するメソッド
-	RemoveBuffsFromSource(entry *donburi.Entry, partInst *PartInstanceData) 
+	RemoveBuffsFromSource(entry *donburi.Entry, partInst *PartInstanceData)
 
 	// ゲージの持続時間を計算するメソッド
 	CalculateGaugeDuration(baseSeconds float64, entry *donburi.Entry) float64
@@ -80,13 +80,4 @@ type PartInfoProviderInterface interface {
 
 	// GameDataManagerへのアクセスを提供するメソッド
 	GetGameDataManager() *GameDataManager
-}
-
-// StatusEffect は、すべてのステータス効果（バフ・デバフ）が実装すべきインターフェースです。
-type StatusEffect interface {
-	Apply(world donburi.World, target *donburi.Entry)
-	Remove(world donburi.World, target *donburi.Entry)
-	Description() string
-	Duration() int    // 効果の持続時間（ターン数や秒数など）。0の場合は永続、または即時解除。
-	Type() DebuffType // 効果の種類を返すメソッドを追加
 }

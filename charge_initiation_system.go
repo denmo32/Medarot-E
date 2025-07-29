@@ -78,17 +78,17 @@ func (s *ChargeInitiationSystem) ProcessChargeRequest(
 		// 2. 計算式に基づいて自身に適用されるデバフ効果を生成
 		for _, debuffInfo := range formula.UserDebuffs {
 			log.Printf("%s が %s 特性効果（チャージ時デバフ）を準備。", settings.Name, formula.ID)
-			var effect StatusEffect
+			var effectData interface{}
 			switch debuffInfo.Type {
 			case DebuffTypeEvasion:
-				effect = &EvasionDebuffEffect{Multiplier: debuffInfo.Multiplier}
+				effectData = &EvasionDebuffEffectData{Multiplier: debuffInfo.Multiplier}
 			case DebuffTypeDefense:
-				effect = &DefenseDebuffEffect{Multiplier: debuffInfo.Multiplier}
+				effectData = &DefenseDebuffEffectData{Multiplier: debuffInfo.Multiplier}
 			default:
 				log.Printf("未対応のチャージ時デバフタイプです: %s", debuffInfo.Type)
 			}
-			if effect != nil {
-				intent.PendingEffects = append(intent.PendingEffects, effect)
+			if effectData != nil {
+				intent.PendingEffects = append(intent.PendingEffects, effectData)
 			}
 		}
 	}

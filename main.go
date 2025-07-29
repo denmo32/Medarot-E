@@ -3,6 +3,7 @@ package main
 import (
 	"image/color"
 	"log"
+	"math/rand"
 	"os"
 
 	"github.com/ebitenui/ebitenui/image"
@@ -76,6 +77,8 @@ func main() {
 			Hover:   image.NewNineSliceSimple(buttonImage, 10, 10),
 			Pressed: image.NewNineSliceSimple(buttonImage, 10, 10),
 		},
+		Rand:         rand.New(rand.NewSource(config.Game.RandomSeed)), // 追加
+		BattleLogger: NewBattleLogger(gameDataManager),                 // 追加
 	})
 
 	// Ebitenのゲームを実行します。渡すのはbamennのシーケンスです。

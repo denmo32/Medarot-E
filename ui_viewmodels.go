@@ -6,11 +6,6 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-var (
-	// --- UI State Component ---
-	BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
-)
-
 type CustomizeCategory string
 
 const (
@@ -75,10 +70,4 @@ type IconViewModel struct {
 	State         StateType
 	GaugeProgress float64 // 0.0 to 1.0
 	DebugText     string
-}
-
-// BattleUIState is a singleton component that stores UI-specific data (ViewModels).
-type BattleUIState struct {
-	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
-	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
 }

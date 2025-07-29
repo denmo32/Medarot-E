@@ -53,7 +53,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
 	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic)
 	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
-	bs.statusEffectSystem = NewStatusEffectSystem(bs.world)
+	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, NewBattleDamageCalculator(bs.world, &bs.resources.Config, bs.battleLogic.GetPartInfoProvider(), bs.resources.GameDataManager, bs.resources.Rand, bs.resources.BattleLogger))
 	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.resources.GameDataManager, bs.battleLogic.GetPartInfoProvider())
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)

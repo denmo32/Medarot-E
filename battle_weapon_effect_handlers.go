@@ -14,8 +14,8 @@ type ThunderEffectHandler struct{}
 func (h *ThunderEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition) {
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にサンダー効果！チャージを停止させます。", result.DefenderName)
-		// ActionResult.AppliedEffectsにChargeStopEffectを追加
-		result.AppliedEffects = append(result.AppliedEffects, &ChargeStopEffect{DurationTurns: 1}) // 例として1ターン
+		// ActionResult.AppliedEffectsにChargeStopEffectDataを追加
+		result.AppliedEffects = append(result.AppliedEffects, &ChargeStopEffectData{DurationTurns: 1}) // 例として1ターン
 	}
 }
 
@@ -25,8 +25,8 @@ type MeltEffectHandler struct{}
 func (h *MeltEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition) {
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にメルト効果！継続ダメージを与えます。", result.DefenderName)
-		// ActionResult.AppliedEffectsにDamageOverTimeEffectを追加
-		result.AppliedEffects = append(result.AppliedEffects, &DamageOverTimeEffect{DamagePerTurn: 10, DurationTurns: 2}) // 例としてダメージ10、2ターン
+		// ActionResult.AppliedEffectsにDamageOverTimeEffectDataを追加
+		result.AppliedEffects = append(result.AppliedEffects, &DamageOverTimeEffectData{DamagePerTurn: 10, DurationTurns: 2}) // 例としてダメージ10、2ターン
 	}
 }
 
@@ -36,7 +36,7 @@ type VirusEffectHandler struct{}
 func (h *VirusEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, battleLogic *BattleLogic, actingPartDef *PartDefinition) {
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にウイルス効果！ターゲットをランダム化します。", result.DefenderName)
-		// ActionResult.AppliedEffectsにTargetRandomEffectを追加
-		result.AppliedEffects = append(result.AppliedEffects, &TargetRandomEffect{DurationTurns: 1}) // 例として1ターン
+		// ActionResult.AppliedEffectsにTargetRandomEffectDataを追加
+		result.AppliedEffects = append(result.AppliedEffects, &TargetRandomEffectData{DurationTurns: 1}) // 例として1ターン
 	}
 }

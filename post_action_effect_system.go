@@ -37,8 +37,20 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 		targetEntry := result.ActingEntry
 		if targetEntry != nil {
 			for _, effectData := range result.AppliedEffects {
-				if effect, ok := effectData.(StatusEffect); ok {
-					s.statusEffectSystem.Apply(targetEntry, effect)
+				// effectDataの型に応じてApplyを呼び出す
+				switch effect := effectData.(type) {
+				case *ChargeStopEffectData:
+					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
+				case *DamageOverTimeEffectData:
+					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
+				case *TargetRandomEffectData:
+					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
+				case *EvasionDebuffEffectData:
+					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
+				case *DefenseDebuffEffectData:
+					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
+				default:
+					log.Printf("警告: 未知の適用効果タイプです: %T", effectData)
 				}
 			}
 		}
@@ -80,14 +92,14 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 	// 4. 行動後のクリーンアップ
 	if result.ActingEntry != nil && result.ActingEntry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(result.ActingEntry)
-		effectsToRemove := []StatusEffect{}
+		effectsToRemove := []interface{}{} // interface{}のスライスに変更
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.RemainingDur == 0 {
-				effectsToRemove = append(effectsToRemove, activeEffect.EffectData.(StatusEffect))
+				effectsToRemove = append(effectsToRemove, activeEffect.EffectData) // EffectDataを直接追加
 			}
 		}
-		for _, effect := range effectsToRemove {
-			s.statusEffectSystem.Remove(result.ActingEntry, effect)
+		for _, effectData := range effectsToRemove { // effectDataに名前変更
+			s.statusEffectSystem.Remove(result.ActingEntry, effectData) // effectDataを渡す
 		}
 	}
 }
