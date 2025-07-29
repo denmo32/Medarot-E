@@ -44,7 +44,13 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 
 	// AIの行動選択
 	if len(playerActionPendingQueue) == 0 {
-		UpdateAIInputSystem(world, ctx.PartInfoProvider, ctx.TargetSelector, ctx.GameDataManager, ctx.Rand)
+		UpdateAIInputSystem(world, &BattleLogic{
+			damageCalculator: ctx.DamageCalculator,
+			hitCalculator:    ctx.HitCalculator,
+			targetSelector:   ctx.TargetSelector,
+			partInfoProvider: ctx.PartInfoProvider,
+			rand:             ctx.Rand,
+		})
 	}
 
 	// プレイヤーの行動選択が必要かチェック
@@ -120,7 +126,14 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 						personality = PersonalityRegistry["リーダー"]
 					}
 					// ViewModelFactoryを介してターゲットを選択
-					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, ctx.PartInfoProvider, ctx.TargetSelector, ctx.GameDataManager, ctx.Rand)
+					battleLogic := &BattleLogic{
+						damageCalculator: ctx.DamageCalculator,
+						hitCalculator:    ctx.HitCalculator,
+						targetSelector:   ctx.TargetSelector,
+						partInfoProvider: ctx.PartInfoProvider,
+						rand:             ctx.Rand,
+					}
+					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic)
 				}
 				var targetID donburi.Entity
 				if targetEntity != nil {

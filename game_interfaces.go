@@ -11,10 +11,7 @@ type TargetingStrategy interface {
 	SelectTarget(
 		world donburi.World,
 		actingEntry *donburi.Entry,
-		partInfoProvider PartInfoProviderInterface,
-		targetSelector *TargetSelector,
-		gameDataManager *GameDataManager,
-		rand *rand.Rand,
+		battleLogic *BattleLogic,
 	) (*donburi.Entry, PartSlotKey)
 }
 

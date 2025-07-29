@@ -1,8 +1,6 @@
 package main
 
 import (
-	"math/rand"
-
 	"github.com/yohamta/donburi"
 )
 
@@ -12,9 +10,7 @@ type AIPartSelectionStrategyFunc func(
 	actingEntry *donburi.Entry,
 	availableParts []AvailablePart,
 	world donburi.World,
-	partInfoProvider PartInfoProviderInterface,
-	gameDataManager *GameDataManager,
-	rand *rand.Rand,
+	battleLogic *BattleLogic,
 ) (PartSlotKey, *PartDefinition)
 
 // AIPersonality はAIの性格に関連する戦略をカプセル化します。
