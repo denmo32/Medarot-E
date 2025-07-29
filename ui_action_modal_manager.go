@@ -30,9 +30,6 @@ func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, u
 
 // ShowActionModal はアクション選択モーダルを表示します。
 func (m *UIActionModalManager) ShowActionModal(vm ActionModalViewModel) {
-	if m.isActionModalVisible {
-		m.HideActionModal()
-	}
 	m.isActionModalVisible = true
 
 	// actionTargetMap を ViewModel の情報から再構築

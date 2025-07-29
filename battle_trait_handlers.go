@@ -23,13 +23,13 @@ func (h *BaseAttackHandler) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	gameConfig *Config,
+	_ *Config,
 	actingPartDef *PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
-	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, gameConfig, actingPartDef, rand)
+	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, nil, actingPartDef, rand)
 }
 
 // initializeAttackResult は ActionResult を初期化します。
@@ -54,7 +54,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	gameConfig *Config,
+	_ *Config,
 	actingPartDef *PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {
@@ -206,7 +206,7 @@ func (h *SupportTraitExecutor) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	gameConfig *Config,
+	_ *Config,
 	actingPartDef *PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {
@@ -270,7 +270,7 @@ func (h *ObstructTraitExecutor) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	gameConfig *Config,
+	_ *Config,
 	actingPartDef *PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {

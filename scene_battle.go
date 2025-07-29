@@ -70,14 +70,13 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		battleUIState:            &BattleUIState{}, // ← これを追加
 	}
 
-	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.partInfoProvider, bs.gameDataManager, bs.rand)
-	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
-	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, bs.damageCalculator)
-	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.partInfoProvider)
-
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
+	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
 	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.uiFactory, bs.resources.GameDataManager)
+	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.partInfoProvider, bs.gameDataManager, bs.rand, bs.ui)
+	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, bs.damageCalculator)
+	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.partInfoProvider)
 	bs.messageManager = bs.ui.GetMessageDisplayManager() // uiからmessageManagerを取得
 
 	// Initialize state machine
@@ -242,9 +241,14 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case HideActionModalGameEvent:
 			bs.ui.PostEvent(HideActionModalUIEvent{})
 		case ShowActionModalGameEvent:
-			// アクションモーダルが既に表示されている場合は無視
-			if !bs.ui.IsActionModalVisible() {
-				bs.ui.PostEvent(ShowActionModalUIEvent(e))
+			bs.ui.HideActionModal() // 明示的に非表示にする
+			// eventChannel に ShowActionModalUIEvent が既に存在しないかを確認してから送信
+			select {
+			case bs.ui.GetEventChannel() <- ShowActionModalUIEvent(e):
+				// 送信成功
+			default:
+				// チャネルがフルで送信できなかった、または既に同じイベントが存在する
+				log.Println("警告: ShowActionModalUIEvent の送信をスキップしました (チャネルがフルか重複)。")
 			}
 		case ClearAnimationGameEvent:
 			bs.ui.PostEvent(ClearAnimationUIEvent{})
@@ -277,7 +281,11 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 				break
 			}
 			// プレイヤーの行動キューから現在のエンティティを削除
-			bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
+			if len(bs.playerActionPendingQueue) > 0 && bs.playerActionPendingQueue[0] == actingEntry {
+				bs.playerActionPendingQueue = bs.playerActionPendingQueue[1:]
+			} else {
+				log.Printf("警告: 処理されたエンティティ %s がキューの先頭にありませんでした。", SettingsComponent.Get(actingEntry).Name)
+			}
 			bs.state = StatePlaying // 行動処理後はPlaying状態に戻る
 		case ActionCanceledGameEvent:
 			actingEntry := e.ActingEntry

@@ -216,14 +216,16 @@ func (u *UI) GetMessageDisplayManager() *UIMessageDisplayManager {
 	return u.messageManager
 }
 
-// ShowMessagePanel はメッセージパネルをルートコンテナに追加します。
 func (u *UI) ShowMessagePanel(panel widget.PreferredSizeLocateableWidget) {
 	u.ebitenui.Container.AddChild(panel)
 }
 
-// HideMessagePanel はメッセージパネルをルートコンテナから削除します。
 func (u *UI) HideMessagePanel() {
 	if u.messageManager.messageWindow != nil {
 		u.ebitenui.Container.RemoveChild(u.messageManager.messageWindow)
 	}
+}
+
+func (u *UI) GetEventChannel() chan UIEvent {
+	return u.eventChannel
 }

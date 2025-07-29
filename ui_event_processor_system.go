@@ -93,7 +93,9 @@ func UpdateUIEventProcessorSystem(
 			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlaying}) // イベントを発行
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:
-			ui.ShowActionModal(e.ViewModel)
+			if !ui.IsActionModalVisible() { // モーダルが既に表示されていない場合のみ表示
+				ui.ShowActionModal(e.ViewModel)
+			}
 		case HideActionModalUIEvent:
 			ui.HideActionModal()
 		case SetAnimationUIEvent:

@@ -16,7 +16,8 @@ type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel
 	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand) ActionModalViewModel
-	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart // 追加
+	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart
+	IsActionModalVisible() bool
 }
 
 // viewModelFactoryImpl はViewModelFactoryインターフェースの実装です。
@@ -24,14 +25,16 @@ type viewModelFactoryImpl struct {
 	partInfoProvider PartInfoProviderInterface
 	gameDataManager  *GameDataManager
 	rand             *rand.Rand
+	ui               UIInterface
 }
 
 // NewViewModelFactory は新しいViewModelFactoryのインスタンスを作成します。
-func NewViewModelFactory(world donburi.World, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand) ViewModelFactory { // world の型を donburi.World に変更
+func NewViewModelFactory(world donburi.World, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand, ui UIInterface) ViewModelFactory { // world の型を donburi.World に変更
 	return &viewModelFactoryImpl{
 		partInfoProvider: partInfoProvider,
 		gameDataManager:  gameDataManager,
 		rand:             rand,
+		ui:               ui,
 	}
 }
 
@@ -207,4 +210,8 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 // GetAvailableAttackParts は、指定されたエンティティが利用可能な攻撃パーツのリストを返します。
 func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
 	return f.partInfoProvider.GetAvailableAttackParts(entry)
+}
+
+func (f *viewModelFactoryImpl) IsActionModalVisible() bool {
+	return f.ui.IsActionModalVisible()
 }

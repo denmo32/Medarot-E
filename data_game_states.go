@@ -144,18 +144,24 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 
 			// ここでViewModelを構築し、UIに渡す
 			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, ctx.PartInfoProvider, ctx.GameDataManager, ctx.Rand)
-			gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
+			// モーダルが既に表示されていない場合のみイベントを発行
+			if !ctx.ViewModelFactory.IsActionModalVisible() {
+				gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
+			}
 			return playerActionPendingQueue, gameEvents, nil
 		} else {
-			// 無効または待機状態でないならキューから削除して次のプレイヤーを処理
+			// 無効または待機状態でないならキューから削除
 			playerActionPendingQueue = playerActionPendingQueue[1:]
-			// 即座に次のプレイヤーを評価するため、再帰的に呼び出す
-			return s.Update(ctx, playerActionPendingQueue)
+			// 次のフレームで再度Updateが呼ばれるのを待つ
+			return playerActionPendingQueue, gameEvents, nil
 		}
+	} else {
+		// キューが空なら処理完了
+		return playerActionPendingQueue, gameEvents, nil
 	}
 
-	// キューが空なら処理完了
-	return playerActionPendingQueue, gameEvents, nil
+	// このパスは到達不能なので削除
+	// return playerActionPendingQueue, gameEvents, nil
 }
 
 func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}

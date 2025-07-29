@@ -30,4 +30,5 @@ type UIInterface interface {
 	GetMessageDisplayManager() *UIMessageDisplayManager // 追加
 	ShowMessagePanel(panel widget.PreferredSizeLocateableWidget)
 	HideMessagePanel()
+	GetEventChannel() chan UIEvent
 }
