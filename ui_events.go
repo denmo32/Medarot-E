@@ -46,7 +46,7 @@ type ActionCanceledUIEvent struct {
 	ActingEntityID donburi.Entity
 }
 
-func (e ActionCanceledUIEvent) isUIEvent()   {}
+func (e ActionCanceledUIEvent) isUIEvent() {}
 
 // ShowActionModalUIEvent は、アクションモーダルを表示するUIイベントです。
 type ShowActionModalUIEvent struct {
@@ -84,3 +84,10 @@ type MessageDisplayRequestUIEvent struct {
 }
 
 func (e MessageDisplayRequestUIEvent) isUIEvent() {}
+
+// AnimationFinishedUIEvent は、アニメーションが終了したことをUIから通知するイベントです。
+type AnimationFinishedUIEvent struct {
+	Result ActionResult
+}
+
+func (e AnimationFinishedUIEvent) isUIEvent() {}

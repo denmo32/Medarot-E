@@ -23,7 +23,7 @@ type UI struct {
 	messageManager         *UIMessageDisplayManager
 	actionModalManager     *UIActionModalManager
 	targetIndicatorManager *UITargetIndicatorManager
-	animationDrawer        *UIAnimationDrawer // New: uiFactory and gameDataManager removed
+	animationDrawer        *UIAnimationDrawer
 }
 
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
@@ -51,16 +51,16 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(config *Config, eventChannel chan UIEvent, animationManager *BattleAnimationManager, uiFactory *UIFactory, gameDataManager *GameDataManager) *UI {
+func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, gameDataManager *GameDataManager) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
 	ui := &UI{
-		infoPanelManager:  NewInfoPanelManager(config, uiFactory), // InfoPanelManager を初期化
-		eventChannel:      eventChannel,
-		config:            config,
-		whitePixel:        whiteImg,
-		animationDrawer:   NewUIAnimationDrawer(config, animationManager, gameDataManager.Font),
+		infoPanelManager: NewInfoPanelManager(config, uiFactory), // InfoPanelManager を初期化
+		eventChannel:     eventChannel,
+		config:           config,
+		whitePixel:       whiteImg,
+		animationDrawer:  NewUIAnimationDrawer(config, gameDataManager.Font),
 	}
 
 	rootContainer := widget.NewContainer(
@@ -141,10 +141,18 @@ func (u *UI) ClearCurrentTarget() {
 // Update はUIの状態を更新します。
 func (u *UI) Update() {
 	u.ebitenui.Update()
+	// アニメーション終了の検知とイベント発行は、Draw メソッド内で tick を使って行う
 }
 
 // Draw はUIを描画します。
 func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
+	// アニメーションが再生中で、かつ終了している場合、イベントを発行
+	if u.animationDrawer.currentAnimation != nil && u.animationDrawer.IsAnimationFinished(tick) {
+		result := u.animationDrawer.GetCurrentAnimationResult()
+		u.PostEvent(AnimationFinishedUIEvent{Result: result})
+		u.animationDrawer.ClearAnimation()
+	}
+
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
 	var indicatorTargetVM *IconViewModel
 	if u.targetIndicatorManager.GetCurrentTarget() != 0 && u.battlefieldWidget.viewModel != nil { // 0はdonburi.Entityのゼロ値
@@ -185,22 +193,22 @@ func (u *UI) GetRootContainer() *widget.Container {
 
 // SetAnimation はアニメーションを設定します。
 func (u *UI) SetAnimation(anim *ActionAnimationData) {
-	u.animationDrawer.animationManager.SetAnimation(anim)
+	u.animationDrawer.SetAnimation(anim)
 }
 
 // IsAnimationFinished は現在のアニメーションが完了したかどうかを返します。
 func (u *UI) IsAnimationFinished(tick int) bool {
-	return u.animationDrawer.animationManager.IsAnimationFinished(tick)
+	return u.animationDrawer.IsAnimationFinished(tick)
 }
 
 // ClearAnimation は現在のアニメーションをクリアします。
 func (u *UI) ClearAnimation() {
-	u.animationDrawer.animationManager.ClearAnimation()
+	u.animationDrawer.ClearAnimation()
 }
 
 // GetCurrentAnimationResult は現在のアニメーションの結果を返します。
 func (u *UI) GetCurrentAnimationResult() ActionResult {
-	return u.animationDrawer.animationManager.currentAnimation.Result
+	return u.animationDrawer.GetCurrentAnimationResult()
 }
 
 // GetMessageDisplayManager はメッセージ表示マネージャーを返します。

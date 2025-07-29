@@ -29,6 +29,8 @@ type BattleScene struct {
 	viewModelFactory         ViewModelFactory // 追加
 	uiFactory                *UIFactory       // 追加
 
+	lastActionResult *ActionResult // 追加: アニメーション結果を一時的に保持
+
 	// State Machine
 	states       map[GameState]BattleState
 	currentState BattleState
@@ -58,8 +60,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
-	animationManager := NewBattleAnimationManager(&bs.resources.Config)
-	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, animationManager, bs.uiFactory, bs.resources.GameDataManager)
+	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.uiFactory, bs.resources.GameDataManager)
 	bs.messageManager = bs.ui.GetMessageDisplayManager() // uiからmessageManagerを取得
 
 	// Initialize state machine
@@ -79,27 +80,9 @@ func (bs *BattleScene) Update() error {
 	bs.tickCount++
 	bs.ui.Update()
 
-	// アニメーション再生中の場合、アニメーションの終了をチェック
-	if bs.state == StateAnimatingAction && bs.ui.IsAnimationFinished(bs.tickCount) {
-		// currentAnimationがnilでないことを確認してから結果を取得
-		if bs.ui.(*UI).animationDrawer.animationManager.currentAnimation != nil {
-			result := bs.ui.GetCurrentAnimationResult()
-			gameEvents := []GameEvent{
-				ClearAnimationGameEvent{},
-				MessageDisplayRequestGameEvent{Messages: buildActionLogMessagesFromActionResult(result, bs.resources.GameDataManager), Callback: func() {
-					UpdateHistorySystem(bs.world, &result)
-				}},
-				ActionAnimationFinishedGameEvent{Result: result, ActingEntry: result.ActingEntry},
-			}
-
-			bs.processGameEvents(gameEvents)
-			return nil // アニメーション終了イベントを処理したので、このフレームの更新は終了
-		}
-	}
-
 	// UIイベントプロセッサシステムを更新
 	var uiGeneratedGameEvents []GameEvent
-	bs.playerActionPendingQueue, bs.state, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
+	bs.playerActionPendingQueue, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
 		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
 	)
 	// UIイベントプロセッサから発行されたGameEventを処理
@@ -107,6 +90,25 @@ func (bs *BattleScene) Update() error {
 
 	// メッセージ表示状態の場合、メッセージマネージャーを更新
 	if bs.state == StateMessage {
+		// メッセージ状態に遷移した直後のフレームで、メッセージ表示の準備と関連ロジックを実行
+		if bs.lastActionResult != nil {
+			result := *bs.lastActionResult
+			actingEntry := result.ActingEntry
+
+			// クールダウン開始とターゲットクリア
+			if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
+				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic)
+			}
+			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
+
+			// メッセージ表示を要求
+			bs.messageManager.EnqueueMessageQueue(buildActionLogMessagesFromActionResult(result, bs.resources.GameDataManager), func() {
+				UpdateHistorySystem(bs.world, &result)
+			})
+
+			bs.lastActionResult = nil // 処理が完了したのでクリア
+		}
+
 		bs.messageManager.Update()
 		if bs.messageManager.IsFinished() {
 			// メッセージ表示が完了したら、MessageDisplayFinishedGameEvent を発行
@@ -115,33 +117,36 @@ func (bs *BattleScene) Update() error {
 		}
 	}
 
-	// 現在のバトルステートを更新
-	battleContext := &BattleContext{
-		World:                  bs.world,
-		BattleLogic:            bs.battleLogic,
-		Config:                 &bs.resources.Config,
-		GameDataManager:        bs.resources.GameDataManager,
-		Tick:                   bs.tickCount,
-		ViewModelFactory:       bs.viewModelFactory,
-		statusEffectSystem:     bs.statusEffectSystem,
-		postActionEffectSystem: bs.postActionEffectSystem,
+	// アニメーション中またはメッセージ表示中はゲーム進行ロジックを停止
+	if bs.state != StateMessage && bs.state != StateAnimatingAction {
+		// 現在のバトルステートを更新
+		battleContext := &BattleContext{
+			World:                  bs.world,
+			BattleLogic:            bs.battleLogic,
+			Config:                 &bs.resources.Config,
+			GameDataManager:        bs.resources.GameDataManager,
+			Tick:                   bs.tickCount,
+			ViewModelFactory:       bs.viewModelFactory,
+			statusEffectSystem:     bs.statusEffectSystem,
+			postActionEffectSystem: bs.postActionEffectSystem,
+		}
+
+		newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(
+			battleContext,
+			bs.playerActionPendingQueue,
+		)
+		if err != nil {
+			return err
+		}
+		bs.playerActionPendingQueue = newPlayerActionPendingQueue
+
+		// Update status effect durations
+		bs.statusEffectSystem.Update()
+
+		// Process game events and transition state
+		// nextState は processGameEvents 内で更新される
+		bs.processGameEvents(gameEvents)
 	}
-
-	newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(
-		battleContext,
-		bs.playerActionPendingQueue,
-	)
-	if err != nil {
-		return err
-	}
-	bs.playerActionPendingQueue = newPlayerActionPendingQueue
-
-	// Update status effect durations
-	bs.statusEffectSystem.Update()
-
-	// Process game events and transition state
-	// nextState は processGameEvents 内で更新される
-	bs.processGameEvents(gameEvents)
 
 	// Additional state transitions not directly tied to a single GameEvent
 	if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
@@ -198,12 +203,8 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			bs.ui.PostEvent(SetAnimationUIEvent(e))
 			bs.state = StateAnimatingAction
 		case ActionAnimationFinishedGameEvent:
-			// アニメーション終了後、クールダウン開始とターゲットクリア
-			actingEntry := e.ActingEntry
-			if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
-				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic)
-			}
-			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
+			// アニメーション終了後、結果を一時的に保持し、メッセージ状態へ遷移
+			bs.lastActionResult = &e.Result
 			bs.state = StateMessage
 		case MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
@@ -267,6 +268,8 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			bs.state = StatePlaying // キャンセル時は即座にPlaying状態に戻る
 		case GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
+		case StateChangeRequestedGameEvent: // 新しいイベントの処理
+			bs.state = e.NextState
 		}
 	}
 	// イベント処理後に現在の状態を更新

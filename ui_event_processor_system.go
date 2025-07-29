@@ -14,9 +14,9 @@ func UpdateUIEventProcessorSystem(
 	eventChannel chan UIEvent,
 	playerActionPendingQueue []*donburi.Entry,
 	currentState GameState,
-) ([]*donburi.Entry, GameState, []GameEvent) {
+) ([]*donburi.Entry, []GameEvent) { // GameStateの戻り値を削除
 	var gameEvents []GameEvent
-	var nextState = currentState
+	// var nextState = currentState // nextStateの宣言を削除
 
 	select {
 	case uiEvent := <-eventChannel:
@@ -77,7 +77,7 @@ func UpdateUIEventProcessorSystem(
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
 			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
-			nextState = StatePlaying // 行動確定後はPlaying状態に戻る
+			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlaying}) // イベントを発行
 			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(actingEntry).Name)
 		case ActionCanceledUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
@@ -90,7 +90,7 @@ func UpdateUIEventProcessorSystem(
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
 			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
-			nextState = StatePlaying // 行動キャンセル後はPlaying状態に戻る
+			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlaying}) // イベントを発行
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:
 			ui.ShowActionModal(e.ViewModel)
@@ -104,6 +104,8 @@ func UpdateUIEventProcessorSystem(
 			ui.ClearCurrentTarget()
 		case MessageDisplayRequestUIEvent:
 			messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
+		case AnimationFinishedUIEvent: // 新しいUIイベントの処理
+			gameEvents = append(gameEvents, ActionAnimationFinishedGameEvent{Result: e.Result, ActingEntry: e.Result.ActingEntry})
 		default:
 			log.Printf("Unknown UI Event: %T", uiEvent)
 		}
@@ -111,5 +113,5 @@ func UpdateUIEventProcessorSystem(
 		// イベントがない場合は何もしない
 	}
 
-	return playerActionPendingQueue, nextState, gameEvents
+	return playerActionPendingQueue, gameEvents // nextStateの戻り値を削除
 }

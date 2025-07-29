@@ -4,8 +4,6 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-
-
 // GameEvent は、ゲームロジックから発行されるすべてのイベントを示すマーカーインターフェースです。
 type GameEvent interface {
 	isGameEvent()
@@ -112,14 +110,19 @@ type GoToTitleSceneGameEvent struct{}
 
 func (e GoToTitleSceneGameEvent) isGameEvent() {}
 
+// StateChangeRequestedGameEvent は、ゲームの状態変更が要求されたことを示すイベントです。
+type StateChangeRequestedGameEvent struct {
+	NextState GameState
+}
 
+func (e StateChangeRequestedGameEvent) isGameEvent() {}
 
 // ActionResult はアクション実行の詳細な結果を保持します。
 type ActionResult struct {
 	// アクションの実行者とターゲットに関する情報
-	ActingEntry       *donburi.Entry
-	TargetEntry       *donburi.Entry
-	TargetPartSlot    PartSlotKey // ターゲットのパーツスロット
+	ActingEntry    *donburi.Entry
+	TargetEntry    *donburi.Entry
+	TargetPartSlot PartSlotKey // ターゲットのパーツスロット
 
 	// アクションの結果に関する情報
 	ActionDidHit      bool        // 命中したかどうか

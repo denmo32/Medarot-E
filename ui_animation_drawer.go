@@ -12,22 +12,46 @@ import (
 // UIAnimationDrawer はUIアニメーションの描画に特化した構造体です。
 type UIAnimationDrawer struct {
 	config           *Config
-	animationManager *BattleAnimationManager
-	font             text.Face // 追加
+	currentAnimation *ActionAnimationData // BattleAnimationManagerから移動
+	font             text.Face
 }
 
 // NewUIAnimationDrawer は新しいUIAnimationDrawerインスタンスを作成します。
-func NewUIAnimationDrawer(config *Config, animationManager *BattleAnimationManager, font text.Face) *UIAnimationDrawer {
+func NewUIAnimationDrawer(config *Config, font text.Face) *UIAnimationDrawer {
 	return &UIAnimationDrawer{
-		config:           config,
-		animationManager: animationManager,
-		font:             font, // 追加
+		config: config,
+		font:   font,
 	}
+}
+
+// SetAnimation は現在再生するアニメーションを設定します。
+func (d *UIAnimationDrawer) SetAnimation(anim *ActionAnimationData) {
+	d.currentAnimation = anim
+}
+
+// IsAnimationFinished は現在のアニメーションが完了したかどうかを返します。
+func (d *UIAnimationDrawer) IsAnimationFinished(tick int) bool {
+	if d.currentAnimation == nil {
+		return true
+	}
+	// ダメージポップアップアニメーションの終了を基準に判断
+	const totalAnimationDuration = 120 // UI.DrawAnimationから移動した定数
+	return float64(tick-d.currentAnimation.StartTime) >= totalAnimationDuration
+}
+
+// ClearAnimation は現在のアニメーションをクリアします。
+func (d *UIAnimationDrawer) ClearAnimation() {
+	d.currentAnimation = nil
+}
+
+// GetCurrentAnimationResult は現在のアニメーションの結果を返します。
+func (d *UIAnimationDrawer) GetCurrentAnimationResult() ActionResult {
+	return d.currentAnimation.Result
 }
 
 // Draw は現在のアニメーションを画面に描画します。
 func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel) {
-	anim := d.animationManager.currentAnimation
+	anim := d.currentAnimation
 	if anim == nil {
 		return
 	}
