@@ -44,15 +44,15 @@ Battle Action (メダロットの行動)
 
 戦闘中の各メダロットが実行するアクション定義や処理です。
 
-*   `battle_action_formulas.go`: 戦闘アクション(行動)の計算式定義と管理。
+
 *   `battle_action_queue_component.go`: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
-*   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。
+*   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。（チャージ開始ロジックは `charge_initiation_system.go` に移動しました）
 *   `battle_action_executor.go`: **[ロジック/振る舞い]** アクションの実行に関する主要なロジックをカプセル化します。特性や武器タイプごとの具体的な処理は、`battle_trait_handlers.go` および `battle_weapon_effect_handlers.go` に委譲されます。
 *   `battle_trait_handlers.go`: **[ロジック/振る舞い]** 各特性（Trait）に応じたアクションの実行ロジックを定義します。`BaseAttackHandler`、`SupportTraitExecutor`、`ObstructTraitExecutor` などが含まれます。
 *   `battle_weapon_effect_handlers.go`: **[ロジック/振る舞い]** 各武器タイプ（WeaponType）に応じた追加効果の適用ロジックを定義します。`ThunderEffectHandler`、`MeltEffectHandler`、`VirusEffectHandler` などが含まれます。
-*   `charge_initiation_system.go`: **[ロジック/振る舞い]** メダロットが行動を開始する際のチャージ状態の開始ロジックを管理します。
+*   `charge_initiation_system.go`: **[ロジック/振る舞い]** メダロットが行動を開始する際のチャージ状態の開始ロジックを管理します。`StartCharge` メソッドを提供します。
 *   `post_action_effect_system.go`: **[ロジック/振る舞い]** アクション実行後のステータス効果の適用やパーツ破壊による状態遷移などを処理します。
-*   `battle_animation_manager.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの再生と管理を行います。
+
 
 Battle Logic & AI (戦闘ルールと思考)
 ---------------------------------
@@ -61,7 +61,7 @@ Battle Logic & AI (戦闘ルールと思考)
 
 *   `battle_logic.go`
     *   役割: 戦闘中のコアな計算ロジック（Calculator群）。
-    *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
+    *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`, `ChargeInitiationSystem`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
 *   `battle_damage_calculator.go`: **[ロジック/振る舞い]** ダメージ計算に関するロジックを扱います。
 *   `battle_hit_calculator.go`: **[ロジック/振る舞い]** 命中・回避・防御判定に関するロジックを扱います。
 *   `battle_part_info_provider.go`: **[ロジック/振る舞い]** パーツの状態や情報を取得・操作するロジックを扱います。
@@ -69,9 +69,9 @@ Battle Logic & AI (戦闘ルールと思考)
 *   `battle_end_system.go`: **[ロジック/振る舞い]** ゲーム終了条件判定システム。`CheckGameEndSystem` を定義します。
 *   `battle_gauge_system.go`: **[ロジック/振る舞い]** チャージゲージおよびクールダウンゲージの進行管理システム。`UpdateGaugeSystem` を定義します。
 *   `battle_intention_system.go`: **[ロジック/振る舞い]** プレイヤーとAIの入力を処理し、行動の「意図（Intention）」を生成するシステムです。
-*   `battle_targeting_algorithm.go`: **[ロジック/振る舞い]** ターゲット選択の具体的なアルゴリズムを定義します。
-*   `battle_targeting_strategy.go`: **[ロジック/振る舞い]** AIのターゲット選択戦略を定義します。
-*   `status_effect_logic.go`: **[データ/ロジック]** ステータス効果のインターフェースと具体的な効果（チャージ停止、継続ダメージなど）の定義。
+
+
+
 *   `status_effect_system.go`: **[ロジック/振る舞い]** ステータス効果の適用、更新、解除を管理するシステム。
 *   `battle_history_system.go`: **[ロジック/振る舞い]** アクションの結果に基づいてAIの行動履歴を更新するシステム。
 

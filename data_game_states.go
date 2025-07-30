@@ -132,7 +132,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic.GetPartInfoProvider(), ctx.GameDataManager, ctx.Rand)
+			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic.GetPartInfoProvider(), ctx.GameDataManager)
 			// モーダルが既に表示されていない場合のみイベントを発行
 			if !ctx.ViewModelFactory.IsActionModalVisible() {
 				gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})

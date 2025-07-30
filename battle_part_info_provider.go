@@ -101,7 +101,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 		}
 
 		if partDef.Category == CategoryRanged || partDef.Category == CategoryMelee || partDef.Category == CategoryIntervention {
-			availableParts = append(availableParts, AvailablePart{PartDef: partDef, Slot: slot, IsBroken: partInst.IsBroken})
+			availableParts = append(availableParts, AvailablePart{PartDef: partDef, Slot: slot})
 		}
 	}
 	return availableParts

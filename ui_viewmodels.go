@@ -21,7 +21,6 @@ type ActionModalButtonViewModel struct {
 	PartName          string
 	PartCategory      PartCategory
 	SlotKey           PartSlotKey
-	IsBroken          bool
 	TargetEntityID    donburi.Entity // 射撃などのターゲットが必要な場合
 	TargetPartSlot    PartSlotKey
 	SelectedPartDefID string

@@ -52,7 +52,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
-	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager)
+	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager, bs.rand)
 
 	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
 	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.uiFactory, bs.resources.GameDataManager)
@@ -252,7 +252,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 						break
 					}
 					// ChargeInitiationSystem を呼び出す
-					successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, bs.battleLogic.GetPartInfoProvider(), bs.battleLogic.GetPartInfoProvider().GetGameDataManager())
+					successful := bs.battleLogic.GetChargeInitiationSystem().StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot)
 					if !successful {
 						log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 						// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加

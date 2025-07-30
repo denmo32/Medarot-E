@@ -15,7 +15,7 @@ import (
 type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel
 	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand) ActionModalViewModel
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel
 	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart
 	IsActionModalVisible() bool
 }
@@ -165,7 +165,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand) ActionModalViewModel {
+func (f *viewModelFactoryImpl) 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 
@@ -182,7 +182,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 			}
 			// actionTargetMap に含まれるパーツのみを対象とする（行動可能なパーツ）
 			if _, ok := actionTargetMap[slotKey]; ok {
-				displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey, IsBroken: partInst.IsBroken})
+				displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey})
 			}
 		}
 
@@ -192,7 +192,6 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 				PartName:          available.PartDef.PartName,
 				PartCategory:      available.PartDef.Category,
 				SlotKey:           available.Slot,
-				IsBroken:          available.IsBroken,
 				TargetEntityID:    targetInfo.TargetEntityID, // TargetEntityID を直接使用
 				TargetPartSlot:    targetInfo.Slot,
 				SelectedPartDefID: available.PartDef.ID,

@@ -31,15 +31,17 @@ func createActionModalUI(
 		for _, buttonVM := range vm.Buttons {
 			buttonText := fmt.Sprintf("%s (%s)", buttonVM.PartName, buttonVM.PartCategory)
 			buttonTextColor := &widget.ButtonTextColor{Idle: c.Colors.White}
-			if buttonVM.IsBroken {
-				buttonTextColor.Idle = c.Colors.Red
-			}
+			// IsBroken は PartInstanceData から取得するため、ここでは不要
+			// if buttonVM.IsBroken {
+			// 	buttonTextColor.Idle = c.Colors.Red
+			// }
 
 			actionButton := uiFactory.NewCyberpunkButton(
 				buttonText,
 				buttonTextColor,
 				func(args *widget.ButtonClickedEventArgs) {
-					if !buttonVM.IsBroken {
+					// IsBroken は PartInstanceData から取得するため、ここでは不要
+					// if !buttonVM.IsBroken {
 						// ターゲットインジケーターをクリア
 						eventChannel <- ClearCurrentTargetUIEvent{}
 
@@ -51,7 +53,7 @@ func createActionModalUI(
 							TargetEntityID:    buttonVM.TargetEntityID,
 							TargetPartSlot:    buttonVM.TargetPartSlot,
 						}
-					}
+					// }
 				},
 				func(args *widget.ButtonHoverEventArgs) {
 					switch buttonVM.PartCategory {

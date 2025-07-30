@@ -2,7 +2,6 @@ package main
 
 import (
 	"math/rand"
-	"time"
 
 	"github.com/yohamta/donburi"
 )
@@ -13,7 +12,8 @@ type BattleLogic struct {
 	hitCalculator    *HitCalculator
 	targetSelector   *TargetSelector
 	partInfoProvider PartInfoProviderInterface
-	rand             *rand.Rand // 追加: 乱数生成器
+	chargeInitiationSystem *ChargeInitiationSystem // 追加
+	rand             *rand.Rand
 }
 
 // GetDamageCalculator は DamageCalculator のインスタンスを返します。
@@ -36,19 +36,26 @@ func (bl *BattleLogic) GetPartInfoProvider() PartInfoProviderInterface {
 	return bl.partInfoProvider
 }
 
+// GetChargeInitiationSystem は ChargeInitiationSystem のインスタンスを返します。
+func (bl *BattleLogic) GetChargeInitiationSystem() *ChargeInitiationSystem {
+	return bl.chargeInitiationSystem
+}
+
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
-func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDataManager) *BattleLogic {
+func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDataManager, rng *rand.Rand) *BattleLogic {
 	logger := NewBattleLogger(gameDataManager) // BattleLoggerを初期化
 	partInfoProvider := NewPartInfoProvider(world, config, gameDataManager)
-	damageCalculator := NewDamageCalculator(world, config, partInfoProvider, gameDataManager, rand.New(rand.NewSource(time.Now().UnixNano())), logger)
-	hitCalculator := NewHitCalculator(world, config, partInfoProvider, rand.New(rand.NewSource(time.Now().UnixNano())), logger)
+	damageCalculator := NewDamageCalculator(world, config, partInfoProvider, gameDataManager, rng, logger)
+	hitCalculator := NewHitCalculator(world, config, partInfoProvider, rng, logger)
 	targetSelector := NewTargetSelector(world, config, partInfoProvider)
+	chargeInitiationSystem := NewChargeInitiationSystem(world, partInfoProvider)
 
 	return &BattleLogic{
 		damageCalculator: damageCalculator,
 		hitCalculator:    hitCalculator,
 		targetSelector:   targetSelector,
 		partInfoProvider: partInfoProvider,
-		rand:             rand.New(rand.NewSource(time.Now().UnixNano())), // 乱数生成器を初期化
+		chargeInitiationSystem: chargeInitiationSystem,
+		rand:             rng,
 	}
 }

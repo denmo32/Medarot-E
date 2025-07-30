@@ -14,16 +14,16 @@ type ChargeInitiationSystem struct {
 }
 
 // NewChargeInitiationSystem は新しいChargeInitiationSystemのインスタンスを生成します。
-func NewChargeInitiationSystem(world donburi.World, partInfoProvider PartInfoProviderInterface, gdm *GameDataManager) *ChargeInitiationSystem {
+func NewChargeInitiationSystem(world donburi.World, partInfoProvider PartInfoProviderInterface) *ChargeInitiationSystem {
 	return &ChargeInitiationSystem{
 		world:            world,
 		partInfoProvider: partInfoProvider,
-		gameDataManager:  gdm,
+		gameDataManager:  partInfoProvider.GetGameDataManager(),
 	}
 }
 
-// ProcessChargeRequest はチャージ状態を開始するための主要なロジックを実行します。
-func (s *ChargeInitiationSystem) ProcessChargeRequest(
+// StartCharge はチャージ状態を開始するための主要なロジックを実行します。
+func (s *ChargeInitiationSystem) StartCharge(
 	entry *donburi.Entry,
 	partKey PartSlotKey,
 	targetEntry *donburi.Entry,

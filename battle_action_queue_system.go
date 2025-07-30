@@ -81,16 +81,4 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProv
 	state.CurrentState = StateCooldown
 }
 
-// StartCharge はチャージ状態を開始します。
-func StartCharge(
-	entry *donburi.Entry,
-	partKey PartSlotKey,
-	targetEntry *donburi.Entry,
-	targetPartSlot PartSlotKey,
-	world donburi.World,
-	partInfoProvider PartInfoProviderInterface, // battleLogic から変更
-	gameDataManager *GameDataManager,
-) bool {
-	system := NewChargeInitiationSystem(world, partInfoProvider, gameDataManager) // battleLogic から取得
-	return system.ProcessChargeRequest(entry, partKey, targetEntry, targetPartSlot)
-}
+

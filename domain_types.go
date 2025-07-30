@@ -29,7 +29,6 @@ type PlayerInputSystemResult struct {}
 type AvailablePart struct {
 	PartDef  *PartDefinition // Changed from Part to PartDefinition
 	Slot     PartSlotKey
-	IsBroken bool // パーツが破壊されているか
 }
 
 // MessageTemplate defines the structure for a single message in the JSON file.
