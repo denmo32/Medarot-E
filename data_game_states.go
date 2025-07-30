@@ -2,14 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
@@ -27,7 +24,7 @@ type BattleContext struct {
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error)
+	Update(ctx *BattleContext) ([]GameEvent, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -35,36 +32,31 @@ type BattleState interface {
 
 type PlayingState struct{}
 
-func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	world := ctx.World
 	config := ctx.Config
 	tick := ctx.Tick
 
-	// BattleLogicComponentからBattleLogicを取得
-	battleLogicEntry, ok := query.NewQuery(filter.Contains(BattleLogicComponent)).First(world)
-	if !ok {
-		log.Panicln("BattleLogicComponent がワールドに見つかりません。")
-	}
-	battleLogic := BattleLogicComponent.Get(battleLogicEntry)
+	battleLogic := ctx.BattleLogic
 
 	var gameEvents []GameEvent
 
+	playerActionQueue := GetPlayerActionQueueComponent(world)
+
 	// AIの行動選択
-	if len(playerActionPendingQueue) == 0 {
+	if len(playerActionQueue.Queue) == 0 {
 		UpdateAIInputSystem(world, battleLogic)
 	}
 
 	// プレイヤーの行動選択が必要かチェック
-	playerInputResult := UpdatePlayerInputSystem(world)
-	if len(playerInputResult.PlayerMedarotsToAct) > 0 {
-		playerActionPendingQueue = playerInputResult.PlayerMedarotsToAct
+	if UpdatePlayerInputSystem(world) {
 		gameEvents = append(gameEvents, PlayerActionRequiredGameEvent{})
-		return playerActionPendingQueue, gameEvents, nil
+		return gameEvents, nil
 	}
 
 	// ゲージ進行
 	actionQueueComp := GetActionQueueComponent(world)
-	if len(playerActionPendingQueue) == 0 && len(actionQueueComp.Queue) == 0 {
+	if len(playerActionQueue.Queue) == 0 && len(actionQueueComp.Queue) == 0 {
 		UpdateGaugeSystem(world)
 	}
 
@@ -77,7 +69,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
 			gameEvents = append(gameEvents, ActionAnimationStartedGameEvent{AnimationData: ActionAnimationData{Result: result, StartTime: tick}})
-			return playerActionPendingQueue, gameEvents, nil
+			return gameEvents, nil
 		}
 	}
 
@@ -86,10 +78,10 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 	if gameEndResult.IsGameOver {
 		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
 		gameEvents = append(gameEvents, GameOverGameEvent{Winner: gameEndResult.Winner})
-		return playerActionPendingQueue, gameEvents, nil
+		return gameEvents, nil
 	}
 
-	return playerActionPendingQueue, gameEvents, nil
+	return gameEvents, nil
 }
 
 func (s *PlayingState) Draw(screen *ebiten.Image) {
@@ -100,22 +92,19 @@ func (s *PlayingState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	world := ctx.World
 	viewModelFactory := ctx.ViewModelFactory
 
-	// BattleLogicComponentからBattleLogicを取得
-	battleLogicEntry, ok := query.NewQuery(filter.Contains(BattleLogicComponent)).First(world)
-	if !ok {
-		log.Panicln("BattleLogicComponent がワールドに見つかりません。")
-	}
-	battleLogic := BattleLogicComponent.Get(battleLogicEntry)
+	battleLogic := ctx.BattleLogic
 
 	var gameEvents []GameEvent
 
+	playerActionQueue := GetPlayerActionQueueComponent(world)
+
 	// 待機中のプレイヤーがいるかチェック
-	if len(playerActionPendingQueue) > 0 {
-		actingEntry := playerActionPendingQueue[0]
+	if len(playerActionQueue.Queue) > 0 {
+		actingEntry := playerActionQueue.Queue[0]
 
 		// 有効で待機状態ならモーダルを表示
 		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == StateIdle {
@@ -150,15 +139,14 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			}
 		} else {
 			// 無効または待機状態でないならキューから削除
-			playerActionPendingQueue = playerActionPendingQueue[1:]
+			playerActionQueue.Queue = playerActionQueue.Queue[1:]
 			// 次のフレームで再度Updateが呼ばれるのを待つ
 		}
 	} else {
 		// キューが空なら処理完了
 	}
 
-	// このパスは到達不能なので削除
-	return playerActionPendingQueue, gameEvents, nil
+	return gameEvents, nil
 }
 
 func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
@@ -167,9 +155,9 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *AnimatingActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	var gameEvents []GameEvent
-	return playerActionPendingQueue, gameEvents, nil
+	return gameEvents, nil
 }
 
 func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
@@ -178,9 +166,9 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *MessageState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	var gameEvents []GameEvent
-	return playerActionPendingQueue, gameEvents, nil
+	return gameEvents, nil
 }
 
 func (s *MessageState) Draw(screen *ebiten.Image) {}
@@ -189,12 +177,12 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(ctx *BattleContext, playerActionPendingQueue []*donburi.Entry) ([]*donburi.Entry, []GameEvent, error) {
+func (s *GameOverState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	var gameEvents []GameEvent
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		gameEvents = append(gameEvents, GoToTitleSceneGameEvent{})
 	}
-	return playerActionPendingQueue, gameEvents, nil
+	return gameEvents, nil
 }
 
 func (s *GameOverState) Draw(screen *ebiten.Image) {}

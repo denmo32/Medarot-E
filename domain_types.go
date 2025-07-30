@@ -23,9 +23,7 @@ type GameEndResult struct {
 }
 
 // PlayerInputSystemResult はプレイヤーの入力が必要なエンティティのリストを保持します。
-type PlayerInputSystemResult struct {
-	PlayerMedarotsToAct []*donburi.Entry
-}
+type PlayerInputSystemResult struct {}
 
 // AvailablePart now holds PartDefinition for AI/UI to see base stats.
 type AvailablePart struct {

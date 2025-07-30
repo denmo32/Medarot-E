@@ -16,12 +16,12 @@ type UIMessageDisplayManager struct {
 	messageManager      *MessageManager
 	config              *Config
 	font                text.Face
-	ui                  UIInterface // uiContainer の代わりに UIInterface を追加
+	ui                  MessagePanelController // uiContainer の代わりに UIInterface を追加
 	uiFactory           *UIFactory
 }
 
 // NewUIMessageDisplayManager は新しいUIMessageDisplayManagerのインスタンスを作成します。
-func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, ui UIInterface, uiFactory *UIFactory) *UIMessageDisplayManager {
+func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, ui MessagePanelController, uiFactory *UIFactory) *UIMessageDisplayManager {
 	return &UIMessageDisplayManager{
 		messageQueue:   make([]string, 0),
 		messageManager: messageManager,

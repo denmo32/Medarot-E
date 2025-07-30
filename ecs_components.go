@@ -39,9 +39,14 @@ var (
 	// --- Game State Component ---
 	GameStateComponent = donburi.NewComponentType[GameStateData]()
 
-	// --- Battle Logic Component ---
-	BattleLogicComponent = donburi.NewComponentType[BattleLogic]()
+	// --- Player Action Queue Component ---
+	PlayerActionQueueComponent = donburi.NewComponentType[PlayerActionQueueComponentData]()
 )
+
+// PlayerActionQueueComponentData はプレイヤーの行動待ちキューを格納します。
+type PlayerActionQueueComponentData struct {
+	Queue []*donburi.Entry
+}
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
 var worldStateTag = donburi.NewComponentType[struct{}]()

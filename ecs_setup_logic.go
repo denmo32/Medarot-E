@@ -16,9 +16,11 @@ import (
 	gameStateEntry := world.Entry(world.Create(GameStateComponent, worldStateTag))
 	GameStateComponent.SetValue(gameStateEntry, GameStateData{CurrentState: StatePlaying})
 
-	// Ensure BattleLogicComponent entity exists
-	battleLogicEntry := world.Entry(world.Create(BattleLogicComponent, worldStateTag))
-	BattleLogicComponent.SetValue(battleLogicEntry, *NewBattleLogic(world, &res.Config, res.GameDataManager))
+	// Ensure PlayerActionQueueComponent entity exists
+	playerActionQueueEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
+	PlayerActionQueueComponent.SetValue(playerActionQueueEntry, PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
+
+	
 
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
 	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{

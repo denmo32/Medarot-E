@@ -9,20 +9,21 @@ import (
 // UpdatePlayerInputSystem はアイドル状態のすべてのプレイヤー制御メダロットを見つけます。
 // このシステムは BattleScene に直接依存しません。
 // 行動が必要なプレイヤーエンティティのリストを返します。
-func UpdatePlayerInputSystem(world donburi.World) PlayerInputSystemResult {
-	var playersToAct []*donburi.Entry
+func UpdatePlayerInputSystem(world donburi.World) bool {
+	playerActionQueue := GetPlayerActionQueueComponent(world)
+	playerActionQueue.Queue = make([]*donburi.Entry, 0) // Clear the queue
 
 	query.NewQuery(filter.Contains(PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
 		if StateComponent.Get(entry).CurrentState == StateIdle {
-			playersToAct = append(playersToAct, entry)
+			playerActionQueue.Queue = append(playerActionQueue.Queue, entry)
 		}
 	})
 
 	// 行動順は推進力などでソートすることも可能ですが、ここでは単純に検出順とします。
 	// 必要であれば、ここでソートロジックを追加します。
-	// sort.Slice(playersToAct, func(i, j int) bool { ... })
+	// sort.Slice(playerActionQueue.Queue, func(i, j int) bool { ... })
 
-	return PlayerInputSystemResult{PlayerMedarotsToAct: playersToAct}
+	return len(playerActionQueue.Queue) > 0
 }
 
 // UpdateAIInputSystem はAI制御のメダロットの行動選択を処理します。
