@@ -20,6 +20,8 @@ type BattleContext struct {
 	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem
 	BattleLogic            *BattleLogic
+	MessageManager         *UIMessageDisplayManager // 追加
+	UI                     UIInterface              // 追加
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
@@ -67,16 +69,18 @@ func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
 			gameEvents = append(gameEvents, ActionAnimationStartedGameEvent{AnimationData: ActionAnimationData{Result: result, StartTime: tick}})
-			return gameEvents, nil
+			return gameEvents, nil // アクションが実行されたら、そのフレームはアニメーション開始イベントのみを返す
 		}
 	}
+
+	// ステータス効果の更新
+	ctx.statusEffectSystem.Update()
 
 	// ゲーム終了判定
 	gameEndResult := CheckGameEndSystem(world)
 	if gameEndResult.IsGameOver {
 		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
 		gameEvents = append(gameEvents, GameOverGameEvent{Winner: gameEndResult.Winner})
-		return gameEvents, nil
 	}
 
 	return gameEvents, nil
@@ -132,7 +136,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 			// ここでViewModelを構築し、UIに渡す
 			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic.GetPartInfoProvider(), ctx.GameDataManager)
 			// モーダルが既に表示されていない場合のみイベントを発行
-			if !ctx.ViewModelFactory.IsActionModalVisible() {
+			if !ctx.UI.IsActionModalVisible() { // Use ctx.UI
 				gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
 			}
 		} else {
@@ -166,6 +170,12 @@ type MessageState struct{}
 
 func (s *MessageState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	var gameEvents []GameEvent
+
+	ctx.MessageManager.Update() // Use ctx.MessageManager
+	if ctx.MessageManager.IsFinished() {
+		gameEvents = append(gameEvents, MessageDisplayFinishedGameEvent{})
+	}
+
 	return gameEvents, nil
 }
 

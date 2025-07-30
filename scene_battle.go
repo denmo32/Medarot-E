@@ -32,6 +32,9 @@ type BattleScene struct {
 
 	
 	battleLogic      *BattleLogic // 追加
+
+	// New: Map of BattleStates
+	battleStates map[GameState]BattleState
 }
 
 func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
@@ -60,6 +63,15 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, bs.battleLogic.GetDamageCalculator())
 	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.battleLogic.GetPartInfoProvider())
 	bs.messageManager = bs.ui.GetMessageDisplayManager() // uiからmessageManagerを取得
+
+	// Initialize battleStates map
+	bs.battleStates = map[GameState]BattleState{
+		StatePlaying:            &PlayingState{},
+		StatePlayerActionSelect: &PlayerActionSelectState{},
+		StateAnimatingAction:    &AnimatingActionState{},
+		StateMessage:            &MessageState{},
+		StateGameOver:           &GameOverState{},
+	}
 
 	bs.SetState(StatePlaying)
 
@@ -91,81 +103,31 @@ func (bs *BattleScene) Update() error {
 	)
 	bs.processGameEvents(uiGeneratedGameEvents)
 
-	if currentGameStateComp.CurrentState == StateMessage {
-		lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
-		if !ok {
-			log.Panicln("LastActionResultComponent がワールドに見つかりません。")
-		}
-		lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
-		if lastActionResultComp.ActingEntry != nil { // ActingEntryがnilでないことを確認
-			result := *lastActionResultComp // 値をコピー
-			actingEntry := result.ActingEntry
-
-			if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
-				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic.GetPartInfoProvider())
-			}
-			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
-
-			bs.messageManager.EnqueueMessageQueue(buildActionLogMessagesFromActionResult(result, bs.resources.GameDataManager), func() {
-				UpdateHistorySystem(bs.world, &result)
-			})
-
-			*lastActionResultComp = ActionResult{} // 処理後クリア
-		}
-
-		bs.messageManager.Update()
-		if bs.messageManager.IsFinished() {
-			gameEvents := []GameEvent{MessageDisplayFinishedGameEvent{}}
-			bs.processGameEvents(gameEvents)
-		}
+	// Create BattleContext
+	battleContext := &BattleContext{
+		World:                  bs.world,
+		Config:                 &bs.resources.Config,
+		GameDataManager:        bs.gameDataManager,
+		Rand:                   bs.rand,
+		Tick:                   bs.tickCount,
+		ViewModelFactory:       bs.viewModelFactory,
+		statusEffectSystem:     bs.statusEffectSystem,
+		postActionEffectSystem: bs.postActionEffectSystem,
+		BattleLogic:            bs.battleLogic,
+		MessageManager:         bs.messageManager, // Pass messageManager
+		UI:                     bs.ui,             // Pass UI
 	}
 
-	// if currentGameState != StateMessage && currentGameState != StateAnimatingAction {
-		battleContext := &BattleContext{
-			World:                  bs.world,
-			Config:                 &bs.resources.Config,
-			GameDataManager:        bs.gameDataManager,
-			Rand:                   bs.rand,
-			Tick:                   bs.tickCount,
-			ViewModelFactory:       bs.viewModelFactory,
-			statusEffectSystem:     bs.statusEffectSystem,
-			postActionEffectSystem: bs.postActionEffectSystem,
-			BattleLogic:            bs.battleLogic,
+	// Get current BattleState implementation and update it
+	if currentStateImpl, ok := bs.battleStates[currentGameStateComp.CurrentState]; ok {
+		tempGameEvents, err := currentStateImpl.Update(battleContext)
+		if err != nil {
+			log.Printf("Error updating game state %s: %v", currentGameStateComp.CurrentState, err)
 		}
-
-		// var tempGameEvents []GameEvent
-		// switch currentGameState {
-		// case StatePlaying:
-		// 	tempGameEvents, _ = (&PlayingState{}).Update(battleContext)
-		// case StatePlayerActionSelect:
-		// 	tempGameEvents, _ = (&PlayerActionSelectState{}).Update(battleContext)
-		// case StateAnimatingAction:
-		// 	tempGameEvents, _ = (&AnimatingActionState{}).Update(battleContext)
-		// case StateMessage:
-		// 	tempGameEvents, _ = (&MessageState{}).Update(battleContext)
-		// case StateGameOver:
-		// 	tempGameEvents, _ = (&GameOverState{}).Update(battleContext)
-		// }
-
-		// currentStateがMessageStateでない場合のみUpdateを呼び出す
-			if currentGameStateComp.CurrentState != StateMessage && currentGameStateComp.CurrentState != StateAnimatingAction {
-			var tempGameEvents []GameEvent
-			switch currentGameStateComp.CurrentState {
-			case StatePlaying:
-				tempGameEvents, _ = (&PlayingState{}).Update(battleContext)
-			case StatePlayerActionSelect:
-				tempGameEvents, _ = (&PlayerActionSelectState{}).Update(battleContext)
-			case StateGameOver:
-				tempGameEvents, _ = (&GameOverState{}).Update(battleContext)
-			case StateAnimatingAction:
-				tempGameEvents, _ = (&AnimatingActionState{}).Update(battleContext)
-			case StateMessage:
-				tempGameEvents, _ = (&MessageState{}).Update(battleContext)
-			}
-			bs.statusEffectSystem.Update()
-			bs.processGameEvents(tempGameEvents)
-		}
-	// }
+		bs.processGameEvents(tempGameEvents)
+	} else {
+		log.Printf("Unknown game state: %s", currentGameStateComp.CurrentState)
+	}
 
 	
 
@@ -197,17 +159,11 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	}
 	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
 
-	switch currentGameStateComp.CurrentState {
-	case StatePlaying:
-		(&PlayingState{}).Draw(screen)
-	case StatePlayerActionSelect:
-		(&PlayerActionSelectState{}).Draw(screen)
-	case StateAnimatingAction:
-		(&AnimatingActionState{}).Draw(screen)
-	case StateMessage:
-		(&MessageState{}).Draw(screen)
-	case StateGameOver:
-		(&GameOverState{}).Draw(screen)
+	// Draw current BattleState implementation
+	if currentStateImpl, ok := bs.battleStates[currentGameStateComp.CurrentState]; ok {
+		currentStateImpl.Draw(screen)
+	} else {
+		log.Printf("Unknown game state for drawing: %s", currentGameStateComp.CurrentState)
 	}
 
 }
@@ -234,12 +190,28 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 		case ActionAnimationFinishedGameEvent:
 			// アニメーション終了後、結果を一時的に保持し、メッセージ状態へ遷移
 			lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
-		if !ok {
-			log.Panicln("LastActionResultComponent がワールドに見つかりません。")
-		}
-		lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
-			*lastActionResultComp = e.Result
+			if !ok {
+				log.Panicln("LastActionResultComponent がワールドに見つかりません。")
+			}
+			lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
+			*lastActionResultComp = e.Result // Store the result
+
+			actingEntry := e.ActingEntry // Use e.ActingEntry from the event
+			if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
+				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic.GetPartInfoProvider())
+			}
+			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
+
+			// Enqueue messages and set callback for history update
+			bs.messageManager.EnqueueMessageQueue(buildActionLogMessagesFromActionResult(e.Result, bs.resources.GameDataManager), func() {
+				UpdateHistorySystem(bs.world, &e.Result) // Use e.Result
+			})
+
+			// Clear the stored result after processing
+			*lastActionResultComp = ActionResult{}
+
 			currentGameStateComp.CurrentState = StateMessage
+			
 		case MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
 			currentGameStateComp.CurrentState = StateMessage
