@@ -32,7 +32,6 @@ type BattleScene struct {
 
 	lastActionResult *ActionResult
 	battleLogic      *BattleLogic // 追加
-	currentState     BattleState // 追加
 }
 
 func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
@@ -64,8 +63,6 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	bs.SetState(StatePlaying)
 
-	bs.SetState(StatePlaying)
-
 	return bs
 }
 
@@ -75,33 +72,17 @@ func (bs *BattleScene) SetState(newState GameState) {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
 	}
 	GameStateComponent.Get(gameStateEntry).CurrentState = newState
-
-	switch newState {
-	case StatePlaying:
-		bs.currentState = &PlayingState{}
-	case StatePlayerActionSelect:
-		bs.currentState = &PlayerActionSelectState{}
-	case StateAnimatingAction:
-		bs.currentState = &AnimatingActionState{}
-	case StateMessage:
-		bs.currentState = &MessageState{}
-	case StateGameOver:
-		bs.currentState = &GameOverState{}
-	default:
-		log.Panicf("Unknown game state: %s", newState)
-	}
 }
 
 func (bs *BattleScene) Update() error {
 	bs.tickCount++
-	bs.ui.Update()
+	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("GameStateComponent がワールドに見つかりません。")
+	}
+	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
 
-	// GameStateComponentから現在のゲーム状態を取得
-	// gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
-	// if !ok {
-	// 	log.Panicln("GameStateComponent がワールドに見つかりません。")
-	// }
-	// currentGameState := GameStateComponent.Get(gameStateEntry).CurrentState
+	bs.ui.Update()
 
 	var uiGeneratedGameEvents []GameEvent
 	playerActionQueue := GetPlayerActionQueueComponent(bs.world)
@@ -110,7 +91,7 @@ func (bs *BattleScene) Update() error {
 	)
 	bs.processGameEvents(uiGeneratedGameEvents)
 
-	if bs.currentState == &MessageState{} {
+	if currentGameStateComp.CurrentState == StateMessage {
 		if bs.lastActionResult != nil {
 			result := *bs.lastActionResult
 			actingEntry := result.ActingEntry
@@ -162,19 +143,27 @@ func (bs *BattleScene) Update() error {
 		// }
 
 		// currentStateがMessageStateでない場合のみUpdateを呼び出す
-		if bs.currentState != &MessageState{} && bs.currentState != &AnimatingActionState{} {
-			tempGameEvents, _ := bs.currentState.Update(battleContext)
+			if currentGameStateComp.CurrentState != StateMessage && currentGameStateComp.CurrentState != StateAnimatingAction {
+			var tempGameEvents []GameEvent
+			switch currentGameStateComp.CurrentState {
+			case StatePlaying:
+				tempGameEvents, _ = (&PlayingState{}).Update(battleContext)
+			case StatePlayerActionSelect:
+				tempGameEvents, _ = (&PlayerActionSelectState{}).Update(battleContext)
+			case StateGameOver:
+				tempGameEvents, _ = (&GameOverState{}).Update(battleContext)
+			case StateAnimatingAction:
+				tempGameEvents, _ = (&AnimatingActionState{}).Update(battleContext)
+			case StateMessage:
+				tempGameEvents, _ = (&MessageState{}).Update(battleContext)
+			}
 			bs.statusEffectSystem.Update()
 			bs.processGameEvents(tempGameEvents)
 		}
 	// }
 
-	// if currentGameState == StatePlayerActionSelect && len(playerActionQueue.Queue) == 0 {
-	// 	GameStateComponent.Get(gameStateEntry).CurrentState = StatePlaying
-	// }
-
 	// プレイヤーの行動選択状態からPlaying状態への遷移ロジックを移動
-	if bs.currentState == &PlayerActionSelectState{} && len(playerActionQueue.Queue) == 0 {
+		if currentGameStateComp.CurrentState == StatePlayerActionSelect && len(playerActionQueue.Queue) == 0 {
 		bs.SetState(StatePlaying)
 	}
 
@@ -200,13 +189,24 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	bs.ui.Draw(screen, bs.tickCount, bs.resources.GameDataManager)
 
 	// GameStateComponentから現在のゲーム状態を取得
-	// gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
-	// if !ok {
-	// 	log.Panicln("GameStateComponent がワールドに見つかりません。")
-	// }
-	// currentGameState := GameStateComponent.Get(gameStateEntry).CurrentState
+	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("GameStateComponent がワールドに見つかりません。")
+	}
+	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
 
-	bs.currentState.Draw(screen)
+	switch currentGameStateComp.CurrentState {
+	case StatePlaying:
+		(&PlayingState{}).Draw(screen)
+	case StatePlayerActionSelect:
+		(&PlayerActionSelectState{}).Draw(screen)
+	case StateAnimatingAction:
+		(&AnimatingActionState{}).Draw(screen)
+	case StateMessage:
+		(&MessageState{}).Draw(screen)
+	case StateGameOver:
+		(&GameOverState{}).Draw(screen)
+	}
 
 }
 
