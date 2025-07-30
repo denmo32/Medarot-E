@@ -10,14 +10,12 @@ import (
 
 // UIInterface はUIの描画とイベント処理に必要なメソッドを定義します。
 type UIInterface interface {
-	Update()
+	Update(tick int)
 	Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager)
 	DrawBackground(screen *ebiten.Image)
 	GetRootContainer() *widget.Container
 	SetAnimation(anim *ActionAnimationData)
-	IsAnimationFinished(tick int) bool
 	ClearAnimation()
-	GetCurrentAnimationResult() ActionResult
 	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
 	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)

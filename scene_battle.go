@@ -93,7 +93,7 @@ func (bs *BattleScene) Update() error {
 	}
 	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
 
-	bs.ui.Update()
+	bs.ui.Update(bs.tickCount)
 
 	uiGeneratedGameEvents := UpdateUIEventProcessorSystem(
 		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel,

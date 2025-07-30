@@ -60,7 +60,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 		eventChannel:     eventChannel,
 		config:           config,
 		whitePixel:       whiteImg,
-		animationDrawer:  NewUIAnimationDrawer(config, gameDataManager.Font),
+		animationDrawer:  NewUIAnimationDrawer(config, gameDataManager.Font, eventChannel),
 	}
 
 	rootContainer := widget.NewContainer(
@@ -139,19 +139,15 @@ func (u *UI) ClearCurrentTarget() {
 }
 
 // Update はUIの状態を更新します。
-func (u *UI) Update() {
+func (u *UI) Update(tick int) {
 	u.ebitenui.Update()
-	// アニメーション終了の検知とイベント発行は、Draw メソッド内で tick を使って行う
+	u.animationDrawer.Update(float64(tick)) // アニメーションの更新をここで行う
 }
 
 // Draw はUIを描画します。
 func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
 	// アニメーションが再生中で、かつ終了している場合、イベントを発行
-	if u.animationDrawer.currentAnimation != nil && u.animationDrawer.IsAnimationFinished(tick) {
-		result := u.animationDrawer.GetCurrentAnimationResult()
-		u.PostEvent(AnimationFinishedUIEvent{Result: result})
-		u.animationDrawer.ClearAnimation()
-	}
+	// このロジックはUIAnimationDrawer.Updateに移動したため、ここでは不要
 
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
 	var indicatorTargetVM *IconViewModel
@@ -169,7 +165,7 @@ func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManag
 
 	// アニメーションの描画
 	if u.battlefieldWidget.viewModel != nil {
-		u.animationDrawer.Draw(screen, tick, *u.battlefieldWidget.viewModel) // gameDataManagerを削除
+		u.animationDrawer.Draw(screen, float64(tick), *u.battlefieldWidget.viewModel) // gameDataManagerを削除
 	}
 
 	// その後でebitenuiを描画する
@@ -198,7 +194,7 @@ func (u *UI) SetAnimation(anim *ActionAnimationData) {
 
 // IsAnimationFinished は現在のアニメーションが完了したかどうかを返します。
 func (u *UI) IsAnimationFinished(tick int) bool {
-	return u.animationDrawer.IsAnimationFinished(tick)
+	return u.animationDrawer.IsAnimationFinished(float64(tick))
 }
 
 // ClearAnimation は現在のアニメーションをクリアします。

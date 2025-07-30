@@ -14,13 +14,27 @@ type UIAnimationDrawer struct {
 	config           *Config
 	currentAnimation *ActionAnimationData // BattleAnimationManagerから移動
 	font             text.Face
+	eventChannel     chan UIEvent // 追加
 }
 
 // NewUIAnimationDrawer は新しいUIAnimationDrawerインスタンスを作成します。
-func NewUIAnimationDrawer(config *Config, font text.Face) *UIAnimationDrawer {
+func NewUIAnimationDrawer(config *Config, font text.Face, eventChannel chan UIEvent) *UIAnimationDrawer {
 	return &UIAnimationDrawer{
-		config: config,
-		font:   font,
+		config:       config,
+		font:         font,
+		eventChannel: eventChannel, // 追加
+	}
+}
+
+// Update はアニメーションの進行状況を更新し、終了した場合はイベントを発行します。
+func (d *UIAnimationDrawer) Update(tick float64) {
+	if d.currentAnimation == nil {
+		return
+	}
+
+	if d.IsAnimationFinished(tick) {
+		d.eventChannel <- AnimationFinishedUIEvent{Result: d.currentAnimation.Result}
+		d.ClearAnimation()
 	}
 }
 
@@ -30,13 +44,13 @@ func (d *UIAnimationDrawer) SetAnimation(anim *ActionAnimationData) {
 }
 
 // IsAnimationFinished は現在のアニメーションが完了したかどうかを返します。
-func (d *UIAnimationDrawer) IsAnimationFinished(tick int) bool {
+func (d *UIAnimationDrawer) IsAnimationFinished(tick float64) bool {
 	if d.currentAnimation == nil {
 		return true
 	}
 	// ダメージポップアップアニメーションの終了を基準に判断
 	const totalAnimationDuration = 120 // UI.DrawAnimationから移動した定数
-	return float64(tick-d.currentAnimation.StartTime) >= totalAnimationDuration
+	return float64(tick-float64(d.currentAnimation.StartTime)) >= totalAnimationDuration
 }
 
 // ClearAnimation は現在のアニメーションをクリアします。
@@ -50,13 +64,13 @@ func (d *UIAnimationDrawer) GetCurrentAnimationResult() ActionResult {
 }
 
 // Draw は現在のアニメーションを画面に描画します。
-func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick int, battlefieldVM BattlefieldViewModel) {
+func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefieldVM BattlefieldViewModel) {
 	anim := d.currentAnimation
 	if anim == nil {
 		return
 	}
 
-	progress := float64(tick - anim.StartTime)
+	progress := tick - float64(anim.StartTime)
 
 	var attackerVM, targetVM *IconViewModel
 	for _, icon := range battlefieldVM.Icons {
