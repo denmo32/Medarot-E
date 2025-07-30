@@ -4,7 +4,6 @@
 
 このプロジェクトは、人気ゲーム「メダロット」の戦闘システムをリスペクトした、EbitenとECS（エンティティ・コンポーネント・システム）アーキテクチャによるバトルシミュレーションゲームです。
 ECSライブラリには [donburi](https://github.com/yohamta/donburi) を採用しており、データ指向の設計に基づいています。
-リソース管理には [ebitengine-resource](https://github.com/quasilyte/ebitengine-resource) ライブラリを導入し、ゲーム内の各種アセット（CSVデータ、フォントなど）の効率的な読み込みと管理を実現しています。
 
 **主要ファイル構成**
 
@@ -45,6 +44,9 @@ Battle Action (メダロットの行動)
 戦闘中の各メダロットが実行するアクション定義や処理です。
 
 
+*   `ai_action_selection.go`: **[ロジック/振る舞い]** AI制御のメダロットの行動選択ロジックを定義します。
+*   `ai_personalities.go`: **[データ]** AIの性格定義と、それに対応する行動戦略をマッピングします。
+*   `ai_target_strategies.go`: **[ロジック/振る舞い]** AIのターゲット選択戦略の具体的な実装を定義します。
 *   `battle_action_queue_component.go`: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
 *   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。（チャージ開始ロジックは `charge_initiation_system.go` に移動しました）
 *   `battle_action_executor.go`: **[ロジック/振る舞い]** アクションの実行に関する主要なロジックをカプセル化します。特性や武器タイプごとの具体的な処理は、`battle_trait_handlers.go` および `battle_weapon_effect_handlers.go` に委譲されます。
@@ -59,6 +61,8 @@ Battle Logic & AI (戦闘ルールと思考)
 
 戦闘のコアロジックやAIの思考ルーチンです。
 
+*   `battle_logger.go`: **[ロジック/振る舞い]** 戦闘中のログメッセージの生成と管理を行います。
+*   `data_game_states.go`: **[データ]** ゲームの様々な状態（バトルシーンの状態遷移など）を定義します。
 *   `battle_logic.go`
     *   役割: 戦闘中のコアな計算ロジック（Calculator群）。
     *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`, `ChargeInitiationSystem`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
@@ -116,6 +120,9 @@ Core Data & Utilities (コアデータとユーティリティ)
 
 プロジェクト全体で使用する基本的なデータ構造や補助的な機能です。
 
+*   `player_action_queue_component.go`: **[データ]** プレイヤーの行動実行待ちキューを保持するコンポーネントの定義。
+*   `status_effect_implementations.go`: **[ロジック/振る舞い]** 各種ステータス効果の具体的な適用・解除ロジックを定義します。
+*   `ui_events.go`: **[データ]** UIからゲームロジックへ通知されるイベントの定義。
 *   `domain_types.go`: ゲーム全体で使われる基本的な型や定数、UI用のViewModel、およびUIイベントの定義。
 *   `ecs_components.go`: **[データ]** ECSの「C（コンポーネント）」の定義。エンティティを構成する部品や状態を示すタグのデータ構造を定義します。
 *   `ecs_setup_logic.go`: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
