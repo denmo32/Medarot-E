@@ -101,7 +101,9 @@ func (bs *BattleScene) Update() error {
 	playerActionQueue.Queue, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
 		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel, playerActionQueue.Queue,
 	)
-	bs.processGameEvents(uiGeneratedGameEvents)
+
+	allGameEvents := make([]GameEvent, 0)
+	allGameEvents = append(allGameEvents, uiGeneratedGameEvents...)
 
 	// Create BattleContext
 	battleContext := &BattleContext{
@@ -114,8 +116,8 @@ func (bs *BattleScene) Update() error {
 		statusEffectSystem:     bs.statusEffectSystem,
 		postActionEffectSystem: bs.postActionEffectSystem,
 		BattleLogic:            bs.battleLogic,
-		MessageManager:         bs.messageManager, // Pass messageManager
-		UI:                     bs.ui,             // Pass UI
+		MessageManager:         bs.messageManager,
+		UI:                     bs.ui,
 	}
 
 	// Get current BattleState implementation and update it
@@ -124,9 +126,19 @@ func (bs *BattleScene) Update() error {
 		if err != nil {
 			log.Printf("Error updating game state %s: %v", currentGameStateComp.CurrentState, err)
 		}
-		bs.processGameEvents(tempGameEvents)
+		allGameEvents = append(allGameEvents, tempGameEvents...)
 	} else {
 		log.Printf("Unknown game state: %s", currentGameStateComp.CurrentState)
+	}
+
+	// Process all collected game events and get state change requests
+	stateChangeRequests := bs.processGameEvents(allGameEvents)
+
+	// Apply state changes
+	for _, req := range stateChangeRequests {
+		if stateChangeReq, ok := req.(StateChangeRequestedGameEvent); ok {
+			bs.SetState(stateChangeReq.NextState)
+		}
 	}
 
 	
@@ -173,67 +185,56 @@ func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 // processGameEvents はGameEventのリストを処理し、BattleSceneの状態を更新します。
-func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
-	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
+	var stateChangeEvents []GameEvent // 状態変更イベントを収集する新しいスライス
+
+	lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
 	if !ok {
-		log.Panicln("GameStateComponent がワールドに見つかりません。")
+		log.Panicln("LastActionResultComponent がワールドに見つかりません。")
 	}
-	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
+	lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
 
 	for _, event := range gameEvents {
 		switch e := event.(type) {
 		case PlayerActionRequiredGameEvent:
-			currentGameStateComp.CurrentState = StatePlayerActionSelect
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlayerActionSelect})
 		case ActionAnimationStartedGameEvent:
 			bs.ui.PostEvent(SetAnimationUIEvent(e))
-			currentGameStateComp.CurrentState = StateAnimatingAction
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateAnimatingAction})
 		case ActionAnimationFinishedGameEvent:
-			// アニメーション終了後、結果を一時的に保持し、メッセージ状態へ遷移
-			lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
-			if !ok {
-				log.Panicln("LastActionResultComponent がワールドに見つかりません。")
-			}
-			lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
 			*lastActionResultComp = e.Result // Store the result
 
-			actingEntry := e.ActingEntry // Use e.ActingEntry from the event
+			actingEntry := e.ActingEntry
 			if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
 				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic.GetPartInfoProvider())
 			}
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
 
-			// Enqueue messages and set callback for history update
 			bs.messageManager.EnqueueMessageQueue(buildActionLogMessagesFromActionResult(e.Result, bs.resources.GameDataManager), func() {
-				UpdateHistorySystem(bs.world, &e.Result) // Use e.Result
+				UpdateHistorySystem(bs.world, &e.Result)
 			})
 
-			// Clear the stored result after processing
 			*lastActionResultComp = ActionResult{}
-
-			currentGameStateComp.CurrentState = StateMessage
-			
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
 		case MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
-			currentGameStateComp.CurrentState = StateMessage
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
 		case MessageDisplayFinishedGameEvent:
 			if bs.winner != TeamNone {
-				currentGameStateComp.CurrentState = StateGameOver
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGameOver})
 			} else {
-				currentGameStateComp.CurrentState = StatePlaying
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
 			}
 		case GameOverGameEvent:
 			bs.winner = e.Winner
-			currentGameStateComp.CurrentState = StateMessage // ゲームオーバーメッセージ表示のため
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
 		case HideActionModalGameEvent:
 			bs.ui.PostEvent(HideActionModalUIEvent{})
 		case ShowActionModalGameEvent:
-			bs.ui.HideActionModal() // 明示的に非表示にする
-			// eventChannel に ShowActionModalUIEvent が既に存在しないかを確認してから送信
+			bs.ui.HideActionModal()
 			select {
 			case bs.ui.GetEventChannel() <- ShowActionModalUIEvent(e):
-				// 送信成功
 			default:
-				// チャネルがフルで送信できなかった、または既に同じイベントが存在する
 				log.Println("警告: ShowActionModalUIEvent の送信をスキップしました (チャネルがフルか重複)。")
 			}
 		case ClearAnimationGameEvent:
@@ -250,42 +251,39 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			if e.TargetEntry != nil && e.TargetEntry.Valid() {
 				targetEntry = e.TargetEntry
 			}
-			if targetEntry == nil && e.TargetPartSlot != "" { // TargetPartSlotがあるのにTargetEntryがない場合はエラー
+			if targetEntry == nil && e.TargetPartSlot != "" {
 				log.Printf("Error: ChargeRequestedGameEvent - TargetEntry is nil but TargetPartSlot is provided")
-						break
-					}
-					// ChargeInitiationSystem を呼び出す
-					successful := bs.battleLogic.GetChargeInitiationSystem().StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot)
-					if !successful {
-						log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
-						// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
-					}
-				case PlayerActionProcessedGameEvent:
+				break
+			}
+			successful := bs.battleLogic.GetChargeInitiationSystem().StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot)
+			if !successful {
+				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
+			}
+		case PlayerActionProcessedGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {
 				log.Printf("Error: PlayerActionProcessedGameEvent - ActingEntry is invalid or nil")
 				break
 			}
-			// プレイヤーの行動キューから現在のエンティティを削除
 			playerActionQueue := GetPlayerActionQueueComponent(bs.world)
 			if len(playerActionQueue.Queue) > 0 && playerActionQueue.Queue[0] == actingEntry {
 				playerActionQueue.Queue = playerActionQueue.Queue[1:]
 			} else {
 				log.Printf("警告: 処理されたエンティティ %s がキューの先頭にありませんでした。", SettingsComponent.Get(actingEntry).Name)
 			}
-			currentGameStateComp.CurrentState = StatePlaying // 行動処理後はPlaying状態に戻る
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
 		case ActionCanceledGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {
 				log.Printf("Error: ActionCanceledGameEvent - ActingEntry is invalid or nil")
 				break
 			}
-			// 行動キャンセル時の処理（PlayerActionProcessedGameEventでキュー操作は行われる）
-			currentGameStateComp.CurrentState = StatePlaying // キャンセル時は即座にPlaying状態に戻る
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
 		case GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
-		case StateChangeRequestedGameEvent: // 新しいイベントの処理
-			bs.SetState(e.NextState)
+		case StateChangeRequestedGameEvent:
+			stateChangeEvents = append(stateChangeEvents, e)
 		}
 	}
+	return stateChangeEvents
 }
