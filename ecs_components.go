@@ -39,6 +39,9 @@ var (
 	// --- Game State Component ---
 	GameStateComponent = donburi.NewComponentType[GameStateData]()
 
+	// --- Battle Phase Component ---
+	BattlePhaseComponent = donburi.NewComponentType[BattlePhaseData]()
+
 	// --- Player Action Queue Component ---
 	PlayerActionQueueComponent = donburi.NewComponentType[PlayerActionQueueComponentData]()
 
@@ -57,6 +60,11 @@ var worldStateTag = donburi.NewComponentType[struct{}]()
 // GameStateData はゲーム全体の現在の状態を保持します。
 type GameStateData struct {
 	CurrentState GameState
+}
+
+// BattlePhaseData は戦闘の現在のフェーズを保持します。
+type BattlePhaseData struct {
+	CurrentPhase BattlePhase
 }
 
 // ActiveEffects はエンティティに現在適用されているすべてのステータス効果のデータを保持します。

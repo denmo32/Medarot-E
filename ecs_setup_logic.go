@@ -24,6 +24,10 @@ import (
 	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
 	LastActionResultComponent.SetValue(lastActionResultEntry, ActionResult{})
 
+	// Ensure BattlePhaseComponent entity exists
+	battlePhaseEntry := world.Entry(world.Create(BattlePhaseComponent, worldStateTag))
+	BattlePhaseComponent.SetValue(battlePhaseEntry, BattlePhaseData{CurrentPhase: PhaseGaugeProgress})
+
 	
 
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))

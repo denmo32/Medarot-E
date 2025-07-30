@@ -106,6 +106,11 @@ type PlayerActionProcessedGameEvent struct {
 
 func (e PlayerActionProcessedGameEvent) isGameEvent() {}
 
+// PlayerActionSelectFinishedGameEvent は、プレイヤーの行動選択フェーズが完了したことを示すイベントです。
+type PlayerActionSelectFinishedGameEvent struct{}
+
+func (e PlayerActionSelectFinishedGameEvent) isGameEvent() {}
+
 type GoToTitleSceneGameEvent struct{}
 
 func (e GoToTitleSceneGameEvent) isGameEvent() {}

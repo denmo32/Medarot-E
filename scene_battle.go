@@ -11,27 +11,26 @@ import (
 )
 
 type BattleScene struct {
-	resources                *SharedResources
-	manager                  *SceneManager
-	world                    donburi.World
-	tickCount                int
-	debugMode                bool
-	playerTeam               TeamID
-	ui                       UIInterface
-	messageManager           *UIMessageDisplayManager
-	winner                   TeamID
-	
-	gameDataManager          *GameDataManager
-	rand                     *rand.Rand
-	uiEventChannel           chan UIEvent
-	battleUIState            *BattleUIState
-	statusEffectSystem       *StatusEffectSystem
-	postActionEffectSystem   *PostActionEffectSystem
-	viewModelFactory         ViewModelFactory
-	uiFactory                *UIFactory
+	resources      *SharedResources
+	manager        *SceneManager
+	world          donburi.World
+	tickCount      int
+	debugMode      bool
+	playerTeam     TeamID
+	ui             UIInterface
+	messageManager *UIMessageDisplayManager
+	winner         TeamID
 
-	
-	battleLogic      *BattleLogic // 追加
+	gameDataManager        *GameDataManager
+	rand                   *rand.Rand
+	uiEventChannel         chan UIEvent
+	battleUIState          *BattleUIState
+	statusEffectSystem     *StatusEffectSystem
+	postActionEffectSystem *PostActionEffectSystem
+	viewModelFactory       ViewModelFactory
+	uiFactory              *UIFactory
+
+	battleLogic *BattleLogic // 追加
 
 	// New: Map of BattleStates
 	battleStates map[GameState]BattleState
@@ -41,16 +40,16 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	world := donburi.NewWorld()
 
 	bs := &BattleScene{
-		resources:                res,
-		manager:                  manager,
-		world:                    world,
-		debugMode:                true,
-		playerTeam:               Team1,
-		winner:                   TeamNone,
-		gameDataManager:          res.GameDataManager,
-		rand:                     res.Rand,
-		uiEventChannel:           make(chan UIEvent, 10),
-		battleUIState:            &BattleUIState{}, // ← これを追加
+		resources:       res,
+		manager:         manager,
+		world:           world,
+		debugMode:       true,
+		playerTeam:      Team1,
+		winner:          TeamNone,
+		gameDataManager: res.GameDataManager,
+		rand:            res.Rand,
+		uiEventChannel:  make(chan UIEvent, 10),
+		battleUIState:   &BattleUIState{}, // ← これを追加
 	}
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
@@ -96,8 +95,7 @@ func (bs *BattleScene) Update() error {
 
 	bs.ui.Update()
 
-	var uiGeneratedGameEvents []GameEvent
-	uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
+	uiGeneratedGameEvents := UpdateUIEventProcessorSystem(
 		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel,
 	)
 
@@ -139,8 +137,6 @@ func (bs *BattleScene) Update() error {
 			bs.SetState(stateChangeReq.NextState)
 		}
 	}
-
-	
 
 	battleUIStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bs.world)
 	if !ok {
@@ -258,26 +254,26 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 			if !successful {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 			}
-		case PlayerActionProcessedGameEvent:
-			actingEntry := e.ActingEntry
-			if actingEntry == nil || !actingEntry.Valid() {
-				log.Printf("Error: PlayerActionProcessedGameEvent - ActingEntry is invalid or nil")
-				break
-			}
+		case PlayerActionSelectFinishedGameEvent:
+			// プレイヤーの行動選択が完了したことを受け取る
 			playerActionQueue := GetPlayerActionQueueComponent(bs.world)
-			if len(playerActionQueue.Queue) > 0 && playerActionQueue.Queue[0] == actingEntry {
-				playerActionQueue.Queue = playerActionQueue.Queue[1:]
+
+			// BattlePhaseComponentを取得
+			battlePhaseEntry, ok := query.NewQuery(filter.Contains(BattlePhaseComponent)).First(bs.world)
+			if !ok {
+				log.Panicln("BattlePhaseComponent がワールドに見つかりません。")
+			}
+			battlePhase := BattlePhaseComponent.Get(battlePhaseEntry)
+
+			if len(playerActionQueue.Queue) > 0 {
+				// まだプレイヤーの行動が残っている場合、フェーズはPlayerActionのまま維持
+				battlePhase.CurrentPhase = PhasePlayerAction // 明示的に設定（既にそうであるはずだが念のため）
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlayerActionSelect})
 			} else {
-				log.Printf("警告: 処理されたエンティティ %s がキューの先頭にありませんでした。", SettingsComponent.Get(actingEntry).Name)
+				// プレイヤーの行動が全て処理された場合、ゲージ進行フェーズに戻る
+				battlePhase.CurrentPhase = PhaseGaugeProgress
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
 			}
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
-		case ActionCanceledGameEvent:
-			actingEntry := e.ActingEntry
-			if actingEntry == nil || !actingEntry.Valid() {
-				log.Printf("Error: ActionCanceledGameEvent - ActingEntry is invalid or nil")
-				break
-			}
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
 		case GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
 		case StateChangeRequestedGameEvent:

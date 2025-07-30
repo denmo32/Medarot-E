@@ -61,6 +61,16 @@ const (
 	StateGameOver           GameState = "GameOver"
 )
 
+// BattlePhase は戦闘の現在のフェーズを表します。
+type BattlePhase string
+
+const (
+	PhaseGaugeProgress   BattlePhase = "GaugeProgress"   // ゲージ進行フェーズ
+	PhasePlayerAction    BattlePhase = "PlayerAction"    // プレイヤー行動選択フェーズ
+	PhaseAIAction        BattlePhase = "AIAction"        // AI行動選択フェーズ
+	PhaseActionExecution BattlePhase = "ActionExecution" // 行動実行フェーズ
+)
+
 const (
 	StateIdle     StateType = "idle"
 	StateCharging StateType = "charging"

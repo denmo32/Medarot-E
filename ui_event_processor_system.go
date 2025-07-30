@@ -74,8 +74,8 @@ func UpdateUIEventProcessorSystem(
 			gameEvents = append(gameEvents, HideActionModalGameEvent{})
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
-			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
-			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlaying}) // イベントを発行
+			// プレイヤーの行動選択フェーズが完了したことを通知
+			gameEvents = append(gameEvents, PlayerActionSelectFinishedGameEvent{})
 			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(actingEntry).Name)
 		case ActionCanceledUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
@@ -87,8 +87,8 @@ func UpdateUIEventProcessorSystem(
 			gameEvents = append(gameEvents, HideActionModalGameEvent{})
 			// ターゲットインジケーターをクリア
 			gameEvents = append(gameEvents, ClearCurrentTargetGameEvent{})
-			gameEvents = append(gameEvents, PlayerActionProcessedGameEvent{ActingEntry: actingEntry})
-			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlaying}) // イベントを発行
+			// プレイヤーの行動選択フェーズが完了したことを通知
+			gameEvents = append(gameEvents, PlayerActionSelectFinishedGameEvent{})
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:
 			if !ui.IsActionModalVisible() { // モーダルが既に表示されていない場合のみ表示

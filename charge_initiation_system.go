@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/yohamta/donburi"
 )
 
@@ -35,16 +33,13 @@ func (s *ChargeInitiationSystem) StartCharge(
 	}
 
 	partsComp := PartsComponent.Get(entry)
-	settings := SettingsComponent.Get(entry)
 	actingPartInstance := partsComp.Map[partKey]
 
 	if actingPartInstance == nil {
-		log.Printf("%s: 選択されたパーツ %s は存在しません。", settings.Name, partKey)
 		return false
 	}
 	actingPartDef, defFound := s.partInfoProvider.GetGameDataManager().GetPartDefinition(actingPartInstance.DefinitionID)
 	if !defFound {
-		log.Printf("%s: パーツ定義(%s)が見つかりません。", settings.Name, actingPartInstance.DefinitionID)
 		return false
 	}
 
@@ -73,11 +68,11 @@ func (s *ChargeInitiationSystem) StartCharge(
 	// 1. 計算式の取得
 	formula, ok := s.gameDataManager.Formulas[actingPartDef.Trait]
 	if !ok {
-		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。", actingPartDef.Trait)
+		// 警告ログは削除
 	} else {
 		// 2. 計算式に基づいて自身に適用されるデバフ効果を生成
 		for _, debuffInfo := range formula.UserDebuffs {
-			log.Printf("%s が %s 特性効果（チャージ時デバフ）を準備。", settings.Name, formula.ID)
+			// ログは削除
 			var effectData interface{}
 			switch debuffInfo.Type {
 			case DebuffTypeEvasion:
@@ -85,7 +80,7 @@ func (s *ChargeInitiationSystem) StartCharge(
 			case DebuffTypeDefense:
 				effectData = &DefenseDebuffEffectData{Multiplier: debuffInfo.Multiplier}
 			default:
-				log.Printf("未対応のチャージ時デバフタイプです: %s", debuffInfo.Type)
+				// ログは削除
 			}
 			if effectData != nil {
 				intent.PendingEffects = append(intent.PendingEffects, effectData)
@@ -96,12 +91,11 @@ func (s *ChargeInitiationSystem) StartCharge(
 	if actingPartDef.Category == CategoryRanged {
 		// targetEntry が有効なエンティティであるか、または破壊されていないかを確認
 		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).CurrentState == StateBroken {
-			log.Printf("%s: [射撃] ターゲットが存在しないか破壊されています。", settings.Name)
 			return false
 		}
-		log.Printf("%sは%sで%sの%sを狙う！", settings.Name, actingPartDef.PartName, SettingsComponent.Get(targetEntry).Name, targetPartSlot)
+		// ログは削除
 	} else {
-		log.Printf("%sは%sで攻撃準備！", settings.Name, actingPartDef.PartName)
+		// ログは削除
 	}
 
 	baseSeconds := float64(actingPartDef.Charge)
