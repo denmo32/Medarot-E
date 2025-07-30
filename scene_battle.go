@@ -16,26 +16,21 @@ type BattleScene struct {
 	world                    donburi.World
 	tickCount                int
 	debugMode                bool
-	state                    GameState
 	playerTeam               TeamID
 	ui                       UIInterface
 	messageManager           *UIMessageDisplayManager
 	winner                   TeamID
 	playerActionPendingQueue []*donburi.Entry
-	damageCalculator         *DamageCalculator
-	hitCalculator            *HitCalculator
-	targetSelector           *TargetSelector
-	partInfoProvider         PartInfoProviderInterface
 	gameDataManager          *GameDataManager
 	rand                     *rand.Rand
 	uiEventChannel           chan UIEvent
-	battleUIState            *BattleUIState // 追加
+	battleUIState            *BattleUIState
 	statusEffectSystem       *StatusEffectSystem
 	postActionEffectSystem   *PostActionEffectSystem
-	viewModelFactory         ViewModelFactory // 追加
-	uiFactory                *UIFactory       // 追加
+	viewModelFactory         ViewModelFactory
+	uiFactory                *UIFactory
 
-	lastActionResult *ActionResult // 追加: アニメーション結果を一時的に保持
+	lastActionResult *ActionResult
 
 	// State Machine
 	states       map[GameState]BattleState
@@ -45,25 +40,14 @@ type BattleScene struct {
 func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	world := donburi.NewWorld()
 
-	// Initialize BattleLogic components
-	partInfoProvider := NewPartInfoProvider(world, &res.Config, res.GameDataManager)
-	damageCalculator := NewDamageCalculator(world, &res.Config, partInfoProvider, res.GameDataManager, res.Rand, res.BattleLogger)
-	hitCalculator := NewHitCalculator(world, &res.Config, partInfoProvider, res.Rand, res.BattleLogger)
-	targetSelector := NewTargetSelector(world, &res.Config, partInfoProvider)
-
 	bs := &BattleScene{
 		resources:                res,
 		manager:                  manager,
 		world:                    world,
 		debugMode:                true,
-		state:                    StatePlaying,
 		playerTeam:               Team1,
 		playerActionPendingQueue: make([]*donburi.Entry, 0),
 		winner:                   TeamNone,
-		damageCalculator:         damageCalculator,
-		hitCalculator:            hitCalculator,
-		targetSelector:           targetSelector,
-		partInfoProvider:         partInfoProvider,
 		gameDataManager:          res.GameDataManager,
 		rand:                     res.Rand,
 		uiEventChannel:           make(chan UIEvent, 10),
@@ -72,11 +56,18 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
+	// BattleLogicComponentからBattleLogicを取得
+	battleLogicEntry, ok := query.NewQuery(filter.Contains(BattleLogicComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("BattleLogicComponent がワールドに見つかりません。")
+	}
+	battleLogic := BattleLogicComponent.Get(battleLogicEntry)
+
 	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
 	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.uiFactory, bs.resources.GameDataManager)
-	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.partInfoProvider, bs.gameDataManager, bs.rand, bs.ui)
-	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, bs.damageCalculator)
-	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.partInfoProvider)
+	bs.viewModelFactory = NewViewModelFactory(bs.world, battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand, bs.ui)
+	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, battleLogic.GetDamageCalculator())
+	bs.postActionEffectSystem = NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, battleLogic.GetPartInfoProvider())
 	bs.messageManager = bs.ui.GetMessageDisplayManager() // uiからmessageManagerを取得
 
 	// Initialize state machine
@@ -87,7 +78,13 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		StateMessage:            &MessageState{},
 		StateGameOver:           &GameOverState{},
 	}
-	bs.currentState = bs.states[StatePlaying]
+	// 初期状態はGameStateComponentから取得
+	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("GameStateComponent がワールドに見つかりません。")
+	}
+	initialGameState := GameStateComponent.Get(gameStateEntry).CurrentState
+	bs.currentState = bs.states[initialGameState]
 
 	return bs
 }
@@ -96,16 +93,30 @@ func (bs *BattleScene) Update() error {
 	bs.tickCount++
 	bs.ui.Update()
 
+	// GameStateComponentから現在のゲーム状態を取得
+	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("GameStateComponent がワールドに見つかりません。")
+	}
+	currentGameState := GameStateComponent.Get(gameStateEntry).CurrentState
+
+	// BattleLogicComponentからBattleLogicを取得 (スコープを広げる)
+	battleLogicEntry, ok := query.NewQuery(filter.Contains(BattleLogicComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("BattleLogicComponent がワールドに見つかりません。")
+	}
+	battleLogic := BattleLogicComponent.Get(battleLogicEntry)
+
 	// UIイベントプロセッサシステムを更新
 	var uiGeneratedGameEvents []GameEvent
 	bs.playerActionPendingQueue, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
-		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue, bs.state,
+		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel, bs.playerActionPendingQueue,
 	)
 	// UIイベントプロセッサから発行されたGameEventを処理
 	bs.processGameEvents(uiGeneratedGameEvents)
 
 	// メッセージ表示状態の場合、メッセージマネージャーを更新
-	if bs.state == StateMessage {
+	if currentGameState == StateMessage {
 		// メッセージ状態に遷移した直後のフレームで、メッセージ表示の準備と関連ロジックを実行
 		if bs.lastActionResult != nil {
 			result := *bs.lastActionResult
@@ -113,7 +124,7 @@ func (bs *BattleScene) Update() error {
 
 			// クールダウン開始とターゲットクリア
 			if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
-				StartCooldownSystem(actingEntry, bs.world, bs.partInfoProvider)
+				StartCooldownSystem(actingEntry, bs.world, battleLogic.GetPartInfoProvider())
 			}
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
 
@@ -134,14 +145,10 @@ func (bs *BattleScene) Update() error {
 	}
 
 	// アニメーション中またはメッセージ表示中はゲーム進行ロジックを停止
-	if bs.state != StateMessage && bs.state != StateAnimatingAction {
+	if currentGameState != StateMessage && currentGameState != StateAnimatingAction {
 		// 現在のバトルステートを更新
 		battleContext := &BattleContext{
 			World:                  bs.world,
-			DamageCalculator:       bs.damageCalculator,
-			HitCalculator:          bs.hitCalculator,
-			TargetSelector:         bs.targetSelector,
-			PartInfoProvider:       bs.partInfoProvider,
 			Config:                 &bs.resources.Config,
 			GameDataManager:        bs.gameDataManager,
 			Rand:                   bs.rand,
@@ -149,6 +156,7 @@ func (bs *BattleScene) Update() error {
 			ViewModelFactory:       bs.viewModelFactory,
 			statusEffectSystem:     bs.statusEffectSystem,
 			postActionEffectSystem: bs.postActionEffectSystem,
+			BattleLogic:            battleLogic,
 		}
 
 		newPlayerActionPendingQueue, gameEvents, err := bs.currentState.Update(
@@ -169,16 +177,11 @@ func (bs *BattleScene) Update() error {
 	}
 
 	// Additional state transitions not directly tied to a single GameEvent
-	if bs.state == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
-		bs.state = StatePlaying
-		bs.currentState = bs.states[bs.state]
+	if currentGameState == StatePlayerActionSelect && len(bs.playerActionPendingQueue) == 0 {
+		// GameStateComponentを更新
+		GameStateComponent.Get(gameStateEntry).CurrentState = StatePlaying
+		bs.currentState = bs.states[StatePlaying]
 	}
-
-	// Transition to new state if changed (processGameEventsでbs.stateが更新されるため、このブロックは不要になる)
-	// if nextState != bs.state {
-	// 	bs.state = nextState
-	// 	bs.currentState = bs.states[nextState]
-	// }
 
 	// Update UI components that depend on world state
 	battleUIStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bs.world)
@@ -188,10 +191,10 @@ func (bs *BattleScene) Update() error {
 	}
 	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
 
-	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.partInfoProvider, bs.viewModelFactory) // InfoPanelのViewModelを更新
+	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, battleLogic.GetPartInfoProvider(), bs.viewModelFactory) // InfoPanelのViewModelを更新
 
 	// BattlefieldViewModelを構築し、BattleUIStateに設定
-	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, battleUIState, bs.partInfoProvider, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect()) // worldを渡す
+	battleUIState.BattlefieldViewModel = bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, battleUIState, battleLogic.GetPartInfoProvider(), &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect()) // worldを渡す
 
 	// UIにBattleUIState全体を渡して更新を委譲
 	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect(), bs.uiFactory)
@@ -215,29 +218,35 @@ func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 // processGameEvents はGameEventのリストを処理し、BattleSceneの状態を更新します。
 func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
+	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("GameStateComponent がワールドに見つかりません。")
+	}
+	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
+
 	for _, event := range gameEvents {
 		switch e := event.(type) {
 		case PlayerActionRequiredGameEvent:
-			bs.state = StatePlayerActionSelect
+			currentGameStateComp.CurrentState = StatePlayerActionSelect
 		case ActionAnimationStartedGameEvent:
 			bs.ui.PostEvent(SetAnimationUIEvent(e))
-			bs.state = StateAnimatingAction
+			currentGameStateComp.CurrentState = StateAnimatingAction
 		case ActionAnimationFinishedGameEvent:
 			// アニメーション終了後、結果を一時的に保持し、メッセージ状態へ遷移
 			bs.lastActionResult = &e.Result
-			bs.state = StateMessage
+			currentGameStateComp.CurrentState = StateMessage
 		case MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
-			bs.state = StateMessage
+			currentGameStateComp.CurrentState = StateMessage
 		case MessageDisplayFinishedGameEvent:
 			if bs.winner != TeamNone {
-				bs.state = StateGameOver
+				currentGameStateComp.CurrentState = StateGameOver
 			} else {
-				bs.state = StatePlaying
+				currentGameStateComp.CurrentState = StatePlaying
 			}
 		case GameOverGameEvent:
 			bs.winner = e.Winner
-			bs.state = StateMessage // ゲームオーバーメッセージ表示のため
+			currentGameStateComp.CurrentState = StateMessage // ゲームオーバーメッセージ表示のため
 		case HideActionModalGameEvent:
 			bs.ui.PostEvent(HideActionModalUIEvent{})
 		case ShowActionModalGameEvent:
@@ -266,15 +275,21 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			}
 			if targetEntry == nil && e.TargetPartSlot != "" { // TargetPartSlotがあるのにTargetEntryがない場合はエラー
 				log.Printf("Error: ChargeRequestedGameEvent - TargetEntry is nil but TargetPartSlot is provided")
-				break
-			}
-			// ChargeInitiationSystem を呼び出す
-			successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, bs.partInfoProvider, bs.gameDataManager)
-			if !successful {
-				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
-				// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
-			}
-		case PlayerActionProcessedGameEvent:
+						break
+					}
+					// BattleLogicComponentからBattleLogicを取得
+					battleLogicEntry, ok := query.NewQuery(filter.Contains(BattleLogicComponent)).First(bs.world)
+					if !ok {
+						log.Panicln("BattleLogicComponent がワールドに見つかりません。")
+					}
+					battleLogic := BattleLogicComponent.Get(battleLogicEntry)
+					// ChargeInitiationSystem を呼び出す
+					successful := StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot, bs.world, battleLogic.GetPartInfoProvider(), battleLogic.GetPartInfoProvider().GetGameDataManager())
+					if !successful {
+						log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
+						// 必要であれば、ここでエラーメッセージをキューに入れるなどの処理を追加
+					}
+				case PlayerActionProcessedGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {
 				log.Printf("Error: PlayerActionProcessedGameEvent - ActingEntry is invalid or nil")
@@ -286,7 +301,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			} else {
 				log.Printf("警告: 処理されたエンティティ %s がキューの先頭にありませんでした。", SettingsComponent.Get(actingEntry).Name)
 			}
-			bs.state = StatePlaying // 行動処理後はPlaying状態に戻る
+			currentGameStateComp.CurrentState = StatePlaying // 行動処理後はPlaying状態に戻る
 		case ActionCanceledGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {
@@ -294,13 +309,13 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 				break
 			}
 			// 行動キャンセル時の処理（PlayerActionProcessedGameEventでキュー操作は行われる）
-			bs.state = StatePlaying // キャンセル時は即座にPlaying状態に戻る
+			currentGameStateComp.CurrentState = StatePlaying // キャンセル時は即座にPlaying状態に戻る
 		case GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
 		case StateChangeRequestedGameEvent: // 新しいイベントの処理
-			bs.state = e.NextState
+			currentGameStateComp.CurrentState = e.NextState
 		}
 	}
 	// イベント処理後に現在の状態を更新
-	bs.currentState = bs.states[bs.state]
+	bs.currentState = bs.states[currentGameStateComp.CurrentState]
 }

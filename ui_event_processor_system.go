@@ -13,7 +13,6 @@ func UpdateUIEventProcessorSystem(
 	messageManager *UIMessageDisplayManager,
 	eventChannel chan UIEvent,
 	playerActionPendingQueue []*donburi.Entry,
-	currentState GameState,
 ) ([]*donburi.Entry, []GameEvent) { // GameStateの戻り値を削除
 	var gameEvents []GameEvent
 	// var nextState = currentState // nextStateの宣言を削除
@@ -37,7 +36,7 @@ func UpdateUIEventProcessorSystem(
 			}
 			// ターゲットインジケーターを表示
 			ui.SetCurrentTarget(e.TargetEntityID) // donburi.Entity を渡す
-			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", SettingsComponent.Get(actingEntry).Name, e.SelectedPartDefID)
+			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", SettingsComponent.Get(actingEntry).Name, e.SelectedSlotKey)
 		case TargetSelectedUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
 			if actingEntry == nil {

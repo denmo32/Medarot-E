@@ -11,21 +11,19 @@ type UIEvent interface {
 
 // PartSelectedUIEvent は、プレイヤーがパーツを選択したときに発行されます。
 type PartSelectedUIEvent struct {
-	ActingEntityID    donburi.Entity
-	SelectedPartDefID string
-	SelectedSlotKey   PartSlotKey
-	TargetEntityID    donburi.Entity // 追加
+	ActingEntityID  donburi.Entity
+	SelectedSlotKey PartSlotKey
+	TargetEntityID  donburi.Entity // 追加
 }
 
 func (e PartSelectedUIEvent) isUIEvent() {}
 
 // TargetSelectedUIEvent は、プレイヤーがターゲットを選択したときに発行されます。
 type TargetSelectedUIEvent struct {
-	ActingEntityID    donburi.Entity
-	SelectedPartDefID string
-	SelectedSlotKey   PartSlotKey
-	TargetEntityID    donburi.Entity
-	TargetPartSlot    PartSlotKey
+	ActingEntityID donburi.Entity
+	SelectedSlotKey PartSlotKey
+	TargetEntityID donburi.Entity
+	TargetPartSlot PartSlotKey
 }
 
 func (e TargetSelectedUIEvent) isUIEvent() {}

@@ -56,7 +56,6 @@ SOLID、DRY、KISS原則に従うこと。
     *   ECS: `donburi`: https://github.com/yohamta/donburi
     *   リソース管理: `ebitengine-resource`: https://github.com/quasilyte/ebitengine-resource
     *   UI/レイアウト: `ebitenui`: https://github.com/ebitenui/ebitenui/
-    *   ステートマシン: `fsm`: https://github.com/looplab/fsm
     *   シーン管理: `bamenn`: https://github.com/noppikinatta/bamenn
 
 ## タスク

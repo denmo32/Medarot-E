@@ -35,10 +35,21 @@ var (
 
 	// --- UI State Component ---
 	BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
+
+	// --- Game State Component ---
+	GameStateComponent = donburi.NewComponentType[GameStateData]()
+
+	// --- Battle Logic Component ---
+	BattleLogicComponent = donburi.NewComponentType[BattleLogic]()
 )
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
 var worldStateTag = donburi.NewComponentType[struct{}]()
+
+// GameStateData はゲーム全体の現在の状態を保持します。
+type GameStateData struct {
+	CurrentState GameState
+}
 
 // ActiveEffects はエンティティに現在適用されているすべてのステータス効果のデータを保持します。
 type ActiveEffects struct {

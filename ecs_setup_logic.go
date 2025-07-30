@@ -9,8 +9,16 @@ import (
 )
 
 // InitializeBattleWorld は戦闘ワールドのECSエンティティを初期化します。
-func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam TeamID) {
+	func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam TeamID) {
 	EnsureActionQueueEntity(world)
+
+	// Ensure GameStateComponent entity exists
+	gameStateEntry := world.Entry(world.Create(GameStateComponent, worldStateTag))
+	GameStateComponent.SetValue(gameStateEntry, GameStateData{CurrentState: StatePlaying})
+
+	// Ensure BattleLogicComponent entity exists
+	battleLogicEntry := world.Entry(world.Create(BattleLogicComponent, worldStateTag))
+	BattleLogicComponent.SetValue(battleLogicEntry, *NewBattleLogic(world, &res.Config, res.GameDataManager))
 
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
 	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{

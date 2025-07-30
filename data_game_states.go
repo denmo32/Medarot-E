@@ -2,20 +2,19 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	inpututil "github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 type BattleContext struct {
 	World                  donburi.World
-	DamageCalculator       *DamageCalculator
-	HitCalculator          *HitCalculator
-	TargetSelector         *TargetSelector
-	PartInfoProvider       PartInfoProviderInterface
 	Config                 *Config
 	GameDataManager        *GameDataManager
 	Rand                   *rand.Rand
@@ -23,6 +22,7 @@ type BattleContext struct {
 	ViewModelFactory       ViewModelFactory
 	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem
+	BattleLogic            *BattleLogic
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
@@ -40,17 +40,18 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 	config := ctx.Config
 	tick := ctx.Tick
 
+	// BattleLogicComponentからBattleLogicを取得
+	battleLogicEntry, ok := query.NewQuery(filter.Contains(BattleLogicComponent)).First(world)
+	if !ok {
+		log.Panicln("BattleLogicComponent がワールドに見つかりません。")
+	}
+	battleLogic := BattleLogicComponent.Get(battleLogicEntry)
+
 	var gameEvents []GameEvent
 
 	// AIの行動選択
 	if len(playerActionPendingQueue) == 0 {
-		UpdateAIInputSystem(world, &BattleLogic{
-			damageCalculator: ctx.DamageCalculator,
-			hitCalculator:    ctx.HitCalculator,
-			targetSelector:   ctx.TargetSelector,
-			partInfoProvider: ctx.PartInfoProvider,
-			rand:             ctx.Rand,
-		})
+		UpdateAIInputSystem(world, battleLogic)
 	}
 
 	// プレイヤーの行動選択が必要かチェック
@@ -68,7 +69,7 @@ func (s *PlayingState) Update(ctx *BattleContext, playerActionPendingQueue []*do
 	}
 
 	// アクション実行
-	actionResults, err := UpdateActionQueueSystem(world, ctx.DamageCalculator, ctx.HitCalculator, ctx.TargetSelector, ctx.PartInfoProvider, config, ctx.statusEffectSystem, ctx.postActionEffectSystem, ctx.Rand)
+	actionResults, err := UpdateActionQueueSystem(world, battleLogic.GetDamageCalculator(), battleLogic.GetHitCalculator(), battleLogic.GetTargetSelector(), battleLogic.GetPartInfoProvider(), config, ctx.statusEffectSystem, ctx.postActionEffectSystem, ctx.Rand)
 	if err != nil {
 		fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
 	}
@@ -103,6 +104,13 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 	world := ctx.World
 	viewModelFactory := ctx.ViewModelFactory
 
+	// BattleLogicComponentからBattleLogicを取得
+	battleLogicEntry, ok := query.NewQuery(filter.Contains(BattleLogicComponent)).First(world)
+	if !ok {
+		log.Panicln("BattleLogicComponent がワールドに見つかりません。")
+	}
+	battleLogic := BattleLogicComponent.Get(battleLogicEntry)
+
 	var gameEvents []GameEvent
 
 	// 待機中のプレイヤーがいるかチェック
@@ -125,14 +133,6 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 					if !ok {
 						personality = PersonalityRegistry["リーダー"]
 					}
-					// ViewModelFactoryを介してターゲットを選択
-					battleLogic := &BattleLogic{
-						damageCalculator: ctx.DamageCalculator,
-						hitCalculator:    ctx.HitCalculator,
-						targetSelector:   ctx.TargetSelector,
-						partInfoProvider: ctx.PartInfoProvider,
-						rand:             ctx.Rand,
-					}
 					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic)
 				}
 				var targetID donburi.Entity
@@ -143,25 +143,22 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext, playerActionPending
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, ctx.PartInfoProvider, ctx.GameDataManager, ctx.Rand)
+			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic.GetPartInfoProvider(), ctx.GameDataManager, ctx.Rand)
 			// モーダルが既に表示されていない場合のみイベントを発行
 			if !ctx.ViewModelFactory.IsActionModalVisible() {
 				gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
 			}
-			return playerActionPendingQueue, gameEvents, nil
 		} else {
 			// 無効または待機状態でないならキューから削除
 			playerActionPendingQueue = playerActionPendingQueue[1:]
 			// 次のフレームで再度Updateが呼ばれるのを待つ
-			return playerActionPendingQueue, gameEvents, nil
 		}
 	} else {
 		// キューが空なら処理完了
-		return playerActionPendingQueue, gameEvents, nil
 	}
 
 	// このパスは到達不能なので削除
-	// return playerActionPendingQueue, gameEvents, nil
+	return playerActionPendingQueue, gameEvents, nil
 }
 
 func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}

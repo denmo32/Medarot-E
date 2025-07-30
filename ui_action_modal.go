@@ -58,11 +58,10 @@ func createActionModalUI(
 					case CategoryRanged:
 						if buttonVM.TargetEntityID != 0 {
 							eventChannel <- TargetSelectedUIEvent{
-								ActingEntityID:    vm.ActingEntityID,
-								SelectedPartDefID: buttonVM.SelectedPartDefID,
-								SelectedSlotKey:   buttonVM.SlotKey,
-								TargetEntityID:    buttonVM.TargetEntityID,
-								TargetPartSlot:    "", // ターゲットパーツスロットはここでは不明
+								ActingEntityID: vm.ActingEntityID,
+								SelectedSlotKey: buttonVM.SlotKey,
+								TargetEntityID: buttonVM.TargetEntityID,
+								TargetPartSlot: "", // ターゲットパーツスロットはここでは不明
 							}
 						}
 					case CategoryIntervention:
