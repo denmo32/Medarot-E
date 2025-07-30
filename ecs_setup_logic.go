@@ -20,6 +20,10 @@ import (
 	playerActionQueueEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
 	PlayerActionQueueComponent.SetValue(playerActionQueueEntry, PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
 
+	// Ensure LastActionResultComponent entity exists
+	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
+	LastActionResultComponent.SetValue(lastActionResultEntry, ActionResult{})
+
 	
 
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))

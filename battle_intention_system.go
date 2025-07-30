@@ -9,21 +9,30 @@ import (
 // UpdatePlayerInputSystem はアイドル状態のすべてのプレイヤー制御メダロットを見つけます。
 // このシステムは BattleScene に直接依存しません。
 // 行動が必要なプレイヤーエンティティのリストを返します。
-func UpdatePlayerInputSystem(world donburi.World) bool {
+func UpdatePlayerInputSystem(world donburi.World) []GameEvent {
 	playerActionQueue := GetPlayerActionQueueComponent(world)
-	playerActionQueue.Queue = make([]*donburi.Entry, 0) // Clear the queue
+	var gameEvents []GameEvent
 
+	// 以前のフレームでプレイヤーの行動が処理済みで、キューが空になった場合
+	// （PlayerActionProcessedGameEventはUIイベントプロセッサから発行されるため、ここでは不要）
+	// ただし、もしここでキューが空になったことを検知して状態遷移を促す必要があるなら、
+	// ここでPlayerActionProcessedGameEventを発行することも考えられる。
+	// 今回の変更では、UIイベントプロセッサがActionConfirmedUIEvent/ActionCanceledUIEventを処理した際に
+	// PlayerActionProcessedGameEventを発行するように変更済みなので、ここでは不要。
+
+	// キューをクリアし、現在のアイドル状態のプレイヤーエンティティを再収集
+	playerActionQueue.Queue = make([]*donburi.Entry, 0)
 	query.NewQuery(filter.Contains(PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
 		if StateComponent.Get(entry).CurrentState == StateIdle {
 			playerActionQueue.Queue = append(playerActionQueue.Queue, entry)
 		}
 	})
 
-	// 行動順は推進力などでソートすることも可能ですが、ここでは単純に検出順とします。
-	// 必要であれば、ここでソートロジックを追加します。
-	// sort.Slice(playerActionQueue.Queue, func(i, j int) bool { ... })
+	if len(playerActionQueue.Queue) > 0 {
+		gameEvents = append(gameEvents, PlayerActionRequiredGameEvent{})
+	}
 
-	return len(playerActionQueue.Queue) > 0
+	return gameEvents
 }
 
 // UpdateAIInputSystem はAI制御のメダロットの行動選択を処理します。

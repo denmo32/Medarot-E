@@ -49,10 +49,8 @@ func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	}
 
 	// プレイヤーの行動選択が必要かチェック
-	if UpdatePlayerInputSystem(world) {
-		gameEvents = append(gameEvents, PlayerActionRequiredGameEvent{})
-		return gameEvents, nil
-	}
+	playerInputEvents := UpdatePlayerInputSystem(world)
+	gameEvents = append(gameEvents, playerInputEvents...)
 
 	// ゲージ進行
 	actionQueueComp := GetActionQueueComponent(world)

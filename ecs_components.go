@@ -41,6 +41,9 @@ var (
 
 	// --- Player Action Queue Component ---
 	PlayerActionQueueComponent = donburi.NewComponentType[PlayerActionQueueComponentData]()
+
+	// --- Last Action Result Component ---
+	LastActionResultComponent = donburi.NewComponentType[ActionResult]()
 )
 
 // PlayerActionQueueComponentData はプレイヤーの行動待ちキューを格納します。

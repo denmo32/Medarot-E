@@ -30,7 +30,7 @@ type BattleScene struct {
 	viewModelFactory         ViewModelFactory
 	uiFactory                *UIFactory
 
-	lastActionResult *ActionResult
+	
 	battleLogic      *BattleLogic // 追加
 }
 
@@ -92,8 +92,13 @@ func (bs *BattleScene) Update() error {
 	bs.processGameEvents(uiGeneratedGameEvents)
 
 	if currentGameStateComp.CurrentState == StateMessage {
-		if bs.lastActionResult != nil {
-			result := *bs.lastActionResult
+		lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
+		if !ok {
+			log.Panicln("LastActionResultComponent がワールドに見つかりません。")
+		}
+		lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
+		if lastActionResultComp.ActingEntry != nil { // ActingEntryがnilでないことを確認
+			result := *lastActionResultComp // 値をコピー
 			actingEntry := result.ActingEntry
 
 			if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
@@ -105,7 +110,7 @@ func (bs *BattleScene) Update() error {
 				UpdateHistorySystem(bs.world, &result)
 			})
 
-			bs.lastActionResult = nil
+			*lastActionResultComp = ActionResult{} // 処理後クリア
 		}
 
 		bs.messageManager.Update()
@@ -162,10 +167,7 @@ func (bs *BattleScene) Update() error {
 		}
 	// }
 
-	// プレイヤーの行動選択状態からPlaying状態への遷移ロジックを移動
-		if currentGameStateComp.CurrentState == StatePlayerActionSelect && len(playerActionQueue.Queue) == 0 {
-		bs.SetState(StatePlaying)
-	}
+	
 
 	battleUIStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bs.world)
 	if !ok {
@@ -231,7 +233,12 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) {
 			currentGameStateComp.CurrentState = StateAnimatingAction
 		case ActionAnimationFinishedGameEvent:
 			// アニメーション終了後、結果を一時的に保持し、メッセージ状態へ遷移
-			bs.lastActionResult = &e.Result
+			lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
+		if !ok {
+			log.Panicln("LastActionResultComponent がワールドに見つかりません。")
+		}
+		lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
+			*lastActionResultComp = e.Result
 			currentGameStateComp.CurrentState = StateMessage
 		case MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
