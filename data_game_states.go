@@ -35,7 +35,6 @@ type BattleState interface {
 type PlayingState struct{}
 
 func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	world := ctx.World
 	config := ctx.Config
 	tick := ctx.Tick
 
@@ -43,25 +42,25 @@ func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
 
 	var gameEvents []GameEvent
 
-	playerActionQueue := GetPlayerActionQueueComponent(world)
+	playerActionQueue := GetPlayerActionQueueComponent(ctx.World)
 
 	// AIの行動選択
 	if len(playerActionQueue.Queue) == 0 {
-		UpdateAIInputSystem(world, battleLogic)
+		UpdateAIInputSystem(ctx.World, battleLogic)
 	}
 
 	// プレイヤーの行動選択が必要かチェック
-	playerInputEvents := UpdatePlayerInputSystem(world)
+	playerInputEvents := UpdatePlayerInputSystem(ctx.World)
 	gameEvents = append(gameEvents, playerInputEvents...)
 
 	// ゲージ進行
-	actionQueueComp := GetActionQueueComponent(world)
+	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(playerActionQueue.Queue) == 0 && len(actionQueueComp.Queue) == 0 {
-		UpdateGaugeSystem(world)
+		UpdateGaugeSystem(ctx.World)
 	}
 
 	// アクション実行
-	actionResults, err := UpdateActionQueueSystem(world, battleLogic.GetDamageCalculator(), battleLogic.GetHitCalculator(), battleLogic.GetTargetSelector(), battleLogic.GetPartInfoProvider(), config, ctx.statusEffectSystem, ctx.postActionEffectSystem, ctx.Rand)
+	actionResults, err := UpdateActionQueueSystem(ctx.World, battleLogic.GetDamageCalculator(), battleLogic.GetHitCalculator(), battleLogic.GetTargetSelector(), battleLogic.GetPartInfoProvider(), config, ctx.statusEffectSystem, ctx.postActionEffectSystem, ctx.Rand)
 	if err != nil {
 		fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
 	}
@@ -77,7 +76,7 @@ func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	ctx.statusEffectSystem.Update()
 
 	// ゲーム終了判定
-	gameEndResult := CheckGameEndSystem(world)
+	gameEndResult := CheckGameEndSystem(ctx.World)
 	if gameEndResult.IsGameOver {
 		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
 		gameEvents = append(gameEvents, GameOverGameEvent{Winner: gameEndResult.Winner})
@@ -95,14 +94,13 @@ func (s *PlayingState) Draw(screen *ebiten.Image) {
 type PlayerActionSelectState struct{}
 
 func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	world := ctx.World
 	viewModelFactory := ctx.ViewModelFactory
 
 	battleLogic := ctx.BattleLogic
 
 	var gameEvents []GameEvent
 
-	playerActionQueue := GetPlayerActionQueueComponent(world)
+	playerActionQueue := GetPlayerActionQueueComponent(ctx.World)
 
 	// 待機中のプレイヤーがいるかチェック
 	if len(playerActionQueue.Queue) > 0 {
@@ -124,7 +122,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 					if !ok {
 						personality = PersonalityRegistry["リーダー"]
 					}
-					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(world, actingEntry, battleLogic)
+					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(ctx.World, actingEntry, battleLogic)
 				}
 				var targetID donburi.Entity
 				if targetEntity != nil {

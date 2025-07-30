@@ -97,9 +97,8 @@ func (bs *BattleScene) Update() error {
 	bs.ui.Update()
 
 	var uiGeneratedGameEvents []GameEvent
-	playerActionQueue := GetPlayerActionQueueComponent(bs.world)
-	playerActionQueue.Queue, uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
-		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel, playerActionQueue.Queue,
+	uiGeneratedGameEvents = UpdateUIEventProcessorSystem(
+		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel,
 	)
 
 	allGameEvents := make([]GameEvent, 0)

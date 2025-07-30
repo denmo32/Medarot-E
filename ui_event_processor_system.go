@@ -12,8 +12,7 @@ func UpdateUIEventProcessorSystem(
 	ui UIInterface,
 	messageManager *UIMessageDisplayManager,
 	eventChannel chan UIEvent,
-	playerActionPendingQueue []*donburi.Entry,
-) ([]*donburi.Entry, []GameEvent) { // GameStateの戻り値を削除
+) []GameEvent {
 	var gameEvents []GameEvent
 	// var nextState = currentState // nextStateの宣言を削除
 
@@ -114,5 +113,5 @@ func UpdateUIEventProcessorSystem(
 		// イベントがない場合は何もしない
 	}
 
-	return playerActionPendingQueue, gameEvents // nextStateの戻り値を削除
+	return gameEvents // nextStateの戻り値を削除
 }
