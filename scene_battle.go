@@ -69,6 +69,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		StatePlayerActionSelect: &PlayerActionSelectState{},
 		StateActionExecution:    &ActionExecutionState{},
 		StateAnimatingAction:    &AnimatingActionState{},
+		StatePostAction:         &PostActionState{},
 		StateMessage:            &MessageState{},
 		StateGameOver:           &GameOverState{},
 	}
@@ -197,21 +198,10 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 		case ActionAnimationStartedGameEvent:
 			bs.ui.PostEvent(SetAnimationUIEvent(e))
 			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateAnimatingAction})
+		
 		case ActionAnimationFinishedGameEvent:
 			*lastActionResultComp = e.Result // Store the result
-
-			actingEntry := e.ActingEntry
-			if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
-				StartCooldownSystem(actingEntry, bs.world, bs.battleLogic.GetPartInfoProvider())
-			}
-			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
-
-			bs.messageManager.EnqueueMessageQueue(buildActionLogMessagesFromActionResult(e.Result, bs.resources.GameDataManager), func() {
-				UpdateHistorySystem(bs.world, &e.Result)
-			})
-
-			*lastActionResultComp = ActionResult{}
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePostAction})
 		case MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
 			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateMessage})

@@ -21,6 +21,8 @@ type UIInterface interface {
 	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
 	PostEvent(event UIEvent)
 	IsActionModalVisible() bool
+	IsAnimationFinished(tick int) bool
+	GetCurrentAnimationResult() ActionResult
 	GetActionTargetMap() map[PartSlotKey]ActionTarget
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()

@@ -2,11 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
@@ -186,10 +189,44 @@ type AnimatingActionState struct{}
 
 func (s *AnimatingActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	var gameEvents []GameEvent
+	// 何もしない。状態遷移は ActionAnimationFinishedGameEvent によってトリガーされる。
 	return gameEvents, nil
 }
 
 func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
+
+// --- PostActionState ---
+
+type PostActionState struct{}
+
+func (s *PostActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
+	var gameEvents []GameEvent
+
+	lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(ctx.World)
+	if !ok {
+		log.Panicln("LastActionResultComponent がワールドに見つかりません。")
+	}
+	result := LastActionResultComponent.Get(lastActionResultEntry)
+
+	// クールダウン開始
+	actingEntry := result.ActingEntry
+	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
+		StartCooldownSystem(actingEntry, ctx.World, ctx.BattleLogic.GetPartInfoProvider())
+	}
+
+	// メッセージ生成とエンキュー
+	ctx.MessageManager.EnqueueMessageQueue(buildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() {
+		UpdateHistorySystem(ctx.World, result)
+	})
+
+	// 処理が終わったらLastActionResultをクリア
+	*result = ActionResult{}
+
+	gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
+	return gameEvents, nil
+}
+
+func (s *PostActionState) Draw(screen *ebiten.Image) {}
 
 // --- MessageState ---
 

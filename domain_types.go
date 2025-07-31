@@ -58,6 +58,7 @@ const (
 	StatePlayerActionSelect GameState = "PlayerActionSelect"
 	StateActionExecution    GameState = "ActionExecution"
 	StateAnimatingAction    GameState = "AnimatingAction"
+	StatePostAction         GameState = "PostAction"
 	StateMessage            GameState = "Message"
 	StateGameOver           GameState = "GameOver"
 )
