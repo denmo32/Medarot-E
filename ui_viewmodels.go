@@ -49,6 +49,7 @@ type InfoPanelViewModel struct {
 // PartViewModel は、単一のパーツUIが必要とするデータを保持します。
 type PartViewModel struct {
 	PartName     string
+	PartType     PartType
 	CurrentArmor int
 	MaxArmor     int
 	IsBroken     bool

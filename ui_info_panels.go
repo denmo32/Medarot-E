@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"sort"
 
-	"github.com/ebitenui/ebitenui/image"
+	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 )
 
@@ -107,49 +107,64 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 	partSlots := make(map[PartSlotKey]*infoPanelPartUI)
 	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
 		partVM, ok := vm.Parts[slotKey]
-		partName := "---"
+		partTypeStr := "---"
 		initialArmor := 0.0
 
 		if ok {
-			partName = partVM.PartName
+			partTypeStr = string(partVM.PartType)
 			initialArmor = float64(partVM.CurrentArmor)
 		}
 
-		partContainer := widget.NewContainer(
+		// 各パーツの行コンテナ
+		partRowContainer := widget.NewContainer(
 			widget.ContainerOpts.Layout(widget.NewRowLayout(
-				widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-				widget.RowLayoutOpts.Spacing(2),
+				widget.RowLayoutOpts.Direction(widget.DirectionHorizontal),
+				widget.RowLayoutOpts.Spacing(5),
 			)),
 		)
-		partWidgets = append(partWidgets, partContainer)
+		partWidgets = append(partWidgets, partRowContainer)
 
-		partNameText := widget.NewText(
-			widget.TextOpts.Text(partName, uiFactory.Font, c.Colors.White),
+		// 部位名テキスト
+		partTypeText := widget.NewText(
+			widget.TextOpts.Text(partTypeStr, uiFactory.Font, c.Colors.White),
+			widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Stretch: false,
+			})),
 		)
-		partContainer.AddChild(partNameText)
+		partRowContainer.AddChild(partTypeText)
 
+		// HPバー
 		hpBar := widget.NewProgressBar(
-			widget.ProgressBarOpts.WidgetOpts(widget.WidgetOpts.MinSize(int(c.InfoPanel.PartHPGaugeWidth), int(c.InfoPanel.PartHPGaugeHeight))),
+			widget.ProgressBarOpts.WidgetOpts(
+				widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+					Stretch: true, // 横方向にストレッチ
+				}),
+				widget.WidgetOpts.MinSize(int(c.InfoPanel.PartHPGaugeWidth), int(c.InfoPanel.PartHPGaugeHeight)), // 最小高さを設定
+			),
 			widget.ProgressBarOpts.Images(
 				&widget.ProgressBarImage{
-					Idle: image.NewNineSliceColor(c.Colors.Gray),
+					Idle: eimage.NewNineSliceColor(c.Colors.Gray),
 				},
 				&widget.ProgressBarImage{
-					Idle: image.NewNineSliceColor(c.Colors.HP),
+					Idle: eimage.NewNineSliceColor(c.Colors.HP),
 				},
 			),
 			widget.ProgressBarOpts.Values(0, 100, 100),
 			widget.ProgressBarOpts.TrackPadding(widget.NewInsetsSimple(1)),
 		)
-		partContainer.AddChild(hpBar)
+		partRowContainer.AddChild(hpBar)
 
+		// HPテキスト
 		hpText := widget.NewText(
 			widget.TextOpts.Text("0/0", uiFactory.Font, c.Colors.White),
+			widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Stretch: false,
+			})),
 		)
-		partContainer.AddChild(hpText)
+		partRowContainer.AddChild(hpText)
 
 		partSlots[slotKey] = &infoPanelPartUI{
-			partNameText: partNameText,
+			partNameText: partTypeText, // partTypeTextを再利用して部位名を表示
 			hpText:       hpText,
 			hpBar:        hpBar,
 			displayedHP:  initialArmor,
@@ -229,9 +244,9 @@ func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Confi
 
 		if partVM.IsBroken {
 			textColor = c.Colors.Broken
-			partUI.partNameText.Label = partVM.PartName + " (壊)"
+			partUI.partNameText.Label = string(partVM.PartType)
 		} else {
-			partUI.partNameText.Label = partVM.PartName
+			partUI.partNameText.Label = string(partVM.PartType)
 			if hpPercentage < 0.3 {
 				textColor = c.Colors.HPCritical
 			}

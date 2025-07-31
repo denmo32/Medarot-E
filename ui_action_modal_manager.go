@@ -15,16 +15,18 @@ type UIActionModalManager struct {
 	actionTargetMap      map[PartSlotKey]ActionTarget // 選択可能なアクションとターゲットのマップ
 	eventChannel         chan UIEvent                 // UIイベント通知用
 	uiFactory            *UIFactory                   // 追加
+	bottomPanel          *widget.Container            // 追加
 }
 
 // NewUIActionModalManager は新しいUIActionModalManagerのインスタンスを作成します。
-func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, uiFactory *UIFactory) *UIActionModalManager {
+func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, uiFactory *UIFactory, bottomPanel *widget.Container) *UIActionModalManager {
 	return &UIActionModalManager{
 		ebitenui:             ebitenui,
 		isActionModalVisible: false,
 		actionTargetMap:      make(map[PartSlotKey]ActionTarget),
 		eventChannel:         eventChannel,
 		uiFactory:            uiFactory,
+		bottomPanel:          bottomPanel,
 	}
 }
 
@@ -41,7 +43,7 @@ func (m *UIActionModalManager) ShowActionModal(vm ActionModalViewModel) {
 	// ViewModel を直接 createActionModalUI に渡す
 	modal := createActionModalUI(&vm, m.uiFactory, m.eventChannel)
 	m.actionModal = modal
-	m.ebitenui.Container.AddChild(m.actionModal)
+	m.bottomPanel.AddChild(m.actionModal) // bottomPanel に追加
 	log.Println("アクションモーダルを表示しました。")
 }
 
@@ -51,14 +53,13 @@ func (m *UIActionModalManager) HideActionModal() {
 		return
 	}
 	if m.actionModal != nil {
-		if m.ebitenui == nil || m.ebitenui.Container == nil {
-			log.Printf("WARNING: HideActionModal: m.ebitenui or m.ebitenui.Container is nil. Cannot remove child.")
-			// Reset state to prevent infinite loop if modal is somehow stuck
+		if m.bottomPanel == nil { // bottomPanel が nil の場合も考慮
+			log.Printf("WARNING: HideActionModal: m.bottomPanel is nil. Cannot remove child.")
 			m.isActionModalVisible = false
 			m.actionModal = nil
 			return
 		}
-		m.ebitenui.Container.RemoveChild(m.actionModal)
+		m.bottomPanel.RemoveChild(m.actionModal) // bottomPanel から削除
 		m.actionModal = nil
 	}
 	m.isActionModalVisible = false

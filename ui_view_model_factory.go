@@ -58,6 +58,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 
 			partViewModels[slotKey] = PartViewModel{
 				PartName:     partDef.PartName,
+				PartType:     partDef.Type,
 				CurrentArmor: partInst.CurrentArmor,
 				MaxArmor:     partDef.MaxArmor,
 				IsBroken:     partInst.IsBroken,
@@ -99,7 +100,11 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		offsetX := float32(battlefieldRect.Min.X)
 		offsetY := float32(battlefieldRect.Min.Y)
 
+		// アイコンのX座標を計算
+		// この値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に影響されます。
 		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth)
+		// アイコンのY座標を計算
+		// この値は game_settings.json の UI.Battlefield.MedarotVerticalSpacingFactor に影響されます。
 		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
@@ -118,8 +123,10 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		var debugText string
 		if vm.DebugMode { // ViewModelのDebugModeを使用
 			stateStr := GetStateDisplayName(state.CurrentState)
-			debugText = fmt.Sprintf(`State: %s\nGauge: %.1f\nProg: %.1f / %.1f`,
-				stateStr, gauge.CurrentGauge, gauge.ProgressCounter, gauge.TotalDuration)
+			debugText = fmt.Sprintf(`State: %s
+Gauge: %.1f
+Prog: %.1f / %.1f`,
+				stateStr, gauge.CurrentGauge, gauge.TotalDuration, gauge.ProgressCounter) // 修正: gauge.ProgressCounterとgauge.TotalDurationの順序
 		}
 
 		vm.Icons = append(vm.Icons, &IconViewModel{
@@ -143,6 +150,8 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 	settings := SettingsComponent.Get(entry)
 	progress := partInfoProvider.GetNormalizedActionProgress(entry)
 
+	// ホームポジションと実行ラインのX座標を定義します。
+	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
 	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
 	if settings.Team == Team2 {
 		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
@@ -151,15 +160,20 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 	var xPos float32
 	switch StateComponent.Get(entry).CurrentState {
 	case StateCharging:
+		// チャージ中はホームから実行ラインへ移動
 		xPos = homeX + (execX-homeX)*progress
 	case StateReady:
+		// 準備完了状態は実行ラインに固定
 		xPos = execX
 	case StateCooldown:
+		// クールダウン中は実行ラインからホームへ戻る
 		xPos = execX + (homeX - execX) * (1.0 - progress)
 	case StateIdle, StateBroken:
+		// アイドル状態または機能停止状態はホームポジションに固定
 		xPos = homeX
 	default:
-		xPos = homeX // 不明な状態の場合はホームポジション
+		// 不明な状態の場合はホームポジション
+		xPos = homeX
 	}
 	return xPos
 }

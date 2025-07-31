@@ -5,6 +5,7 @@ import (
 	"image/color"
 
 	"github.com/ebitenui/ebitenui"
+	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -32,7 +33,7 @@ func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, batt
 	u.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
 
 	// InfoPanels を更新または再構築
-	mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container)
+	mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
 	team1PanelContainer := mainUIContainer.Children()[0].(*widget.Container)
 	team2PanelContainer := mainUIContainer.Children()[2].(*widget.Container)
 
@@ -66,14 +67,39 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
 	)
+
+	// 画面を上下に分割するGridLayoutを持つベースコンテナ
+	baseLayoutContainer := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(1),
+			// 上の行がストレッチし、下の行は子のサイズに合わせる
+			widget.GridLayoutOpts.Stretch([]bool{true}, []bool{true, false}),
+			widget.GridLayoutOpts.Spacing(0, 10),
+		)),
+	)
+	rootContainer.AddChild(baseLayoutContainer)
+
+	// 上部パネル（既存のmainUIContainer）
 	mainUIContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewGridLayout(
 			widget.GridLayoutOpts.Columns(3),
 			widget.GridLayoutOpts.Stretch([]bool{false, true, false}, []bool{true}),
 			widget.GridLayoutOpts.Spacing(config.UI.InfoPanel.Padding, 0),
 		)),
+		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})),
 	)
-	rootContainer.AddChild(mainUIContainer)
+	baseLayoutContainer.AddChild(mainUIContainer)
+
+	// 下部パネル（余白）
+	bottomPanel := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()), // AnchorLayout を追加
+		widget.ContainerOpts.BackgroundImage(eimage.NewNineSliceColor(color.RGBA{R: 0xFF, G: 0xFF, B: 0x00, A: 0x80})), // 黄色
+		widget.ContainerOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.GridLayoutData{}),
+			widget.WidgetOpts.MinSize(0, 180), // 高さを指定
+		),
+	)
+	baseLayoutContainer.AddChild(bottomPanel)
 	team1PanelContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewRowLayout(
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
@@ -103,7 +129,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
-	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory)
+	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, bottomPanel)
 	ui.targetIndicatorManager = NewUITargetIndicatorManager()
 	return ui
 }
@@ -146,35 +172,34 @@ func (u *UI) Update(tick int) {
 
 // Draw はUIを描画します。
 func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
-	// アニメーションが再生中で、かつ終了している場合、イベントを発行
-	// このロジックはUIAnimationDrawer.Updateに移動したため、ここでは不要
-
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
 	var indicatorTargetVM *IconViewModel
-	if u.targetIndicatorManager.GetCurrentTarget() != 0 && u.battlefieldWidget.viewModel != nil { // 0はdonburi.Entityのゼロ値
+	if u.targetIndicatorManager.GetCurrentTarget() != 0 && u.battlefieldWidget.viewModel != nil {
 		for _, iconVM := range u.battlefieldWidget.viewModel.Icons {
-			if iconVM.EntryID == u.targetIndicatorManager.GetCurrentTarget() { // uint32 へのキャストを削除
+			if iconVM.EntryID == u.targetIndicatorManager.GetCurrentTarget() {
 				indicatorTargetVM = iconVM
 				break
 			}
 		}
 	}
 
-	// BattlefieldWidget の Draw メソッドを先に呼び出す
+	// まずebitenuiを描画（背景とコンテナ）
+	u.ebitenui.Draw(screen)
+
+	// その後でBattlefieldWidgetの前景要素を描画
+	// これにより背景画像の上にアイコンやラインが描画される
 	u.battlefieldWidget.Draw(screen, indicatorTargetVM, tick)
 
-	// アニメーションの描画
+	// アニメーションの描画（最前面）
 	if u.battlefieldWidget.viewModel != nil {
-		u.animationDrawer.Draw(screen, float64(tick), *u.battlefieldWidget.viewModel) // gameDataManagerを削除
+		u.animationDrawer.Draw(screen, float64(tick), *u.battlefieldWidget.viewModel)
 	}
-
-	// その後でebitenuiを描画する
-	u.ebitenui.Draw(screen)
 }
 
 // DrawBackground は背景を描画します。
 func (u *UI) DrawBackground(screen *ebiten.Image) {
-	u.battlefieldWidget.DrawBackground(screen)
+	// 背景画像はBattlefieldWidgetのContainerが描画するため、ここでは枠線のみ描画
+	// DrawBackgroundはBattlefieldWidget.Drawに統合されたため、ここでは何もしない
 }
 
 // GetBattlefieldWidgetRect はバトルフィールドウィジェットの矩形を返します。

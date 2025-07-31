@@ -75,15 +75,7 @@ func NewTitleScene(res *SharedResources, manager *SceneManager) *TitleScene {
 	)
 	panel.AddChild(customizeButton)
 
-	testUIButton := widget.NewButton(
-		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text("Test UI", res.Font, buttonTextColor),
-		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(10)),
-		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			t.manager.GoToTestUIScene()
-		}),
-	)
-	panel.AddChild(testUIButton)
+	
 
 	t.ui = &ebitenui.UI{Container: rootContainer}
 	return t

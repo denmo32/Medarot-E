@@ -16,8 +16,10 @@ func createActionModalUI(
 	// オーバーレイ用のコンテナ
 	overlay := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
-		// 背景色を削除し、完全に透明にする
-		// widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{0, 0, 0, 180})),
+		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.AnchorLayoutData{
+			StretchHorizontal: true,
+			StretchVertical:   true,
+		})),
 	)
 
 	// ボタンウィジェットのスライスを作成

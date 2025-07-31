@@ -46,9 +46,7 @@ func (m *SceneManager) newCustomizeScene() (Scene, error) {
 	return NewCustomizeScene(m.resources, m), nil
 }
 
-func (m *SceneManager) newTestUIScene() (Scene, error) {
-	return NewTestUIScene(m.resources, m), nil
-}
+
 
 // GoTo... メソッド群は、各シーンから呼び出され、指定されたシーンに遷移させます
 
@@ -79,11 +77,4 @@ func (m *SceneManager) GoToCustomizeScene() {
 	m.sequence.Switch(scene)
 }
 
-func (m *SceneManager) GoToTestUIScene() {
-	scene, err := m.newTestUIScene()
-	if err != nil {
-		log.Printf("テストUIシーンへの切り替えに失敗しました: %v", err)
-		return
-	}
-	m.sequence.Switch(scene)
-}
+
