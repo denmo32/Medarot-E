@@ -2,14 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
@@ -33,84 +30,32 @@ type BattleState interface {
 	Draw(screen *ebiten.Image)
 }
 
-// --- PlayingState ---
+// --- GaugeProgressState ---
 
-type PlayingState struct{}
+type GaugeProgressState struct{}
 
-func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	config := ctx.Config
-	tick := ctx.Tick
-
-	battleLogic := ctx.BattleLogic
-
+func (s *GaugeProgressState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	var gameEvents []GameEvent
 
-	// BattlePhaseComponentを取得
-	battlePhaseEntry, ok := query.NewQuery(filter.Contains(BattlePhaseComponent)).First(ctx.World)
-	if !ok {
-		log.Panicln("BattlePhaseComponent がワールドに見つかりません。")
+	// ゲージ進行
+	UpdateGaugeSystem(ctx.World)
+
+	// プレイヤーの行動選択が必要かチェック
+	playerInputEvents := UpdatePlayerInputSystem(ctx.World)
+	if len(playerInputEvents) > 0 {
+		gameEvents = append(gameEvents, playerInputEvents...)
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlayerActionSelect})
+		return gameEvents, nil
 	}
-	battlePhase := BattlePhaseComponent.Get(battlePhaseEntry)
 
+	// AIの行動選択を試みる
+	UpdateAIInputSystem(ctx.World, ctx.BattleLogic)
+
+	// アクション実行キューをチェック
 	actionQueueComp := GetActionQueueComponent(ctx.World)
-
-	switch battlePhase.CurrentPhase {
-	case PhaseGaugeProgress:
-		// ゲージ進行
-		UpdateGaugeSystem(ctx.World)
-
-		// プレイヤーの行動選択が必要かチェック
-		playerInputEvents := UpdatePlayerInputSystem(ctx.World)
-		if len(playerInputEvents) > 0 {
-			gameEvents = append(gameEvents, playerInputEvents...)
-			battlePhase.CurrentPhase = PhasePlayerAction // フェーズをプレイヤー行動選択へ
-			return gameEvents, nil
-		}
-
-		// プレイヤーの行動が不要な場合、AIの行動選択を試みる
-		UpdateAIInputSystem(ctx.World, battleLogic)
-		actionQueueComp := GetActionQueueComponent(ctx.World)
-		if len(actionQueueComp.Queue) > 0 { // AIが行動をキューに入れた場合
-			battlePhase.CurrentPhase = PhaseActionExecution // フェーズを行動実行へ
-			return gameEvents, nil
-		}
-
-		// 誰も行動をキューに入れていない場合、ゲージ進行を継続
-
-	case PhasePlayerAction:
-		// プレイヤーの行動選択フェーズでは、PlayingStateは何もせず、
-		// PlayerActionSelectStateがUIを処理する
-		// ここでは、プレイヤーが行動を選択し終えたらPlayingStateに戻るためのイベントを待つ
-
-	case PhaseAIAction:
-		// AIの行動選択フェーズ
-		UpdateAIInputSystem(ctx.World, battleLogic)
-		actionQueueComp := GetActionQueueComponent(ctx.World)
-		if len(actionQueueComp.Queue) > 0 {
-			battlePhase.CurrentPhase = PhaseActionExecution // フェーズを行動実行へ
-		} else {
-			// AIが行動をキューに入れなかった場合、ゲージ進行フェーズに戻る
-			battlePhase.CurrentPhase = PhaseGaugeProgress
-		}
-
-	case PhaseActionExecution:
-		// アクション実行
-		actionResults, err := UpdateActionQueueSystem(ctx.World, battleLogic.GetDamageCalculator(), battleLogic.GetHitCalculator(), battleLogic.GetTargetSelector(), battleLogic.GetPartInfoProvider(), config, ctx.statusEffectSystem, ctx.postActionEffectSystem, ctx.Rand)
-		if err != nil {
-			fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
-		}
-
-		for _, result := range actionResults {
-			if result.ActingEntry != nil && result.ActingEntry.Valid() {
-				gameEvents = append(gameEvents, ActionAnimationStartedGameEvent{AnimationData: ActionAnimationData{Result: result, StartTime: tick}})
-				return gameEvents, nil // アクションが実行されたら、そのフレームはアニメーション開始イベントのみを返す
-			}
-		}
-
-		// 行動キューが空になったらゲージ進行フェーズに戻る
-		if len(actionQueueComp.Queue) == 0 {
-			battlePhase.CurrentPhase = PhaseGaugeProgress
-		}
+	if len(actionQueueComp.Queue) > 0 {
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateActionExecution})
+		return gameEvents, nil
 	}
 
 	// ステータス効果の更新
@@ -126,8 +71,8 @@ func (s *PlayingState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	return gameEvents, nil
 }
 
-func (s *PlayingState) Draw(screen *ebiten.Image) {
-	// Playing状態固有の描画があればここに記述
+func (s *GaugeProgressState) Draw(screen *ebiten.Image) {
+	// GaugeProgress状態固有の描画があればここに記述
 }
 
 // --- PlayerActionSelectState ---
@@ -142,13 +87,6 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 	var gameEvents []GameEvent
 
 	playerActionQueue := GetPlayerActionQueueComponent(ctx.World)
-
-	// BattlePhaseComponentを取得
-	battlePhaseEntry, ok := query.NewQuery(filter.Contains(BattlePhaseComponent)).First(ctx.World)
-	if !ok {
-		log.Panicln("BattlePhaseComponent がワールドに見つかりません。")
-	}
-	battlePhase := BattlePhaseComponent.Get(battlePhaseEntry)
 
 	// 待機中のプレイヤーがいるかチェック
 	if len(playerActionQueue.Queue) > 0 {
@@ -193,14 +131,54 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 	} else {
 		// キューが空なら処理完了
 		gameEvents = append(gameEvents, PlayerActionSelectFinishedGameEvent{})
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
-		battlePhase.CurrentPhase = PhaseGaugeProgress // キューが空になったらゲージ進行フェーズに戻る
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
 	}
 
 	return gameEvents, nil
 }
 
 func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
+
+// --- ActionExecutionState ---
+
+type ActionExecutionState struct{}
+
+func (s *ActionExecutionState) Update(ctx *BattleContext) ([]GameEvent, error) {
+	var gameEvents []GameEvent
+
+	actionResults, err := UpdateActionQueueSystem(
+		ctx.World,
+		ctx.BattleLogic.GetDamageCalculator(),
+		ctx.BattleLogic.GetHitCalculator(),
+		ctx.BattleLogic.GetTargetSelector(),
+		ctx.BattleLogic.GetPartInfoProvider(),
+		ctx.Config,
+		ctx.statusEffectSystem,
+		ctx.postActionEffectSystem,
+		ctx.Rand,
+	)
+	if err != nil {
+		fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
+	}
+
+	for _, result := range actionResults {
+		if result.ActingEntry != nil && result.ActingEntry.Valid() {
+			gameEvents = append(gameEvents, ActionAnimationStartedGameEvent{AnimationData: ActionAnimationData{Result: result, StartTime: ctx.Tick}})
+			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateAnimatingAction})
+			return gameEvents, nil
+		}
+	}
+
+	// キューが空になったらゲージ進行に戻る
+	actionQueueComp := GetActionQueueComponent(ctx.World)
+	if len(actionQueueComp.Queue) == 0 {
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
+	}
+
+	return gameEvents, nil
+}
+
+func (s *ActionExecutionState) Draw(screen *ebiten.Image) {}
 
 // --- AnimatingActionState ---
 

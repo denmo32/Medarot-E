@@ -65,14 +65,15 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	// Initialize battleStates map
 	bs.battleStates = map[GameState]BattleState{
-		StatePlaying:            &PlayingState{},
+		StateGaugeProgress:      &GaugeProgressState{},
 		StatePlayerActionSelect: &PlayerActionSelectState{},
+		StateActionExecution:    &ActionExecutionState{},
 		StateAnimatingAction:    &AnimatingActionState{},
 		StateMessage:            &MessageState{},
 		StateGameOver:           &GameOverState{},
 	}
 
-	bs.SetState(StatePlaying)
+	bs.SetState(StateGaugeProgress)
 
 	return bs
 }
@@ -218,7 +219,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 			if bs.winner != TeamNone {
 				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGameOver})
 			} else {
-				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
 			}
 		case GameOverGameEvent:
 			bs.winner = e.Winner
@@ -255,25 +256,14 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 			}
 		case PlayerActionSelectFinishedGameEvent:
-			// プレイヤーの行動選択が完了したことを受け取る
 			playerActionQueue := GetPlayerActionQueueComponent(bs.world)
-
-			// BattlePhaseComponentを取得
-			battlePhaseEntry, ok := query.NewQuery(filter.Contains(BattlePhaseComponent)).First(bs.world)
-			if !ok {
-				log.Panicln("BattlePhaseComponent がワールドに見つかりません。")
-			}
-			battlePhase := BattlePhaseComponent.Get(battlePhaseEntry)
-
 			if len(playerActionQueue.Queue) > 0 {
-				// まだプレイヤーの行動が残っている場合、フェーズはPlayerActionのまま維持
-				battlePhase.CurrentPhase = PhasePlayerAction // 明示的に設定（既にそうであるはずだが念のため）
 				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlayerActionSelect})
 			} else {
-				// プレイヤーの行動が全て処理された場合、ゲージ進行フェーズに戻る
-				battlePhase.CurrentPhase = PhaseGaugeProgress
-				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlaying})
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
 			}
+
+			
 		case GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
 		case StateChangeRequestedGameEvent:

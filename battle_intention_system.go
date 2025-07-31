@@ -23,11 +23,7 @@ func UpdatePlayerInputSystem(world donburi.World) []GameEvent {
 
 	if len(playerActionQueue.Queue) > 0 {
 		gameEvents = append(gameEvents, PlayerActionRequiredGameEvent{})
-		// プレイヤーの行動が必要になったので、フェーズを更新
-		battlePhaseEntry, ok := query.NewQuery(filter.Contains(BattlePhaseComponent)).First(world)
-		if ok {
-			BattlePhaseComponent.Get(battlePhaseEntry).CurrentPhase = PhasePlayerAction
-		}
+		
 	}
 
 	return gameEvents

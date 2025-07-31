@@ -54,22 +54,15 @@ const (
 	TeamNone TeamID = -1 // 勝者なし、または引き分けを表します
 )
 const (
-	StatePlaying            GameState = "Playing"
+	StateGaugeProgress      GameState = "GaugeProgress"
 	StatePlayerActionSelect GameState = "PlayerActionSelect"
-	StateAnimatingAction    GameState = "AnimatingAction" // アクションアニメーション再生中
+	StateActionExecution    GameState = "ActionExecution"
+	StateAnimatingAction    GameState = "AnimatingAction"
 	StateMessage            GameState = "Message"
 	StateGameOver           GameState = "GameOver"
 )
 
-// BattlePhase は戦闘の現在のフェーズを表します。
-type BattlePhase string
 
-const (
-	PhaseGaugeProgress   BattlePhase = "GaugeProgress"   // ゲージ進行フェーズ
-	PhasePlayerAction    BattlePhase = "PlayerAction"    // プレイヤー行動選択フェーズ
-	PhaseAIAction        BattlePhase = "AIAction"        // AI行動選択フェーズ
-	PhaseActionExecution BattlePhase = "ActionExecution" // 行動実行フェーズ
-)
 
 const (
 	StateIdle     StateType = "idle"

@@ -14,7 +14,7 @@ import (
 
 	// Ensure GameStateComponent entity exists
 	gameStateEntry := world.Entry(world.Create(GameStateComponent, worldStateTag))
-	GameStateComponent.SetValue(gameStateEntry, GameStateData{CurrentState: StatePlaying})
+	GameStateComponent.SetValue(gameStateEntry, GameStateData{CurrentState: StateGaugeProgress})
 
 	// Ensure PlayerActionQueueComponent entity exists
 	playerActionQueueEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
@@ -24,9 +24,7 @@ import (
 	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
 	LastActionResultComponent.SetValue(lastActionResultEntry, ActionResult{})
 
-	// Ensure BattlePhaseComponent entity exists
-	battlePhaseEntry := world.Entry(world.Create(BattlePhaseComponent, worldStateTag))
-	BattlePhaseComponent.SetValue(battlePhaseEntry, BattlePhaseData{CurrentPhase: PhaseGaugeProgress})
+	
 
 	
 
