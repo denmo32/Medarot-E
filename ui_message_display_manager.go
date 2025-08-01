@@ -18,17 +18,19 @@ type UIMessageDisplayManager struct {
 	font                text.Face
 	ui                  MessagePanelController // uiContainer の代わりに UIInterface を追加
 	uiFactory           *UIFactory
+	parentContainer     *widget.Container // メッセージウィンドウを追加する親コンテナ
 }
 
 // NewUIMessageDisplayManager は新しいUIMessageDisplayManagerのインスタンスを作成します。
-func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, ui MessagePanelController, uiFactory *UIFactory) *UIMessageDisplayManager {
+func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, ui MessagePanelController, uiFactory *UIFactory, parentContainer *widget.Container) *UIMessageDisplayManager {
 	return &UIMessageDisplayManager{
-		messageQueue:   make([]string, 0),
-		messageManager: messageManager,
-		config:         config,
-		font:           font,
-		ui:             ui, // ui を設定
-		uiFactory:      uiFactory,
+		messageQueue:    make([]string, 0),
+		messageManager:  messageManager,
+		config:          config,
+		font:            font,
+		ui:              ui, // ui を設定
+		uiFactory:       uiFactory,
+		parentContainer: parentContainer,
 	}
 }
 
@@ -58,6 +60,13 @@ func (mm *UIMessageDisplayManager) ShowMessageWindow(message string) {
 		mm.HideMessageWindow()
 	}
 	win := createMessageWindow(message, mm.uiFactory) // uiFactoryを渡す
+
+	// ウィジェットが親コンテナ全体に広がるようにレイアウトを設定
+	win.GetWidget().LayoutData = widget.AnchorLayoutData{
+		StretchHorizontal: true,
+		StretchVertical:   true,
+	}
+
 	mm.messageWindow = win
 	mm.ui.ShowMessagePanel(mm.messageWindow) // ui.ShowMessagePanel を呼び出す
 }

@@ -38,11 +38,12 @@ func createMessageWindow(message string, uiFactory *UIFactory) widget.PreferredS
 		BorderThickness: 2,                   // 枠線の太さ
 	}, uiFactory.imageGenerator, uiFactory.Font, messageTextWidget, continueTextWidget) // uiFactory.imageGeneratorとuiFactory.Fontを渡す
 
-	// パネルを画面下部中央に配置
+	// パネルを親コンテナ全体に広げる
 	panel.GetWidget().LayoutData = widget.AnchorLayoutData{
 		HorizontalPosition: widget.AnchorLayoutPositionCenter,
-		VerticalPosition:   widget.AnchorLayoutPositionEnd,
-		StretchVertical:    false,
+		VerticalPosition:   widget.AnchorLayoutPositionCenter,
+		StretchHorizontal:  true,
+		StretchVertical:    true,
 	}
 	root.AddChild(panel)
 

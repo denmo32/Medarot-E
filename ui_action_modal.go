@@ -44,17 +44,17 @@ func createActionModalUI(
 				func(args *widget.ButtonClickedEventArgs) {
 					// IsBroken は PartInstanceData から取得するため、ここでは不要
 					// if !buttonVM.IsBroken {
-						// ターゲットインジケーターをクリア
-						eventChannel <- ClearCurrentTargetUIEvent{}
+					// ターゲットインジケーターをクリア
+					eventChannel <- ClearCurrentTargetUIEvent{}
 
-						// 選択されたパーツとターゲット情報をGameEventとして発行
-						eventChannel <- ActionConfirmedUIEvent{
-							ActingEntityID:    vm.ActingEntityID,
-							SelectedPartDefID: buttonVM.SelectedPartDefID,
-							SelectedSlotKey:   buttonVM.SlotKey,
-							TargetEntityID:    buttonVM.TargetEntityID,
-							TargetPartSlot:    buttonVM.TargetPartSlot,
-						}
+					// 選択されたパーツとターゲット情報をGameEventとして発行
+					eventChannel <- ActionConfirmedUIEvent{
+						ActingEntityID:    vm.ActingEntityID,
+						SelectedPartDefID: buttonVM.SelectedPartDefID,
+						SelectedSlotKey:   buttonVM.SlotKey,
+						TargetEntityID:    buttonVM.TargetEntityID,
+						TargetPartSlot:    buttonVM.TargetPartSlot,
+					}
 					// }
 				},
 				func(args *widget.ButtonHoverEventArgs) {
@@ -62,10 +62,10 @@ func createActionModalUI(
 					case CategoryRanged:
 						if buttonVM.TargetEntityID != 0 {
 							eventChannel <- TargetSelectedUIEvent{
-								ActingEntityID: vm.ActingEntityID,
+								ActingEntityID:  vm.ActingEntityID,
 								SelectedSlotKey: buttonVM.SlotKey,
-								TargetEntityID: buttonVM.TargetEntityID,
-								TargetPartSlot: "", // ターゲットパーツスロットはここでは不明
+								TargetEntityID:  buttonVM.TargetEntityID,
+								TargetPartSlot:  "", // ターゲットパーツスロットはここでは不明
 							}
 						}
 					case CategoryIntervention:
@@ -94,10 +94,12 @@ func createActionModalUI(
 		BorderThickness: 5,                   // 枠線の太さ
 	}, uiFactory.imageGenerator, uiFactory.Font, buttons...) // uiFactory.imageGeneratorとuiFactory.Fontを渡す
 
-	// パネルをオーバーレイの中央に配置
+	// パネルをオーバーレイ全体に広げる
 	panel.GetWidget().LayoutData = widget.AnchorLayoutData{
 		HorizontalPosition: widget.AnchorLayoutPositionCenter,
 		VerticalPosition:   widget.AnchorLayoutPositionCenter,
+		StretchHorizontal:  true,
+		StretchVertical:    true,
 	}
 	overlay.AddChild(panel)
 

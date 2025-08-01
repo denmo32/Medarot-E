@@ -5,7 +5,6 @@ import (
 	"image/color"
 
 	"github.com/ebitenui/ebitenui"
-	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -90,10 +89,9 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	)
 	baseLayoutContainer.AddChild(mainUIContainer)
 
-	// 下部パネル（余白）
+	// 下部パネル（モーダルとメッセージウィンドウ用）
 	bottomPanel := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewAnchorLayout()), // AnchorLayout を追加
-		widget.ContainerOpts.BackgroundImage(eimage.NewNineSliceColor(color.RGBA{R: 0xFF, G: 0xFF, B: 0x00, A: 0x80})), // 黄色
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
 		widget.ContainerOpts.WidgetOpts(
 			widget.WidgetOpts.LayoutData(widget.GridLayoutData{}),
 			widget.WidgetOpts.MinSize(0, 180), // 高さを指定
@@ -125,7 +123,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	mainUIContainer.AddChild(team2PanelContainer)
 	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
 	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
-	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, ui, uiFactory) // ui を渡す
+	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, ui, uiFactory, bottomPanel) // bottomPanel を渡す
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
@@ -238,12 +236,14 @@ func (u *UI) GetMessageDisplayManager() *UIMessageDisplayManager {
 }
 
 func (u *UI) ShowMessagePanel(panel widget.PreferredSizeLocateableWidget) {
-	u.ebitenui.Container.AddChild(panel)
+	// メッセージマネージャーが保持する親コンテナに追加する
+	u.messageManager.parentContainer.AddChild(panel)
 }
 
 func (u *UI) HideMessagePanel() {
 	if u.messageManager.messageWindow != nil {
-		u.ebitenui.Container.RemoveChild(u.messageManager.messageWindow)
+		// メッセージマネージャーが保持する親コンテナから削除する
+		u.messageManager.parentContainer.RemoveChild(u.messageManager.messageWindow)
 	}
 }
 
