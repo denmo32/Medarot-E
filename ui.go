@@ -94,18 +94,30 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	baseLayoutContainer.AddChild(mainUIContainer)
 
 	// 下部パネル（モーダルとメッセージウィンドウ用）
-	// NewPanel を使用して共通の枠線付きパネルを作成
+	// 常に表示される、背景と枠線を持つパネル
 	ui.commonBottomPanel = NewPanel(&PanelOptions{
-		PanelWidth:      0, // 幅は親コンテナにストレッチさせる
-		PanelHeight:     180,
+		PanelWidth:      814, // 固定幅
+		PanelHeight:     180, // 固定高さ
 		Padding:         widget.NewInsetsSimple(5),
 		Spacing:         5,
 		BackgroundColor: color.NRGBA{50, 50, 70, 200}, // 背景色を設定
 		BorderColor:     config.UI.Colors.Gray,        // 枠線の色
 		BorderThickness: 5,                            // 枠線の太さ
-	}, uiFactory.imageGenerator, gameDataManager.Font) // フォントはメッセージ表示に必要なので渡す
+		CenterContent:   true,                         // コンテンツを中央に配置
+	}, uiFactory.imageGenerator, gameDataManager.Font)
 
-	baseLayoutContainer.AddChild(ui.commonBottomPanel.RootContainer) // RootContainer を追加
+	// commonBottomPanel を中央に配置するためのラッパーコンテナ
+	bottomPanelWrapper := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
+		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})), // GridLayoutData を設定
+	)
+	// commonBottomPanel をラッパーコンテナの中央に配置
+	ui.commonBottomPanel.RootContainer.GetWidget().LayoutData = widget.AnchorLayoutData{
+		HorizontalPosition: widget.AnchorLayoutPositionCenter,
+		VerticalPosition:   widget.AnchorLayoutPositionCenter,
+	}
+	bottomPanelWrapper.AddChild(ui.commonBottomPanel.RootContainer)
+	baseLayoutContainer.AddChild(bottomPanelWrapper)
 
 	ui.battlefieldWidget = NewBattlefieldWidget(config)
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)

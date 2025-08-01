@@ -59,12 +59,6 @@ func (mm *UIMessageDisplayManager) ShowMessageWindow(message string) {
 	}
 	win := createMessageWindow(message, mm.uiFactory) // uiFactoryを渡す
 
-	// ウィジェットが親コンテナ全体に広がるようにレイアウトを設定
-	win.GetWidget().LayoutData = widget.AnchorLayoutData{
-		StretchHorizontal: true,
-		StretchVertical:   true,
-	}
-
 	mm.messageWindow = win
 	mm.commonUIPanel.SetContent(mm.messageWindow) // commonUIPanel の SetContent を呼び出す
 }

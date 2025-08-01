@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"image/color"
 
 	"github.com/ebitenui/ebitenui/widget"
 )
@@ -13,15 +12,6 @@ func createActionModalUI(
 	eventChannel chan UIEvent,
 ) widget.PreferredSizeLocateableWidget {
 	c := uiFactory.Config.UI
-
-	// オーバーレイ用のコンテナ
-	overlay := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
-		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.AnchorLayoutData{
-			StretchHorizontal: true,
-			StretchVertical:   true,
-		})),
-	)
 
 	// ボタンウィジェットのスライスを作成
 	buttons := []widget.PreferredSizeLocateableWidget{}
@@ -34,21 +24,13 @@ func createActionModalUI(
 		for _, buttonVM := range vm.Buttons {
 			buttonText := fmt.Sprintf("%s (%s)", buttonVM.PartName, buttonVM.PartCategory)
 			buttonTextColor := &widget.ButtonTextColor{Idle: c.Colors.White}
-			// IsBroken は PartInstanceData から取得するため、ここでは不要
-			// if buttonVM.IsBroken {
-			// 	buttonTextColor.Idle = c.Colors.Red
-			// }
 
 			actionButton := uiFactory.NewCyberpunkButton(
 				buttonText,
 				buttonTextColor,
 				func(args *widget.ButtonClickedEventArgs) {
-					// IsBroken は PartInstanceData から取得するため、ここでは不要
-					// if !buttonVM.IsBroken {
-					// ターゲットインジケーターをクリア
 					eventChannel <- ClearCurrentTargetUIEvent{}
 
-					// 選択されたパーツとターゲット情報をGameEventとして発行
 					eventChannel <- ActionConfirmedUIEvent{
 						ActingEntityID:    vm.ActingEntityID,
 						SelectedPartDefID: buttonVM.SelectedPartDefID,
@@ -56,7 +38,6 @@ func createActionModalUI(
 						TargetEntityID:    buttonVM.TargetEntityID,
 						TargetPartSlot:    buttonVM.TargetPartSlot,
 					}
-					// }
 				},
 				func(args *widget.ButtonHoverEventArgs) {
 					switch buttonVM.PartCategory {
@@ -66,7 +47,7 @@ func createActionModalUI(
 								ActingEntityID:  vm.ActingEntityID,
 								SelectedSlotKey: buttonVM.SlotKey,
 								TargetEntityID:  buttonVM.TargetEntityID,
-								TargetPartSlot:  "", // ターゲットパーツスロットはここでは不明
+								TargetPartSlot:  "",
 							}
 						}
 					case CategoryIntervention:
@@ -83,26 +64,25 @@ func createActionModalUI(
 		}
 	}
 
-	// NewPanel を使用してモーダルを作成
-	panel := NewPanel(&PanelOptions{
-		Title:           uiFactory.MessageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}),
-		Padding:         widget.NewInsetsSimple(15),
-		Spacing:         c.ActionModal.ButtonSpacing,
-		PanelWidth:      int(c.ActionModal.ButtonWidth) + 30,
-		TitleFont:       uiFactory.Font,
-		BackgroundColor: color.Transparent, // 背景色を透過
-		BorderColor:     c.Colors.Gray,     // 枠線の色
-		BorderThickness: 0,                 // 枠線の太さ
-	}, uiFactory.imageGenerator, uiFactory.Font, buttons...) // uiFactory.imageGeneratorとuiFactory.Fontを渡す
+	// コンテンツを格納するコンテナを作成
+	contentContainer := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewRowLayout(
+			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
+			widget.RowLayoutOpts.Padding(widget.NewInsetsSimple(15)), // パディングはここで設定
+			widget.RowLayoutOpts.Spacing(c.ActionModal.ButtonSpacing),
+		)),
+	)
 
-	// パネルをオーバーレイ全体に広げる
-	panel.RootContainer.GetWidget().LayoutData = widget.AnchorLayoutData{ // RootContainer を使用
-		HorizontalPosition: widget.AnchorLayoutPositionCenter,
-		VerticalPosition:   widget.AnchorLayoutPositionCenter,
-		StretchHorizontal:  true,
-		StretchVertical:    true,
+	// タイトルを追加
+	title := widget.NewText(
+		widget.TextOpts.Text(uiFactory.MessageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}), uiFactory.Font, c.Colors.White),
+	)
+	contentContainer.AddChild(title)
+
+	// ボタンを追加
+	for _, btn := range buttons {
+		contentContainer.AddChild(btn)
 	}
-	overlay.AddChild(panel.RootContainer) // RootContainer を追加
 
-	return overlay
+	return contentContainer
 }

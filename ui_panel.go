@@ -12,6 +12,7 @@ import (
 type UIPanel struct {
 	RootContainer    *widget.Container
 	ContentContainer *widget.Container
+	centerContent    bool // コンテンツを中央に配置するかどうか
 }
 
 // SetContent は、パネルのコンテンツコンテナの子要素をクリアし、新しいウィジェットを追加します。
@@ -19,6 +20,13 @@ type UIPanel struct {
 func (p *UIPanel) SetContent(w widget.PreferredSizeLocateableWidget) {
 	p.ContentContainer.RemoveChildren()
 	if w != nil {
+		if p.centerContent {
+			// 中央配置が有効な場合、AnchorLayoutDataを適用
+			w.GetWidget().LayoutData = widget.AnchorLayoutData{
+				HorizontalPosition: widget.AnchorLayoutPositionCenter,
+				VerticalPosition:   widget.AnchorLayoutPositionCenter,
+			}
+		}
 		p.ContentContainer.AddChild(w)
 	}
 }
@@ -36,6 +44,7 @@ type PanelOptions struct {
 	TitleFont       text.Face
 	BorderColor     color.Color
 	BorderThickness float32
+	CenterContent   bool // コンテンツを中央に配置するかどうか
 }
 
 // NewPanel は、指定されたオプションに基づいて汎用的なパネルウィジェットを作成します。
@@ -76,7 +85,7 @@ func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Fa
 			titleColor = opts.TitleColor
 		}
 
-		titleFont := font // uiFactory.Font の代わりに直接 font を使用
+		titleFont := font
 		if opts.TitleFont != nil {
 			titleFont = opts.TitleFont
 		}
@@ -87,23 +96,51 @@ func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Fa
 		rootContainer.AddChild(title)
 	}
 
-	contentContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewRowLayout(
-			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-			widget.RowLayoutOpts.Spacing(opts.Spacing),
-		)),
-		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
-			Stretch: true,
-		})),
-	)
-	rootContainer.AddChild(contentContainer)
+	if opts.CenterContent {
+		// コンテンツを中央に配置する場合、StackedLayoutを使用
+		contentContainer := widget.NewContainer(
+			widget.ContainerOpts.Layout(widget.NewStackedLayout()),
+			widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Stretch: true,
+			})),
+		)
+		rootContainer.AddChild(contentContainer)
 
-	for _, child := range children {
-		contentContainer.AddChild(child)
-	}
+		for _, child := range children {
+			// 中央配置が有効な場合、AnchorLayoutDataを適用
+			child.GetWidget().LayoutData = widget.AnchorLayoutData{
+				HorizontalPosition: widget.AnchorLayoutPositionCenter,
+				VerticalPosition:   widget.AnchorLayoutPositionCenter,
+			}
+			contentContainer.AddChild(child)
+		}
 
-	return &UIPanel{
-		RootContainer:    rootContainer,
-		ContentContainer: contentContainer,
+		return &UIPanel{
+			RootContainer:    rootContainer,
+			ContentContainer: contentContainer,
+			centerContent:    opts.CenterContent, // 設定を保存
+		}
+	} else {
+		// それ以外の場合はRowLayoutを使用
+		contentContainer := widget.NewContainer(
+			widget.ContainerOpts.Layout(widget.NewRowLayout(
+				widget.RowLayoutOpts.Direction(widget.DirectionVertical),
+				widget.RowLayoutOpts.Spacing(opts.Spacing),
+			)),
+			widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Stretch: true,
+			})),
+		)
+		rootContainer.AddChild(contentContainer)
+
+		for _, child := range children {
+			contentContainer.AddChild(child)
+		}
+
+		return &UIPanel{
+			RootContainer:    rootContainer,
+			ContentContainer: contentContainer,
+			centerContent:    opts.CenterContent, // 設定を保存
+		}
 	}
 }
