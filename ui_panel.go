@@ -8,6 +8,21 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
+// UIPanel は、汎用的なUIパネルとそのコンテンツコンテナを保持します。
+type UIPanel struct {
+	RootContainer    *widget.Container
+	ContentContainer *widget.Container
+}
+
+// SetContent は、パネルのコンテンツコンテナの子要素をクリアし、新しいウィジェットを追加します。
+// nil を渡すとコンテンツがクリアされます。
+func (p *UIPanel) SetContent(w widget.PreferredSizeLocateableWidget) {
+	p.ContentContainer.RemoveChildren()
+	if w != nil {
+		p.ContentContainer.AddChild(w)
+	}
+}
+
 // PanelOptions は、汎用パネルを作成するための設定を保持します。
 type PanelOptions struct {
 	PanelWidth      int
@@ -24,7 +39,7 @@ type PanelOptions struct {
 }
 
 // NewPanel は、指定されたオプションに基づいて汎用的なパネルウィジェットを作成します。
-func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Face, children ...widget.PreferredSizeLocateableWidget) *widget.Container {
+func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Face, children ...widget.PreferredSizeLocateableWidget) *UIPanel {
 	var bg *image.NineSlice
 	if opts.BackgroundImage != nil {
 		bg = opts.BackgroundImage
@@ -45,7 +60,7 @@ func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Fa
 		widget.WidgetOpts.MinSize(opts.PanelWidth, opts.PanelHeight),
 	}
 
-	panelContainer := widget.NewContainer(
+	rootContainer := widget.NewContainer(
 		widget.ContainerOpts.BackgroundImage(bg),
 		widget.ContainerOpts.Layout(widget.NewRowLayout(
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
@@ -69,7 +84,7 @@ func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Fa
 		title := widget.NewText(
 			widget.TextOpts.Text(opts.Title, titleFont, titleColor),
 		)
-		panelContainer.AddChild(title)
+		rootContainer.AddChild(title)
 	}
 
 	contentContainer := widget.NewContainer(
@@ -81,11 +96,14 @@ func NewPanel(opts *PanelOptions, imageGenerator *UIImageGenerator, font text.Fa
 			Stretch: true,
 		})),
 	)
-	panelContainer.AddChild(contentContainer)
+	rootContainer.AddChild(contentContainer)
 
 	for _, child := range children {
 		contentContainer.AddChild(child)
 	}
 
-	return panelContainer
+	return &UIPanel{
+		RootContainer:    rootContainer,
+		ContentContainer: contentContainer,
+	}
 }

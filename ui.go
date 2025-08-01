@@ -15,6 +15,7 @@ type UI struct {
 	ebitenui          *ebitenui.UI
 	battlefieldWidget *BattlefieldWidget
 	infoPanelManager  *InfoPanelManager // infoPanelManager に変更
+	commonBottomPanel *UIPanel          // 共通の下部パネル
 	// イベント通知用チャネル
 	eventChannel chan UIEvent
 	// 依存性
@@ -90,14 +91,19 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	baseLayoutContainer.AddChild(mainUIContainer)
 
 	// 下部パネル（モーダルとメッセージウィンドウ用）
-	bottomPanel := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
-		widget.ContainerOpts.WidgetOpts(
-			widget.WidgetOpts.LayoutData(widget.GridLayoutData{}),
-			widget.WidgetOpts.MinSize(0, 180), // 高さを指定
-		),
-	)
-	baseLayoutContainer.AddChild(bottomPanel)
+	// NewPanel を使用して共通の枠線付きパネルを作成
+	ui.commonBottomPanel = NewPanel(&PanelOptions{
+		PanelWidth:      0, // 幅は親コンテナにストレッチさせる
+		PanelHeight:     180,
+		Padding:         widget.NewInsetsSimple(5),
+		Spacing:         5,
+		BackgroundColor: color.NRGBA{50, 50, 70, 200}, // 背景色を設定
+		BorderColor:     config.UI.Colors.Gray,        // 枠線の色
+		BorderThickness: 5,                            // 枠線の太さ
+	}, uiFactory.imageGenerator, gameDataManager.Font) // フォントはメッセージ表示に必要なので渡す
+
+	baseLayoutContainer.AddChild(ui.commonBottomPanel.RootContainer) // RootContainer を追加
+
 	team1PanelContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewRowLayout(
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
@@ -123,11 +129,11 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	mainUIContainer.AddChild(team2PanelContainer)
 	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
 	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
-	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, ui, uiFactory, bottomPanel) // bottomPanel を渡す
+	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, uiFactory, ui.commonBottomPanel) // ui 引数を削除
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
-	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, bottomPanel)
+	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, ui.commonBottomPanel) // commonBottomPanel を渡す
 	ui.targetIndicatorManager = NewUITargetIndicatorManager()
 	return ui
 }
@@ -233,18 +239,6 @@ func (u *UI) GetCurrentAnimationResult() ActionResult {
 // GetMessageDisplayManager はメッセージ表示マネージャーを返します。
 func (u *UI) GetMessageDisplayManager() *UIMessageDisplayManager {
 	return u.messageManager
-}
-
-func (u *UI) ShowMessagePanel(panel widget.PreferredSizeLocateableWidget) {
-	// メッセージマネージャーが保持する親コンテナに追加する
-	u.messageManager.parentContainer.AddChild(panel)
-}
-
-func (u *UI) HideMessagePanel() {
-	if u.messageManager.messageWindow != nil {
-		// メッセージマネージャーが保持する親コンテナから削除する
-		u.messageManager.parentContainer.RemoveChild(u.messageManager.messageWindow)
-	}
 }
 
 func (u *UI) GetEventChannel() chan UIEvent {

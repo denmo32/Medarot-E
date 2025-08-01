@@ -10,10 +10,10 @@ import (
 )
 
 type infoPanelUI struct {
-	rootContainer *widget.Container
-	nameText      *widget.Text
-	stateText     *widget.Text
-	partSlots     map[PartSlotKey]*infoPanelPartUI
+	rootPanel *UIPanel // rootContainer を UIPanel に変更
+	nameText  *widget.Text
+	stateText *widget.Text
+	partSlots map[PartSlotKey]*infoPanelPartUI
 }
 
 type infoPanelPartUI struct {
@@ -48,8 +48,8 @@ type InfoPanelCreationResult struct {
 func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, team1Container, team2Container *widget.Container) {
 	// 既存のパネルをクリア
 	for _, panel := range ipm.panels {
-		team1Container.RemoveChild(panel.rootContainer)
-		team2Container.RemoveChild(panel.rootContainer)
+		team1Container.RemoveChild(panel.rootPanel.RootContainer) // RootContainer を使用
+		team2Container.RemoveChild(panel.rootPanel.RootContainer) // RootContainer を使用
 	}
 	ipm.panels = make(map[string]*infoPanelUI) // マップをクリア
 
@@ -66,9 +66,9 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, tea
 		panelUI := createSingleMedarotInfoPanel(ipm.config, ipm.uiFactory, vm)
 		ipm.panels[vm.ID] = panelUI
 		if vm.Team == Team1 {
-			team1Container.AddChild(panelUI.rootContainer)
+			team1Container.AddChild(panelUI.rootPanel.RootContainer) // RootContainer を使用
 		} else {
-			team2Container.AddChild(panelUI.rootContainer)
+			team2Container.AddChild(panelUI.rootPanel.RootContainer) // RootContainer を使用
 		}
 	}
 
@@ -173,7 +173,7 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 	}
 
 	// NewPanel を使用して全体のパネルを作成
-	panelContainer := NewPanel(&PanelOptions{
+	panel := NewPanel(&PanelOptions{ // panelContainer を panel に変更
 		PanelWidth:      int(c.InfoPanel.BlockWidth),
 		Padding:         widget.NewInsetsSimple(5),
 		Spacing:         2,
@@ -183,17 +183,16 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 	}, uiFactory.imageGenerator, uiFactory.Font, append([]widget.PreferredSizeLocateableWidget{headerContainer}, partWidgets...)...)
 
 	return &infoPanelUI{
-		rootContainer: panelContainer,
-		nameText:      nameText,
-		stateText:     stateText,
-		partSlots:     partSlots,
+		rootPanel: panel, // rootContainer を rootPanel に変更
+		nameText:  nameText,
+		stateText: stateText,
+		partSlots: partSlots,
 	}
 }
 
 // CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
 // この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した
 // InfoPanelViewModelのリストを受け取るように変更されます。
-
 
 func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Config) {
 	c := config.UI

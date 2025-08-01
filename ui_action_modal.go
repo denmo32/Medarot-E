@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 
 	"github.com/ebitenui/ebitenui/widget"
 )
@@ -89,19 +90,19 @@ func createActionModalUI(
 		Spacing:         c.ActionModal.ButtonSpacing,
 		PanelWidth:      int(c.ActionModal.ButtonWidth) + 30,
 		TitleFont:       uiFactory.Font,
-		BackgroundColor: c.Colors.Background, // 背景色を設定
-		BorderColor:     c.Colors.Gray,       // 枠線の色
-		BorderThickness: 5,                   // 枠線の太さ
+		BackgroundColor: color.Transparent, // 背景色を透過
+		BorderColor:     c.Colors.Gray,     // 枠線の色
+		BorderThickness: 0,                 // 枠線の太さ
 	}, uiFactory.imageGenerator, uiFactory.Font, buttons...) // uiFactory.imageGeneratorとuiFactory.Fontを渡す
 
 	// パネルをオーバーレイ全体に広げる
-	panel.GetWidget().LayoutData = widget.AnchorLayoutData{
+	panel.RootContainer.GetWidget().LayoutData = widget.AnchorLayoutData{ // RootContainer を使用
 		HorizontalPosition: widget.AnchorLayoutPositionCenter,
 		VerticalPosition:   widget.AnchorLayoutPositionCenter,
 		StretchHorizontal:  true,
 		StretchVertical:    true,
 	}
-	overlay.AddChild(panel)
+	overlay.AddChild(panel.RootContainer) // RootContainer を追加
 
 	return overlay
 }

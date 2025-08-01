@@ -15,18 +15,18 @@ type UIActionModalManager struct {
 	actionTargetMap      map[PartSlotKey]ActionTarget // 選択可能なアクションとターゲットのマップ
 	eventChannel         chan UIEvent                 // UIイベント通知用
 	uiFactory            *UIFactory                   // 追加
-	bottomPanel          *widget.Container            // 追加
+	commonUIPanel        *UIPanel                     // 共通のUIPanelを保持
 }
 
 // NewUIActionModalManager は新しいUIActionModalManagerのインスタンスを作成します。
-func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, uiFactory *UIFactory, bottomPanel *widget.Container) *UIActionModalManager {
+func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, uiFactory *UIFactory, commonUIPanel *UIPanel) *UIActionModalManager {
 	return &UIActionModalManager{
 		ebitenui:             ebitenui,
 		isActionModalVisible: false,
 		actionTargetMap:      make(map[PartSlotKey]ActionTarget),
 		eventChannel:         eventChannel,
 		uiFactory:            uiFactory,
-		bottomPanel:          bottomPanel,
+		commonUIPanel:        commonUIPanel, // 共通UIPanelを設定
 	}
 }
 
@@ -43,7 +43,7 @@ func (m *UIActionModalManager) ShowActionModal(vm ActionModalViewModel) {
 	// ViewModel を直接 createActionModalUI に渡す
 	modal := createActionModalUI(&vm, m.uiFactory, m.eventChannel)
 	m.actionModal = modal
-	m.bottomPanel.AddChild(m.actionModal) // bottomPanel に追加
+	m.commonUIPanel.SetContent(m.actionModal) // commonUIPanel の SetContent を呼び出す
 	log.Println("アクションモーダルを表示しました。")
 }
 
@@ -53,13 +53,7 @@ func (m *UIActionModalManager) HideActionModal() {
 		return
 	}
 	if m.actionModal != nil {
-		if m.bottomPanel == nil { // bottomPanel が nil の場合も考慮
-			log.Printf("WARNING: HideActionModal: m.bottomPanel is nil. Cannot remove child.")
-			m.isActionModalVisible = false
-			m.actionModal = nil
-			return
-		}
-		m.bottomPanel.RemoveChild(m.actionModal) // bottomPanel から削除
+		m.commonUIPanel.SetContent(nil) // commonUIPanel の SetContent でコンテンツをクリア
 		m.actionModal = nil
 	}
 	m.isActionModalVisible = false

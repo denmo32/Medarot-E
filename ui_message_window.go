@@ -33,19 +33,19 @@ func createMessageWindow(message string, uiFactory *UIFactory) widget.PreferredS
 	panel := NewPanel(&PanelOptions{
 		Padding:         widget.NewInsetsSimple(15),
 		Spacing:         10,
-		BackgroundColor: c.Colors.Background, // 不透明な背景色を設定
-		BorderColor:     color.White,         // 白い枠線
-		BorderThickness: 2,                   // 枠線の太さ
+		BackgroundColor: color.Transparent, // 背景色を透過
+		BorderColor:     color.White,       // 白い枠線
+		BorderThickness: 0,                 // 枠線の太さ
 	}, uiFactory.imageGenerator, uiFactory.Font, messageTextWidget, continueTextWidget) // uiFactory.imageGeneratorとuiFactory.Fontを渡す
 
 	// パネルを親コンテナ全体に広げる
-	panel.GetWidget().LayoutData = widget.AnchorLayoutData{
+	panel.RootContainer.GetWidget().LayoutData = widget.AnchorLayoutData{ // RootContainer を使用
 		HorizontalPosition: widget.AnchorLayoutPositionCenter,
 		VerticalPosition:   widget.AnchorLayoutPositionCenter,
 		StretchHorizontal:  true,
 		StretchVertical:    true,
 	}
-	root.AddChild(panel)
+	root.AddChild(panel.RootContainer) // RootContainer を追加
 
 	return root
 }
