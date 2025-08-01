@@ -58,6 +58,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 
 			partViewModels[slotKey] = PartViewModel{
 				PartName:     partDef.PartName,
+				PartType:     partDef.Type,
 				CurrentArmor: partInst.CurrentArmor,
 				MaxArmor:     partDef.MaxArmor,
 				IsBroken:     partInst.IsBroken,
@@ -68,7 +69,8 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 	stateStr := GetStateDisplayName(state.CurrentState)
 
 	return InfoPanelViewModel{
-		ID:        settings.ID,
+		ID:        settings.Name,  // IDは名前表示用として残す
+		EntityID:  entry.Entity(), // 新しく追加したEntityIDフィールドに設定
 		Name:      settings.Name,
 		Team:      settings.Team,
 		DrawIndex: settings.DrawIndex,
@@ -99,7 +101,11 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		offsetX := float32(battlefieldRect.Min.X)
 		offsetY := float32(battlefieldRect.Min.Y)
 
-		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth)
+		// アイコンのX座標を計算
+		// この値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に影響されます。
+		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth, config)
+		// アイコンのY座標を計算
+		// この値は game_settings.json の UI.Battlefield.MedarotVerticalSpacingFactor に影響されます。
 		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
@@ -118,8 +124,10 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		var debugText string
 		if vm.DebugMode { // ViewModelのDebugModeを使用
 			stateStr := GetStateDisplayName(state.CurrentState)
-			debugText = fmt.Sprintf(`State: %s\nGauge: %.1f\nProg: %.1f / %.1f`,
-				stateStr, gauge.CurrentGauge, gauge.ProgressCounter, gauge.TotalDuration)
+			debugText = fmt.Sprintf(`State: %s
+Gauge: %.1f
+Prog: %.1f / %.1f`,
+				stateStr, gauge.CurrentGauge, gauge.TotalDuration, gauge.ProgressCounter) // 修正: gauge.ProgressCounterとgauge.TotalDurationの順序
 		}
 
 		vm.Icons = append(vm.Icons, &IconViewModel{
@@ -139,33 +147,40 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 
 // CalculateMedarotScreenXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // battlefieldWidth はバトルフィールドの表示幅です。
-func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32) float32 {
+func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32, config *Config) float32 {
 	settings := SettingsComponent.Get(entry)
 	progress := partInfoProvider.GetNormalizedActionProgress(entry)
 
-	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
+	// ホームポジションと実行ラインのX座標を定義します。
+	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
+	homeX, execX := battlefieldWidth*config.UI.Battlefield.Team1HomeX, battlefieldWidth*config.UI.Battlefield.Team1ExecutionLineX
 	if settings.Team == Team2 {
-		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
+		homeX, execX = battlefieldWidth*config.UI.Battlefield.Team2HomeX, battlefieldWidth*config.UI.Battlefield.Team2ExecutionLineX
 	}
 
 	var xPos float32
 	switch StateComponent.Get(entry).CurrentState {
 	case StateCharging:
+		// チャージ中はホームから実行ラインへ移動
 		xPos = homeX + (execX-homeX)*progress
 	case StateReady:
+		// 準備完了状態は実行ラインに固定
 		xPos = execX
 	case StateCooldown:
-		xPos = execX + (homeX - execX) * (1.0 - progress)
+		// クールダウン中は実行ラインからホームへ戻る
+		xPos = execX + (homeX-execX)*(1.0-progress)
 	case StateIdle, StateBroken:
+		// アイドル状態または機能停止状態はホームポジションに固定
 		xPos = homeX
 	default:
-		xPos = homeX // 不明な状態の場合はホームポジション
+		// 不明な状態の場合はホームポジション
+		xPos = homeX
 	}
 	return xPos
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 

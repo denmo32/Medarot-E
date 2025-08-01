@@ -4,7 +4,6 @@ import (
 	"math/rand"
 
 	"github.com/yohamta/donburi"
-	"github.com/ebitenui/ebitenui/widget"
 )
 
 // TargetingStrategy はAIのターゲット選択アルゴリズムをカプセル化するインターフェースです。
@@ -87,10 +86,4 @@ type PartInfoProviderInterface interface {
 
 	// GameDataManagerへのアクセスを提供するメソッド
 	GetGameDataManager() *GameDataManager
-}
-
-// MessagePanelController はメッセージパネルの表示/非表示を制御するインターフェースです。
-type MessagePanelController interface {
-	ShowMessagePanel(panel widget.PreferredSizeLocateableWidget)
-	HideMessagePanel()
 }

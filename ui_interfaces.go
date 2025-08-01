@@ -27,8 +27,6 @@ type UIInterface interface {
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle
-	GetMessageDisplayManager() *UIMessageDisplayManager // 追加
-	ShowMessagePanel(panel widget.PreferredSizeLocateableWidget)
-	HideMessagePanel()
+	GetMessageDisplayManager() *UIMessageDisplayManager
 	GetEventChannel() chan UIEvent
 }

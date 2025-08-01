@@ -16,19 +16,19 @@ type UIMessageDisplayManager struct {
 	messageManager      *MessageManager
 	config              *Config
 	font                text.Face
-	ui                  MessagePanelController // uiContainer の代わりに UIInterface を追加
 	uiFactory           *UIFactory
+	commonUIPanel       *UIPanel // 共通のUIPanelを保持
 }
 
 // NewUIMessageDisplayManager は新しいUIMessageDisplayManagerのインスタンスを作成します。
-func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, ui MessagePanelController, uiFactory *UIFactory) *UIMessageDisplayManager {
+func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, uiFactory *UIFactory, commonUIPanel *UIPanel) *UIMessageDisplayManager {
 	return &UIMessageDisplayManager{
 		messageQueue:   make([]string, 0),
 		messageManager: messageManager,
 		config:         config,
 		font:           font,
-		ui:             ui, // ui を設定
 		uiFactory:      uiFactory,
+		commonUIPanel:  commonUIPanel, // 共通UIPanelを設定
 	}
 }
 
@@ -58,14 +58,15 @@ func (mm *UIMessageDisplayManager) ShowMessageWindow(message string) {
 		mm.HideMessageWindow()
 	}
 	win := createMessageWindow(message, mm.uiFactory) // uiFactoryを渡す
+
 	mm.messageWindow = win
-	mm.ui.ShowMessagePanel(mm.messageWindow) // ui.ShowMessagePanel を呼び出す
+	mm.commonUIPanel.SetContent(mm.messageWindow) // commonUIPanel の SetContent を呼び出す
 }
 
 // HideMessageWindow はメッセージウィンドウを非表示にします。
 func (mm *UIMessageDisplayManager) HideMessageWindow() {
 	if mm.messageWindow != nil {
-		mm.ui.HideMessagePanel() // ui.HideMessagePanel を呼び出す
+		mm.commonUIPanel.SetContent(nil) // commonUIPanel の SetContent でコンテンツをクリア
 		mm.messageWindow = nil
 	}
 }

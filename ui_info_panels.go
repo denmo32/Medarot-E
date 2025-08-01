@@ -2,18 +2,20 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"sort"
 
-	"github.com/ebitenui/ebitenui/image"
+	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
 )
 
 type infoPanelUI struct {
-	rootContainer *widget.Container
-	nameText      *widget.Text
-	stateText     *widget.Text
-	partSlots     map[PartSlotKey]*infoPanelPartUI
+	rootPanel *UIPanel // rootContainer を UIPanel に変更
+	nameText  *widget.Text
+	stateText *widget.Text
+	partSlots map[PartSlotKey]*infoPanelPartUI
 }
 
 type infoPanelPartUI struct {
@@ -25,14 +27,14 @@ type infoPanelPartUI struct {
 }
 
 type InfoPanelManager struct {
-	panels    map[string]*infoPanelUI
+	panels    map[donburi.Entity]*infoPanelUI // map[string]からmap[donburi.Entity]に変更
 	config    *Config
 	uiFactory *UIFactory
 }
 
 func NewInfoPanelManager(config *Config, uiFactory *UIFactory) *InfoPanelManager {
 	return &InfoPanelManager{
-		panels:    make(map[string]*infoPanelUI),
+		panels:    make(map[donburi.Entity]*infoPanelUI), // map[string]からmap[donburi.Entity]に変更
 		config:    config,
 		uiFactory: uiFactory,
 	}
@@ -45,13 +47,18 @@ type InfoPanelCreationResult struct {
 	ID      string
 }
 
-func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, team1Container, team2Container *widget.Container) {
+func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, mainUIContainer *widget.Container, battlefieldRect image.Rectangle, iconVMs []*IconViewModel) {
 	// 既存のパネルをクリア
 	for _, panel := range ipm.panels {
-		team1Container.RemoveChild(panel.rootContainer)
-		team2Container.RemoveChild(panel.rootContainer)
+		mainUIContainer.RemoveChild(panel.rootPanel.RootContainer)
 	}
-	ipm.panels = make(map[string]*infoPanelUI) // マップをクリア
+	ipm.panels = make(map[donburi.Entity]*infoPanelUI) // マップのキーをdonburi.Entityに変更
+
+	// アイコンのEntryIDをキーとしたY座標のマップを作成
+	iconYMap := make(map[donburi.Entity]float32)
+	for _, iconVM := range iconVMs {
+		iconYMap[iconVM.EntryID] = iconVM.Y
+	}
 
 	// 新しいViewModelに基づいてパネルを再生成
 	// DrawIndexでソート
@@ -64,17 +71,46 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, tea
 
 	for _, vm := range infoPanelVMs {
 		panelUI := createSingleMedarotInfoPanel(ipm.config, ipm.uiFactory, vm)
-		ipm.panels[vm.ID] = panelUI
-		if vm.Team == Team1 {
-			team1Container.AddChild(panelUI.rootContainer)
-		} else {
-			team2Container.AddChild(panelUI.rootContainer)
+		ipm.panels[vm.EntityID] = panelUI // EntityIDをキーとして使用
+
+		// アイコンのY座標を取得し、情報パネルのY座標として使用
+		iconY, ok := iconYMap[vm.EntityID] // EntityIDをキーとして使用
+		if !ok {
+			// アイコンのY座標が見つからない場合は、デフォルトの位置に配置するか、エラー処理を行う
+			// ここでは一旦スキップ
+			continue
 		}
+
+		// バトルフィールドのオフセットを考慮して相対Y座標を計算
+		relativeY := iconY - float32(battlefieldRect.Min.Y)
+
+		// バトルフィールドの幅
+		bfWidth := float32(battlefieldRect.Dx())
+		// バトルフィールドのXオフセット
+		bfOffsetX := float32(battlefieldRect.Min.X)
+
+		var panelX int
+
+		// PreferredSizeを使用して、レンダリング前に正しいサイズを取得
+		panelWidth, panelHeight := panelUI.rootPanel.RootContainer.PreferredSize()
+
+		if vm.Team == Team1 {
+			panelX = int(bfOffsetX - float32(panelWidth) - float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの左側に配置
+		} else {
+			panelX = int(bfOffsetX + bfWidth + float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの右側に配置
+		}
+
+		// パネルの中心をアイコンのY座標に合わせる
+		panelY := int(relativeY + float32(battlefieldRect.Min.Y) - float32(panelHeight)/2)
+
+		// Rectを直接設定
+		panelUI.rootPanel.RootContainer.GetWidget().Rect = image.Rect(panelX, panelY, panelX+panelWidth, panelY+panelHeight)
+		mainUIContainer.AddChild(panelUI.rootPanel.RootContainer)
 	}
 
 	// 各パネルのデータを更新
 	for _, vm := range infoPanelVMs {
-		if panel, ok := ipm.panels[vm.ID]; ok {
+		if panel, ok := ipm.panels[vm.EntityID]; ok {
 			updateSingleInfoPanel(panel, vm, ipm.config)
 		}
 	}
@@ -107,49 +143,64 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 	partSlots := make(map[PartSlotKey]*infoPanelPartUI)
 	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
 		partVM, ok := vm.Parts[slotKey]
-		partName := "---"
+		partTypeStr := "---"
 		initialArmor := 0.0
 
 		if ok {
-			partName = partVM.PartName
+			partTypeStr = string(partVM.PartType)
 			initialArmor = float64(partVM.CurrentArmor)
 		}
 
-		partContainer := widget.NewContainer(
+		// 各パーツの行コンテナ
+		partRowContainer := widget.NewContainer(
 			widget.ContainerOpts.Layout(widget.NewRowLayout(
-				widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-				widget.RowLayoutOpts.Spacing(2),
+				widget.RowLayoutOpts.Direction(widget.DirectionHorizontal),
+				widget.RowLayoutOpts.Spacing(5),
 			)),
 		)
-		partWidgets = append(partWidgets, partContainer)
+		partWidgets = append(partWidgets, partRowContainer)
 
-		partNameText := widget.NewText(
-			widget.TextOpts.Text(partName, uiFactory.Font, c.Colors.White),
+		// 部位名テキスト
+		partTypeText := widget.NewText(
+			widget.TextOpts.Text(partTypeStr, uiFactory.Font, c.Colors.White),
+			widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Stretch: false,
+			})),
 		)
-		partContainer.AddChild(partNameText)
+		partRowContainer.AddChild(partTypeText)
 
+		// HPバー
 		hpBar := widget.NewProgressBar(
-			widget.ProgressBarOpts.WidgetOpts(widget.WidgetOpts.MinSize(int(c.InfoPanel.PartHPGaugeWidth), int(c.InfoPanel.PartHPGaugeHeight))),
+			widget.ProgressBarOpts.WidgetOpts(
+				widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+					Stretch: true, // 横方向にストレッチ
+				}),
+				widget.WidgetOpts.MinSize(int(c.InfoPanel.PartHPGaugeWidth), int(c.InfoPanel.PartHPGaugeHeight)), // 最小高さを設定
+			),
 			widget.ProgressBarOpts.Images(
 				&widget.ProgressBarImage{
-					Idle: image.NewNineSliceColor(c.Colors.Gray),
+					Idle: eimage.NewNineSliceColor(c.Colors.Gray),
 				},
 				&widget.ProgressBarImage{
-					Idle: image.NewNineSliceColor(c.Colors.HP),
+					Idle: eimage.NewNineSliceColor(c.Colors.HP),
 				},
 			),
 			widget.ProgressBarOpts.Values(0, 100, 100),
 			widget.ProgressBarOpts.TrackPadding(widget.NewInsetsSimple(1)),
 		)
-		partContainer.AddChild(hpBar)
+		partRowContainer.AddChild(hpBar)
 
+		// HPテキスト
 		hpText := widget.NewText(
 			widget.TextOpts.Text("0/0", uiFactory.Font, c.Colors.White),
+			widget.TextOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Stretch: false,
+			})),
 		)
-		partContainer.AddChild(hpText)
+		partRowContainer.AddChild(hpText)
 
 		partSlots[slotKey] = &infoPanelPartUI{
-			partNameText: partNameText,
+			partNameText: partTypeText, // partTypeTextを再利用して部位名を表示
 			hpText:       hpText,
 			hpBar:        hpBar,
 			displayedHP:  initialArmor,
@@ -158,7 +209,7 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 	}
 
 	// NewPanel を使用して全体のパネルを作成
-	panelContainer := NewPanel(&PanelOptions{
+	panel := NewPanel(&PanelOptions{ // panelContainer を panel に変更
 		PanelWidth:      int(c.InfoPanel.BlockWidth),
 		Padding:         widget.NewInsetsSimple(5),
 		Spacing:         2,
@@ -168,17 +219,16 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 	}, uiFactory.imageGenerator, uiFactory.Font, append([]widget.PreferredSizeLocateableWidget{headerContainer}, partWidgets...)...)
 
 	return &infoPanelUI{
-		rootContainer: panelContainer,
-		nameText:      nameText,
-		stateText:     stateText,
-		partSlots:     partSlots,
+		rootPanel: panel, // rootContainer を rootPanel に変更
+		nameText:  nameText,
+		stateText: stateText,
+		partSlots: partSlots,
 	}
 }
 
 // CreateInfoPanels はすべてのメダロットの情報パネルを生成し、そのリストを返します。
 // この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した
 // InfoPanelViewModelのリストを受け取るように変更されます。
-
 
 func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Config) {
 	c := config.UI
@@ -229,9 +279,9 @@ func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Confi
 
 		if partVM.IsBroken {
 			textColor = c.Colors.Broken
-			partUI.partNameText.Label = partVM.PartName + " (壊)"
+			partUI.partNameText.Label = string(partVM.PartType)
 		} else {
-			partUI.partNameText.Label = partVM.PartName
+			partUI.partNameText.Label = string(partVM.PartType)
 			if hpPercentage < 0.3 {
 				textColor = c.Colors.HPCritical
 			}
