@@ -148,10 +148,10 @@ func (bf *BattlefieldWidget) drawBattlefieldLines(screen *ebiten.Image, rect ima
 		bf.config.UI.Colors.Gray, false)
 
 	// チーム位置の計算
-	team1HomeX := offsetX + width*0.1
-	team2HomeX := offsetX + width*0.9
-	team1ExecX := offsetX + width*0.4
-	team2ExecX := offsetX + width*0.6
+	team1HomeX := offsetX + width*bf.config.UI.Battlefield.Team1HomeX
+	team2HomeX := offsetX + width*bf.config.UI.Battlefield.Team2HomeX
+	team1ExecX := offsetX + width*bf.config.UI.Battlefield.Team1ExecutionLineX
+	team2ExecX := offsetX + width*bf.config.UI.Battlefield.Team2ExecutionLineX
 
 	// ホームマーカー
 	// game_settings.json の UI.Battlefield.MedarotVerticalSpacingFactor を使用してY座標を計算します。

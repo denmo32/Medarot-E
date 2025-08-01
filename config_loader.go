@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt" // fmtパッケージを追加
 	"image/color"
 	"io/ioutil"
 	"log"
-	"fmt" // fmtパッケージを追加
 )
 
 // GameSettings は game_settings.json の構造を定義します。
@@ -93,18 +93,18 @@ type GameSettings struct {
 			ButtonSpacing int
 		}
 		Colors struct {
-			White        string
-			Red          string
-			Blue         string
-			Yellow       string
-			Gray         string
-			Team1        string
-			Team2        string
-			Leader       string
-			Broken       string
-			HP           string
-			HPCritical   string
-			Background   string
+			White      string
+			Red        string
+			Blue       string
+			Yellow     string
+			Gray       string
+			Team1      string
+			Team2      string
+			Leader     string
+			Broken     string
+			HP         string
+			HPCritical string
+			Background string
 		}
 	}
 }
@@ -134,14 +134,14 @@ func LoadConfig() Config {
 
 	cfg := Config{
 		Balance: BalanceConfig{
-			Time: gameSettings.Time,
+			Time:             gameSettings.Time,
 			HPAnimationSpeed: gameSettings.HPAnimationSpeed,
-			Factors: gameSettings.Factors,
-			Effects: gameSettings.Effects,
-			Damage: gameSettings.Damage,
-			Hit: gameSettings.Hit,
-			Defense: gameSettings.Defense,
-			Formulas: gameSettings.Formulas,
+			Factors:          gameSettings.Factors,
+			Effects:          gameSettings.Effects,
+			Damage:           gameSettings.Damage,
+			Hit:              gameSettings.Hit,
+			Defense:          gameSettings.Defense,
+			Formulas:         gameSettings.Formulas,
 		},
 		AssetPaths: assetPaths,
 		UI: UIConfig{
@@ -167,15 +167,15 @@ func LoadConfig() Config {
 					Height float32
 				}
 			}{
-				Height:                       float32(gameSettings.UI.Screen.Height) * gameSettings.UI.Battlefield.Height,
-				Team1HomeX:                   float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team1HomeX,
-				Team2HomeX:                   float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team2HomeX,
-				Team1ExecutionLineX:          float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team1ExecutionLineX,
-				Team2ExecutionLineX:          float32(gameSettings.UI.Screen.Width) * gameSettings.UI.Battlefield.Team2ExecutionLineX,
+				Height:                       gameSettings.UI.Battlefield.Height,
+				Team1HomeX:                   gameSettings.UI.Battlefield.Team1HomeX,
+				Team2HomeX:                   gameSettings.UI.Battlefield.Team2HomeX,
+				Team1ExecutionLineX:          gameSettings.UI.Battlefield.Team1ExecutionLineX,
+				Team2ExecutionLineX:          gameSettings.UI.Battlefield.Team2ExecutionLineX,
 				IconRadius:                   gameSettings.UI.Battlefield.IconRadius,
 				HomeMarkerRadius:             gameSettings.UI.Battlefield.HomeMarkerRadius,
 				LineWidth:                    gameSettings.UI.Battlefield.LineWidth,
-				MedarotVerticalSpacingFactor: float32(gameSettings.UI.Screen.Height) * gameSettings.UI.Battlefield.MedarotVerticalSpacingFactor / float32(PlayersPerTeam+1),
+				MedarotVerticalSpacingFactor: gameSettings.UI.Battlefield.MedarotVerticalSpacingFactor,
 				TargetIndicator: struct {
 					Width  float32
 					Height float32

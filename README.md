@@ -106,9 +106,9 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 *   `ui_view_model_factory.go`: **[ロジック/振る舞い]** ECSのデータからUI表示用のViewModelを構築するファクトリ。`InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。これにより、UIはECSの内部構造に直接依存しません。
 *   `ui_battlefield_widget.go`: 中央のバトルフィールド描画。ViewModelを受け取って描画します。
 *   `ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。ViewModelを受け取って描画します。
-*   `ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。UIイベントを発行し、ViewModelを使用して表示します。
+*   `ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。下部の共通パネル上に、背景を透過させてパーツ選択ボタンを表示します。UIイベントを発行し、ViewModelを使用して表示します。
 *   `ui_action_modal_manager.go`: **[ロジック/振る舞い]** アクション選択モーダルの表示と状態を管理します。
-*   `ui_message_window.go`: 画面下のメッセージウィンドウ。
+*   `ui_message_window.go`: 画面下のメッセージウィンドウ。下部の共通パネル上に、背景を透過させてメッセージを表示します。
 *   `ui_message_display_manager.go`: **[ロジック/振る舞い]** ゲーム内のメッセージ表示（キュー管理、ウィンドウ表示/非表示、進行）を管理します。
 *   `ui_animation_drawer.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの具体的な描画処理。
 *   `ui_event_processor_system.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、対応するゲームイベントを発行します。ゲームロジックとは直接やり取りせず、イベントを介して間接的に連携します。

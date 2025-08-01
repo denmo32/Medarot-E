@@ -102,7 +102,7 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 
 		// アイコンのX座標を計算
 		// この値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に影響されます。
-		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth)
+		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth, config)
 		// アイコンのY座標を計算
 		// この値は game_settings.json の UI.Battlefield.MedarotVerticalSpacingFactor に影響されます。
 		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
@@ -146,15 +146,15 @@ Prog: %.1f / %.1f`,
 
 // CalculateMedarotScreenXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // battlefieldWidth はバトルフィールドの表示幅です。
-func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32) float32 {
+func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32, config *Config) float32 {
 	settings := SettingsComponent.Get(entry)
 	progress := partInfoProvider.GetNormalizedActionProgress(entry)
 
 	// ホームポジションと実行ラインのX座標を定義します。
 	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
-	homeX, execX := battlefieldWidth*0.1, battlefieldWidth*0.4
+	homeX, execX := battlefieldWidth*config.UI.Battlefield.Team1HomeX, battlefieldWidth*config.UI.Battlefield.Team1ExecutionLineX
 	if settings.Team == Team2 {
-		homeX, execX = battlefieldWidth*0.9, battlefieldWidth*0.6
+		homeX, execX = battlefieldWidth*config.UI.Battlefield.Team2HomeX, battlefieldWidth*config.UI.Battlefield.Team2ExecutionLineX
 	}
 
 	var xPos float32
@@ -167,7 +167,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 		xPos = execX
 	case StateCooldown:
 		// クールダウン中は実行ラインからホームへ戻る
-		xPos = execX + (homeX - execX) * (1.0 - progress)
+		xPos = execX + (homeX-execX)*(1.0-progress)
 	case StateIdle, StateBroken:
 		// アイドル状態または機能停止状態はホームポジションに固定
 		xPos = homeX
@@ -179,7 +179,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 
