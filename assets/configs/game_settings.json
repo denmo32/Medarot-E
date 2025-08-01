@@ -55,10 +55,10 @@
     },
     "Battlefield": {
       "Height": 0.5,
-      "Team1HomeX": 0.05,
-      "Team2HomeX": 0.95,
-      "Team1ExecutionLineX": 0.45,
-      "Team2ExecutionLineX": 0.55,
+      "Team1HomeX": 0.06,
+      "Team2HomeX": 0.94,
+      "Team1ExecutionLineX": 0.46,
+      "Team2ExecutionLineX": 0.54,
       "IconRadius": 12,
       "HomeMarkerRadius": 15,
       "LineWidth": 2,
@@ -70,7 +70,7 @@
     },
     "InfoPanel": {
       "Padding": 10,
-      "BlockWidth": 200,
+      "BlockWidth": 224,
       "BlockHeight": 200,
       "PartHPGaugeWidth": 120,
       "PartHPGaugeHeight": 10

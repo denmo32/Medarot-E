@@ -37,7 +37,8 @@ type ActionModalViewModel struct {
 
 // InfoPanelViewModel は、単一の情報パネルUIが必要とするすべてのデータを保持します。
 type InfoPanelViewModel struct {
-	ID        string
+	ID        string         // 名前表示用としてstringに戻す
+	EntityID  donburi.Entity // アイコンとの対応付け用
 	Name      string
 	Team      TeamID
 	DrawIndex int

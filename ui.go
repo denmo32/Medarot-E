@@ -25,17 +25,22 @@ type UI struct {
 	actionModalManager     *UIActionModalManager
 	targetIndicatorManager *UITargetIndicatorManager
 	animationDrawer        *UIAnimationDrawer
+	lastWidth, lastHeight  int            // レイアウト更新の最適化用
+	battleUIState          *BattleUIState // UIの状態を保持
+	uiFactory              *UIFactory     // uiFactoryを保持
 }
 
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
 func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
+	u.battleUIState = battleUIState // UI構造体に状態を保存
+	// uiFactoryも保存する必要があるが、UI構造体にはuiFactoryフィールドがないため、追加が必要
+	// 現状、uiFactoryはNewUIでしか渡されないため、updateLayoutで利用するにはUI構造体にフィールドを追加する必要がある
+
 	// BattlefieldViewModel を設定
 	u.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
 
 	// InfoPanels を更新または再構築
 	mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
-	team1PanelContainer := mainUIContainer.Children()[0].(*widget.Container)
-	team2PanelContainer := mainUIContainer.Children()[2].(*widget.Container)
 
 	// マップからスライスに変換
 	infoPanelVMs := make([]InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
@@ -43,7 +48,8 @@ func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, batt
 		infoPanelVMs = append(infoPanelVMs, vm)
 	}
 
-	u.infoPanelManager.UpdatePanels(infoPanelVMs, team1PanelContainer, team2PanelContainer)
+	// InfoPanelManager に mainUIContainer と battlefieldRect、アイコンのY座標を渡す
+	u.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, battlefieldRect, battleUIState.BattlefieldViewModel.Icons)
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。
@@ -62,6 +68,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 		config:           config,
 		whitePixel:       whiteImg,
 		animationDrawer:  NewUIAnimationDrawer(config, gameDataManager.Font, eventChannel),
+		uiFactory:        uiFactory, // uiFactoryを保存
 	}
 
 	rootContainer := widget.NewContainer(
@@ -81,11 +88,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 
 	// 上部パネル（既存のmainUIContainer）
 	mainUIContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewGridLayout(
-			widget.GridLayoutOpts.Columns(3),
-			widget.GridLayoutOpts.Stretch([]bool{false, true, false}, []bool{true}),
-			widget.GridLayoutOpts.Spacing(config.UI.InfoPanel.Padding, 0),
-		)),
+		widget.ContainerOpts.Layout(nil), // レイアウトをnilに設定し、手動でRectを設定
 		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})),
 	)
 	baseLayoutContainer.AddChild(mainUIContainer)
@@ -104,29 +107,8 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 
 	baseLayoutContainer.AddChild(ui.commonBottomPanel.RootContainer) // RootContainer を追加
 
-	team1PanelContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewRowLayout(
-			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-			widget.RowLayoutOpts.Spacing(config.UI.InfoPanel.Padding),
-		)),
-		widget.ContainerOpts.WidgetOpts(
-			widget.WidgetOpts.MinSize(int(config.UI.InfoPanel.BlockWidth), 0),
-		),
-	)
-	mainUIContainer.AddChild(team1PanelContainer)
 	ui.battlefieldWidget = NewBattlefieldWidget(config)
-	ui.battlefieldWidget.Container.GetWidget().LayoutData = widget.GridLayoutData{}
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)
-	team2PanelContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewRowLayout(
-			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
-			widget.RowLayoutOpts.Spacing(config.UI.InfoPanel.Padding),
-		)),
-		widget.ContainerOpts.WidgetOpts(
-			widget.WidgetOpts.MinSize(int(config.UI.InfoPanel.BlockWidth), 0),
-		),
-	)
-	mainUIContainer.AddChild(team2PanelContainer)
 	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
 	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
 	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, uiFactory, ui.commonBottomPanel) // ui 引数を削除
@@ -168,8 +150,55 @@ func (u *UI) ClearCurrentTarget() {
 	u.targetIndicatorManager.ClearCurrentTarget()
 }
 
+// updateLayout はUIのレイアウトを更新します。
+func (u *UI) updateLayout() {
+	// ルートコンテナのRectは、ウィンドウサイズとほぼ同じ
+	rootRect := u.ebitenui.Container.GetWidget().Rect
+	width, height := rootRect.Dx(), rootRect.Dy()
+
+	// サイズが変わっていなければ何もしない
+	if u.lastWidth == width && u.lastHeight == height {
+		return
+	}
+	u.lastWidth, u.lastHeight = width, height
+
+	// mainUIContainer (上部パネル) のRectを取得
+	// baseLayoutContainer -> mainUIContainer
+	mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
+	containerRect := mainUIContainer.GetWidget().Rect
+
+	// バトルフィールドのRectを計算
+	infoPanelWidth := int(u.config.UI.InfoPanel.BlockWidth)
+	padding := int(u.config.UI.InfoPanel.Padding)
+
+	// バトルフィールドの幅は、コンテナの幅から左右の情報パネルとパディングを引いたもの
+	bfWidth := containerRect.Dx() - (infoPanelWidth+padding)*2
+	bfHeight := containerRect.Dy()
+
+	// バトルフィールドのX座標は、左の情報パネルの幅とパディングの合計
+	bfX := infoPanelWidth + padding
+	bfY := 0 // mainUIContainerのY座標は0から始まる
+
+	battlefieldRect := image.Rect(bfX, bfY, bfX+bfWidth, bfY+bfHeight)
+	u.battlefieldWidget.Container.GetWidget().Rect = battlefieldRect
+
+	// 情報パネルの更新（battlefieldRectを渡す）
+	// SetBattleUIStateから呼び出されるViewModelの更新時に、この情報を使ってパネルを配置する
+	// ここでは直接呼び出さず、SetBattleUIStateが呼び出されたときにUpdatePanelsが実行されることを期待する
+	// ただし、レイアウト変更時に情報パネルも再配置されるように、SetBattleUIStateを呼び出す必要がある
+	// レイアウト更新時に情報パネルも再配置されるように、直接UpdatePanelsを呼び出す
+	if u.battleUIState != nil {
+		infoPanelVMs := make([]InfoPanelViewModel, 0, len(u.battleUIState.InfoPanels))
+		for _, vm := range u.battleUIState.InfoPanels {
+			infoPanelVMs = append(infoPanelVMs, vm)
+		}
+		u.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, battlefieldRect, u.battleUIState.BattlefieldViewModel.Icons)
+	}
+}
+
 // Update はUIの状態を更新します。
 func (u *UI) Update(tick int) {
+	u.updateLayout() // ここで呼び出す
 	u.ebitenui.Update()
 	u.animationDrawer.Update(float64(tick)) // アニメーションの更新をここで行う
 }

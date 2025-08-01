@@ -69,7 +69,8 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 	stateStr := GetStateDisplayName(state.CurrentState)
 
 	return InfoPanelViewModel{
-		ID:        settings.ID,
+		ID:        settings.Name,  // IDは名前表示用として残す
+		EntityID:  entry.Entity(), // 新しく追加したEntityIDフィールドに設定
 		Name:      settings.Name,
 		Team:      settings.Team,
 		DrawIndex: settings.DrawIndex,

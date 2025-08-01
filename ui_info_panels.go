@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"sort"
 
 	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
 )
 
 type infoPanelUI struct {
@@ -25,14 +27,14 @@ type infoPanelPartUI struct {
 }
 
 type InfoPanelManager struct {
-	panels    map[string]*infoPanelUI
+	panels    map[donburi.Entity]*infoPanelUI // map[string]からmap[donburi.Entity]に変更
 	config    *Config
 	uiFactory *UIFactory
 }
 
 func NewInfoPanelManager(config *Config, uiFactory *UIFactory) *InfoPanelManager {
 	return &InfoPanelManager{
-		panels:    make(map[string]*infoPanelUI),
+		panels:    make(map[donburi.Entity]*infoPanelUI), // map[string]からmap[donburi.Entity]に変更
 		config:    config,
 		uiFactory: uiFactory,
 	}
@@ -45,13 +47,18 @@ type InfoPanelCreationResult struct {
 	ID      string
 }
 
-func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, team1Container, team2Container *widget.Container) {
+func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, mainUIContainer *widget.Container, battlefieldRect image.Rectangle, iconVMs []*IconViewModel) {
 	// 既存のパネルをクリア
 	for _, panel := range ipm.panels {
-		team1Container.RemoveChild(panel.rootPanel.RootContainer) // RootContainer を使用
-		team2Container.RemoveChild(panel.rootPanel.RootContainer) // RootContainer を使用
+		mainUIContainer.RemoveChild(panel.rootPanel.RootContainer)
 	}
-	ipm.panels = make(map[string]*infoPanelUI) // マップをクリア
+	ipm.panels = make(map[donburi.Entity]*infoPanelUI) // マップのキーをdonburi.Entityに変更
+
+	// アイコンのEntryIDをキーとしたY座標のマップを作成
+	iconYMap := make(map[donburi.Entity]float32)
+	for _, iconVM := range iconVMs {
+		iconYMap[iconVM.EntryID] = iconVM.Y
+	}
 
 	// 新しいViewModelに基づいてパネルを再生成
 	// DrawIndexでソート
@@ -64,17 +71,46 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, tea
 
 	for _, vm := range infoPanelVMs {
 		panelUI := createSingleMedarotInfoPanel(ipm.config, ipm.uiFactory, vm)
-		ipm.panels[vm.ID] = panelUI
-		if vm.Team == Team1 {
-			team1Container.AddChild(panelUI.rootPanel.RootContainer) // RootContainer を使用
-		} else {
-			team2Container.AddChild(panelUI.rootPanel.RootContainer) // RootContainer を使用
+		ipm.panels[vm.EntityID] = panelUI // EntityIDをキーとして使用
+
+		// アイコンのY座標を取得し、情報パネルのY座標として使用
+		iconY, ok := iconYMap[vm.EntityID] // EntityIDをキーとして使用
+		if !ok {
+			// アイコンのY座標が見つからない場合は、デフォルトの位置に配置するか、エラー処理を行う
+			// ここでは一旦スキップ
+			continue
 		}
+
+		// バトルフィールドのオフセットを考慮して相対Y座標を計算
+		relativeY := iconY - float32(battlefieldRect.Min.Y)
+
+		// バトルフィールドの幅
+		bfWidth := float32(battlefieldRect.Dx())
+		// バトルフィールドのXオフセット
+		bfOffsetX := float32(battlefieldRect.Min.X)
+
+		var panelX int
+
+		// PreferredSizeを使用して、レンダリング前に正しいサイズを取得
+		panelWidth, panelHeight := panelUI.rootPanel.RootContainer.PreferredSize()
+
+		if vm.Team == Team1 {
+			panelX = int(bfOffsetX - float32(panelWidth) - float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの左側に配置
+		} else {
+			panelX = int(bfOffsetX + bfWidth + float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの右側に配置
+		}
+
+		// パネルの中心をアイコンのY座標に合わせる
+		panelY := int(relativeY + float32(battlefieldRect.Min.Y) - float32(panelHeight)/2)
+
+		// Rectを直接設定
+		panelUI.rootPanel.RootContainer.GetWidget().Rect = image.Rect(panelX, panelY, panelX+panelWidth, panelY+panelHeight)
+		mainUIContainer.AddChild(panelUI.rootPanel.RootContainer)
 	}
 
 	// 各パネルのデータを更新
 	for _, vm := range infoPanelVMs {
-		if panel, ok := ipm.panels[vm.ID]; ok {
+		if panel, ok := ipm.panels[vm.EntityID]; ok {
 			updateSingleInfoPanel(panel, vm, ipm.config)
 		}
 	}
