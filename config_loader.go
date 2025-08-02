@@ -88,9 +88,13 @@ type GameSettings struct {
 			PartHPGaugeHeight float32
 		}
 		ActionModal struct {
-			ButtonWidth   float32
-			ButtonHeight  float32
-			ButtonSpacing int
+			ButtonWidth         float32
+			ButtonHeight        float32
+			ButtonSpacing       int
+			ModalButtonFontSize float64 // 追加
+		}
+		MessageWindow struct { // 追加
+			MessageWindowFontSize float64 // 追加
 		}
 		Colors struct {
 			White      string
@@ -198,13 +202,20 @@ func LoadConfig() Config {
 				PartHPGaugeHeight: gameSettings.UI.InfoPanel.PartHPGaugeHeight,
 			},
 			ActionModal: struct {
-				ButtonWidth   float32
-				ButtonHeight  float32
-				ButtonSpacing int
+				ButtonWidth         float32
+				ButtonHeight        float32
+				ButtonSpacing       int
+				ModalButtonFontSize float64
 			}{
-				ButtonWidth:   gameSettings.UI.ActionModal.ButtonWidth,
-				ButtonHeight:  gameSettings.UI.ActionModal.ButtonHeight,
-				ButtonSpacing: gameSettings.UI.ActionModal.ButtonSpacing,
+				ButtonWidth:         gameSettings.UI.ActionModal.ButtonWidth,
+				ButtonHeight:        gameSettings.UI.ActionModal.ButtonHeight,
+				ButtonSpacing:       gameSettings.UI.ActionModal.ButtonSpacing,
+				ModalButtonFontSize: gameSettings.UI.ActionModal.ModalButtonFontSize,
+			},
+			MessageWindow: struct {
+				MessageWindowFontSize float64
+			}{
+				MessageWindowFontSize: gameSettings.UI.MessageWindow.MessageWindowFontSize,
 			},
 			Colors: struct {
 				White      color.Color

@@ -152,9 +152,13 @@ type UIConfig struct {
 		PartHPGaugeHeight float32
 	}
 	ActionModal struct {
-		ButtonWidth   float32
-		ButtonHeight  float32
-		ButtonSpacing int
+		ButtonWidth         float32
+		ButtonHeight        float32
+		ButtonSpacing       int
+		ModalButtonFontSize float64 // 追加
+	}
+	MessageWindow struct { // 追加
+		MessageWindowFontSize float64 // 追加
 	}
 	Colors struct {
 		White      color.Color
@@ -173,11 +177,13 @@ type UIConfig struct {
 }
 
 type SharedResources struct {
-	GameData        *GameData
-	Config          Config
-	Font            text.Face
-	GameDataManager *GameDataManager
-	ButtonImage     *widget.ButtonImage
-	Rand            *rand.Rand   // 追加
-	BattleLogger    BattleLogger // 追加
+	GameData          *GameData
+	Config            Config
+	Font              text.Face
+	ModalButtonFont   text.Face // 追加
+	MessageWindowFont text.Face // 追加
+	GameDataManager   *GameDataManager
+	ButtonImage       *widget.ButtonImage
+	Rand              *rand.Rand   // 追加
+	BattleLogger      BattleLogger // 追加
 }

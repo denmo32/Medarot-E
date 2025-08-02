@@ -8,6 +8,8 @@ import (
 const (
 	_ resource.FontID = iota
 	FontMPLUS1pRegular
+	FontModalButton   // 追加
+	FontMessageWindow // 追加
 )
 
 const (

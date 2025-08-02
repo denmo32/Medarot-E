@@ -54,9 +54,27 @@ func initResources(audioContext *audio.Context, assetPaths *AssetPaths) {
 	r.ImageRegistry.Assign(imageResources)
 }
 
-func LoadFont(id resource.FontID) (text.Face, error) {
-	f := r.LoadFont(id)
-	return text.NewGoXFace(f.Face), nil
+func LoadFonts(assetPaths *AssetPaths, config *Config) (text.Face, text.Face, text.Face, error) {
+	// ベースフォントの読み込み
+	r.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
+		FontMPLUS1pRegular: {Path: assetPaths.Font, Size: 9}, // ベースフォントサイズ
+	})
+	baseFont := r.LoadFont(FontMPLUS1pRegular)
+	normalFont := text.NewGoXFace(baseFont.Face)
+
+	// モーダルボタン用フォントの読み込み
+	r.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
+		FontModalButton: {Path: assetPaths.Font, Size: int(config.UI.ActionModal.ModalButtonFontSize)},
+	})
+	modalButtonFont := text.NewGoXFace(r.LoadFont(FontModalButton).Face)
+
+	// メッセージウィンドウ用フォントの読み込み
+	r.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
+		FontMessageWindow: {Path: assetPaths.Font, Size: int(config.UI.MessageWindow.MessageWindowFontSize)},
+	})
+	messageWindowFont := text.NewGoXFace(r.LoadFont(FontMessageWindow).Face)
+
+	return normalFont, modalButtonFont, messageWindowFont, nil
 }
 
 // LoadFormulas loads action formulas from the JSON resource.

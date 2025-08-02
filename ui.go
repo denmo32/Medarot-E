@@ -67,8 +67,8 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 		eventChannel:     eventChannel,
 		config:           config,
 		whitePixel:       whiteImg,
-		animationDrawer:  NewUIAnimationDrawer(config, gameDataManager.Font, eventChannel),
-		uiFactory:        uiFactory, // uiFactoryを保存
+		animationDrawer:  NewUIAnimationDrawer(config, uiFactory.Font, eventChannel), // uiFactory.Font を使用
+		uiFactory:        uiFactory,                                                  // uiFactoryを保存
 	}
 
 	rootContainer := widget.NewContainer(
@@ -123,7 +123,7 @@ func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, game
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)
 	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
 	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
-	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, gameDataManager.Font, uiFactory, ui.commonBottomPanel) // ui 引数を削除
+	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, uiFactory.MessageWindowFont, uiFactory, ui.commonBottomPanel) // uiFactory.MessageWindowFont を使用
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}

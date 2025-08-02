@@ -56,7 +56,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager, bs.rand)
 
-	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.GameDataManager.Font, bs.resources.GameDataManager.Messages)
+	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.Font, bs.resources.ModalButtonFont, bs.resources.MessageWindowFont, bs.resources.GameDataManager.Messages)
 	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.uiFactory, bs.resources.GameDataManager)
 	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand, bs.ui)
 	bs.statusEffectSystem = NewStatusEffectSystem(bs.world, bs.battleLogic.GetDamageCalculator())
@@ -198,7 +198,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 		case ActionAnimationStartedGameEvent:
 			bs.ui.PostEvent(SetAnimationUIEvent(e))
 			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateAnimatingAction})
-		
+
 		case ActionAnimationFinishedGameEvent:
 			*lastActionResultComp = e.Result // Store the result
 			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePostAction})
@@ -253,7 +253,6 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
 			}
 
-			
 		case GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
 		case StateChangeRequestedGameEvent:

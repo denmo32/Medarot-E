@@ -33,12 +33,12 @@ func main() {
 	audioContext := audio.NewContext(44100)
 	initResources(audioContext, &config.AssetPaths) // initResources は r を初期化する
 
-	fontFace, err := LoadFont(FontMPLUS1pRegular) // resource.FontID へのキャストは不要
+	normalFont, modalButtonFont, messageWindowFont, err := LoadFonts(&config.AssetPaths, &config)
 	if err != nil {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	gameDataManager, err := NewGameDataManager(fontFace, &config.AssetPaths, r)
+	gameDataManager, err := NewGameDataManager(normalFont, &config.AssetPaths, r)
 	if err != nil {
 		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
 	}
@@ -69,9 +69,11 @@ func main() {
 		GameData: &GameData{
 			Medarots: medarotLoadouts,
 		},
-		Config:          config,
-		Font:            fontFace,
-		GameDataManager: gameDataManager,
+		Config:            config,
+		Font:              normalFont,        // 通常のフォントを渡す
+		ModalButtonFont:   modalButtonFont,   // 追加
+		MessageWindowFont: messageWindowFont, // 追加
+		GameDataManager:   gameDataManager,
 		ButtonImage: &widget.ButtonImage{
 			Idle:    image.NewNineSliceSimple(buttonImage, 10, 10),
 			Hover:   image.NewNineSliceSimple(buttonImage, 10, 10),
