@@ -99,7 +99,7 @@ func createActionModalUI(
 	partsContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewGridLayout(
 			widget.GridLayoutOpts.Columns(1),
-			widget.GridLayoutOpts.Stretch([]bool{true}, []bool{false, true, false}), // 中央の行をストレッチ
+			widget.GridLayoutOpts.Stretch([]bool{true}, []bool{false, false}),
 			widget.GridLayoutOpts.Spacing(0, c.ActionModal.ButtonSpacing*2),
 		)),
 	)
@@ -126,14 +126,7 @@ func createActionModalUI(
 	headRowContainer.AddChild(headPartsContainer)
 	partsContainer.AddChild(headRowContainer)
 
-	// 2行目: 空のスペーサー
-	spacerContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
-		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.MinSize(1, 50)), // 最小高さを設定
-	)
-	partsContainer.AddChild(spacerContainer)
-
-	// 3行目: 腕パーツ（左右分割）
+	// 2行目: 腕パーツ（左右分割）
 	armRowContainer := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewGridLayout(
 			widget.GridLayoutOpts.Columns(2),
