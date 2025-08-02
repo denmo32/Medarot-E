@@ -18,7 +18,7 @@ func createMessageWindow(message string, uiFactory *UIFactory) widget.PreferredS
 
 	// テキストウィジェットを作成
 	messageTextWidget := widget.NewText(
-		widget.TextOpts.Text(message, uiFactory.Font, c.Colors.White),
+		widget.TextOpts.Text(message, uiFactory.MessageWindowFont, c.Colors.White),
 	)
 	contentContainer.AddChild(messageTextWidget)
 
@@ -27,7 +27,7 @@ func createMessageWindow(message string, uiFactory *UIFactory) widget.PreferredS
 		continueTextStr = uiFactory.MessageManager.FormatMessage("ui_click_to_continue", nil)
 	}
 	continueTextWidget := widget.NewText(
-		widget.TextOpts.Text(continueTextStr, uiFactory.Font, c.Colors.Gray),
+		widget.TextOpts.Text(continueTextStr, uiFactory.MessageWindowFont, c.Colors.Gray),
 		widget.TextOpts.Position(widget.TextPositionEnd, widget.TextPositionEnd),
 	)
 	contentContainer.AddChild(continueTextWidget)

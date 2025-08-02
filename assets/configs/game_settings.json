@@ -78,7 +78,11 @@
     "ActionModal": {
       "ButtonWidth": 250,
       "ButtonHeight": 40,
-      "ButtonSpacing": 10
+      "ButtonSpacing": 10,
+      "ModalButtonFontSize": 14
+    },
+    "MessageWindow": {
+      "MessageWindowFontSize": 14
     },
     "Colors": {
       "White": "FFFFFF",

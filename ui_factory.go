@@ -7,19 +7,23 @@ import (
 
 // UIFactory はUIコンポーネントの生成とスタイリングを一元的に管理します。
 type UIFactory struct {
-	Config         *Config
-	Font           text.Face
-	MessageManager *MessageManager
-	imageGenerator *UIImageGenerator
+	Config            *Config
+	Font              text.Face // 通常のフォント
+	ModalButtonFont   text.Face // モーダルボタン用フォント
+	MessageWindowFont text.Face // メッセージウィンドウ用フォント
+	MessageManager    *MessageManager
+	imageGenerator    *UIImageGenerator
 }
 
 // NewUIFactory は新しいUIFactoryのインスタンスを作成します。
-func NewUIFactory(config *Config, font text.Face, messageManager *MessageManager) *UIFactory {
+func NewUIFactory(config *Config, font text.Face, modalButtonFont text.Face, messageWindowFont text.Face, messageManager *MessageManager) *UIFactory {
 	return &UIFactory{
-		Config:         config,
-		Font:           font,
-		MessageManager: messageManager,
-		imageGenerator: NewUIImageGenerator(config),
+		Config:            config,
+		Font:              font,
+		ModalButtonFont:   modalButtonFont,
+		MessageWindowFont: messageWindowFont,
+		MessageManager:    messageManager,
+		imageGenerator:    NewUIImageGenerator(config),
 	}
 }
 
@@ -39,7 +43,7 @@ func (f *UIFactory) NewCyberpunkButton(
 
 	return widget.NewButton(
 		widget.ButtonOpts.Image(buttonImage),
-		widget.ButtonOpts.Text(text, f.Font, buttonTextColor),
+		widget.ButtonOpts.Text(text, f.ModalButtonFont, buttonTextColor),
 		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
 		widget.ButtonOpts.ClickedHandler(clickedHandler),
 		widget.ButtonOpts.CursorEnteredHandler(cursorEnteredHandler),
