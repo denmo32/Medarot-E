@@ -25,9 +25,9 @@ func NewUIImageGenerator(config *Config) *UIImageGenerator {
 // createCyberpunkButtonImageSet は、サイバーパンク風のボタン画像セットを生成します。
 func (g *UIImageGenerator) createCyberpunkButtonImageSet(thickness float32) *widget.ButtonImage {
 	return &widget.ButtonImage{
-		Idle:    g.createCyberpunkButtonNineSlice(color.RGBA{0, 20, 40, 255}, color.RGBA{20, 40, 80, 255}, color.RGBA{0, 191, 255, 255}, thickness),
-		Hover:   g.createCyberpunkButtonNineSlice(color.RGBA{10, 30, 50, 255}, color.RGBA{30, 50, 90, 255}, color.RGBA{0, 221, 255, 255}, thickness),
-		Pressed: g.createCyberpunkButtonNineSlice(color.RGBA{20, 40, 60, 255}, color.RGBA{40, 60, 100, 255}, color.RGBA{0, 255, 255, 255}, thickness),
+		Idle:    g.createCyberpunkButtonNineSlice(color.RGBA{R: 0, G: 60, B: 120, A: 255}, color.RGBA{R: 0, G: 100, B: 200, A: 255}, color.RGBA{R: 0, G: 191, B: 255, A: 255}, thickness),
+		Hover:   g.createCyberpunkButtonNineSlice(color.RGBA{R: 0, G: 128, B: 0, A: 255}, color.RGBA{R: 50, G: 205, B: 50, A: 255}, color.RGBA{R: 0, G: 255, B: 0, A: 255}, thickness),
+		Pressed: g.createCyberpunkButtonNineSlice(color.RGBA{R: 0, G: 150, B: 0, A: 255}, color.RGBA{R: 100, G: 255, B: 100, A: 255}, color.RGBA{R: 50, G: 255, B: 50, A: 255}, thickness),
 	}
 }
 

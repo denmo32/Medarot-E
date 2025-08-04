@@ -31,7 +31,10 @@ func createActionModalUI(
 
 	for _, buttonVM := range vm.Buttons {
 		buttonText := fmt.Sprintf("%s (%s)", buttonVM.PartName, buttonVM.PartCategory)
-		buttonTextColor := &widget.ButtonTextColor{Idle: c.Colors.White}
+		buttonTextColor := &widget.ButtonTextColor{
+			Idle:  c.Colors.White,
+			Hover: c.Colors.Black,
+		}
 
 		actionButton := uiFactory.NewCyberpunkButton(
 			buttonText,

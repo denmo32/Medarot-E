@@ -96,7 +96,8 @@
       "Broken": "505050",
       "HP": "00C864",
       "HPCritical": "FF6400",
-      "Background": "1E1E28"
+      "Background": "1E1E28",
+      "Black": "000000"
     }
   },
   "Formulas": {

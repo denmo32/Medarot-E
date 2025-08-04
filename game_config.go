@@ -173,6 +173,7 @@ type UIConfig struct {
 		HP         color.Color
 		HPCritical color.Color
 		Background color.Color
+		Black      color.Color
 	}
 }
 

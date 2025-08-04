@@ -109,6 +109,7 @@ type GameSettings struct {
 			HP         string
 			HPCritical string
 			Background string
+			Black      string
 		}
 	}
 }
@@ -230,6 +231,7 @@ func LoadConfig() Config {
 				HP         color.Color
 				HPCritical color.Color
 				Background color.Color
+				Black      color.Color
 			}{
 				White:      parseHexColor(gameSettings.UI.Colors.White),
 				Red:        parseHexColor(gameSettings.UI.Colors.Red),
@@ -243,6 +245,7 @@ func LoadConfig() Config {
 				HP:         parseHexColor(gameSettings.UI.Colors.HP),
 				HPCritical: parseHexColor(gameSettings.UI.Colors.HPCritical),
 				Background: parseHexColor(gameSettings.UI.Colors.Background),
+				Black:      parseHexColor(gameSettings.UI.Colors.Black),
 			},
 		},
 	}
