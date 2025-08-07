@@ -8,12 +8,12 @@ import (
 
 // BattleLogic は戦闘関連のすべての計算ロジックをカプセル化します。
 type BattleLogic struct {
-	damageCalculator *DamageCalculator
-	hitCalculator    *HitCalculator
-	targetSelector   *TargetSelector
-	partInfoProvider PartInfoProviderInterface
+	damageCalculator       *DamageCalculator
+	hitCalculator          *HitCalculator
+	targetSelector         *TargetSelector
+	partInfoProvider       PartInfoProviderInterface
 	chargeInitiationSystem *ChargeInitiationSystem // 追加
-	rand             *rand.Rand
+	rand                   *rand.Rand
 }
 
 // GetDamageCalculator は DamageCalculator のインスタンスを返します。
@@ -51,11 +51,11 @@ func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDa
 	chargeInitiationSystem := NewChargeInitiationSystem(world, partInfoProvider)
 
 	return &BattleLogic{
-		damageCalculator: damageCalculator,
-		hitCalculator:    hitCalculator,
-		targetSelector:   targetSelector,
-		partInfoProvider: partInfoProvider,
+		damageCalculator:       damageCalculator,
+		hitCalculator:          hitCalculator,
+		targetSelector:         targetSelector,
+		partInfoProvider:       partInfoProvider,
 		chargeInitiationSystem: chargeInitiationSystem,
-		rand:             rng,
+		rand:                   rng,
 	}
 }

@@ -46,8 +46,6 @@ func (m *SceneManager) newCustomizeScene() (Scene, error) {
 	return NewCustomizeScene(m.resources, m), nil
 }
 
-
-
 // GoTo... メソッド群は、各シーンから呼び出され、指定されたシーンに遷移させます
 
 func (m *SceneManager) GoToTitleScene() {
@@ -76,5 +74,3 @@ func (m *SceneManager) GoToCustomizeScene() {
 	}
 	m.sequence.Switch(scene)
 }
-
-

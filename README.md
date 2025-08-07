@@ -28,9 +28,9 @@ Domain (ゲームのコア)
 このパッケージは、特定の技術（UIライブラリ、ECSフレームワークなど）から独立していることを目指します。
 
 *   `domain/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。
-*   `domain/ecs_types.go`: **[データ]** `donburi.Entity`など、ECSの概念に依存する型定義を定義します。
-*   `game_interfaces.go`: **[定義]** ゲーム全体で利用される主要なインターフェースを定義します。 `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。（将来的に `domain/interfaces.go` に移動予定）
-*   `game_events.go`: **[定義]** ゲーム内で発生するイベントの定義。（将来的に `domain/events.go` に移動予定）
+*   `ecs/components.go`: **[データ]** `donburi.Entity`など、ECSの概念に依存する型定義を定義します。
+*   `ecs/events.go`: **[定義]** ゲーム内で発生するイベントの定義。
+*   `game_interfaces.go`: **[定義]** ゲーム全体で利用される主要なインターフェースを定義します。 `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。
 
 ECS (エンティティ・コンポーネント・システム)
 ---------------------------------------

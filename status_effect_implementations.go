@@ -26,7 +26,9 @@ func DescriptionChargeStopEffect(data *domain.ChargeStopEffectData) string {
 func DurationChargeStopEffect(data *domain.ChargeStopEffectData) int { return data.DurationTurns }
 
 // TypeChargeStopEffect はChargeStopEffectDataの種類を返します。
-func TypeChargeStopEffect(data *domain.ChargeStopEffectData) domain.DebuffType { return domain.DebuffTypeChargeStop }
+func TypeChargeStopEffect(data *domain.ChargeStopEffectData) domain.DebuffType {
+	return domain.DebuffTypeChargeStop
+}
 
 // ApplyDamageOverTimeEffect はDamageOverTimeEffectDataを適用するロジックです。
 func ApplyDamageOverTimeEffect(world donburi.World, target *donburi.Entry, data *domain.DamageOverTimeEffectData) {
@@ -44,7 +46,9 @@ func DescriptionDamageOverTimeEffect(data *domain.DamageOverTimeEffectData) stri
 }
 
 // DurationDamageOverTimeEffect はDamageOverTimeEffectDataの持続時間を返します。
-func DurationDamageOverTimeEffect(data *domain.DamageOverTimeEffectData) int { return data.DurationTurns }
+func DurationDamageOverTimeEffect(data *domain.DamageOverTimeEffectData) int {
+	return data.DurationTurns
+}
 
 // TypeDamageOverTimeEffect はDamageOverTimeEffectDataの種類を返します。
 func TypeDamageOverTimeEffect(data *domain.DamageOverTimeEffectData) domain.DebuffType {

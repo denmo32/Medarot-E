@@ -75,8 +75,6 @@ func NewTitleScene(res *SharedResources, manager *SceneManager) *TitleScene {
 	)
 	panel.AddChild(customizeButton)
 
-	
-
 	t.ui = &ebitenui.UI{Container: rootContainer}
 	return t
 }
