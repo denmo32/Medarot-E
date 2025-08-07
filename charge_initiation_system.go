@@ -78,9 +78,9 @@ func (s *ChargeInitiationSystem) StartCharge(
 			var effectData interface{}
 			switch debuffInfo.Type {
 			case domain.DebuffTypeEvasion:
-				effectData = &EvasionDebuffEffectData{Multiplier: debuffInfo.Multiplier}
+				effectData = &domain.EvasionDebuffEffectData{Multiplier: debuffInfo.Multiplier}
 			case domain.DebuffTypeDefense:
-				effectData = &DefenseDebuffEffectData{Multiplier: debuffInfo.Multiplier}
+				effectData = &domain.DefenseDebuffEffectData{Multiplier: debuffInfo.Multiplier}
 			default:
 				// ログは削除
 			}

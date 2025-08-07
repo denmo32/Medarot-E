@@ -9,28 +9,28 @@ import (
 // --- Componentの型定義 ---
 // 各コンポーネントにユニークな型情報を持たせます。
 var (
-	SettingsComponent      = donburi.NewComponentType[Settings]()
-	PartsComponent         = donburi.NewComponentType[PartsComponentData]()
+	SettingsComponent      = donburi.NewComponentType[domain.Settings]()
+	PartsComponent         = donburi.NewComponentType[domain.PartsComponentData]()
 	MedalComponent         = donburi.NewComponentType[domain.Medal]()
-	GaugeComponent         = donburi.NewComponentType[Gauge]()
-	LogComponent           = donburi.NewComponentType[Log]()
-	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
+	GaugeComponent         = donburi.NewComponentType[domain.Gauge]()
+	LogComponent           = donburi.NewComponentType[domain.Log]()
+	PlayerControlComponent = donburi.NewComponentType[domain.PlayerControl]()
 
 	// --- Action Components ---
-	ActionIntentComponent = donburi.NewComponentType[ActionIntent]()
-	TargetComponent       = donburi.NewComponentType[Target]()
+	ActionIntentComponent = donburi.NewComponentType[domain.ActionIntent]()
+	TargetComponent       = donburi.NewComponentType[domain.Target]()
 
 	// --- State Components ---
-	StateComponent = donburi.NewComponentType[State]()
+	StateComponent = donburi.NewComponentType[domain.State]()
 
 	// --- AI Components ---
-	AIComponent = donburi.NewComponentType[AI]()
+	AIComponent = donburi.NewComponentType[domain.AI]()
 
 	// --- Team Buff Component ---
-	TeamBuffsComponent = donburi.NewComponentType[TeamBuffs]()
+	TeamBuffsComponent = donburi.NewComponentType[domain.TeamBuffs]()
 
 	// --- Status Effect Component ---
-	ActiveEffectsComponent = donburi.NewComponentType[ActiveEffects]()
+	ActiveEffectsComponent = donburi.NewComponentType[domain.ActiveEffects]()
 
 	// --- Debug Components ---
 	DebugModeComponent = donburi.NewComponentType[struct{}]()
@@ -39,144 +39,20 @@ var (
 	BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
 
 	// --- Game State Component ---
-	GameStateComponent = donburi.NewComponentType[GameStateData]()
+	GameStateComponent = donburi.NewComponentType[domain.GameStateData]()
 
 	// --- Player Action Queue Component ---
-	PlayerActionQueueComponent = donburi.NewComponentType[PlayerActionQueueComponentData]()
+	PlayerActionQueueComponent = donburi.NewComponentType[domain.PlayerActionQueueComponentData]()
 
 	// --- Last Action Result Component ---
 	LastActionResultComponent = donburi.NewComponentType[ActionResult]()
 )
 
-// PlayerActionQueueComponentData はプレイヤーの行動待ちキューを格納します。
-type PlayerActionQueueComponentData struct {
-	Queue []*donburi.Entry
-}
-
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
 var worldStateTag = donburi.NewComponentType[struct{}]()
-
-// GameStateData はゲーム全体の現在の状態を保持します。
-type GameStateData struct {
-	CurrentState domain.GameState
-}
-
-// ActiveEffects はエンティティに現在適用されているすべてのステータス効果のデータを保持します。
-type ActiveEffects struct {
-	Effects []*domain.ActiveStatusEffectData
-}
-
-// ChargeStopEffectData はチャージを一時停止させるデバフのデータです。
-type ChargeStopEffectData struct {
-	DurationTurns int // ターン数での持続時間
-}
-
-// DamageOverTimeEffectData は継続ダメージを与えるデバフのデータです。
-type DamageOverTimeEffectData struct {
-	DamagePerTurn int
-	DurationTurns int
-}
-
-// TargetRandomEffectData はターゲットをランダム化するデバフのデータです。
-type TargetRandomEffectData struct {
-	DurationTurns int
-}
-
-// EvasionDebuffEffectData は回避率を低下させるデバフのデータです。
-type EvasionDebuffEffectData struct {
-	Multiplier float64
-}
-
-// DefenseDebuffEffectData は防御力を低下させるデバフのデータです。
-type DefenseDebuffEffectData struct {
-	Multiplier float64
-}
 
 // BattleUIState is a singleton component that stores UI-specific data (ViewModels).
 type BattleUIState struct {
 	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
 	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
-}
-
-// --- コンポーネントの構造体定義 ---
-
-// Settings はメダロットの不変的な設定を保持します。
-type Settings struct {
-	ID        string
-	Name      string
-	Team      domain.TeamID
-	IsLeader  bool
-	DrawIndex int // 描画順やY座標の決定に使用されます。
-}
-
-// PartsComponentData はメダロットのパーツ一式を保持します。
-type PartsComponentData struct {
-	Map map[domain.PartSlotKey]*domain.PartInstanceData
-}
-
-// State はエンティティの現在の状態と関連データを保持します。
-type State struct {
-	CurrentState domain.StateType
-}
-
-// Gauge はチャージやクールダウンの進行状況を保持します。
-type Gauge struct {
-	ProgressCounter float64
-	TotalDuration   float64
-	CurrentGauge    float64 // 0-100
-}
-
-// ActionIntent は、AIまたはプレイヤーによって決定された行動の「意図」を表します。
-// これは、ターゲットがまだ解決されていない段階です。
-type ActionIntent struct {
-	SelectedPartKey domain.PartSlotKey
-	PendingEffects  []interface{} // チャージ開始時などに適用が予定される効果のデータ
-}
-
-// Target は、行動の対象となるエンティティとパーツ、およびその決定方針を表します。
-// TargetingSystemによってActionIntentが解決された後に設定されます。
-type Target struct {
-	Policy         domain.TargetingPolicyType
-	TargetEntity   donburi.Entity // *donburi.Entry から donburi.Entity に変更
-	TargetPartSlot domain.PartSlotKey
-}
-
-// Log は最後に行われた行動の結果を保持します。
-type Log struct {
-	LastActionLog string
-}
-
-// PlayerControl はプレイヤーが操作するエンティティであることを示すタグコンポーネントです。
-type PlayerControl struct{}
-
-// AI はAI制御エンティティのすべてのデータを集約します。
-type AI struct {
-	PersonalityID     string
-	TargetHistory     TargetHistoryData
-	LastActionHistory LastActionHistoryData
-}
-
-// TargetHistoryData は、このエンティティを最後に攻撃したエンティティを記録します。
-type TargetHistoryData struct {
-	LastAttacker *donburi.Entry
-}
-
-// LastActionHistoryData は、このエンティティが最後に攻撃を成功させたターゲットとパーツを記録します。
-type LastActionHistoryData struct {
-	LastHitTarget   *donburi.Entry
-	LastHitPartSlot domain.PartSlotKey
-}
-
-// TeamBuffs はチーム全体にかかるバフ効果を管理します。
-// このコンポーネントを持つエンティティはワールドに1つだけ存在することを想定しています。
-type TeamBuffs struct {
-	// Buffs[TeamID][BuffType]
-	Buffs map[domain.TeamID]map[domain.BuffType][]*BuffSource
-}
-
-// BuffSource は、どのエンティティのどのパーツからバフが発生しているかを記録します。
-type BuffSource struct {
-	SourceEntry *donburi.Entry
-	SourcePart  domain.PartSlotKey
-	Value       float64 // 効果量 (例: 命中率1.2倍なら1.2)
 }

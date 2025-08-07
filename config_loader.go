@@ -60,7 +60,7 @@ type GameSettings struct {
 		MinChance  float64
 		MaxChance  float64
 	}
-	Formulas map[domain.Trait]ActionFormulaConfig
+	Formulas map[domain.Trait]domain.ActionFormulaConfig
 	UI       struct {
 		Screen struct {
 			Width  int

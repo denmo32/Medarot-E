@@ -18,7 +18,7 @@ func (h *ThunderEffectHandler) ApplyEffect(result *ActionResult, world donburi.W
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にサンダー効果！チャージを停止させます。", result.DefenderName)
 		// ActionResult.AppliedEffectsにChargeStopEffectDataを追加
-		result.AppliedEffects = append(result.AppliedEffects, &ChargeStopEffectData{DurationTurns: 1}) // 例として1ターン
+		result.AppliedEffects = append(result.AppliedEffects, &domain.ChargeStopEffectData{DurationTurns: 1}) // 例として1ターン
 	}
 }
 
@@ -29,7 +29,7 @@ func (h *MeltEffectHandler) ApplyEffect(result *ActionResult, world donburi.Worl
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にメルト効果！継続ダメージを与えます。", result.DefenderName)
 		// ActionResult.AppliedEffectsにDamageOverTimeEffectDataを追加
-		result.AppliedEffects = append(result.AppliedEffects, &DamageOverTimeEffectData{DamagePerTurn: 10, DurationTurns: 2}) // 例としてダメージ10、2ターン
+		result.AppliedEffects = append(result.AppliedEffects, &domain.DamageOverTimeEffectData{DamagePerTurn: 10, DurationTurns: 2}) // 例としてダメージ10、2ターン
 	}
 }
 
@@ -40,6 +40,6 @@ func (h *VirusEffectHandler) ApplyEffect(result *ActionResult, world donburi.Wor
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にウイルス効果！ターゲットをランダム化します。", result.DefenderName)
 		// ActionResult.AppliedEffectsにTargetRandomEffectDataを追加
-		result.AppliedEffects = append(result.AppliedEffects, &TargetRandomEffectData{DurationTurns: 1}) // 例として1ターン
+		result.AppliedEffects = append(result.AppliedEffects, &domain.TargetRandomEffectData{DurationTurns: 1}) // 例として1ターン
 	}
 }

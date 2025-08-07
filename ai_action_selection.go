@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	"medarot-ebiten/domain"
 
 	"github.com/yohamta/donburi"

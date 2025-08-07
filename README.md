@@ -20,9 +20,27 @@ Core & Entry Point (中核・起動)
 *   `scene_manager.go`
     *   役割: シーンの切り替えと管理を行います。
     *   内容: `bamenn` ライブラリを使用して、ゲーム内の異なるシーン（タイトル、バトル、カスタマイズなど）間の遷移を制御します。
-*   `game_interfaces.go`
-    *   役割: ゲーム全体で利用される主要なインターフェースを定義します。
-    *   内容: `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。
+
+Domain (ゲームのコア)
+-------------------
+
+ゲームのルール、データ構造、インターフェースなど、プロジェクトの核心となるドメイン知識を定義します。
+このパッケージは、特定の技術（UIライブラリ、ECSフレームワークなど）から独立していることを目指します。
+
+*   `domain/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。
+*   `domain/ecs_types.go`: **[データ]** `donburi.Entity`など、ECSの概念に依存する型定義を定義します。
+*   `game_interfaces.go`: **[定義]** ゲーム全体で利用される主要なインターフェースを定義します。 `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。（将来的に `domain/interfaces.go` に移動予定）
+*   `game_events.go`: **[定義]** ゲーム内で発生するイベントの定義。（将来的に `domain/events.go` に移動予定）
+
+ECS (エンティティ・コンポーネント・システム)
+---------------------------------------
+
+ECSアーキテクチャの構成要素を定義します。
+
+*   `ecs_components.go`: **[データ]** ECSの「C（コンポーネント）」を`donburi`に登録します。各コンポーネントが保持するデータ構造自体は`domain`パッケージで定義されます。
+*   `ecs_setup_logic.go`: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
+*   `player_action_queue_component.go`: **[データ]** プレイヤーの行動実行待ちキューを保持するコンポーネントの定義。
+*   `battle_action_queue_component.go`: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
 
 Scene (各画面の実装)
 -------------------
@@ -36,7 +54,6 @@ Scene (各画面の実装)
 *   `scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）、UI、および戦闘全体の進行を管理するステートマシン（`GameState`）を保持します。`BattleScene`は、現在の状態（`GameState`）に応じて適切な処理（ゲージ進行、行動選択、アニメーションなど）を実行し、状態間の遷移を制御します。戦闘のコアな計算ロジックは`BattleLogic`構造体に集約されています。
 *   `scene_customize.go`: メダロットのカスタマイズ画面の実装。
 *   `scene_placeholder.go`: 未実装画面などのための、汎用的なプレースホルダー画面。
-*   `scene_test_ui.go`: UIのテストと検証のためのシーン。
 
 Battle Action (メダロットの行動)
 ---------------------------------------
@@ -47,7 +64,6 @@ Battle Action (メダロットの行動)
 *   `ai_action_selection.go`: **[ロジック/振る舞い]** AI制御のメダロットの行動選択ロジックを定義します。
 *   `ai_personalities.go`: **[データ]** AIの性格定義と、それに対応する行動戦略をマッピングします。
 *   `ai_target_strategies.go`: **[ロジック/振る舞い]** AIのターゲット選択戦略の具体的な実装を定義します。
-*   `battle_action_queue_component.go`: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
 *   `battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。（チャージ開始ロジックは `charge_initiation_system.go` に移動しました）
 *   `battle_action_executor.go`: **[ロジック/振る舞い]** アクションの実行に関する主要なロジックをカプセル化します。特性や武器タイプごとの具体的な処理は、`battle_trait_handlers.go` および `battle_weapon_effect_handlers.go` に委譲されます。
 *   `battle_trait_handlers.go`: **[ロジック/振る舞い]** 各特性（Trait）に応じたアクションの実行ロジックを定義します。`BaseAttackHandler`、`SupportTraitExecutor`、`ObstructTraitExecutor` などが含まれます。
@@ -73,11 +89,10 @@ Battle Logic & AI (戦闘ルールと思考)
 *   `battle_end_system.go`: **[ロジック/振る舞い]** ゲーム終了条件判定システム。`CheckGameEndSystem` を定義します。
 *   `battle_gauge_system.go`: **[ロジック/振る舞い]** チャージゲージおよびクールダウンゲージの進行管理システム。`UpdateGaugeSystem` を定義します。
 *   `battle_intention_system.go`: **[ロジック/振る舞い]** プレイヤーとAIの入力を処理し、行動の「意図（Intention）」を生成するシステムです。
-
-
-
 *   `status_effect_system.go`: **[ロジック/振る舞い]** ステータス効果の適用、更新、解除を管理するシステム。
 *   `battle_history_system.go`: **[ロジック/振る舞い]** アクションの結果に基づいてAIの行動履歴を更新するシステム。
+*   `status_effect_implementations.go`: **[ロジック/振る舞い]** 各種ステータス効果の具体的な適用・解除ロジックを定義します。
+*   `utils.go`: 文字列のパースや状態表示名取得などの汎用ユーティリティ関数。
 
 UI (ユーザーインターフェース)
 -----------------------
@@ -114,20 +129,7 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 *   `ui_event_processor_system.go`: **[ロジック/振る舞い]** UIから発行されたイベント（プレイヤーの行動選択など）を処理し、対応するゲームイベントを発行します。ゲームロジックとは直接やり取りせず、イベントを介して間接的に連携します。
 *   `ui_system.go`: **[ロジック/振る舞い]** UI関連のECSシステムを定義します。主に`UpdateInfoPanelViewModelSystem`が含まれ、情報パネルのViewModelを更新します。
 *   `ui_target_indicator_manager.go`: **[ロジック/振る舞い]** ターゲットインジケーターの表示と状態を管理します。
-
-Core Data & Utilities (コアデータとユーティリティ)
-------------------------------------
-
-プロジェクト全体で使用する基本的なデータ構造や補助的な機能です。
-
-*   `player_action_queue_component.go`: **[データ]** プレイヤーの行動実行待ちキューを保持するコンポーネントの定義。
-*   `status_effect_implementations.go`: **[ロジック/振る舞い]** 各種ステータス効果の具体的な適用・解除ロジックを定義します。
 *   `ui_events.go`: **[データ]** UIからゲームロジックへ通知されるイベントの定義。
-*   `domain_types.go`: ゲーム全体で使われる基本的な型や定数、UI用のViewModel、およびUIイベントの定義。
-*   `ecs_components.go`: **[データ]** ECSの「C（コンポーネント）」の定義。エンティティを構成する部品や状態を示すタグのデータ構造を定義します。
-*   `ecs_setup_logic.go`: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
-*   `game_events.go`: ゲーム内で発生するイベントの定義。
-*   `utils.go`: 文字列のパースや状態表示名取得などの汎用ユーティリティ関数。
 
 Configuration & Resources (設定とリソース)
 ------------------------------------
@@ -135,7 +137,7 @@ Configuration & Resources (設定とリソース)
 ゲームの設定値や外部リソースの読み込み・管理に関するファイル群です。
 
 *   `config_loader.go`: ゲームの固定設定値（画面サイズ、色など）をロードします。
-*   `game_config.go`: ゲームバランスに関する設定値やUIの固定値を定義します。
+*   `game_config.go`: ゲームバランスに関する設定値やUIの固定値など、アプリケーション全体の設定（`Config`構造体）を定義します。ドメインルールに関する定義は`domain/types.go`に分離されました。
 *   `resource_ids.go`: `ebitengine-resource` ライブラリで使用するリソースIDを定義します。
 *   `resource_loader.go`: `ebitengine-resource` を使用したゲームリソース（CSVデータ、フォントなど）の読み込みと管理。
 *   `game_data_manager.go`: 静的なゲームデータ（パーツ定義、メダル定義など）の管理とアクセスを提供します。

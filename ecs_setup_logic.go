@@ -15,19 +15,19 @@ func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam
 
 	// Ensure GameStateComponent entity exists
 	gameStateEntry := world.Entry(world.Create(GameStateComponent, worldStateTag))
-	GameStateComponent.SetValue(gameStateEntry, GameStateData{CurrentState: domain.StateGaugeProgress})
+	GameStateComponent.SetValue(gameStateEntry, domain.GameStateData{CurrentState: domain.StateGaugeProgress})
 
 	// Ensure PlayerActionQueueComponent entity exists
 	playerActionQueueEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
-	PlayerActionQueueComponent.SetValue(playerActionQueueEntry, PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
+	PlayerActionQueueComponent.SetValue(playerActionQueueEntry, domain.PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
 
 	// Ensure LastActionResultComponent entity exists
 	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
 	LastActionResultComponent.SetValue(lastActionResultEntry, ActionResult{})
 
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
-	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{
-		Buffs: make(map[domain.TeamID]map[domain.BuffType][]*BuffSource),
+	TeamBuffsComponent.SetValue(teamBuffsEntry, domain.TeamBuffs{
+		Buffs: make(map[domain.TeamID]map[domain.BuffType][]*domain.BuffSource),
 	})
 
 	// Initialize BattleUIStateComponent
@@ -57,7 +57,7 @@ func CreateMedarotEntities(world donburi.World, gameData *domain.GameData, playe
 			ActionIntentComponent,
 			TargetComponent,
 		))
-		SettingsComponent.SetValue(entry, Settings{
+		SettingsComponent.SetValue(entry, domain.Settings{
 			ID:        loadout.ID,
 			Name:      loadout.Name,
 			Team:      loadout.Team,
@@ -85,7 +85,7 @@ func CreateMedarotEntities(world donburi.World, gameData *domain.GameData, playe
 				log.Fatalf("エラー: ID %s のパーツ定義が見つかりません。", partID)
 			}
 		}
-		PartsComponent.SetValue(entry, PartsComponentData{Map: partsInstanceMap})
+		PartsComponent.SetValue(entry, domain.PartsComponentData{Map: partsInstanceMap})
 
 		medalDef, medalFound := gameDataManager.GetMedalDefinition(loadout.MedalID)
 		if medalFound {
@@ -94,23 +94,23 @@ func CreateMedarotEntities(world donburi.World, gameData *domain.GameData, playe
 			log.Fatalf("エラー: ID %s のメダル定義が見つかりません。", loadout.MedalID)
 		}
 
-		StateComponent.SetValue(entry, State{CurrentState: domain.StateIdle})
-		GaugeComponent.SetValue(entry, Gauge{})
-		LogComponent.SetValue(entry, Log{})
-		ActionIntentComponent.SetValue(entry, ActionIntent{})
-		TargetComponent.SetValue(entry, Target{})
+		StateComponent.SetValue(entry, domain.State{CurrentState: domain.StateIdle})
+		GaugeComponent.SetValue(entry, domain.Gauge{})
+		LogComponent.SetValue(entry, domain.Log{})
+		ActionIntentComponent.SetValue(entry, domain.ActionIntent{})
+		TargetComponent.SetValue(entry, domain.Target{})
 
 		if loadout.Team != playerTeam { // AIのみ
 
-			donburi.Add(entry, AIComponent, &AI{
+			donburi.Add(entry, AIComponent, &domain.AI{
 				PersonalityID:     medalDef.Personality,
-				TargetHistory:     TargetHistoryData{},
-				LastActionHistory: LastActionHistoryData{},
+				TargetHistory:     domain.TargetHistoryData{},
+				LastActionHistory: domain.LastActionHistoryData{},
 			})
 		}
 
 		if loadout.Team == playerTeam {
-			donburi.Add(entry, PlayerControlComponent, &PlayerControl{})
+			donburi.Add(entry, PlayerControlComponent, &domain.PlayerControl{})
 		}
 	}
 	log.Printf("%d体のメダロットエンティティを生成しました。", len(gameData.Medarots))

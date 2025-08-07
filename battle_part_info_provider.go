@@ -27,7 +27,7 @@ func (pip *PartInfoProvider) GetGameDataManager() *GameDataManager {
 }
 
 // GetPartParameterValue は指定されたパーツスロットとパラメータの値を取得する汎用ヘルパー関数です。
-func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlot domain.PartSlotKey, param PartParameter) float64 {
+func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlot domain.PartSlotKey, param domain.PartParameter) float64 {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return 0
@@ -43,17 +43,17 @@ func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlo
 	}
 
 	switch param {
-	case Power:
+	case domain.Power:
 		return float64(partDef.Power)
-	case Accuracy:
+	case domain.Accuracy:
 		return float64(partDef.Accuracy)
-	case Mobility:
+	case domain.Mobility:
 		return float64(partDef.Mobility)
-	case Propulsion:
+	case domain.Propulsion:
 		return float64(partDef.Propulsion)
-	case Stability:
+	case domain.Stability:
 		return float64(partDef.Stability)
-	case Defense:
+	case domain.Defense:
 		return float64(partDef.Defense)
 	default:
 		return 0
@@ -110,12 +110,12 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []dom
 
 // GetOverallPropulsion はエンティティの総推進力を返します。
 func (pip *PartInfoProvider) GetOverallPropulsion(entry *donburi.Entry) int {
-	return int(pip.GetPartParameterValue(entry, domain.PartSlotLegs, Propulsion))
+	return int(pip.GetPartParameterValue(entry, domain.PartSlotLegs, domain.Propulsion))
 }
 
 // GetOverallMobility はエンティティの総機動力を返します。
 func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
-	return int(pip.GetPartParameterValue(entry, domain.PartSlotLegs, Mobility))
+	return int(pip.GetPartParameterValue(entry, domain.PartSlotLegs, domain.Mobility))
 }
 
 // GetLegsPartDefinition はエンティティの脚部パーツの定義を取得します。
@@ -148,13 +148,13 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 
 // GetEvasionRate はエンティティの回避度を計算します。
 func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
-	evasion := pip.GetPartParameterValue(entry, domain.PartSlotLegs, Mobility)
+	evasion := pip.GetPartParameterValue(entry, domain.PartSlotLegs, domain.Mobility)
 
 	// ActiveEffectsComponentから回避デバフの影響を適用
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
 		for _, activeEffect := range activeEffects.Effects {
-			if evasionDebuff, ok := activeEffect.EffectData.(*EvasionDebuffEffectData); ok {
+			if evasionDebuff, ok := activeEffect.EffectData.(*domain.EvasionDebuffEffectData); ok {
 				evasion *= evasionDebuff.Multiplier
 			}
 		}
@@ -164,13 +164,13 @@ func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
 
 // GetDefenseRate はエンティティの防御度を計算します。
 func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
-	defense := pip.GetPartParameterValue(entry, domain.PartSlotLegs, Defense)
+	defense := pip.GetPartParameterValue(entry, domain.PartSlotLegs, domain.Defense)
 
 	// ActiveEffectsComponentから防御デバフの影響を適用
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
 		for _, activeEffect := range activeEffects.Effects {
-			if defenseDebuff, ok := activeEffect.EffectData.(*DefenseDebuffEffectData); ok {
+			if defenseDebuff, ok := activeEffect.EffectData.(*domain.DefenseDebuffEffectData); ok {
 				defense *= defenseDebuff.Multiplier
 			}
 		}
@@ -217,7 +217,7 @@ func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partIns
 
 	for teamID, buffMap := range teamBuffs.Buffs {
 		for buffType, buffSources := range buffMap {
-			newBuffSources := make([]*BuffSource, 0, len(buffSources))
+			newBuffSources := make([]*domain.BuffSource, 0, len(buffSources))
 			for _, buff := range buffSources {
 				// このパーツからのバフでなければ保持する
 				if buff.SourceEntry != entry || buff.SourcePart != partSlot {

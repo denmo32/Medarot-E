@@ -79,17 +79,17 @@ func LoadFonts(assetPaths *AssetPaths, config *Config) (text.Face, text.Face, te
 }
 
 // LoadFormulas loads action formulas from the JSON resource.
-func LoadFormulas() (map[domain.Trait]ActionFormula, error) {
+func LoadFormulas() (map[domain.Trait]domain.ActionFormula, error) {
 	res := r.LoadRaw(RawFormulasJSON)
-	var formulasConfig map[domain.Trait]ActionFormulaConfig
+	var formulasConfig map[domain.Trait]domain.ActionFormulaConfig
 	err := json.Unmarshal(res.Data, &formulasConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal formulas data: %w", err)
 	}
 
-	formulas := make(map[domain.Trait]ActionFormula)
+	formulas := make(map[domain.Trait]domain.ActionFormula)
 	for trait, formulaCfg := range formulasConfig {
-		formulas[trait] = ActionFormula{
+		formulas[trait] = domain.ActionFormula{
 			ID:                 string(trait),
 			SuccessRateBonuses: formulaCfg.SuccessRateBonuses,
 			PowerBonuses:       formulaCfg.PowerBonuses,

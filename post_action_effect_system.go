@@ -40,15 +40,15 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 			for _, effectData := range result.AppliedEffects {
 				// effectDataの型に応じてApplyを呼び出す
 				switch effect := effectData.(type) {
-				case *ChargeStopEffectData:
+				case *domain.ChargeStopEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *DamageOverTimeEffectData:
+				case *domain.DamageOverTimeEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *TargetRandomEffectData:
+				case *domain.TargetRandomEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *EvasionDebuffEffectData:
+				case *domain.EvasionDebuffEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
-				case *DefenseDebuffEffectData:
+				case *domain.DefenseDebuffEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
 				default:
 					log.Printf("警告: 未知の適用効果タイプです: %T", effectData)

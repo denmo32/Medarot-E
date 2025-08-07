@@ -10,46 +10,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// PartParameter はパーツのどの数値を参照するかを示す型です
-type PartParameter string
-
-const (
-	Power      PartParameter = "Power"
-	Accuracy   PartParameter = "Accuracy"
-	Mobility   PartParameter = "Mobility"
-	Propulsion PartParameter = "Propulsion"
-	Stability  PartParameter = "Stability"
-	Defense    PartParameter = "Defense"
-)
-
-// BonusTerm は計算式のボーナス項を定義します
-type BonusTerm struct {
-	SourceParam PartParameter // どのパラメータを参照するか
-	Multiplier  float64       // 乗数
-}
-
-// DebuffEffect は発生するデバフ効果を定義します
-type DebuffEffect struct {
-	Type       domain.DebuffType // デバフの種類
-	Multiplier float64           // 効果量（乗数）
-}
-
-// ActionFormula はアクションの計算ルール全体を定義します
-type ActionFormula struct {
-	ID                 string
-	SuccessRateBonuses []BonusTerm    // 成功度へのボーナスリスト
-	PowerBonuses       []BonusTerm    // 威力度へのボーナスリスト
-	CriticalRateBonus  float64        // クリティカル率へのボーナス
-	UserDebuffs        []DebuffEffect // チャージ中に自身にかかるデバフのリスト
-}
-
-type ActionFormulaConfig struct {
-	SuccessRateBonuses []BonusTerm
-	PowerBonuses       []BonusTerm
-	CriticalRateBonus  float64
-	UserDebuffs        []DebuffEffect
-}
-
 // BalanceConfig 構造体を新しいルールに合わせて拡張します。
 type BalanceConfig struct {
 	Time struct {
@@ -101,7 +61,7 @@ type BalanceConfig struct {
 		MinChance  float64
 		MaxChance  float64
 	}
-	Formulas map[domain.Trait]ActionFormulaConfig // 新しく追加
+	Formulas map[domain.Trait]domain.ActionFormulaConfig // 新しく追加
 }
 
 type AssetPaths struct {

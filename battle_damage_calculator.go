@@ -93,7 +93,7 @@ func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, a
 // CalculateReducedDamage は防御成功時のダメージを計算します。
 func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry) int {
 	// ダメージ軽減ロジック: ダメージ = 元ダメージ - 脚部パーツの防御力
-	defenseValue := dc.partInfoProvider.GetPartParameterValue(targetEntry, domain.PartSlotLegs, Defense)
+	defenseValue := dc.partInfoProvider.GetPartParameterValue(targetEntry, domain.PartSlotLegs, domain.Defense)
 	reducedDamage := originalDamage - int(defenseValue)
 	if reducedDamage < 1 {
 		reducedDamage = 1 // 最低でも1ダメージは保証

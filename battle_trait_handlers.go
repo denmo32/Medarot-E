@@ -20,7 +20,7 @@ type BaseAttackHandler struct{}
 func (h *BaseAttackHandler) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	intent *ActionIntent,
+	intent *domain.ActionIntent,
 	damageCalculator *DamageCalculator,
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
@@ -51,7 +51,7 @@ func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *domain.Pa
 func (h *BaseAttackHandler) performAttackLogic(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	intent *ActionIntent,
+	intent *domain.ActionIntent,
 	damageCalculator *DamageCalculator,
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
@@ -203,7 +203,7 @@ type SupportTraitExecutor struct{}
 func (h *SupportTraitExecutor) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	intent *ActionIntent,
+	intent *domain.ActionIntent,
 	damageCalculator *DamageCalculator,
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
@@ -232,7 +232,7 @@ func (h *SupportTraitExecutor) Execute(
 	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
 
 	buffValue := 1.0 + (float64(actingPartDef.Power) / 100.0)
-	newBuffSource := &BuffSource{
+	newBuffSource := &domain.BuffSource{
 		SourceEntry: actingEntry,
 		SourcePart:  intent.SelectedPartKey,
 		Value:       buffValue,
@@ -242,14 +242,14 @@ func (h *SupportTraitExecutor) Execute(
 	buffType := domain.BuffTypeAccuracy
 
 	if _, exists := teamBuffs.Buffs[teamID]; !exists {
-		teamBuffs.Buffs[teamID] = make(map[domain.BuffType][]*BuffSource)
+		teamBuffs.Buffs[teamID] = make(map[domain.BuffType][]*domain.BuffSource)
 	}
 	if _, exists := teamBuffs.Buffs[teamID][buffType]; !exists {
-		teamBuffs.Buffs[teamID][buffType] = make([]*BuffSource, 0)
+		teamBuffs.Buffs[teamID][buffType] = make([]*domain.BuffSource, 0)
 	}
 
 	existingBuffs := teamBuffs.Buffs[teamID][buffType]
-	filteredBuffs := make([]*BuffSource, 0, len(existingBuffs))
+	filteredBuffs := make([]*domain.BuffSource, 0, len(existingBuffs))
 	for _, buff := range existingBuffs {
 		if buff.SourceEntry != actingEntry || buff.SourcePart != intent.SelectedPartKey {
 			filteredBuffs = append(filteredBuffs, buff)
@@ -267,7 +267,7 @@ type ObstructTraitExecutor struct{}
 func (h *ObstructTraitExecutor) Execute(
 	actingEntry *donburi.Entry,
 	world donburi.World,
-	intent *ActionIntent,
+	intent *domain.ActionIntent,
 	damageCalculator *DamageCalculator,
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,

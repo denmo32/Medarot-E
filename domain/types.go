@@ -1,58 +1,28 @@
 package domain
 
-import (
-	"github.com/yohamta/donburi"
-)
+// NOTE: This file should NOT depend on "github.com/yohamta/donburi".
+
+// --- Enums and Constants ---
 
 type TeamID int
 type GameState string
 type PartSlotKey string
 type PartType string
-
-// StateType はエンティティの状態を表す文字列です。
 type StateType string
 type PartCategory string
 type Trait string
 type WeaponType string
-
-// GameEndResult はゲーム終了チェックの結果を保持します。
-type GameEndResult struct {
-	IsGameOver bool
-	Winner     TeamID
-	Message    string
-}
-
-// PlayerInputSystemResult はプレイヤーの入力が必要なエンティティのリストを保持します。
-type PlayerInputSystemResult struct {}
-
-// AvailablePart now holds PartDefinition for AI/UI to see base stats.
-type AvailablePart struct {
-	PartDef  *PartDefinition // Changed from Part to PartDefinition
-	Slot     PartSlotKey
-}
-
-// MessageTemplate defines the structure for a single message in the JSON file.
-type MessageTemplate struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-}
-
-// TargetablePart はAIがターゲット可能なパーツの情報を保持します。
-type TargetablePart struct {
-	Entity   *donburi.Entry
-	PartInst *PartInstanceData
-	PartDef  *PartDefinition
-	Slot     PartSlotKey
-}
-
-// TargetingPolicyType はターゲット決定方針を示す型です。
 type TargetingPolicyType string
+type BuffType string
+type DebuffType string
+type PartParameter string
 
 const (
 	Team1    TeamID = 0
 	Team2    TeamID = 1
-	TeamNone TeamID = -1 // 勝者なし、または引き分けを表します
+	TeamNone TeamID = -1
 )
+
 const (
 	StateGaugeProgress      GameState = "GaugeProgress"
 	StatePlayerActionSelect GameState = "PlayerActionSelect"
@@ -62,8 +32,6 @@ const (
 	StateMessage            GameState = "Message"
 	StateGameOver           GameState = "GameOver"
 )
-
-
 
 const (
 	StateIdle     StateType = "idle"
@@ -79,18 +47,21 @@ const (
 	PartSlotLeftArm  PartSlotKey = "l_arm"
 	PartSlotLegs     PartSlotKey = "legs"
 )
+
 const (
 	PartTypeHead PartType = "頭部"
 	PartTypeRArm PartType = "右腕"
 	PartTypeLArm PartType = "左腕"
 	PartTypeLegs PartType = "脚部"
 )
+
 const (
 	CategoryRanged       PartCategory = "射撃"
 	CategoryMelee        PartCategory = "格闘"
 	CategoryIntervention PartCategory = "介入"
 	CategoryNone         PartCategory = "NONE"
 )
+
 const (
 	TraitAim      Trait = "狙い撃ち"
 	TraitStrike   Trait = "殴る"
@@ -101,13 +72,48 @@ const (
 	TraitNone     Trait = "NONE"
 )
 
-const PlayersPerTeam = 3
-
-type BuffType string
+const (
+	PolicyPreselected        TargetingPolicyType = "Preselected"
+	PolicyClosestAtExecution TargetingPolicyType = "ClosestAtExecution"
+)
 
 const (
 	BuffTypeAccuracy BuffType = "Accuracy"
 )
+
+const (
+	DebuffTypeEvasion        DebuffType = "Evasion"
+	DebuffTypeDefense        DebuffType = "Defense"
+	DebuffTypeChargeStop     DebuffType = "ChargeStop"
+	DebuffTypeDamageOverTime DebuffType = "DamageOverTime"
+	DebuffTypeTargetRandom   DebuffType = "TargetRandom"
+)
+
+const (
+	Power      PartParameter = "Power"
+	Accuracy   PartParameter = "Accuracy"
+	Mobility   PartParameter = "Mobility"
+	Propulsion PartParameter = "Propulsion"
+	Stability  PartParameter = "Stability"
+	Defense    PartParameter = "Defense"
+)
+
+const PlayersPerTeam = 3
+
+// --- Data Structures ---
+
+// GameEndResult はゲーム終了チェックの結果を保持します。
+type GameEndResult struct {
+	IsGameOver bool
+	Winner     TeamID
+	Message    string
+}
+
+// MessageTemplate defines the structure for a single message in the JSON file.
+type MessageTemplate struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
 
 type GameData struct {
 	Medarots []MedarotData
@@ -126,14 +132,13 @@ type MedarotData struct {
 	DrawIndex  int
 }
 
-// PartDefinition はCSVからロードされるパーツの静的で不変のデータを保持します。
 type PartDefinition struct {
 	ID         string
 	PartName   string
 	Type       PartType
 	Category   PartCategory
 	Trait      Trait
-	MaxArmor   int // MaxArmor は定義の一部です
+	MaxArmor   int
 	Power      int
 	Accuracy   int
 	Charge     int
@@ -145,12 +150,10 @@ type PartDefinition struct {
 	WeaponType WeaponType
 }
 
-// PartInstanceData (旧Part) は戦闘中のパーツインスタンスの動的な状態を保持します。
 type PartInstanceData struct {
-	DefinitionID string // PartDefinition を検索するためのID
+	DefinitionID string
 	CurrentArmor int
 	IsBroken     bool
-	// このインスタンスに固有の他の一時的なバフ/デバフなどの動的状態はここに記述可能
 }
 
 type Medal struct {
@@ -160,29 +163,89 @@ type Medal struct {
 	SkillLevel  int
 }
 
-const (
-	PolicyPreselected        TargetingPolicyType = "Preselected"
-	PolicyClosestAtExecution TargetingPolicyType = "ClosestAtExecution"
-)
+// --- Component Data Structs (donburi-independent) ---
 
-type DebuffType string
-
-const (
-	DebuffTypeEvasion        DebuffType = "Evasion"
-	DebuffTypeDefense        DebuffType = "Defense"
-	DebuffTypeChargeStop     DebuffType = "ChargeStop"     // チャージ一時停止
-	DebuffTypeDamageOverTime DebuffType = "DamageOverTime" // チャージ中ダメージ
-	DebuffTypeTargetRandom   DebuffType = "TargetRandom"   // ターゲットのランダム化
-)
-
-// ActiveStatusEffectData は、エンティティに現在適用されている効果のデータとその残り期間を追跡します。
-type ActiveStatusEffectData struct {
-	EffectData   interface{} // ChargeStopEffect, DamageOverTimeEffect などのインスタンス
-	RemainingDur int
+type GameStateData struct {
+	CurrentState GameState
 }
 
-// ActionTarget はUIが選択したアクションのターゲット情報を保持します。
-type ActionTarget struct {
-	TargetEntityID donburi.Entity // ターゲットエンティティのID
-	Slot           PartSlotKey    // ターゲットパーツのスロット
+type ChargeStopEffectData struct {
+	DurationTurns int
+}
+
+type DamageOverTimeEffectData struct {
+	DamagePerTurn int
+	DurationTurns int
+}
+
+type TargetRandomEffectData struct {
+	DurationTurns int
+}
+
+type EvasionDebuffEffectData struct {
+	Multiplier float64
+}
+
+type DefenseDebuffEffectData struct {
+	Multiplier float64
+}
+
+type Settings struct {
+	ID        string
+	Name      string
+	Team      TeamID
+	IsLeader  bool
+	DrawIndex int
+}
+
+type PartsComponentData struct {
+	Map map[PartSlotKey]*PartInstanceData
+}
+
+type State struct {
+	CurrentState StateType
+}
+
+type Gauge struct {
+	ProgressCounter float64
+	TotalDuration   float64
+	CurrentGauge    float64
+}
+
+type ActionIntent struct {
+	SelectedPartKey PartSlotKey
+	PendingEffects  []interface{}
+}
+
+type Log struct {
+	LastActionLog string
+}
+
+type PlayerControl struct{}
+
+// --- Formula-related Structs ---
+
+type BonusTerm struct {
+	SourceParam PartParameter
+	Multiplier  float64
+}
+
+type DebuffEffect struct {
+	Type       DebuffType
+	Multiplier float64
+}
+
+type ActionFormula struct {
+	ID                 string
+	SuccessRateBonuses []BonusTerm
+	PowerBonuses       []BonusTerm
+	CriticalRateBonus  float64
+	UserDebuffs        []DebuffEffect
+}
+
+type ActionFormulaConfig struct {
+	SuccessRateBonuses []BonusTerm
+	PowerBonuses       []BonusTerm
+	CriticalRateBonus  float64
+	UserDebuffs        []DebuffEffect
 }

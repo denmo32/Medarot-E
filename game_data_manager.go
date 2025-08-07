@@ -11,10 +11,10 @@ import (
 // GameDataManager はパーツやメダルなどのすべての静적ゲームデータ定義とメッセージを保持します。
 type GameDataManager struct {
 	partDefinitions  map[string]*domain.PartDefinition
-	medalDefinitions map[string]*domain.Medal       // Medal構造体は今のところ主に定義情報と仮定
-	Messages         *MessageManager                // メッセージマネージャー
-	Font             text.Face                      // UIで使用するフォント
-	Formulas         map[domain.Trait]ActionFormula // 追加: アクション計算式
+	medalDefinitions map[string]*domain.Medal              // Medal構造体は今のところ主に定義情報と仮定
+	Messages         *MessageManager                       // メッセージマネージャー
+	Font             text.Face                             // UIで使用するフォント
+	Formulas         map[domain.Trait]domain.ActionFormula // 追加: アクション計算式
 	// 他のゲームデータ定義もここに追加できます
 }
 
@@ -28,9 +28,9 @@ func NewGameDataManager(font text.Face, assetPaths *AssetPaths, r *resource.Load
 	gdm := &GameDataManager{
 		partDefinitions:  make(map[string]*domain.PartDefinition),
 		medalDefinitions: make(map[string]*domain.Medal),
-		Messages:         messageManager,                  // メッセージマネージャー
-		Font:             font,                            // UIで使用するフォント
-		Formulas:         make(map[domain.Trait]ActionFormula), // 初期化
+		Messages:         messageManager,                              // メッセージマネージャー
+		Font:             font,                                        // UIで使用するフォント
+		Formulas:         make(map[domain.Trait]domain.ActionFormula), // 初期化
 	}
 	return gdm, nil
 }

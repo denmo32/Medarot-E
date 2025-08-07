@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
@@ -10,7 +12,7 @@ import (
 
 // GetPlayerActionQueueComponent はワールド状態エンティティから PlayerActionQueueComponentData を取得します。
 // PlayerActionQueueComponentType を持つエンティティが1つだけ存在することを期待します。
-func GetPlayerActionQueueComponent(world donburi.World) *PlayerActionQueueComponentData {
+func GetPlayerActionQueueComponent(world donburi.World) *domain.PlayerActionQueueComponentData {
 	entry, ok := query.NewQuery(filter.Contains(PlayerActionQueueComponent)).First(world)
 	if !ok {
 		log.Panicln("PlayerActionQueueComponent がワールドに見つかりません。ワールド状態エンティティで初期化する必要があります。")
@@ -29,7 +31,7 @@ func EnsurePlayerActionQueueEntity(world donburi.World) *donburi.Entry {
 
 	log.Println("PlayerActionQueueComponent と worldStateTag を持つ PlayerActionQueueEntity を作成します。")
 	newEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
-	PlayerActionQueueComponent.SetValue(newEntry, PlayerActionQueueComponentData{
+	PlayerActionQueueComponent.SetValue(newEntry, domain.PlayerActionQueueComponentData{
 		Queue: make([]*donburi.Entry, 0),
 	})
 	return newEntry

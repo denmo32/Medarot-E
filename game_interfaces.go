@@ -34,7 +34,7 @@ type TraitActionHandler interface {
 	Execute(
 		actingEntry *donburi.Entry,
 		world donburi.World,
-		intent *ActionIntent,
+		intent *domain.ActionIntent,
 		damageCalculator *DamageCalculator,
 		hitCalculator *HitCalculator,
 		targetSelector *TargetSelector,
@@ -54,7 +54,7 @@ type WeaponTypeEffectHandler interface {
 // PartInfoProviderInterface はパーツの状態や情報を取得・操作するロジックのインターフェースです。
 type PartInfoProviderInterface interface {
 	// パーツのパラメータ値を取得するメソッド
-	GetPartParameterValue(entry *donburi.Entry, partSlot domain.PartSlotKey, param PartParameter) float64
+	GetPartParameterValue(entry *donburi.Entry, partSlot domain.PartSlotKey, param domain.PartParameter) float64
 
 	// パーツスロットを検索するメソッド
 	FindPartSlot(entry *donburi.Entry, partToFindInstance *domain.PartInstanceData) domain.PartSlotKey

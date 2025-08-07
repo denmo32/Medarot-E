@@ -29,7 +29,7 @@ func (s *StatusEffectSystem) Apply(entry *donburi.Entry, effectData interface{},
 
 	// 効果の持続時間を管理するコンポーネントを追加
 	if !entry.HasComponent(ActiveEffectsComponent) {
-		donburi.Add(entry, ActiveEffectsComponent, &ActiveEffects{
+		donburi.Add(entry, ActiveEffectsComponent, &domain.ActiveEffects{
 			Effects: make([]*domain.ActiveStatusEffectData, 0),
 		})
 	}
@@ -69,7 +69,7 @@ func (s *StatusEffectSystem) Update() {
 
 			// 効果のタイプに応じて処理を分岐
 			switch effect := effectData.EffectData.(type) {
-			case *DamageOverTimeEffectData:
+			case *domain.DamageOverTimeEffectData:
 				// 継続ダメージの処理
 				if DurationDamageOverTimeEffect(effect) > 0 { // Duration()が0より大きい場合のみダメージを与える
 					// ダメージ計算ロジックを呼び出す
@@ -91,13 +91,13 @@ func (s *StatusEffectSystem) Update() {
 					}
 					log.Printf("%s は継続ダメージ %d を受けた。", SettingsComponent.Get(entry).Name, effect.DamagePerTurn)
 				}
-			case *ChargeStopEffectData:
+			case *domain.ChargeStopEffectData:
 				// チャージ停止効果はChargeInitiationSystemで処理されるため、ここでは何もしない
-			case *TargetRandomEffectData:
+			case *domain.TargetRandomEffectData:
 				// ターゲットランダム化効果はBattleTargetSelectorで処理されるため、ここでは何もしない
-			case *EvasionDebuffEffectData:
+			case *domain.EvasionDebuffEffectData:
 				// 回避率デバフはPartInfoProviderInterfaceで処理されるため、ここでは何もしない
-			case *DefenseDebuffEffectData:
+			case *domain.DefenseDebuffEffectData:
 				// 防御力デバフはPartInfoProviderInterfaceで処理されるため、ここでは何もしない
 			default:
 				log.Printf("未対応のステータス効果データ型です: %T", effectData.EffectData)
@@ -113,15 +113,15 @@ func (s *StatusEffectSystem) Update() {
 		for _, effectToRemove := range effectsToRemove {
 			// 効果の解除ロジックを呼び出す
 			switch effect := effectToRemove.EffectData.(type) {
-			case *ChargeStopEffectData:
+			case *domain.ChargeStopEffectData:
 				RemoveChargeStopEffect(s.world, entry, effect)
-			case *DamageOverTimeEffectData:
+			case *domain.DamageOverTimeEffectData:
 				RemoveDamageOverTimeEffect(s.world, entry, effect)
-			case *TargetRandomEffectData:
+			case *domain.TargetRandomEffectData:
 				RemoveTargetRandomEffect(s.world, entry, effect)
-			case *EvasionDebuffEffectData:
+			case *domain.EvasionDebuffEffectData:
 				RemoveEvasionDebuffEffect(s.world, entry, effect)
-			case *DefenseDebuffEffectData:
+			case *domain.DefenseDebuffEffectData:
 				RemoveDefenseDebuffEffect(s.world, entry, effect)
 			default:
 				log.Printf("未対応のステータス効果データ型です（解除時）: %T", effectToRemove.EffectData)
