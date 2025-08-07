@@ -2,14 +2,15 @@ package main
 
 import (
 	"log"
-	"medarot-ebiten/domain"
+
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
 
 // UpdateHistorySystem は、アクションの結果に基づいてAIの行動履歴を更新します。
 // このシステムは、アニメーションが完了し、アクションの結果が完全に確定した後に呼び出されるべきです。
-func UpdateHistorySystem(world donburi.World, result *domain.ActionResult) {
+func UpdateHistorySystem(world donburi.World, result *ecs.ActionResult) {
 	if result == nil {
 		return
 	}

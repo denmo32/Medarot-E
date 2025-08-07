@@ -3,12 +3,13 @@ package main
 import (
 	"image"
 	"image/color"
+
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
-
 	"github.com/yohamta/donburi"
 )
 
@@ -149,7 +150,7 @@ func (u *UI) HideActionModal() {
 }
 
 // GetActionTargetMap は現在のアクションターゲットマップを返します。
-func (u *UI) GetActionTargetMap() map[domain.PartSlotKey]domain.ActionTarget {
+func (u *UI) GetActionTargetMap() map[domain.PartSlotKey]ecs.ActionTarget {
 	return u.actionModalManager.GetActionTargetMap()
 }
 
@@ -259,7 +260,7 @@ func (u *UI) GetRootContainer() *widget.Container {
 }
 
 // SetAnimation はアニメーションを設定します。
-func (u *UI) SetAnimation(anim *domain.ActionAnimationData) {
+func (u *UI) SetAnimation(anim *ecs.ActionAnimationData) {
 	u.animationDrawer.SetAnimation(anim)
 }
 
@@ -274,7 +275,7 @@ func (u *UI) ClearAnimation() {
 }
 
 // GetCurrentAnimationResult は現在のアニメーションの結果を返します。
-func (u *UI) GetCurrentAnimationResult() domain.ActionResult {
+func (u *UI) GetCurrentAnimationResult() ecs.ActionResult {
 	return u.animationDrawer.GetCurrentAnimationResult()
 }
 

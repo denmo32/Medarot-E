@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -42,13 +43,13 @@ type TraitActionHandler interface {
 		gameConfig *Config,
 		actingPartDef *domain.PartDefinition,
 		rand *rand.Rand,
-	) domain.ActionResult
+	) ecs.ActionResult
 }
 
 // WeaponTypeEffectHandler は weapon_type 固有の追加効果を処理します。
 // ActionResult を受け取り、デバフ付与などの副作用を適用します。
 type WeaponTypeEffectHandler interface {
-	ApplyEffect(result *domain.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand)
+	ApplyEffect(result *ecs.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand)
 }
 
 // PartInfoProviderInterface はパーツの状態や情報を取得・操作するロジックのインターフェースです。
@@ -60,7 +61,7 @@ type PartInfoProviderInterface interface {
 	FindPartSlot(entry *donburi.Entry, partToFindInstance *domain.PartInstanceData) domain.PartSlotKey
 
 	// 利用可能な攻撃パーツを取得するメソッド
-	GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart
+	GetAvailableAttackParts(entry *donburi.Entry) []ecs.AvailablePart
 
 	// 全体的な推進力と機動力を取得するメソッド
 	GetOverallPropulsion(entry *donburi.Entry) int

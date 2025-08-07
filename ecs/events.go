@@ -1,6 +1,8 @@
-package domain
+package ecs
 
 import (
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -44,7 +46,7 @@ func (e MessageDisplayFinishedGameEvent) isGameEvent() {}
 
 // GameOverGameEvent は、ゲームオーバーになったことを示すイベントです。
 type GameOverGameEvent struct {
-	Winner TeamID
+	Winner domain.TeamID
 }
 
 func (e GameOverGameEvent) isGameEvent() {}
@@ -74,10 +76,10 @@ func (e ClearCurrentTargetGameEvent) isGameEvent() {}
 // ActionConfirmedGameEvent は、プレイヤーがアクションを確定したことを示すイベントです。
 type ActionConfirmedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedPartDef *PartDefinition
-	SelectedSlotKey PartSlotKey
+	SelectedPartDef *domain.PartDefinition
+	SelectedSlotKey domain.PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  PartSlotKey
+	TargetPartSlot  domain.PartSlotKey
 }
 
 func (e ActionConfirmedGameEvent) isGameEvent() {}
@@ -85,9 +87,9 @@ func (e ActionConfirmedGameEvent) isGameEvent() {}
 // ChargeRequestedGameEvent は、チャージ開始が要求されたことを示すイベントです。
 type ChargeRequestedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedSlotKey PartSlotKey
+	SelectedSlotKey domain.PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  PartSlotKey
+	TargetPartSlot  domain.PartSlotKey
 }
 
 func (e ChargeRequestedGameEvent) isGameEvent() {}
@@ -118,7 +120,7 @@ func (e GoToTitleSceneGameEvent) isGameEvent() {}
 
 // StateChangeRequestedGameEvent は、ゲームの状態変更が要求されたことを示すイベントです。
 type StateChangeRequestedGameEvent struct {
-	NextState GameState
+	NextState domain.GameState
 }
 
 func (e StateChangeRequestedGameEvent) isGameEvent() {}

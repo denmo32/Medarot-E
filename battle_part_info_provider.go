@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -82,12 +84,12 @@ func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstan
 }
 
 // GetAvailableAttackParts は攻撃に使用可能なパーツの定義リストを返します。
-func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart {
+func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []ecs.AvailablePart {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return nil
 	}
-	var availableParts []domain.AvailablePart
+	var availableParts []ecs.AvailablePart
 	slotsToConsider := []domain.PartSlotKey{domain.PartSlotHead, domain.PartSlotRightArm, domain.PartSlotLeftArm}
 
 	for _, slot := range slotsToConsider {
@@ -102,7 +104,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []dom
 		}
 
 		if partDef.Category == domain.CategoryRanged || partDef.Category == domain.CategoryMelee || partDef.Category == domain.CategoryIntervention {
-			availableParts = append(availableParts, domain.AvailablePart{PartDef: partDef, Slot: slot})
+			availableParts = append(availableParts, ecs.AvailablePart{PartDef: partDef, Slot: slot})
 		}
 	}
 	return availableParts
@@ -217,7 +219,7 @@ func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partIns
 
 	for teamID, buffMap := range teamBuffs.Buffs {
 		for buffType, buffSources := range buffMap {
-			newBuffSources := make([]*domain.BuffSource, 0, len(buffSources))
+			newBuffSources := make([]*ecs.BuffSource, 0, len(buffSources))
 			for _, buff := range buffSources {
 				// このパーツからのバフでなければ保持する
 				if buff.SourceEntry != entry || buff.SourcePart != partSlot {

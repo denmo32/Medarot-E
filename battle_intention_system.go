@@ -2,6 +2,7 @@ package main
 
 import (
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -11,9 +12,9 @@ import (
 // UpdatePlayerInputSystem はアイドル状態のすべてのプレイヤー制御メダロットを見つけます。
 // このシステムは BattleScene に直接依存しません。
 // 行動が必要なプレイヤーエンティティのリストを返します。
-func UpdatePlayerInputSystem(world donburi.World) []domain.GameEvent {
+func UpdatePlayerInputSystem(world donburi.World) []ecs.GameEvent {
 	playerActionQueue := GetPlayerActionQueueComponent(world)
-	var gameEvents []domain.GameEvent
+	var gameEvents []ecs.GameEvent
 
 	// キューをクリアし、現在のアイドル状態のプレイヤーエンティティを再収集
 	playerActionQueue.Queue = make([]*donburi.Entry, 0)
@@ -24,7 +25,7 @@ func UpdatePlayerInputSystem(world donburi.World) []domain.GameEvent {
 	})
 
 	if len(playerActionQueue.Queue) > 0 {
-		gameEvents = append(gameEvents, domain.PlayerActionRequiredGameEvent{})
+		gameEvents = append(gameEvents, ecs.PlayerActionRequiredGameEvent{})
 
 	}
 

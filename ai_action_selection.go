@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -101,7 +102,7 @@ func aiSelectAction(
 // SelectFirstAvailablePart は利用可能な最初のパーツを選択する単純な戦略です。
 func SelectFirstAvailablePart(
 	actingEntry *donburi.Entry,
-	availableParts []domain.AvailablePart,
+	availableParts []ecs.AvailablePart,
 	world donburi.World,
 	battleLogic *BattleLogic,
 ) (domain.PartSlotKey, *domain.PartDefinition) {
@@ -114,7 +115,7 @@ func SelectFirstAvailablePart(
 // SelectHighestPowerPart は利用可能なパーツの中で最も威力のあるパーツを選択します。
 func SelectHighestPowerPart(
 	actingEntry *donburi.Entry,
-	availableParts []domain.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
+	availableParts []ecs.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
 	battleLogic *BattleLogic,
 ) (domain.PartSlotKey, *domain.PartDefinition) {
@@ -135,7 +136,7 @@ func SelectHighestPowerPart(
 // SelectFastestChargePart はチャージ時間が最も短いパーツを選択します。
 func SelectFastestChargePart(
 	actingEntry *donburi.Entry,
-	availableParts []domain.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
+	availableParts []ecs.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
 	battleLogic *BattleLogic,
 ) (domain.PartSlotKey, *domain.PartDefinition) {

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -17,8 +18,8 @@ import (
 type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel
 	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]domain.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel
-	GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]ecs.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel
+	GetAvailableAttackParts(entry *donburi.Entry) []ecs.AvailablePart
 	IsActionModalVisible() bool
 }
 
@@ -182,7 +183,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]domain.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]ecs.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 
@@ -191,7 +192,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 		// このエラーは通常、呼び出し元でエンティティの有効性を確認すべきですが、念のため
 		// log.Println("エラー: BuildActionModalViewModel - actingEntry に PartsComponent がありません。")
 	} else {
-		var displayableParts []domain.AvailablePart
+		var displayableParts []ecs.AvailablePart
 		for slotKey, partInst := range partsComp.Map {
 			partDef, defFound := gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
@@ -199,7 +200,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 			}
 			// actionTargetMap に含まれるパーツのみを対象とする（行動可能なパーツ）
 			if _, ok := actionTargetMap[slotKey]; ok {
-				displayableParts = append(displayableParts, domain.AvailablePart{PartDef: partDef, Slot: slotKey})
+				displayableParts = append(displayableParts, ecs.AvailablePart{PartDef: partDef, Slot: slotKey})
 			}
 		}
 
@@ -224,7 +225,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 }
 
 // GetAvailableAttackParts は、指定されたエンティティが利用可能な攻撃パーツのリストを返します。
-func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart {
+func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []ecs.AvailablePart {
 	return f.partInfoProvider.GetAvailableAttackParts(entry)
 }
 

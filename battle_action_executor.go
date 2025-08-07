@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -54,7 +55,7 @@ func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, 
 }
 
 // ExecuteAction は単一のアクションを実行し、その結果を返します。
-func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) domain.ActionResult {
+func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ecs.ActionResult {
 	intent := ActionIntentComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
@@ -63,7 +64,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) domain.Action
 	handler, ok := e.handlers[actingPartDef.Trait]
 	if !ok {
 		log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
-		return domain.ActionResult{
+		return ecs.ActionResult{
 			ActingEntry:  actingEntry,
 			ActionDidHit: false,
 		}

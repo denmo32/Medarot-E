@@ -2,16 +2,18 @@ package main
 
 import (
 	"log"
-	"medarot-ebiten/domain"
 	"sort"
+
+	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
 
-func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic, includeHead bool) []domain.TargetablePart {
-	var allParts []domain.TargetablePart
+func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic, includeHead bool) []ecs.TargetablePart {
+	var allParts []ecs.TargetablePart
 	targetSelector := battleLogic.GetTargetSelector()
 	if targetSelector == nil {
 		log.Println("エラー: getAllTargetableParts - targetSelectorがnilです。")
@@ -37,7 +39,7 @@ func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic,
 			if !includeHead && partDef.Type == domain.PartTypeHead {
 				continue
 			}
-			allParts = append(allParts, domain.TargetablePart{
+			allParts = append(allParts, ecs.TargetablePart{
 				Entity:   enemyEntry,
 				PartInst: partInst,
 				PartDef:  partDef,
@@ -50,7 +52,7 @@ func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic,
 
 // TargetSortFunc は、ターゲット候補のリストをソートするための関数の型を定義します。
 // これにより、各戦略はソートロジックのみを提供すればよくなります。
-type TargetSortFunc func(parts []domain.TargetablePart)
+type TargetSortFunc func(parts []ecs.TargetablePart)
 
 // --- 戦略の実装 ---
 
@@ -78,7 +80,7 @@ func (s *CrusherStrategy) SelectTarget(world donburi.World, actingEntry *donburi
 }
 
 func (s *CrusherStrategy) GetSortFunction() TargetSortFunc {
-	return func(parts []domain.TargetablePart) {
+	return func(parts []ecs.TargetablePart) {
 		sort.Slice(parts, func(i, j int) bool {
 			return parts[i].PartInst.CurrentArmor > parts[j].PartInst.CurrentArmor
 		})
@@ -93,7 +95,7 @@ func (s *HunterStrategy) SelectTarget(world donburi.World, actingEntry *donburi.
 }
 
 func (s *HunterStrategy) GetSortFunction() TargetSortFunc {
-	return func(parts []domain.TargetablePart) {
+	return func(parts []ecs.TargetablePart) {
 		sort.Slice(parts, func(i, j int) bool {
 			return parts[i].PartInst.CurrentArmor < parts[j].PartInst.CurrentArmor
 		})
@@ -161,7 +163,7 @@ func (s *ChaseStrategy) SelectTarget(
 		return nil, ""
 	}
 
-	var legParts []domain.TargetablePart
+	var legParts []ecs.TargetablePart
 	for _, p := range targetParts {
 		if p.PartDef.Type == domain.PartTypeLegs {
 			legParts = append(legParts, p)
@@ -174,7 +176,7 @@ func (s *ChaseStrategy) SelectTarget(
 		})
 		// 最も推進力の高い脚部が複数ある場合、その中からランダムに選ぶ
 		maxPropulsion := legParts[0].PartDef.Propulsion
-		var candidates []domain.TargetablePart
+		var candidates []ecs.TargetablePart
 		for _, p := range legParts {
 			if p.PartDef.Propulsion == maxPropulsion {
 				candidates = append(candidates, p)
@@ -185,7 +187,7 @@ func (s *ChaseStrategy) SelectTarget(
 	}
 
 	// 脚部が全破壊の場合、ランダムな非脚部パーツを狙う
-	var otherParts []domain.TargetablePart
+	var otherParts []ecs.TargetablePart
 	for _, p := range targetParts {
 		if p.PartDef.Type != domain.PartTypeLegs {
 			otherParts = append(otherParts, p)
@@ -213,7 +215,7 @@ func (s *DuelStrategy) SelectTarget(
 		return nil, ""
 	}
 
-	var attackArmParts []domain.TargetablePart
+	var attackArmParts []ecs.TargetablePart
 	for _, p := range targetParts {
 		if (p.PartDef.Type == domain.PartTypeLArm || p.PartDef.Type == domain.PartTypeRArm) &&
 			(p.PartDef.Category == domain.CategoryRanged || p.PartDef.Category == domain.CategoryMelee) {
@@ -221,7 +223,7 @@ func (s *DuelStrategy) SelectTarget(
 		}
 	}
 
-		if len(attackArmParts) > 0 {
+	if len(attackArmParts) > 0 {
 		selected := attackArmParts[battleLogic.rand.Intn(len(attackArmParts))]
 		return selected.Entity, selected.Slot
 	}
@@ -243,7 +245,7 @@ func (s *InterceptStrategy) SelectTarget(
 		return nil, ""
 	}
 
-	var nonAttackParts []domain.TargetablePart
+	var nonAttackParts []ecs.TargetablePart
 	for _, p := range targetParts {
 		if p.PartDef.Category != domain.CategoryRanged && p.PartDef.Category != domain.CategoryMelee {
 			nonAttackParts = append(nonAttackParts, p)

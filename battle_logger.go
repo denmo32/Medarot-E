@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 )
 
 // BattleLoggerImpl は BattleLogger インターフェースの実装です。
@@ -54,7 +56,7 @@ func (l *BattleLoggerImpl) LogDefenseSuccess(targetName, defensePartName string,
 }
 
 // buildActionLogMessagesFromActionResult はActionResultから表示用のメッセージスライスを構築します。
-func buildActionLogMessagesFromActionResult(result domain.ActionResult, gameDataManager *GameDataManager) []string {
+func buildActionLogMessagesFromActionResult(result ecs.ActionResult, gameDataManager *GameDataManager) []string {
 	messages := []string{}
 
 	// 攻撃開始メッセージ

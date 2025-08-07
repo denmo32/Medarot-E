@@ -2,6 +2,7 @@ package main
 
 import (
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -10,7 +11,7 @@ import (
 // 行動するAIエンティティと利用可能なパーツのリストを受け取り、選択されたパーツとそのスロットを返します。
 type AIPartSelectionStrategyFunc func(
 	actingEntry *donburi.Entry,
-	availableParts []domain.AvailablePart,
+	availableParts []ecs.AvailablePart,
 	world donburi.World,
 	battleLogic *BattleLogic,
 ) (domain.PartSlotKey, *domain.PartDefinition)

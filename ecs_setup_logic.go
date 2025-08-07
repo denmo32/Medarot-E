@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -19,15 +21,15 @@ func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam
 
 	// Ensure PlayerActionQueueComponent entity exists
 	playerActionQueueEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
-	PlayerActionQueueComponent.SetValue(playerActionQueueEntry, domain.PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
+	PlayerActionQueueComponent.SetValue(playerActionQueueEntry, ecs.PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
 
 	// Ensure LastActionResultComponent entity exists
 	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
-	LastActionResultComponent.SetValue(lastActionResultEntry, domain.ActionResult{})
+	LastActionResultComponent.SetValue(lastActionResultEntry, ecs.ActionResult{})
 
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
-	TeamBuffsComponent.SetValue(teamBuffsEntry, domain.TeamBuffs{
-		Buffs: make(map[domain.TeamID]map[domain.BuffType][]*domain.BuffSource),
+	TeamBuffsComponent.SetValue(teamBuffsEntry, ecs.TeamBuffs{
+		Buffs: make(map[domain.TeamID]map[domain.BuffType][]*ecs.BuffSource),
 	})
 
 	// Initialize BattleUIStateComponent
@@ -98,14 +100,14 @@ func CreateMedarotEntities(world donburi.World, gameData *domain.GameData, playe
 		GaugeComponent.SetValue(entry, domain.Gauge{})
 		LogComponent.SetValue(entry, domain.Log{})
 		ActionIntentComponent.SetValue(entry, domain.ActionIntent{})
-		TargetComponent.SetValue(entry, domain.Target{})
+		TargetComponent.SetValue(entry, ecs.Target{})
 
 		if loadout.Team != playerTeam { // AIのみ
 
-			donburi.Add(entry, AIComponent, &domain.AI{
+			donburi.Add(entry, AIComponent, &ecs.AI{
 				PersonalityID:     medalDef.Personality,
-				TargetHistory:     domain.TargetHistoryData{},
-				LastActionHistory: domain.LastActionHistoryData{},
+				TargetHistory:     ecs.TargetHistoryData{},
+				LastActionHistory: ecs.LastActionHistoryData{},
 			})
 		}
 

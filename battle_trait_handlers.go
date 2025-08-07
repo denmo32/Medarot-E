@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -28,15 +29,15 @@ func (h *BaseAttackHandler) Execute(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) domain.ActionResult {
+) ecs.ActionResult {
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
 	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, nil, actingPartDef, rand)
 }
 
 // initializeAttackResult は ActionResult を初期化します。
-func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *domain.PartDefinition) domain.ActionResult {
-	return domain.ActionResult{
+func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *domain.PartDefinition) ecs.ActionResult {
+	return ecs.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   false, // 初期値はfalse
 		AttackerName:   SettingsComponent.Get(actingEntry).Name,
@@ -59,7 +60,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) domain.ActionResult {
+) ecs.ActionResult {
 	result := initializeAttackResult(actingEntry, actingPartDef)
 
 	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, world, targetSelector, partInfoProvider, rand)
@@ -112,7 +113,7 @@ func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *dom
 }
 
 func applyDamageAndDefense(
-	result *domain.ActionResult,
+	result *ecs.ActionResult,
 	actingEntry *donburi.Entry,
 	actingPartDef *domain.PartDefinition,
 	selectedPartKey domain.PartSlotKey,
@@ -148,7 +149,7 @@ func applyDamageAndDefense(
 	}
 }
 
-func finalizeActionResult(result *domain.ActionResult, partInfoProvider PartInfoProviderInterface) {
+func finalizeActionResult(result *ecs.ActionResult, partInfoProvider PartInfoProviderInterface) {
 	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
 	actualHitPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(actualHitPartInst.DefinitionID)
 
@@ -211,9 +212,9 @@ func (h *SupportTraitExecutor) Execute(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) domain.ActionResult {
+) ecs.ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
-	result := domain.ActionResult{
+	result := ecs.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   true,
 		AttackerName:   settings.Name,
@@ -232,7 +233,7 @@ func (h *SupportTraitExecutor) Execute(
 	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
 
 	buffValue := 1.0 + (float64(actingPartDef.Power) / 100.0)
-	newBuffSource := &domain.BuffSource{
+	newBuffSource := &ecs.BuffSource{
 		SourceEntry: actingEntry,
 		SourcePart:  intent.SelectedPartKey,
 		Value:       buffValue,
@@ -242,14 +243,14 @@ func (h *SupportTraitExecutor) Execute(
 	buffType := domain.BuffTypeAccuracy
 
 	if _, exists := teamBuffs.Buffs[teamID]; !exists {
-		teamBuffs.Buffs[teamID] = make(map[domain.BuffType][]*domain.BuffSource)
+		teamBuffs.Buffs[teamID] = make(map[domain.BuffType][]*ecs.BuffSource)
 	}
 	if _, exists := teamBuffs.Buffs[teamID][buffType]; !exists {
-		teamBuffs.Buffs[teamID][buffType] = make([]*domain.BuffSource, 0)
+		teamBuffs.Buffs[teamID][buffType] = make([]*ecs.BuffSource, 0)
 	}
 
 	existingBuffs := teamBuffs.Buffs[teamID][buffType]
-	filteredBuffs := make([]*domain.BuffSource, 0, len(existingBuffs))
+	filteredBuffs := make([]*ecs.BuffSource, 0, len(existingBuffs))
 	for _, buff := range existingBuffs {
 		if buff.SourceEntry != actingEntry || buff.SourcePart != intent.SelectedPartKey {
 			filteredBuffs = append(filteredBuffs, buff)
@@ -275,9 +276,9 @@ func (h *ObstructTraitExecutor) Execute(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) domain.ActionResult {
+) ecs.ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
-	result := domain.ActionResult{
+	result := ecs.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   true,
 		AttackerName:   settings.Name,

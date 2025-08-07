@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
@@ -103,7 +104,7 @@ func (bs *BattleScene) Update() error {
 		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel,
 	)
 
-	allGameEvents := make([]domain.GameEvent, 0)
+	allGameEvents := make([]ecs.GameEvent, 0)
 	allGameEvents = append(allGameEvents, uiGeneratedGameEvents...)
 
 	// Create BattleContext
@@ -137,7 +138,7 @@ func (bs *BattleScene) Update() error {
 
 	// Apply state changes
 	for _, req := range stateChangeRequests {
-		if stateChangeReq, ok := req.(domain.StateChangeRequestedGameEvent); ok {
+		if stateChangeReq, ok := req.(ecs.StateChangeRequestedGameEvent); ok {
 			bs.SetState(stateChangeReq.NextState)
 		}
 	}
@@ -184,8 +185,8 @@ func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 // processGameEvents はGameEventのリストを処理し、BattleSceneの状態を更新します。
-func (bs *BattleScene) processGameEvents(gameEvents []domain.GameEvent) []domain.GameEvent {
-	var stateChangeEvents []domain.GameEvent // 状態変更イベントを収集する新しいスライス
+func (bs *BattleScene) processGameEvents(gameEvents []ecs.GameEvent) []ecs.GameEvent {
+	var stateChangeEvents []ecs.GameEvent // 状態変更イベントを収集する新しいスライス
 
 	lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
 	if !ok {
@@ -195,41 +196,41 @@ func (bs *BattleScene) processGameEvents(gameEvents []domain.GameEvent) []domain
 
 	for _, event := range gameEvents {
 		switch e := event.(type) {
-		case domain.PlayerActionRequiredGameEvent:
-			stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
-		case domain.ActionAnimationStartedGameEvent:
+		case ecs.PlayerActionRequiredGameEvent:
+			stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
+		case ecs.ActionAnimationStartedGameEvent:
 			bs.ui.PostEvent(SetAnimationUIEvent(e))
-			stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateAnimatingAction})
+			stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateAnimatingAction})
 
-		case domain.ActionAnimationFinishedGameEvent:
+		case ecs.ActionAnimationFinishedGameEvent:
 			*lastActionResultComp = e.Result // Store the result
-			stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StatePostAction})
-		case domain.MessageDisplayRequestGameEvent:
+			stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StatePostAction})
+		case ecs.MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
-			stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateMessage})
-		case domain.MessageDisplayFinishedGameEvent:
+			stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateMessage})
+		case ecs.MessageDisplayFinishedGameEvent:
 			if bs.winner != domain.TeamNone {
-				stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateGameOver})
+				stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateGameOver})
 			} else {
-				stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
+				stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 			}
-		case domain.GameOverGameEvent:
+		case ecs.GameOverGameEvent:
 			bs.winner = e.Winner
-			stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateMessage})
-		case domain.HideActionModalGameEvent:
+			stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateMessage})
+		case ecs.HideActionModalGameEvent:
 			bs.ui.PostEvent(HideActionModalUIEvent{})
-		case domain.ShowActionModalGameEvent:
+		case ecs.ShowActionModalGameEvent:
 			bs.ui.HideActionModal()
 			select {
 			case bs.ui.GetEventChannel() <- ShowActionModalUIEvent{ViewModel: e.ViewModel.(ActionModalViewModel)}:
 			default:
 				log.Println("警告: ShowActionModalUIEvent の送信をスキップしました (チャネルがフルか重複)。")
 			}
-		case domain.ClearAnimationGameEvent:
+		case ecs.ClearAnimationGameEvent:
 			bs.ui.PostEvent(ClearAnimationUIEvent{})
-		case domain.ClearCurrentTargetGameEvent:
+		case ecs.ClearCurrentTargetGameEvent:
 			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
-		case domain.ChargeRequestedGameEvent:
+		case ecs.ChargeRequestedGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {
 				log.Printf("Error: ChargeRequestedGameEvent - ActingEntry is invalid or nil")
@@ -247,17 +248,17 @@ func (bs *BattleScene) processGameEvents(gameEvents []domain.GameEvent) []domain
 			if !successful {
 				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
 			}
-		case domain.PlayerActionSelectFinishedGameEvent:
+		case ecs.PlayerActionSelectFinishedGameEvent:
 			playerActionQueue := GetPlayerActionQueueComponent(bs.world)
 			if len(playerActionQueue.Queue) > 0 {
-				stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
+				stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
 			} else {
-				stateChangeEvents = append(stateChangeEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
+				stateChangeEvents = append(stateChangeEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 			}
 
-		case domain.GoToTitleSceneGameEvent:
+		case ecs.GoToTitleSceneGameEvent:
 			bs.manager.GoToTitleScene()
-		case domain.StateChangeRequestedGameEvent:
+		case ecs.StateChangeRequestedGameEvent:
 			stateChangeEvents = append(stateChangeEvents, e)
 		}
 	}

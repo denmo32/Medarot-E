@@ -2,6 +2,7 @@ package main
 
 import (
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -62,7 +63,7 @@ func (e HideActionModalUIEvent) isUIEvent() {}
 
 // SetAnimationUIEvent は、アニメーションを設定するUIイベントです。
 type SetAnimationUIEvent struct {
-	AnimationData domain.ActionAnimationData
+	AnimationData ecs.ActionAnimationData
 }
 
 func (e SetAnimationUIEvent) isUIEvent() {}
@@ -87,7 +88,7 @@ func (e MessageDisplayRequestUIEvent) isUIEvent() {}
 
 // AnimationFinishedUIEvent は、アニメーションが終了したことをUIから通知するイベントです。
 type AnimationFinishedUIEvent struct {
-	Result domain.ActionResult
+	Result ecs.ActionResult
 }
 
 func (e AnimationFinishedUIEvent) isUIEvent() {}

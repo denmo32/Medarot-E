@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -26,7 +28,7 @@ func NewPostActionEffectSystem(world donburi.World, statusEffectSystem *StatusEf
 }
 
 // Process は、ActionResultに基づいてアクション後の効果を処理します。
-func (s *PostActionEffectSystem) Process(result *domain.ActionResult) {
+func (s *PostActionEffectSystem) Process(result *ecs.ActionResult) {
 	if result == nil {
 		return
 	}

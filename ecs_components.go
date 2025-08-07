@@ -2,6 +2,7 @@ package main
 
 import (
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -18,19 +19,19 @@ var (
 
 	// --- Action Components ---
 	ActionIntentComponent = donburi.NewComponentType[domain.ActionIntent]()
-	TargetComponent       = donburi.NewComponentType[domain.Target]()
+	TargetComponent       = donburi.NewComponentType[ecs.Target]()
 
 	// --- State Components ---
 	StateComponent = donburi.NewComponentType[domain.State]()
 
 	// --- AI Components ---
-	AIComponent = donburi.NewComponentType[domain.AI]()
+	AIComponent = donburi.NewComponentType[ecs.AI]()
 
 	// --- Team Buff Component ---
-	TeamBuffsComponent = donburi.NewComponentType[domain.TeamBuffs]()
+	TeamBuffsComponent = donburi.NewComponentType[ecs.TeamBuffs]()
 
 	// --- Status Effect Component ---
-	ActiveEffectsComponent = donburi.NewComponentType[domain.ActiveEffects]()
+	ActiveEffectsComponent = donburi.NewComponentType[ecs.ActiveEffects]()
 
 	// --- Debug Components ---
 	DebugModeComponent = donburi.NewComponentType[struct{}]()
@@ -42,10 +43,10 @@ var (
 	GameStateComponent = donburi.NewComponentType[domain.GameStateData]()
 
 	// --- Player Action Queue Component ---
-	PlayerActionQueueComponent = donburi.NewComponentType[domain.PlayerActionQueueComponentData]()
+	PlayerActionQueueComponent = donburi.NewComponentType[ecs.PlayerActionQueueComponentData]()
 
 	// --- Last Action Result Component ---
-	LastActionResultComponent = donburi.NewComponentType[domain.ActionResult]()
+	LastActionResultComponent = donburi.NewComponentType[ecs.ActionResult]()
 )
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。

@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/yohamta/donburi"
 )
@@ -21,12 +22,12 @@ func UpdateActionQueueSystem(
 	statusEffectSystem *StatusEffectSystem,
 	postActionEffectSystem *PostActionEffectSystem,
 	rand *rand.Rand,
-) ([]domain.ActionResult, error) {
+) ([]ecs.ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
 		return nil, nil
 	}
-	results := []domain.ActionResult{}
+	results := []ecs.ActionResult{}
 
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
 		if partInfoProvider == nil {
