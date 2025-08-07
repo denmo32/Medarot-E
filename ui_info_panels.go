@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"medarot-ebiten/domain"
 	"sort"
+
+	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -48,7 +50,7 @@ type InfoPanelCreationResult struct {
 	ID      string
 }
 
-func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, mainUIContainer *widget.Container, battlefieldRect image.Rectangle, iconVMs []*IconViewModel) {
+func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []ecs.InfoPanelViewModel, mainUIContainer *widget.Container, battlefieldRect image.Rectangle, iconVMs []*ecs.IconViewModel) {
 	// 既存のパネルをクリア
 	for _, panel := range ipm.panels {
 		mainUIContainer.RemoveChild(panel.rootPanel.RootContainer)
@@ -117,7 +119,7 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, mai
 	}
 }
 
-func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoPanelViewModel) *infoPanelUI {
+func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm ecs.InfoPanelViewModel) *infoPanelUI {
 	c := config.UI
 
 	// ヘッダー部分を作成
@@ -231,7 +233,7 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 // この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した
 // InfoPanelViewModelのリストを受け取るように変更されます。
 
-func updateSingleInfoPanel(ui *infoPanelUI, vm InfoPanelViewModel, config *Config) {
+func updateSingleInfoPanel(ui *infoPanelUI, vm ecs.InfoPanelViewModel, config *Config) {
 	c := config.UI
 
 	ui.stateText.Label = vm.StateStr

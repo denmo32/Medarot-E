@@ -31,13 +31,13 @@ var (
 	TeamBuffsComponent = donburi.NewComponentType[ecs.TeamBuffs]()
 
 	// --- Status Effect Component ---
-	ActiveEffectsComponent = donburi.NewComponentType[ecs.ActiveEffects]()
+	ActiveEffectsComponent = donburi.NewComponentType[domain.ActiveEffects]()
 
 	// --- Debug Components ---
 	DebugModeComponent = donburi.NewComponentType[struct{}]()
 
 	// --- UI State Component ---
-	BattleUIStateComponent = donburi.NewComponentType[BattleUIState]()
+	BattleUIStateComponent = donburi.NewComponentType[ecs.BattleUIState]()
 
 	// --- Game State Component ---
 	GameStateComponent = donburi.NewComponentType[domain.GameStateData]()
@@ -51,9 +51,3 @@ var (
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
 var worldStateTag = donburi.NewComponentType[struct{}]()
-
-// BattleUIState is a singleton component that stores UI-specific data (ViewModels).
-type BattleUIState struct {
-	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
-	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
-}

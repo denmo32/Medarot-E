@@ -27,13 +27,13 @@ type UI struct {
 	actionModalManager     *UIActionModalManager
 	targetIndicatorManager *UITargetIndicatorManager
 	animationDrawer        *UIAnimationDrawer
-	lastWidth, lastHeight  int            // レイアウト更新の最適化用
-	battleUIState          *BattleUIState // UIの状態を保持
-	uiFactory              *UIFactory     // uiFactoryを保持
+	lastWidth, lastHeight  int                // レイアウト更新の最適化用
+	battleUIState          *ecs.BattleUIState // UIの状態を保持
+	uiFactory              *UIFactory         // uiFactoryを保持
 }
 
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
-func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
+func (u *UI) SetBattleUIState(battleUIState *ecs.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
 	u.battleUIState = battleUIState // UI構造体に状態を保存
 	// uiFactoryも保存する必要があるが、UI構造体にはuiFactoryフィールドがないため、追加が必要
 	// 現状、uiFactoryはNewUIでしか渡されないため、updateLayoutで利用するにはUI構造体にフィールドを追加する必要がある
@@ -45,7 +45,7 @@ func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *Config, batt
 	mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
 
 	// マップからスライスに変換
-	infoPanelVMs := make([]InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
+	infoPanelVMs := make([]ecs.InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
 	for _, vm := range battleUIState.InfoPanels {
 		infoPanelVMs = append(infoPanelVMs, vm)
 	}
@@ -140,7 +140,7 @@ func (u *UI) IsActionModalVisible() bool {
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (u *UI) ShowActionModal(vm ActionModalViewModel) {
+func (u *UI) ShowActionModal(vm ecs.ActionModalViewModel) {
 	u.actionModalManager.ShowActionModal(vm)
 }
 
@@ -202,7 +202,7 @@ func (u *UI) updateLayout() {
 	// ただし、レイアウト変更時に情報パネルも再配置されるように、SetBattleUIStateを呼び出す必要がある
 	// レイアウト更新時に情報パネルも再配置されるように、直接UpdatePanelsを呼び出す
 	if u.battleUIState != nil {
-		infoPanelVMs := make([]InfoPanelViewModel, 0, len(u.battleUIState.InfoPanels))
+		infoPanelVMs := make([]ecs.InfoPanelViewModel, 0, len(u.battleUIState.InfoPanels))
 		for _, vm := range u.battleUIState.InfoPanels {
 			infoPanelVMs = append(infoPanelVMs, vm)
 		}
@@ -220,7 +220,7 @@ func (u *UI) Update(tick int) {
 // Draw はUIを描画します。
 func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
-	var indicatorTargetVM *IconViewModel
+	var indicatorTargetVM *ecs.IconViewModel
 	if u.targetIndicatorManager.GetCurrentTarget() != 0 && u.battlefieldWidget.viewModel != nil {
 		for _, iconVM := range u.battlefieldWidget.viewModel.Icons {
 			if iconVM.EntryID == u.targetIndicatorManager.GetCurrentTarget() {

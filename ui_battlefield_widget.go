@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -19,7 +20,7 @@ type BattlefieldWidget struct {
 	*widget.Container
 	config       *Config
 	whitePixel   *ebiten.Image
-	viewModel    *BattlefieldViewModel
+	viewModel    *ecs.BattlefieldViewModel
 	bgImage      *ebiten.Image   // 背景画像を直接保持
 	customWidget *widget.Graphic // カスタム描画ウィジェット
 }
@@ -103,7 +104,7 @@ func (bf *BattlefieldWidget) drawBackgroundImage(screen *ebiten.Image, rect imag
 }
 
 // SetViewModel はViewModelを設定し、描画更新をトリガーします
-func (bf *BattlefieldWidget) SetViewModel(vm BattlefieldViewModel) {
+func (bf *BattlefieldWidget) SetViewModel(vm ecs.BattlefieldViewModel) {
 	bf.viewModel = &vm
 	// カスタム描画ウィジェットの再描画をトリガー
 	if bf.customWidget != nil {
@@ -112,7 +113,7 @@ func (bf *BattlefieldWidget) SetViewModel(vm BattlefieldViewModel) {
 }
 
 // Draw はバトルフィールドのすべての要素を描画します。
-func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *IconViewModel, tick int) {
+func (bf *BattlefieldWidget) Draw(screen *ebiten.Image, targetIconVM *ecs.IconViewModel, tick int) {
 	// コンテナの描画領域を取得
 	rect := bf.Container.GetWidget().Rect
 	if rect.Dx() == 0 || rect.Dy() == 0 {
@@ -194,7 +195,7 @@ func (bf *BattlefieldWidget) drawIcons(screen *ebiten.Image, rect image.Rectangl
 }
 
 // drawSingleIcon は単一のアイコンを描画します
-func (bf *BattlefieldWidget) drawSingleIcon(screen *ebiten.Image, iconVM *IconViewModel, _ image.Rectangle) {
+func (bf *BattlefieldWidget) drawSingleIcon(screen *ebiten.Image, iconVM *ecs.IconViewModel, _ image.Rectangle) {
 	centerX := iconVM.X
 	centerY := iconVM.Y
 	iconColor := iconVM.Color
@@ -214,7 +215,7 @@ func (bf *BattlefieldWidget) drawSingleIcon(screen *ebiten.Image, iconVM *IconVi
 }
 
 // drawStateIndicator は状態インジケーターを描画します
-func (bf *BattlefieldWidget) drawStateIndicator(screen *ebiten.Image, iconVM *IconViewModel, centerX, centerY float32) {
+func (bf *BattlefieldWidget) drawStateIndicator(screen *ebiten.Image, iconVM *ecs.IconViewModel, centerX, centerY float32) {
 	switch iconVM.State {
 	case domain.StateBroken:
 		// X印を描画
@@ -240,7 +241,7 @@ func (bf *BattlefieldWidget) drawStateIndicator(screen *ebiten.Image, iconVM *Ic
 }
 
 // drawCooldownGauge はクールダウンゲージを描画します
-func (bf *BattlefieldWidget) drawCooldownGauge(screen *ebiten.Image, iconVM *IconViewModel, centerX, centerY float32) {
+func (bf *BattlefieldWidget) drawCooldownGauge(screen *ebiten.Image, iconVM *ecs.IconViewModel, centerX, centerY float32) {
 	radius := bf.config.UI.Battlefield.IconRadius + 8
 	progress := iconVM.GaugeProgress
 
@@ -291,7 +292,7 @@ func (bf *BattlefieldWidget) drawDebugInfo(screen *ebiten.Image, rect image.Rect
 }
 
 // DrawTargetIndicator はターゲットインジケーターを描画します
-func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetIconVM *IconViewModel, tick int) {
+func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetIconVM *ecs.IconViewModel, tick int) {
 	if targetIconVM == nil {
 		return
 	}

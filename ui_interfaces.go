@@ -19,9 +19,9 @@ type UIInterface interface {
 	GetRootContainer() *widget.Container
 	SetAnimation(anim *ecs.ActionAnimationData)
 	ClearAnimation()
-	ShowActionModal(vm ActionModalViewModel)
+	ShowActionModal(vm ecs.ActionModalViewModel)
 	HideActionModal()
-	SetBattleUIState(battleUIState *BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
+	SetBattleUIState(battleUIState *ecs.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
 	PostEvent(event UIEvent)
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool

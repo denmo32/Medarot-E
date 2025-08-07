@@ -16,9 +16,9 @@ import (
 
 // ViewModelFactory は各種ViewModelを生成するためのインターフェースです。
 type ViewModelFactory interface {
-	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel
-	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]ecs.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel
+	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) ecs.InfoPanelViewModel
+	BuildBattlefieldViewModel(world donburi.World, battleUIState *ecs.BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) ecs.BattlefieldViewModel
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]ecs.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ecs.ActionModalViewModel
 	GetAvailableAttackParts(entry *donburi.Entry) []ecs.AvailablePart
 	IsActionModalVisible() bool
 }
@@ -42,12 +42,12 @@ func NewViewModelFactory(world donburi.World, partInfoProvider PartInfoProviderI
 }
 
 // BuildInfoPanelViewModel は、指定されたエンティティからInfoPanelViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel {
+func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) ecs.InfoPanelViewModel {
 	settings := SettingsComponent.Get(entry)
 	state := StateComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 
-	partViewModels := make(map[domain.PartSlotKey]PartViewModel)
+	partViewModels := make(map[domain.PartSlotKey]ecs.PartViewModel)
 	if partsComp != nil {
 		for slotKey, partInst := range partsComp.Map {
 			if partInst == nil {
@@ -55,11 +55,11 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 			}
 			partDef, defFound := partInfoProvider.GetGameDataManager().GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
-				partViewModels[slotKey] = PartViewModel{PartName: "(不明)"}
+				partViewModels[slotKey] = ecs.PartViewModel{PartName: "(不明)"}
 				continue
 			}
 
-			partViewModels[slotKey] = PartViewModel{
+			partViewModels[slotKey] = ecs.PartViewModel{
 				PartName:     partDef.PartName,
 				PartType:     partDef.Type,
 				CurrentArmor: partInst.CurrentArmor,
@@ -71,7 +71,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 
 	stateStr := GetStateDisplayName(state.CurrentState)
 
-	return InfoPanelViewModel{
+	return ecs.InfoPanelViewModel{
 		ID:        settings.Name,  // IDは名前表示用として残す
 		EntityID:  entry.Entity(), // 新しく追加したEntityIDフィールドに設定
 		Name:      settings.Name,
@@ -84,9 +84,9 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel {
-	vm := BattlefieldViewModel{
-		Icons: []*IconViewModel{},
+func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battleUIState *ecs.BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) ecs.BattlefieldViewModel {
+	vm := ecs.BattlefieldViewModel{
+		Icons: []*ecs.IconViewModel{},
 		DebugMode: func() bool {
 			_, ok := query.NewQuery(filter.Contains(DebugModeComponent)).First(world) // f.world の代わりに world を使用
 			return ok
@@ -133,7 +133,7 @@ Prog: %.1f / %.1f`,
 				stateStr, gauge.CurrentGauge, gauge.TotalDuration, gauge.ProgressCounter) // 修正: gauge.ProgressCounterとgauge.TotalDurationの順序
 		}
 
-		vm.Icons = append(vm.Icons, &IconViewModel{
+		vm.Icons = append(vm.Icons, &ecs.IconViewModel{
 			EntryID:       entry.Entity(), // uint32(entry.Id()) から entry.Entity() に変更
 			X:             x,
 			Y:             y,
@@ -183,11 +183,11 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]ecs.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]ecs.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ecs.ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 
-	var buttons []ActionModalButtonViewModel
+	var buttons []ecs.ActionModalButtonViewModel
 	if partsComp == nil {
 		// このエラーは通常、呼び出し元でエンティティの有効性を確認すべきですが、念のため
 		// log.Println("エラー: BuildActionModalViewModel - actingEntry に PartsComponent がありません。")
@@ -206,7 +206,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 
 		for _, available := range displayableParts {
 			targetInfo := actionTargetMap[available.Slot]
-			buttons = append(buttons, ActionModalButtonViewModel{
+			buttons = append(buttons, ecs.ActionModalButtonViewModel{
 				PartName:          available.PartDef.PartName,
 				PartCategory:      available.PartDef.Category,
 				SlotKey:           available.Slot,
@@ -217,7 +217,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 		}
 	}
 
-	return ActionModalViewModel{
+	return ecs.ActionModalViewModel{
 		ActingMedarotName: settings.Name,
 		ActingEntityID:    actingEntry.Entity(),
 		Buttons:           buttons,

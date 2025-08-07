@@ -66,7 +66,7 @@ func (d *UIAnimationDrawer) GetCurrentAnimationResult() ecs.ActionResult {
 }
 
 // Draw は現在のアニメーションを画面に描画します。
-func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefieldVM BattlefieldViewModel) {
+func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefieldVM ecs.BattlefieldViewModel) {
 	anim := d.currentAnimation
 	if anim == nil {
 		return
@@ -74,7 +74,7 @@ func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefield
 
 	progress := tick - float64(anim.StartTime)
 
-	var attackerVM, targetVM *IconViewModel
+	var attackerVM, targetVM *ecs.IconViewModel
 	for _, icon := range battlefieldVM.Icons {
 		if icon.EntryID == anim.Result.ActingEntry.Entity() { // uint32 へのキャストを削除
 			attackerVM = icon

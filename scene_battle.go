@@ -27,7 +27,7 @@ type BattleScene struct {
 	gameDataManager        *GameDataManager
 	rand                   *rand.Rand
 	uiEventChannel         chan UIEvent
-	battleUIState          *BattleUIState
+	battleUIState          *ecs.BattleUIState
 	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem
 	viewModelFactory       ViewModelFactory
@@ -52,7 +52,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		gameDataManager: res.GameDataManager,
 		rand:            res.Rand,
 		uiEventChannel:  make(chan UIEvent, 10),
-		battleUIState:   &BattleUIState{}, // ← これを追加
+		battleUIState:   &ecs.BattleUIState{}, // ← これを追加
 	}
 
 	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
@@ -222,7 +222,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []ecs.GameEvent) []ecs.GameE
 		case ecs.ShowActionModalGameEvent:
 			bs.ui.HideActionModal()
 			select {
-			case bs.ui.GetEventChannel() <- ShowActionModalUIEvent{ViewModel: e.ViewModel.(ActionModalViewModel)}:
+			case bs.ui.GetEventChannel() <- ShowActionModalUIEvent{ViewModel: e.ViewModel.(ecs.ActionModalViewModel)}:
 			default:
 				log.Println("警告: ShowActionModalUIEvent の送信をスキップしました (チャネルがフルか重複)。")
 			}

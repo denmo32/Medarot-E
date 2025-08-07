@@ -51,7 +51,7 @@ func (e ActionCanceledUIEvent) isUIEvent() {}
 
 // ShowActionModalUIEvent は、アクションモーダルを表示するUIイベントです。
 type ShowActionModalUIEvent struct {
-	ViewModel ActionModalViewModel
+	ViewModel ecs.ActionModalViewModel
 }
 
 func (e ShowActionModalUIEvent) isUIEvent() {}

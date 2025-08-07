@@ -223,6 +223,17 @@ type Log struct {
 
 type PlayerControl struct{}
 
+// ActiveStatusEffectData は、エンティティに現在適用されている効果のデータとその残り期間を追跡します。
+type ActiveStatusEffectData struct {
+	EffectData   interface{}
+	RemainingDur int
+}
+
+// ActiveEffects は、エンティティに現在適用されている効果のリストを保持します。
+type ActiveEffects struct {
+	Effects []*ActiveStatusEffectData
+}
+
 // --- Formula-related Structs ---
 
 type BonusTerm struct {

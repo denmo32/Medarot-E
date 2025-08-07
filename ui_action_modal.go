@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs"
 
 	"github.com/ebitenui/ebitenui/widget"
 )
 
 func createActionModalUI(
-	vm *ActionModalViewModel,
+	vm *ecs.ActionModalViewModel,
 	uiFactory *UIFactory,
 	eventChannel chan UIEvent,
 ) widget.PreferredSizeLocateableWidget {

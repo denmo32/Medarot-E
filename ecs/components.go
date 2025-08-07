@@ -22,11 +22,7 @@ type TargetablePart struct {
 	Slot     domain.PartSlotKey
 }
 
-// ActiveStatusEffectData は、エンティティに現在適用されている効果のデータとその残り期間を追跡します。
-type ActiveStatusEffectData struct {
-	EffectData   interface{}
-	RemainingDur int
-}
+
 
 // ActionTarget はUIが選択したアクションのターゲット情報を保持します。
 type ActionTarget struct {
@@ -40,9 +36,7 @@ type PlayerActionQueueComponentData struct {
 	Queue []*donburi.Entry
 }
 
-type ActiveEffects struct {
-	Effects []*ActiveStatusEffectData
-}
+
 
 type Target struct {
 	Policy         domain.TargetingPolicyType
@@ -74,6 +68,8 @@ type BuffSource struct {
 	SourcePart  domain.PartSlotKey
 	Value       float64
 }
+
+
 
 // ActionResult はアクション実行の詳細な結果を保持します。
 type ActionResult struct {
