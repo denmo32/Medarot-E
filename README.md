@@ -30,6 +30,9 @@ Domain (ゲームのコア)
 *   `domain/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。
 *   `ecs/components.go`: **[データ]** `donburi.Entity`など、ECSの概念に依存する型定義を定義します。
 *   `ecs/events.go`: **[定義]** ゲーム内で発生するイベントの定義。
+*   `ecs/ui_viewmodels.go`
+    *   役割: UI表示に必要な整形済みデータ（ViewModel）の定義。
+    *   内容: `InfoPanelViewModel`, `ActionModalViewModel`, `BattlefieldViewModel`など、UIがECSの内部構造に直接依存しないためのデータ構造を定義します。
 *   `game_interfaces.go`: **[定義]** ゲーム全体で利用される主要なインターフェースを定義します。 `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。
 
 ECS (エンティティ・コンポーネント・システム)
@@ -115,9 +118,6 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 *   `ui_panel.go`
     *   役割: 汎用的なUIパネル（枠付きウィンドウ）の作成と管理。
     *   内容: 他のUI要素（情報パネル、アクションモーダル、メッセージウィンドウなど）の基盤となる、再利用可能なパネルコンポーネントを提供します。
-*   `ui_viewmodels.go`
-    *   役割: UI表示に必要な整形済みデータ（ViewModel）の定義。
-    *   内容: `InfoPanelViewModel`, `ActionModalViewModel`, `BattlefieldViewModel`など、UIがECSの内部構造に直接依存しないためのデータ構造を定義します。
 *   `ui_view_model_factory.go`: **[ロジック/振る舞い]** ECSのデータからUI表示用のViewModelを構築するファクトリ。`InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。これにより、UIはECSの内部構造に直接依存しません。
 *   `ui_battlefield_widget.go`: 中央のバトルフィールド描画。ViewModelを受け取って描画します。
 *   `ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。ViewModelを受け取って描画します。
