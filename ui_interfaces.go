@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"medarot-ebiten/domain"
 
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -23,7 +24,7 @@ type UIInterface interface {
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool
 	GetCurrentAnimationResult() ActionResult
-	GetActionTargetMap() map[PartSlotKey]ActionTarget
+	GetActionTargetMap() map[domain.PartSlotKey]domain.ActionTarget
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle

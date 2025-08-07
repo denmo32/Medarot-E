@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"medarot-ebiten/domain"
 
 	"github.com/yohamta/donburi"
 )
@@ -84,9 +85,9 @@ func (s *PostActionEffectSystem) Process(result *ActionResult) {
 	}
 
 	// 3. 頭部パーツ破壊による機能停止
-	if result.TargetEntry != nil && result.IsTargetPartBroken && result.ActualHitPartSlot == PartSlotHead {
+	if result.TargetEntry != nil && result.IsTargetPartBroken && result.ActualHitPartSlot == domain.PartSlotHead {
 		state := StateComponent.Get(result.TargetEntry)
-		state.CurrentState = StateBroken
+		state.CurrentState = domain.StateBroken
 	}
 
 	// 4. 行動後のクリーンアップ

@@ -3,6 +3,8 @@ package main
 import (
 	"math/rand"
 
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -21,7 +23,7 @@ func NewHitCalculator(world donburi.World, config *Config, pip PartInfoProviderI
 }
 
 // CalculateHit は新しいルールに基づいて命中判定を行います。
-func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *PartDefinition, selectedPartKey PartSlotKey) bool {
+func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *domain.PartDefinition, selectedPartKey domain.PartSlotKey) bool {
 	// 攻撃側の成功度
 	successRate := hc.partInfoProvider.GetSuccessRate(attacker, partDef, selectedPartKey)
 
@@ -48,7 +50,7 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 }
 
 // CalculateDefense は防御の成否を判定します。
-func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey) bool {
+func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *domain.PartDefinition, selectedPartKey domain.PartSlotKey) bool {
 	// 攻撃側の成功度
 	successRate := hc.partInfoProvider.GetSuccessRate(attacker, actingPartDef, selectedPartKey)
 

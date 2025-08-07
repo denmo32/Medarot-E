@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"medarot-ebiten/domain"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -14,7 +15,7 @@ func UpdateGaugeSystem(world donburi.World) {
 		state := StateComponent.Get(entry)
 
 		// チャージ中またはクールダウン中のエンティティのみを処理
-		if state.CurrentState != StateCharging && state.CurrentState != StateCooldown {
+		if state.CurrentState != domain.StateCharging && state.CurrentState != domain.StateCooldown {
 			return
 		}
 
@@ -28,13 +29,13 @@ func UpdateGaugeSystem(world donburi.World) {
 
 		if gauge.ProgressCounter >= gauge.TotalDuration {
 			switch state.CurrentState {
-			case StateCharging:
-				state.CurrentState = StateReady
+			case domain.StateCharging:
+				state.CurrentState = domain.StateReady
 				actionQueueComp := GetActionQueueComponent(world)
 				actionQueueComp.Queue = append(actionQueueComp.Queue, entry)
 				log.Printf("%s のチャージが完了。実行キューに追加。", SettingsComponent.Get(entry).Name)
-			case StateCooldown:
-				state.CurrentState = StateIdle
+			case domain.StateCooldown:
+				state.CurrentState = domain.StateIdle
 			}
 		}
 	})

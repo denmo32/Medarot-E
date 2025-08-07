@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"medarot-ebiten/domain"
 )
 
 // BattleLoggerImpl は BattleLogger インターフェースの実装です。
@@ -36,7 +37,7 @@ func (l *BattleLoggerImpl) LogPartBroken(medarotName, partName, partID string) {
 	}))
 }
 
-func (l *BattleLoggerImpl) LogActionInitiated(attackerName string, actionTrait Trait, weaponType WeaponType, category PartCategory) {
+func (l *BattleLoggerImpl) LogActionInitiated(attackerName string, actionTrait domain.Trait, weaponType domain.WeaponType, category domain.PartCategory) {
 	// このメッセージは ActionResult から構築されるため、ここでは直接ログ出力しない
 }
 
@@ -59,13 +60,13 @@ func buildActionLogMessagesFromActionResult(result ActionResult, gameDataManager
 	// 攻撃開始メッセージ
 	var actionInitiateMsg string
 	switch result.ActionCategory {
-	case CategoryRanged, CategoryMelee:
+	case domain.CategoryRanged, domain.CategoryMelee:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_attack", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正
 			"weapon_type":   result.WeaponType,
 		})
-	case CategoryIntervention:
+	case domain.CategoryIntervention:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_intervention", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正

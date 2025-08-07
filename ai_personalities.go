@@ -1,6 +1,8 @@
 package main
 
 import (
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -8,10 +10,10 @@ import (
 // 行動するAIエンティティと利用可能なパーツのリストを受け取り、選択されたパーツとそのスロットを返します。
 type AIPartSelectionStrategyFunc func(
 	actingEntry *donburi.Entry,
-	availableParts []AvailablePart,
+	availableParts []domain.AvailablePart,
 	world donburi.World,
 	battleLogic *BattleLogic,
-) (PartSlotKey, *PartDefinition)
+) (domain.PartSlotKey, *domain.PartDefinition)
 
 // AIPersonality はAIの性格に関連する戦略をカプセル化します。
 type AIPersonality struct {

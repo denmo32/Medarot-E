@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"github.com/yohamta/donburi"
@@ -37,12 +37,12 @@ type MessageTemplate struct {
 	Text string `json:"text"`
 }
 
-// targetablePart はAIがターゲット可能なパーツの情報を保持します。
-type targetablePart struct {
-	entity   *donburi.Entry
-	partInst *PartInstanceData
-	partDef  *PartDefinition
-	slot     PartSlotKey
+// TargetablePart はAIがターゲット可能なパーツの情報を保持します。
+type TargetablePart struct {
+	Entity   *donburi.Entry
+	PartInst *PartInstanceData
+	PartDef  *PartDefinition
+	Slot     PartSlotKey
 }
 
 // TargetingPolicyType はターゲット決定方針を示す型です。

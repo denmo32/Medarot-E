@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"medarot-ebiten/domain"
 	"os"
 	"strconv"
 )
 
 // SaveMedarotLoadouts は、現在のメダロットの構成をCSVファイルに保存します。
-func SaveMedarotLoadouts(filePath string, medarots []MedarotData) error {
+func SaveMedarotLoadouts(filePath string, medarots []domain.MedarotData) error {
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("ファイルの作成に失敗しました: %w", err)

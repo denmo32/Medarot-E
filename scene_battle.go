@@ -4,6 +4,8 @@ import (
 	"log"
 	"math/rand"
 
+	"medarot-ebiten/domain"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -16,10 +18,10 @@ type BattleScene struct {
 	world          donburi.World
 	tickCount      int
 	debugMode      bool
-	playerTeam     TeamID
+	playerTeam     domain.TeamID
 	ui             UIInterface
 	messageManager *UIMessageDisplayManager
-	winner         TeamID
+	winner         domain.TeamID
 
 	gameDataManager        *GameDataManager
 	rand                   *rand.Rand
@@ -33,7 +35,7 @@ type BattleScene struct {
 	battleLogic *BattleLogic // 追加
 
 	// New: Map of BattleStates
-	battleStates map[GameState]BattleState
+	battleStates map[domain.GameState]BattleState
 }
 
 func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
@@ -44,8 +46,8 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		manager:         manager,
 		world:           world,
 		debugMode:       true,
-		playerTeam:      Team1,
-		winner:          TeamNone,
+		playerTeam:      domain.Team1,
+		winner:          domain.TeamNone,
 		gameDataManager: res.GameDataManager,
 		rand:            res.Rand,
 		uiEventChannel:  make(chan UIEvent, 10),
@@ -64,22 +66,22 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 	bs.messageManager = bs.ui.GetMessageDisplayManager() // uiからmessageManagerを取得
 
 	// Initialize battleStates map
-	bs.battleStates = map[GameState]BattleState{
-		StateGaugeProgress:      &GaugeProgressState{},
-		StatePlayerActionSelect: &PlayerActionSelectState{},
-		StateActionExecution:    &ActionExecutionState{},
-		StateAnimatingAction:    &AnimatingActionState{},
-		StatePostAction:         &PostActionState{},
-		StateMessage:            &MessageState{},
-		StateGameOver:           &GameOverState{},
+	bs.battleStates = map[domain.GameState]BattleState{
+		domain.StateGaugeProgress:      &GaugeProgressState{},
+		domain.StatePlayerActionSelect: &PlayerActionSelectState{},
+		domain.StateActionExecution:    &ActionExecutionState{},
+		domain.StateAnimatingAction:    &AnimatingActionState{},
+		domain.StatePostAction:         &PostActionState{},
+		domain.StateMessage:            &MessageState{},
+		domain.StateGameOver:           &GameOverState{},
 	}
 
-	bs.SetState(StateGaugeProgress)
+	bs.SetState(domain.StateGaugeProgress)
 
 	return bs
 }
 
-func (bs *BattleScene) SetState(newState GameState) {
+func (bs *BattleScene) SetState(newState domain.GameState) {
 	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
@@ -194,26 +196,26 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 	for _, event := range gameEvents {
 		switch e := event.(type) {
 		case PlayerActionRequiredGameEvent:
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlayerActionSelect})
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
 		case ActionAnimationStartedGameEvent:
 			bs.ui.PostEvent(SetAnimationUIEvent(e))
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateAnimatingAction})
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StateAnimatingAction})
 
 		case ActionAnimationFinishedGameEvent:
 			*lastActionResultComp = e.Result // Store the result
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePostAction})
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StatePostAction})
 		case MessageDisplayRequestGameEvent:
 			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StateMessage})
 		case MessageDisplayFinishedGameEvent:
-			if bs.winner != TeamNone {
-				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGameOver})
+			if bs.winner != domain.TeamNone {
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StateGameOver})
 			} else {
-				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 			}
 		case GameOverGameEvent:
 			bs.winner = e.Winner
-			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
+			stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StateMessage})
 		case HideActionModalGameEvent:
 			bs.ui.PostEvent(HideActionModalUIEvent{})
 		case ShowActionModalGameEvent:
@@ -248,9 +250,9 @@ func (bs *BattleScene) processGameEvents(gameEvents []GameEvent) []GameEvent {
 		case PlayerActionSelectFinishedGameEvent:
 			playerActionQueue := GetPlayerActionQueueComponent(bs.world)
 			if len(playerActionQueue.Queue) > 0 {
-				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StatePlayerActionSelect})
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
 			} else {
-				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
+				stateChangeEvents = append(stateChangeEvents, StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 			}
 
 		case GoToTitleSceneGameEvent:

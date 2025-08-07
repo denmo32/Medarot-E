@@ -4,6 +4,8 @@ import (
 	"log"
 	"math/rand"
 
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
@@ -24,7 +26,7 @@ func (h *BaseAttackHandler) Execute(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	_ *Config,
-	actingPartDef *PartDefinition,
+	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
@@ -33,7 +35,7 @@ func (h *BaseAttackHandler) Execute(
 }
 
 // initializeAttackResult は ActionResult を初期化します。
-func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *PartDefinition) ActionResult {
+func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *domain.PartDefinition) ActionResult {
 	return ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   false, // 初期値はfalse
@@ -55,7 +57,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	_ *Config,
-	actingPartDef *PartDefinition,
+	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {
 	result := initializeAttackResult(actingEntry, actingPartDef)
@@ -94,8 +96,8 @@ func (h *BaseAttackHandler) performAttackLogic(
 
 // --- attack action helpers ---
 
-func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool {
-	if StateComponent.Get(targetEntry).CurrentState == StateBroken {
+func validateTarget(targetEntry *donburi.Entry, targetPartSlot domain.PartSlotKey) bool {
+	if StateComponent.Get(targetEntry).CurrentState == domain.StateBroken {
 		return false
 	}
 	targetParts := PartsComponent.Get(targetEntry)
@@ -105,15 +107,15 @@ func validateTarget(targetEntry *donburi.Entry, targetPartSlot PartSlotKey) bool
 	return true
 }
 
-func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey, hitCalculator *HitCalculator) bool {
+func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *domain.PartDefinition, selectedPartKey domain.PartSlotKey, hitCalculator *HitCalculator) bool {
 	return hitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef, selectedPartKey)
 }
 
 func applyDamageAndDefense(
 	result *ActionResult,
 	actingEntry *donburi.Entry,
-	actingPartDef *PartDefinition,
-	selectedPartKey PartSlotKey,
+	actingPartDef *domain.PartDefinition,
+	selectedPartKey domain.PartSlotKey,
 	damageCalculator *DamageCalculator,
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
@@ -160,10 +162,10 @@ func resolveAttackTarget(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	rand *rand.Rand,
-) (targetEntry *donburi.Entry, targetPartSlot PartSlotKey) {
+) (targetEntry *donburi.Entry, targetPartSlot domain.PartSlotKey) {
 	targetComp := TargetComponent.Get(actingEntry)
 	switch targetComp.Policy {
-	case PolicyPreselected:
+	case domain.PolicyPreselected:
 		if targetComp.TargetEntity == 0 { // nil から 0 に変更
 			log.Printf("エラー: PolicyPreselected なのにターゲットが設定されていません。")
 			return nil, ""
@@ -175,7 +177,7 @@ func resolveAttackTarget(
 			return nil, ""
 		}
 		return targetEntry, targetComp.TargetPartSlot
-	case PolicyClosestAtExecution:
+	case domain.PolicyClosestAtExecution:
 		closestEnemy := targetSelector.FindClosestEnemy(actingEntry, partInfoProvider)
 		if closestEnemy == nil {
 			return nil, "" // ターゲットが見つからない場合は失敗
@@ -207,7 +209,7 @@ func (h *SupportTraitExecutor) Execute(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	_ *Config,
-	actingPartDef *PartDefinition,
+	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
@@ -237,10 +239,10 @@ func (h *SupportTraitExecutor) Execute(
 	}
 
 	teamID := settings.Team
-	buffType := BuffTypeAccuracy
+	buffType := domain.BuffTypeAccuracy
 
 	if _, exists := teamBuffs.Buffs[teamID]; !exists {
-		teamBuffs.Buffs[teamID] = make(map[BuffType][]*BuffSource)
+		teamBuffs.Buffs[teamID] = make(map[domain.BuffType][]*BuffSource)
 	}
 	if _, exists := teamBuffs.Buffs[teamID][buffType]; !exists {
 		teamBuffs.Buffs[teamID][buffType] = make([]*BuffSource, 0)
@@ -271,7 +273,7 @@ func (h *ObstructTraitExecutor) Execute(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	_ *Config,
-	actingPartDef *PartDefinition,
+	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
 ) ActionResult {
 	settings := SettingsComponent.Get(actingEntry)

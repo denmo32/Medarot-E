@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"medarot-ebiten/domain"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -9,12 +10,12 @@ import (
 )
 
 // InitializeBattleWorld は戦闘ワールドのECSエンティティを初期化します。
-	func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam TeamID) {
+func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam domain.TeamID) {
 	EnsureActionQueueEntity(world)
 
 	// Ensure GameStateComponent entity exists
 	gameStateEntry := world.Entry(world.Create(GameStateComponent, worldStateTag))
-	GameStateComponent.SetValue(gameStateEntry, GameStateData{CurrentState: StateGaugeProgress})
+	GameStateComponent.SetValue(gameStateEntry, GameStateData{CurrentState: domain.StateGaugeProgress})
 
 	// Ensure PlayerActionQueueComponent entity exists
 	playerActionQueueEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
@@ -24,13 +25,9 @@ import (
 	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
 	LastActionResultComponent.SetValue(lastActionResultEntry, ActionResult{})
 
-	
-
-	
-
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
 	TeamBuffsComponent.SetValue(teamBuffsEntry, TeamBuffs{
-		Buffs: make(map[TeamID]map[BuffType][]*BuffSource),
+		Buffs: make(map[domain.TeamID]map[domain.BuffType][]*BuffSource),
 	})
 
 	// Initialize BattleUIStateComponent
@@ -48,7 +45,7 @@ import (
 }
 
 // CreateMedarotEntities はゲームデータからECSのエンティティを生成します。
-func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam TeamID, gameDataManager *GameDataManager) {
+func CreateMedarotEntities(world donburi.World, gameData *domain.GameData, playerTeam domain.TeamID, gameDataManager *GameDataManager) {
 	for _, loadout := range gameData.Medarots {
 		entry := world.Entry(world.Create(
 			SettingsComponent,
@@ -68,18 +65,18 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			DrawIndex: loadout.DrawIndex,
 		})
 
-		partsInstanceMap := make(map[PartSlotKey]*PartInstanceData)
-		partIDMap := map[PartSlotKey]string{
-			PartSlotHead:     loadout.HeadID,
-			PartSlotRightArm: loadout.RightArmID,
-			PartSlotLeftArm:  loadout.LeftArmID,
-			PartSlotLegs:     loadout.LegsID,
+		partsInstanceMap := make(map[domain.PartSlotKey]*domain.PartInstanceData)
+		partIDMap := map[domain.PartSlotKey]string{
+			domain.PartSlotHead:     loadout.HeadID,
+			domain.PartSlotRightArm: loadout.RightArmID,
+			domain.PartSlotLeftArm:  loadout.LeftArmID,
+			domain.PartSlotLegs:     loadout.LegsID,
 		}
 
 		for slot, partID := range partIDMap {
 			partDef, defFound := gameDataManager.GetPartDefinition(partID)
 			if defFound {
-				partsInstanceMap[slot] = &PartInstanceData{
+				partsInstanceMap[slot] = &domain.PartInstanceData{
 					DefinitionID: partDef.ID,
 					CurrentArmor: partDef.MaxArmor,
 					IsBroken:     false,
@@ -97,7 +94,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 			log.Fatalf("エラー: ID %s のメダル定義が見つかりません。", loadout.MedalID)
 		}
 
-		StateComponent.SetValue(entry, State{CurrentState: StateIdle})
+		StateComponent.SetValue(entry, State{CurrentState: domain.StateIdle})
 		GaugeComponent.SetValue(entry, Gauge{})
 		LogComponent.SetValue(entry, Log{})
 		ActionIntentComponent.SetValue(entry, ActionIntent{})
@@ -119,7 +116,7 @@ func CreateMedarotEntities(world donburi.World, gameData *GameData, playerTeam T
 	log.Printf("%d体のメダロットエンティティを生成しました。", len(gameData.Medarots))
 }
 
-func FindLeader(world donburi.World, teamID TeamID) *donburi.Entry {
+func FindLeader(world donburi.World, teamID domain.TeamID) *donburi.Entry {
 	var leaderEntry *donburi.Entry
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)

@@ -3,6 +3,8 @@ package main
 import (
 	"math/rand"
 
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -12,7 +14,7 @@ type TargetingStrategy interface {
 		world donburi.World,
 		actingEntry *donburi.Entry,
 		battleLogic *BattleLogic,
-	) (*donburi.Entry, PartSlotKey)
+	) (*donburi.Entry, domain.PartSlotKey)
 }
 
 type BattleLogger interface {
@@ -20,7 +22,7 @@ type BattleLogger interface {
 	LogDefenseCheck(targetName string, defenseRate, successRate, chance float64, roll int)
 	LogCriticalHit(attackerName string, chance float64)
 	LogPartBroken(medarotName, partName, partID string)
-	LogActionInitiated(attackerName string, actionTrait Trait, weaponType WeaponType, category PartCategory)
+	LogActionInitiated(attackerName string, actionTrait domain.Trait, weaponType domain.WeaponType, category domain.PartCategory)
 	LogAttackMiss(attackerName, skillName, targetName string)
 	LogDamageDealt(defenderName, targetPartType string, damage int)
 	LogDefenseSuccess(targetName, defensePartName string, originalDamage, actualDamage int, isCritical bool)
@@ -38,7 +40,7 @@ type TraitActionHandler interface {
 		targetSelector *TargetSelector,
 		partInfoProvider PartInfoProviderInterface,
 		gameConfig *Config,
-		actingPartDef *PartDefinition,
+		actingPartDef *domain.PartDefinition,
 		rand *rand.Rand,
 	) ActionResult
 }
@@ -46,29 +48,29 @@ type TraitActionHandler interface {
 // WeaponTypeEffectHandler は weapon_type 固有の追加効果を処理します。
 // ActionResult を受け取り、デバフ付与などの副作用を適用します。
 type WeaponTypeEffectHandler interface {
-	ApplyEffect(result *ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *PartDefinition, rand *rand.Rand)
+	ApplyEffect(result *ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand)
 }
 
 // PartInfoProviderInterface はパーツの状態や情報を取得・操作するロジックのインターフェースです。
 type PartInfoProviderInterface interface {
 	// パーツのパラメータ値を取得するメソッド
-	GetPartParameterValue(entry *donburi.Entry, partSlot PartSlotKey, param PartParameter) float64
+	GetPartParameterValue(entry *donburi.Entry, partSlot domain.PartSlotKey, param PartParameter) float64
 
 	// パーツスロットを検索するメソッド
-	FindPartSlot(entry *donburi.Entry, partToFindInstance *PartInstanceData) PartSlotKey
+	FindPartSlot(entry *donburi.Entry, partToFindInstance *domain.PartInstanceData) domain.PartSlotKey
 
 	// 利用可能な攻撃パーツを取得するメソッド
-	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart
+	GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart
 
 	// 全体的な推進力と機動力を取得するメソッド
 	GetOverallPropulsion(entry *donburi.Entry) int
 	GetOverallMobility(entry *donburi.Entry) int
 
 	// 脚部パーツの定義を取得するメソッド
-	GetLegsPartDefinition(entry *donburi.Entry) (*PartDefinition, bool)
+	GetLegsPartDefinition(entry *donburi.Entry) (*domain.PartDefinition, bool)
 
 	// 成功度、回避度、防御度を取得するメソッド
-	GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey) float64
+	GetSuccessRate(entry *donburi.Entry, actingPartDef *domain.PartDefinition, selectedPartKey domain.PartSlotKey) float64
 	GetEvasionRate(entry *donburi.Entry) float64
 	GetDefenseRate(entry *donburi.Entry) float64
 
@@ -76,7 +78,7 @@ type PartInfoProviderInterface interface {
 	GetTeamAccuracyBuffMultiplier(entry *donburi.Entry) float64
 
 	// バフを削除するメソッド
-	RemoveBuffsFromSource(entry *donburi.Entry, partInst *PartInstanceData)
+	RemoveBuffsFromSource(entry *donburi.Entry, partInst *domain.PartInstanceData)
 
 	// ゲージの持続時間を計算するメソッド
 	CalculateGaugeDuration(baseSeconds float64, entry *donburi.Entry) float64

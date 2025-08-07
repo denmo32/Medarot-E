@@ -5,6 +5,8 @@ import (
 	"log"
 	"math/rand"
 
+	"medarot-ebiten/domain"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
@@ -47,7 +49,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	playerInputEvents := UpdatePlayerInputSystem(ctx.World)
 	if len(playerInputEvents) > 0 {
 		gameEvents = append(gameEvents, playerInputEvents...)
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StatePlayerActionSelect})
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
 		return gameEvents, nil
 	}
 
@@ -57,7 +59,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	// アクション実行キューをチェック
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) > 0 {
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateActionExecution})
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateActionExecution})
 		return gameEvents, nil
 	}
 
@@ -96,16 +98,16 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 		actingEntry := playerActionQueue.Queue[0]
 
 		// 有効で待機状態ならモーダルを表示
-		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == StateIdle {
-			actionTargetMap := make(map[PartSlotKey]ActionTarget)
+		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == domain.StateIdle {
+			actionTargetMap := make(map[domain.PartSlotKey]domain.ActionTarget)
 			// ViewModelFactoryを介して利用可能なパーツを取得
 			availableParts := viewModelFactory.GetAvailableAttackParts(actingEntry)
 			for _, available := range availableParts {
 				partDef := available.PartDef
 				slotKey := available.Slot
 				var targetEntity *donburi.Entry
-				var targetPartSlot PartSlotKey
-				if partDef.Category == CategoryRanged || partDef.Category == CategoryIntervention {
+				var targetPartSlot domain.PartSlotKey
+				if partDef.Category == domain.CategoryRanged || partDef.Category == domain.CategoryIntervention {
 					medal := MedalComponent.Get(actingEntry)
 					personality, ok := PersonalityRegistry[medal.Personality]
 					if !ok {
@@ -117,7 +119,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 				if targetEntity != nil {
 					targetID = targetEntity.Entity()
 				}
-				actionTargetMap[slotKey] = ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot}
+				actionTargetMap[slotKey] = domain.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot}
 			}
 
 			// ここでViewModelを構築し、UIに渡す
@@ -134,7 +136,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 	} else {
 		// キューが空なら処理完了
 		gameEvents = append(gameEvents, PlayerActionSelectFinishedGameEvent{})
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -167,7 +169,7 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
 			gameEvents = append(gameEvents, ActionAnimationStartedGameEvent{AnimationData: ActionAnimationData{Result: result, StartTime: ctx.Tick}})
-			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateAnimatingAction})
+			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateAnimatingAction})
 			return gameEvents, nil
 		}
 	}
@@ -175,7 +177,7 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	// キューが空になったらゲージ進行に戻る
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) == 0 {
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateGaugeProgress})
+		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -210,7 +212,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 
 	// クールダウン開始
 	actingEntry := result.ActingEntry
-	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != StateBroken {
+	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != domain.StateBroken {
 		StartCooldownSystem(actingEntry, ctx.World, ctx.BattleLogic.GetPartInfoProvider())
 	}
 
@@ -222,7 +224,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	// 処理が終わったらLastActionResultをクリア
 	*result = ActionResult{}
 
-	gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: StateMessage})
+	gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateMessage})
 	return gameEvents, nil
 }
 

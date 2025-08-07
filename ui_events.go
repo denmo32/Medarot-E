@@ -1,6 +1,8 @@
 package main
 
 import (
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -12,7 +14,7 @@ type UIEvent interface {
 // PartSelectedUIEvent は、プレイヤーがパーツを選択したときに発行されます。
 type PartSelectedUIEvent struct {
 	ActingEntityID  donburi.Entity
-	SelectedSlotKey PartSlotKey
+	SelectedSlotKey domain.PartSlotKey
 	TargetEntityID  donburi.Entity // 追加
 }
 
@@ -20,10 +22,10 @@ func (e PartSelectedUIEvent) isUIEvent() {}
 
 // TargetSelectedUIEvent は、プレイヤーがターゲットを選択したときに発行されます。
 type TargetSelectedUIEvent struct {
-	ActingEntityID donburi.Entity
-	SelectedSlotKey PartSlotKey
-	TargetEntityID donburi.Entity
-	TargetPartSlot PartSlotKey
+	ActingEntityID  donburi.Entity
+	SelectedSlotKey domain.PartSlotKey
+	TargetEntityID  donburi.Entity
+	TargetPartSlot  domain.PartSlotKey
 }
 
 func (e TargetSelectedUIEvent) isUIEvent() {}
@@ -32,9 +34,9 @@ func (e TargetSelectedUIEvent) isUIEvent() {}
 type ActionConfirmedUIEvent struct {
 	ActingEntityID    donburi.Entity
 	SelectedPartDefID string
-	SelectedSlotKey   PartSlotKey
+	SelectedSlotKey   domain.PartSlotKey
 	TargetEntityID    donburi.Entity
-	TargetPartSlot    PartSlotKey
+	TargetPartSlot    domain.PartSlotKey
 }
 
 func (e ActionConfirmedUIEvent) isUIEvent() {}

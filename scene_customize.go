@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"medarot-ebiten/domain"
 	"sort"
 	"strings"
 
@@ -27,14 +28,14 @@ type CustomizeScene struct {
 	legsNameButton          *widget.Button
 	medarotSelectionButtons []*widget.Button
 
-	playerMedarots            []*MedarotData
+	playerMedarots            []*domain.MedarotData
 	currentTargetMedarotIndex int
 
-	medalList     []*Medal
-	headPartsList []*PartDefinition
-	rArmPartsList []*PartDefinition
-	lArmPartsList []*PartDefinition
-	legsPartsList []*PartDefinition
+	medalList     []*domain.Medal
+	headPartsList []*domain.PartDefinition
+	rArmPartsList []*domain.PartDefinition
+	lArmPartsList []*domain.PartDefinition
+	legsPartsList []*domain.PartDefinition
 
 	currentMedalIndex int
 	currentHeadIndex  int
@@ -82,20 +83,20 @@ func (cs *CustomizeScene) setupPartLists() {
 	allPartDefs := cs.resources.GameDataManager.GetAllPartDefinitions()
 	sort.Slice(allPartDefs, func(i, j int) bool { return allPartDefs[i].ID < allPartDefs[j].ID })
 
-	cs.headPartsList = []*PartDefinition{}
-	cs.rArmPartsList = []*PartDefinition{}
-	cs.lArmPartsList = []*PartDefinition{}
-	cs.legsPartsList = []*PartDefinition{}
+	cs.headPartsList = []*domain.PartDefinition{}
+	cs.rArmPartsList = []*domain.PartDefinition{}
+	cs.lArmPartsList = []*domain.PartDefinition{}
+	cs.legsPartsList = []*domain.PartDefinition{}
 
 	for _, pDef := range allPartDefs {
 		switch pDef.Type {
-		case PartTypeHead:
+		case domain.PartTypeHead:
 			cs.headPartsList = append(cs.headPartsList, pDef)
-		case PartTypeRArm:
+		case domain.PartTypeRArm:
 			cs.rArmPartsList = append(cs.rArmPartsList, pDef)
-		case PartTypeLArm:
+		case domain.PartTypeLArm:
 			cs.lArmPartsList = append(cs.lArmPartsList, pDef)
-		case PartTypeLegs:
+		case domain.PartTypeLegs:
 			cs.legsPartsList = append(cs.legsPartsList, pDef)
 		}
 	}
@@ -202,11 +203,11 @@ func (cs *CustomizeScene) selectMedarot(index int) {
 func (cs *CustomizeScene) refreshUIForSelectedMedarot() {
 	target := cs.playerMedarots[cs.currentTargetMedarotIndex]
 
-	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *Medal) string { return m.ID })
-	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *PartDefinition) string { return p.ID })
-	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *PartDefinition) string { return p.ID })
-	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *PartDefinition) string { return p.ID })
-	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *PartDefinition) string { return p.ID })
+	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *domain.Medal) string { return m.ID })
+	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *domain.PartDefinition) string { return p.ID })
+	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *domain.PartDefinition) string { return p.ID })
+	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *domain.PartDefinition) string { return p.ID })
+	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *domain.PartDefinition) string { return p.ID })
 
 	cs.medalNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryMedal)
 	cs.headNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryHead)
@@ -343,7 +344,7 @@ func (cs *CustomizeScene) updateStatus(id string) {
 		sb.WriteString(fmt.Sprintf("Accuracy: %d\n", partDef.Accuracy))
 		sb.WriteString(fmt.Sprintf("Charge: %d\n", partDef.Charge))
 		sb.WriteString(fmt.Sprintf("Cooldown: %d\n", partDef.Cooldown))
-		if partDef.Type == PartTypeLegs {
+		if partDef.Type == domain.PartTypeLegs {
 			sb.WriteString(fmt.Sprintf("\nPropulsion: %d\n", partDef.Propulsion))
 			sb.WriteString(fmt.Sprintf("Mobility: %d\n", partDef.Mobility))
 			sb.WriteString(fmt.Sprintf("Stability: %d\n", partDef.Stability)) // Added Stability

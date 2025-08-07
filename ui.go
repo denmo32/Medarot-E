@@ -3,6 +3,7 @@ package main
 import (
 	"image"
 	"image/color"
+	"medarot-ebiten/domain"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
@@ -148,7 +149,7 @@ func (u *UI) HideActionModal() {
 }
 
 // GetActionTargetMap は現在のアクションターゲットマップを返します。
-func (u *UI) GetActionTargetMap() map[PartSlotKey]ActionTarget {
+func (u *UI) GetActionTargetMap() map[domain.PartSlotKey]domain.ActionTarget {
 	return u.actionModalManager.GetActionTargetMap()
 }
 

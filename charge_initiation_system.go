@@ -1,6 +1,8 @@
 package main
 
 import (
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -23,12 +25,12 @@ func NewChargeInitiationSystem(world donburi.World, partInfoProvider PartInfoPro
 // StartCharge はチャージ状態を開始するための主要なロジックを実行します。
 func (s *ChargeInitiationSystem) StartCharge(
 	entry *donburi.Entry,
-	partKey PartSlotKey,
+	partKey domain.PartSlotKey,
 	targetEntry *donburi.Entry,
-	targetPartSlot PartSlotKey,
+	targetPartSlot domain.PartSlotKey,
 ) bool {
 	state := StateComponent.Get(entry)
-	if state.CurrentState != StateIdle {
+	if state.CurrentState != domain.StateIdle {
 		return false // アイドル状態でない場合は開始できない
 	}
 
@@ -57,12 +59,12 @@ func (s *ChargeInitiationSystem) StartCharge(
 
 	// カテゴリに基づいてターゲット決定方針を設定
 	switch actingPartDef.Category {
-	case CategoryRanged, CategoryIntervention:
-		target.Policy = PolicyPreselected
-	case CategoryMelee:
-		target.Policy = PolicyClosestAtExecution
+	case domain.CategoryRanged, domain.CategoryIntervention:
+		target.Policy = domain.PolicyPreselected
+	case domain.CategoryMelee:
+		target.Policy = domain.PolicyClosestAtExecution
 	default:
-		target.Policy = PolicyPreselected // デフォルト
+		target.Policy = domain.PolicyPreselected // デフォルト
 	}
 
 	// 1. 計算式の取得
@@ -75,9 +77,9 @@ func (s *ChargeInitiationSystem) StartCharge(
 			// ログは削除
 			var effectData interface{}
 			switch debuffInfo.Type {
-			case DebuffTypeEvasion:
+			case domain.DebuffTypeEvasion:
 				effectData = &EvasionDebuffEffectData{Multiplier: debuffInfo.Multiplier}
-			case DebuffTypeDefense:
+			case domain.DebuffTypeDefense:
 				effectData = &DefenseDebuffEffectData{Multiplier: debuffInfo.Multiplier}
 			default:
 				// ログは削除
@@ -88,9 +90,9 @@ func (s *ChargeInitiationSystem) StartCharge(
 		}
 	}
 
-	if actingPartDef.Category == CategoryRanged {
+	if actingPartDef.Category == domain.CategoryRanged {
 		// targetEntry が有効なエンティティであるか、または破壊されていないかを確認
-		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).CurrentState == StateBroken {
+		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).CurrentState == domain.StateBroken {
 			return false
 		}
 		// ログは削除
@@ -106,6 +108,6 @@ func (s *ChargeInitiationSystem) StartCharge(
 	gauge.TotalDuration = totalTicks
 	gauge.ProgressCounter = 0
 
-	state.CurrentState = StateCharging
+	state.CurrentState = domain.StateCharging
 	return true
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"medarot-ebiten/domain"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -26,7 +27,7 @@ func (pip *PartInfoProvider) GetGameDataManager() *GameDataManager {
 }
 
 // GetPartParameterValue は指定されたパーツスロットとパラメータの値を取得する汎用ヘルパー関数です。
-func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlot PartSlotKey, param PartParameter) float64 {
+func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlot domain.PartSlotKey, param PartParameter) float64 {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return 0
@@ -60,7 +61,7 @@ func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlo
 }
 
 // FindPartSlot は指定されたパーツインスタンスがどのスロットにあるかを返します。
-func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstance *PartInstanceData) PartSlotKey {
+func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstance *domain.PartInstanceData) domain.PartSlotKey {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil || partToFindInstance == nil {
 		return ""
@@ -81,13 +82,13 @@ func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstan
 }
 
 // GetAvailableAttackParts は攻撃に使用可能なパーツの定義リストを返します。
-func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
+func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return nil
 	}
-	var availableParts []AvailablePart
-	slotsToConsider := []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm}
+	var availableParts []domain.AvailablePart
+	slotsToConsider := []domain.PartSlotKey{domain.PartSlotHead, domain.PartSlotRightArm, domain.PartSlotLeftArm}
 
 	for _, slot := range slotsToConsider {
 		partInst, ok := partsComp.Map[slot]
@@ -100,8 +101,8 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 			continue
 		}
 
-		if partDef.Category == CategoryRanged || partDef.Category == CategoryMelee || partDef.Category == CategoryIntervention {
-			availableParts = append(availableParts, AvailablePart{PartDef: partDef, Slot: slot})
+		if partDef.Category == domain.CategoryRanged || partDef.Category == domain.CategoryMelee || partDef.Category == domain.CategoryIntervention {
+			availableParts = append(availableParts, domain.AvailablePart{PartDef: partDef, Slot: slot})
 		}
 	}
 	return availableParts
@@ -109,21 +110,21 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []Ava
 
 // GetOverallPropulsion はエンティティの総推進力を返します。
 func (pip *PartInfoProvider) GetOverallPropulsion(entry *donburi.Entry) int {
-	return int(pip.GetPartParameterValue(entry, PartSlotLegs, Propulsion))
+	return int(pip.GetPartParameterValue(entry, domain.PartSlotLegs, Propulsion))
 }
 
 // GetOverallMobility はエンティティの総機動力を返します。
 func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
-	return int(pip.GetPartParameterValue(entry, PartSlotLegs, Mobility))
+	return int(pip.GetPartParameterValue(entry, domain.PartSlotLegs, Mobility))
 }
 
 // GetLegsPartDefinition はエンティティの脚部パーツの定義を取得します。
-func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*PartDefinition, bool) {
+func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*domain.PartDefinition, bool) {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return nil, false
 	}
-	legsInstance, ok := partsComp.Map[PartSlotLegs]
+	legsInstance, ok := partsComp.Map[domain.PartSlotLegs]
 	if !ok || legsInstance == nil || legsInstance.IsBroken {
 		return nil, false
 	}
@@ -131,7 +132,7 @@ func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*PartD
 }
 
 // GetSuccessRate はエンティティの成功度を計算します。
-func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *PartDefinition, selectedPartKey PartSlotKey) float64 {
+func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *domain.PartDefinition, selectedPartKey domain.PartSlotKey) float64 {
 	successRate := float64(actingPartDef.Accuracy)
 
 	// 特性によるボーナスを加算
@@ -147,7 +148,7 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 
 // GetEvasionRate はエンティティの回避度を計算します。
 func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
-	evasion := pip.GetPartParameterValue(entry, PartSlotLegs, Mobility)
+	evasion := pip.GetPartParameterValue(entry, domain.PartSlotLegs, Mobility)
 
 	// ActiveEffectsComponentから回避デバフの影響を適用
 	if entry.HasComponent(ActiveEffectsComponent) {
@@ -163,7 +164,7 @@ func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
 
 // GetDefenseRate はエンティティの防御度を計算します。
 func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
-	defense := pip.GetPartParameterValue(entry, PartSlotLegs, Defense)
+	defense := pip.GetPartParameterValue(entry, domain.PartSlotLegs, Defense)
 
 	// ActiveEffectsComponentから防御デバフの影響を適用
 	if entry.HasComponent(ActiveEffectsComponent) {
@@ -188,7 +189,7 @@ func (pip *PartInfoProvider) GetTeamAccuracyBuffMultiplier(entry *donburi.Entry)
 	settings := SettingsComponent.Get(entry)
 
 	teamID := settings.Team
-	buffType := BuffTypeAccuracy
+	buffType := domain.BuffTypeAccuracy
 
 	maxMultiplier := 1.0
 
@@ -206,7 +207,7 @@ func (pip *PartInfoProvider) GetTeamAccuracyBuffMultiplier(entry *donburi.Entry)
 }
 
 // RemoveBuffsFromSource は、指定されたパーツインスタンスが提供していたバフをすべて削除します。
-func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partInst *PartInstanceData) {
+func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partInst *domain.PartInstanceData) {
 	teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(pip.world)
 	if !ok {
 		return
@@ -240,7 +241,7 @@ func (pip *PartInfoProvider) CalculateGaugeDuration(baseSeconds float64, entry *
 	if entry != nil && entry.HasComponent(PartsComponent) {
 		partsComp := PartsComponent.Get(entry)
 		if partsComp != nil {
-			legsInstance, ok := partsComp.Map[PartSlotLegs]
+			legsInstance, ok := partsComp.Map[domain.PartSlotLegs]
 			if ok && legsInstance != nil && !legsInstance.IsBroken {
 				propulsion = pip.GetOverallPropulsion(entry)
 			}
@@ -269,13 +270,13 @@ func (pip *PartInfoProvider) GetNormalizedActionProgress(entry *donburi.Entry) f
 	}
 
 	switch state.CurrentState {
-	case StateCharging:
+	case domain.StateCharging:
 		return progress
-	case StateReady:
+	case domain.StateReady:
 		return 1.0
-	case StateCooldown:
+	case domain.StateCooldown:
 		return 1.0 - progress
-	case StateIdle, StateBroken:
+	case domain.StateIdle, domain.StateBroken:
 		return 0.0
 	default:
 		return 0.0 // 不明な状態の場合はホームポジション

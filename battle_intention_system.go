@@ -1,6 +1,8 @@
 package main
 
 import (
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
@@ -16,14 +18,14 @@ func UpdatePlayerInputSystem(world donburi.World) []GameEvent {
 	// キューをクリアし、現在のアイドル状態のプレイヤーエンティティを再収集
 	playerActionQueue.Queue = make([]*donburi.Entry, 0)
 	query.NewQuery(filter.Contains(PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).CurrentState == StateIdle {
+		if StateComponent.Get(entry).CurrentState == domain.StateIdle {
 			playerActionQueue.Queue = append(playerActionQueue.Queue, entry)
 		}
 	})
 
 	if len(playerActionQueue.Queue) > 0 {
 		gameEvents = append(gameEvents, PlayerActionRequiredGameEvent{})
-		
+
 	}
 
 	return gameEvents
@@ -39,7 +41,7 @@ func UpdateAIInputSystem(
 	query.NewQuery(
 		filter.Not(filter.Contains(PlayerControlComponent)), // プレイヤー制御ではないエンティティ
 	).Each(world, func(entry *donburi.Entry) {
-		if !entry.HasComponent(StateComponent) || StateComponent.Get(entry).CurrentState != StateIdle {
+		if !entry.HasComponent(StateComponent) || StateComponent.Get(entry).CurrentState != domain.StateIdle {
 			return
 		}
 		aiSelectAction(world, entry, battleLogic)

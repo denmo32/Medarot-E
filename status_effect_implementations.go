@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"medarot-ebiten/domain"
 
 	"github.com/yohamta/donburi"
 )
@@ -25,7 +26,7 @@ func DescriptionChargeStopEffect(data *ChargeStopEffectData) string {
 func DurationChargeStopEffect(data *ChargeStopEffectData) int { return data.DurationTurns }
 
 // TypeChargeStopEffect はChargeStopEffectDataの種類を返します。
-func TypeChargeStopEffect(data *ChargeStopEffectData) DebuffType { return DebuffTypeChargeStop }
+func TypeChargeStopEffect(data *ChargeStopEffectData) domain.DebuffType { return domain.DebuffTypeChargeStop }
 
 // ApplyDamageOverTimeEffect はDamageOverTimeEffectDataを適用するロジックです。
 func ApplyDamageOverTimeEffect(world donburi.World, target *donburi.Entry, data *DamageOverTimeEffectData) {
@@ -46,8 +47,8 @@ func DescriptionDamageOverTimeEffect(data *DamageOverTimeEffectData) string {
 func DurationDamageOverTimeEffect(data *DamageOverTimeEffectData) int { return data.DurationTurns }
 
 // TypeDamageOverTimeEffect はDamageOverTimeEffectDataの種類を返します。
-func TypeDamageOverTimeEffect(data *DamageOverTimeEffectData) DebuffType {
-	return DebuffTypeDamageOverTime
+func TypeDamageOverTimeEffect(data *DamageOverTimeEffectData) domain.DebuffType {
+	return domain.DebuffTypeDamageOverTime
 }
 
 // ApplyTargetRandomEffect はTargetRandomEffectDataを適用するロジックです。
@@ -69,7 +70,9 @@ func DescriptionTargetRandomEffect(data *TargetRandomEffectData) string {
 func DurationTargetRandomEffect(data *TargetRandomEffectData) int { return data.DurationTurns }
 
 // TypeTargetRandomEffect はTargetRandomEffectDataの種類を返します。
-func TypeTargetRandomEffect(data *TargetRandomEffectData) DebuffType { return DebuffTypeTargetRandom }
+func TypeTargetRandomEffect(data *TargetRandomEffectData) domain.DebuffType {
+	return domain.DebuffTypeTargetRandom
+}
 
 // ApplyEvasionDebuffEffect はEvasionDebuffEffectDataを適用するロジックです。
 func ApplyEvasionDebuffEffect(world donburi.World, target *donburi.Entry, data *EvasionDebuffEffectData) {
@@ -95,8 +98,8 @@ func DurationEvasionDebuffEffect(data *EvasionDebuffEffectData) int {
 }
 
 // TypeEvasionDebuffEffect はEvasionDebuffEffectDataの種類を返します。
-func TypeEvasionDebuffEffect(data *EvasionDebuffEffectData) DebuffType {
-	return DebuffTypeEvasion
+func TypeEvasionDebuffEffect(data *EvasionDebuffEffectData) domain.DebuffType {
+	return domain.DebuffTypeEvasion
 }
 
 // ApplyDefenseDebuffEffect はDefenseDebuffEffectDataを適用するロジックです。
@@ -122,6 +125,6 @@ func DurationDefenseDebuffEffect(data *DefenseDebuffEffectData) int {
 }
 
 // TypeDefenseDebuffEffect はDefenseDebuffEffectDataの種類を返します。
-func TypeDefenseDebuffEffect(data *DefenseDebuffEffectData) DebuffType {
-	return DebuffTypeDefense
+func TypeDefenseDebuffEffect(data *DefenseDebuffEffectData) domain.DebuffType {
+	return domain.DebuffTypeDefense
 }

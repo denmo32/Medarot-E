@@ -6,6 +6,8 @@ import (
 	"image/color"
 	"math/rand"
 
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
@@ -15,8 +17,8 @@ import (
 type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) InfoPanelViewModel
 	BuildBattlefieldViewModel(world donburi.World, battleUIState *BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) BattlefieldViewModel
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel
-	GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]domain.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel
+	GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart
 	IsActionModalVisible() bool
 }
 
@@ -44,7 +46,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 	state := StateComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 
-	partViewModels := make(map[PartSlotKey]PartViewModel)
+	partViewModels := make(map[domain.PartSlotKey]PartViewModel)
 	if partsComp != nil {
 		for slotKey, partInst := range partsComp.Map {
 			if partInst == nil {
@@ -106,16 +108,16 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth, config)
 		// アイコンのY座標を計算
 		// この値は game_settings.json の UI.Battlefield.MedarotVerticalSpacingFactor に影響されます。
-		y := (bfHeight / float32(PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
+		y := (bfHeight / float32(domain.PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
 		x += offsetX
 		y += offsetY
 
 		var iconColor color.Color
-		if state.CurrentState == StateBroken {
+		if state.CurrentState == domain.StateBroken {
 			iconColor = config.UI.Colors.Broken
-		} else if settings.Team == Team1 {
+		} else if settings.Team == domain.Team1 {
 			iconColor = config.UI.Colors.Team1
 		} else {
 			iconColor = config.UI.Colors.Team2
@@ -154,22 +156,22 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 	// ホームポジションと実行ラインのX座標を定義します。
 	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
 	homeX, execX := battlefieldWidth*config.UI.Battlefield.Team1HomeX, battlefieldWidth*config.UI.Battlefield.Team1ExecutionLineX
-	if settings.Team == Team2 {
+	if settings.Team == domain.Team2 {
 		homeX, execX = battlefieldWidth*config.UI.Battlefield.Team2HomeX, battlefieldWidth*config.UI.Battlefield.Team2ExecutionLineX
 	}
 
 	var xPos float32
 	switch StateComponent.Get(entry).CurrentState {
-	case StateCharging:
+	case domain.StateCharging:
 		// チャージ中はホームから実行ラインへ移動
 		xPos = homeX + (execX-homeX)*progress
-	case StateReady:
+	case domain.StateReady:
 		// 準備完了状態は実行ラインに固定
 		xPos = execX
-	case StateCooldown:
+	case domain.StateCooldown:
 		// クールダウン中は実行ラインからホームへ戻る
 		xPos = execX + (homeX-execX)*(1.0-progress)
-	case StateIdle, StateBroken:
+	case domain.StateIdle, domain.StateBroken:
 		// アイドル状態または機能停止状態はホームポジションに固定
 		xPos = homeX
 	default:
@@ -180,7 +182,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[PartSlotKey]ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[domain.PartSlotKey]domain.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 
@@ -189,7 +191,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 		// このエラーは通常、呼び出し元でエンティティの有効性を確認すべきですが、念のため
 		// log.Println("エラー: BuildActionModalViewModel - actingEntry に PartsComponent がありません。")
 	} else {
-		var displayableParts []AvailablePart
+		var displayableParts []domain.AvailablePart
 		for slotKey, partInst := range partsComp.Map {
 			partDef, defFound := gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
@@ -197,7 +199,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 			}
 			// actionTargetMap に含まれるパーツのみを対象とする（行動可能なパーツ）
 			if _, ok := actionTargetMap[slotKey]; ok {
-				displayableParts = append(displayableParts, AvailablePart{PartDef: partDef, Slot: slotKey})
+				displayableParts = append(displayableParts, domain.AvailablePart{PartDef: partDef, Slot: slotKey})
 			}
 		}
 
@@ -222,7 +224,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 }
 
 // GetAvailableAttackParts は、指定されたエンティティが利用可能な攻撃パーツのリストを返します。
-func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []AvailablePart {
+func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []domain.AvailablePart {
 	return f.partInfoProvider.GetAvailableAttackParts(entry)
 }
 

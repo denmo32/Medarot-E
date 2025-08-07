@@ -1,6 +1,8 @@
 package main
 
 import (
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -44,7 +46,7 @@ func (e MessageDisplayFinishedGameEvent) isGameEvent() {}
 
 // GameOverGameEvent は、ゲームオーバーになったことを示すイベントです。
 type GameOverGameEvent struct {
-	Winner TeamID
+	Winner domain.TeamID
 }
 
 func (e GameOverGameEvent) isGameEvent() {}
@@ -74,10 +76,10 @@ func (e ClearCurrentTargetGameEvent) isGameEvent() {}
 // ActionConfirmedGameEvent は、プレイヤーがアクションを確定したことを示すイベントです。
 type ActionConfirmedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedPartDef *PartDefinition
-	SelectedSlotKey PartSlotKey
+	SelectedPartDef *domain.PartDefinition
+	SelectedSlotKey domain.PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  PartSlotKey
+	TargetPartSlot  domain.PartSlotKey
 }
 
 func (e ActionConfirmedGameEvent) isGameEvent() {}
@@ -85,9 +87,9 @@ func (e ActionConfirmedGameEvent) isGameEvent() {}
 // ChargeRequestedGameEvent は、チャージ開始が要求されたことを示すイベントです。
 type ChargeRequestedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedSlotKey PartSlotKey
+	SelectedSlotKey domain.PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  PartSlotKey
+	TargetPartSlot  domain.PartSlotKey
 }
 
 func (e ChargeRequestedGameEvent) isGameEvent() {}
@@ -117,7 +119,7 @@ func (e GoToTitleSceneGameEvent) isGameEvent() {}
 
 // StateChangeRequestedGameEvent は、ゲームの状態変更が要求されたことを示すイベントです。
 type StateChangeRequestedGameEvent struct {
-	NextState GameState
+	NextState domain.GameState
 }
 
 func (e StateChangeRequestedGameEvent) isGameEvent() {}
@@ -127,7 +129,7 @@ type ActionResult struct {
 	// アクションの実行者とターゲットに関する情報
 	ActingEntry    *donburi.Entry
 	TargetEntry    *donburi.Entry
-	TargetPartSlot PartSlotKey // ターゲットのパーツスロット
+	TargetPartSlot domain.PartSlotKey // ターゲットのパーツスロット
 
 	// アクションの結果に関する情報
 	ActionDidHit      bool        // 命中したかどうか
@@ -135,22 +137,22 @@ type ActionResult struct {
 	OriginalDamage    int         // 元のダメージ量
 	DamageDealt       int         // 実際に与えたダメージ
 	ActionIsDefended  bool        // 攻撃が防御されたか
-	ActualHitPartSlot PartSlotKey // 実際にヒットしたパーツのスロット
+	ActualHitPartSlot domain.PartSlotKey // 実際にヒットしたパーツのスロット
 
 	// メッセージ表示のための情報
 	AttackerName      string
 	DefenderName      string
 	ActionName        string // e.g., "パーツ名"
-	ActionTrait       Trait  // e.g., "撃つ", "狙い撃ち" (Trait)
-	WeaponType        WeaponType
-	ActionCategory    PartCategory
+	ActionTrait       domain.Trait  // e.g., "撃つ", "狙い撃ち" (Trait)
+	WeaponType        domain.WeaponType
+	ActionCategory    domain.PartCategory
 	TargetPartType    string // e.g., "頭部", "脚部"
 	DefendingPartType string // e.g., "頭部", "脚部"
 
 	// PostActionEffectSystem で処理される情報
 	AppliedEffects     []interface{}     // アクションによって適用されるステータス効果のデータ
 	DamageToApply      int               // 実際に適用するダメージ量
-	TargetPartInstance *PartInstanceData // ダメージを受けるパーツインスタンスへのポインタ
+	TargetPartInstance *domain.PartInstanceData // ダメージを受けるパーツインスタンスへのポインタ
 	IsTargetPartBroken bool              // ダメージ適用後にパーツが破壊されたか
 }
 

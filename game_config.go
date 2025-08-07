@@ -4,6 +4,8 @@ import (
 	"image/color"
 	"math/rand" // 追加
 
+	"medarot-ebiten/domain"
+
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
@@ -28,8 +30,8 @@ type BonusTerm struct {
 
 // DebuffEffect は発生するデバフ効果を定義します
 type DebuffEffect struct {
-	Type       DebuffType // デバフの種類
-	Multiplier float64    // 効果量（乗数）
+	Type       domain.DebuffType // デバフの種類
+	Multiplier float64           // 効果量（乗数）
 }
 
 // ActionFormula はアクションの計算ルール全体を定義します
@@ -99,7 +101,7 @@ type BalanceConfig struct {
 		MinChance  float64
 		MaxChance  float64
 	}
-	Formulas map[Trait]ActionFormulaConfig // 新しく追加
+	Formulas map[domain.Trait]ActionFormulaConfig // 新しく追加
 }
 
 type AssetPaths struct {
@@ -178,7 +180,7 @@ type UIConfig struct {
 }
 
 type SharedResources struct {
-	GameData          *GameData
+	GameData          *domain.GameData
 	Config            Config
 	Font              text.Face
 	ModalButtonFont   text.Face // 追加

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"medarot-ebiten/domain"
 	"sort"
 
 	eimage "github.com/ebitenui/ebitenui/image"
@@ -15,7 +16,7 @@ type infoPanelUI struct {
 	rootPanel *UIPanel // rootContainer を UIPanel に変更
 	nameText  *widget.Text
 	stateText *widget.Text
-	partSlots map[PartSlotKey]*infoPanelPartUI
+	partSlots map[domain.PartSlotKey]*infoPanelPartUI
 }
 
 type infoPanelPartUI struct {
@@ -43,7 +44,7 @@ func NewInfoPanelManager(config *Config, uiFactory *UIFactory) *InfoPanelManager
 // InfoPanelCreationResult は生成された情報パネルとそのチーム情報を持つ構造体です。
 type InfoPanelCreationResult struct {
 	PanelUI *infoPanelUI
-	Team    TeamID
+	Team    domain.TeamID
 	ID      string
 }
 
@@ -94,7 +95,7 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []InfoPanelViewModel, mai
 		// PreferredSizeを使用して、レンダリング前に正しいサイズを取得
 		panelWidth, panelHeight := panelUI.rootPanel.RootContainer.PreferredSize()
 
-		if vm.Team == Team1 {
+		if vm.Team == domain.Team1 {
 			panelX = int(bfOffsetX - float32(panelWidth) - float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの左側に配置
 		} else {
 			panelX = int(bfOffsetX + bfWidth + float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの右側に配置
@@ -140,8 +141,8 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm InfoP
 
 	// パーツ部分のウィジェットを作成
 	partWidgets := []widget.PreferredSizeLocateableWidget{}
-	partSlots := make(map[PartSlotKey]*infoPanelPartUI)
-	for _, slotKey := range []PartSlotKey{PartSlotHead, PartSlotRightArm, PartSlotLeftArm, PartSlotLegs} {
+	partSlots := make(map[domain.PartSlotKey]*infoPanelPartUI)
+	for _, slotKey := range []domain.PartSlotKey{domain.PartSlotHead, domain.PartSlotRightArm, domain.PartSlotLeftArm, domain.PartSlotLegs} {
 		partVM, ok := vm.Parts[slotKey]
 		partTypeStr := "---"
 		initialArmor := 0.0

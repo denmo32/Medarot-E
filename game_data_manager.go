@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"medarot-ebiten/domain"
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	resource "github.com/quasilyte/ebitengine-resource" // resource パッケージを追加
@@ -9,11 +10,11 @@ import (
 
 // GameDataManager はパーツやメダルなどのすべての静적ゲームデータ定義とメッセージを保持します。
 type GameDataManager struct {
-	partDefinitions  map[string]*PartDefinition
-	medalDefinitions map[string]*Medal       // Medal構造体は今のところ主に定義情報と仮定
-	Messages         *MessageManager         // メッセージマネージャー
-	Font             text.Face               // UIで使用するフォント
-	Formulas         map[Trait]ActionFormula // 追加: アクション計算式
+	partDefinitions  map[string]*domain.PartDefinition
+	medalDefinitions map[string]*domain.Medal       // Medal構造体は今のところ主に定義情報と仮定
+	Messages         *MessageManager                // メッセージマネージャー
+	Font             text.Face                      // UIで使用するフォント
+	Formulas         map[domain.Trait]ActionFormula // 追加: アクション計算式
 	// 他のゲームデータ定義もここに追加できます
 }
 
@@ -25,17 +26,17 @@ func NewGameDataManager(font text.Face, assetPaths *AssetPaths, r *resource.Load
 	}
 
 	gdm := &GameDataManager{
-		partDefinitions:  make(map[string]*PartDefinition),
-		medalDefinitions: make(map[string]*Medal),
-		Messages:         messageManager,         // メッセージマネージャー
-		Font:             font,                   // UIで使用するフォント
-		Formulas:         make(map[Trait]ActionFormula), // 初期化
+		partDefinitions:  make(map[string]*domain.PartDefinition),
+		medalDefinitions: make(map[string]*domain.Medal),
+		Messages:         messageManager,                  // メッセージマネージャー
+		Font:             font,                            // UIで使用するフォント
+		Formulas:         make(map[domain.Trait]ActionFormula), // 初期化
 	}
 	return gdm, nil
 }
 
 // AddPartDefinition はパーツ定義をマネージャーに追加します。
-func (gdm *GameDataManager) AddPartDefinition(pd *PartDefinition) error {
+func (gdm *GameDataManager) AddPartDefinition(pd *domain.PartDefinition) error {
 	if pd == nil {
 		return fmt.Errorf("nilのPartDefinitionを追加できません")
 	}
@@ -47,13 +48,13 @@ func (gdm *GameDataManager) AddPartDefinition(pd *PartDefinition) error {
 }
 
 // GetPartDefinition はIDによってパーツ定義を取得します。
-func (gdm *GameDataManager) GetPartDefinition(id string) (*PartDefinition, bool) {
+func (gdm *GameDataManager) GetPartDefinition(id string) (*domain.PartDefinition, bool) {
 	pd, found := gdm.partDefinitions[id]
 	return pd, found
 }
 
 // AddMedalDefinition はメダル定義をマネージャーに追加します。
-func (gdm *GameDataManager) AddMedalDefinition(md *Medal) error {
+func (gdm *GameDataManager) AddMedalDefinition(md *domain.Medal) error {
 	if md == nil {
 		return fmt.Errorf("nilのMedalDefinitionを追加できません")
 	}
@@ -65,15 +66,15 @@ func (gdm *GameDataManager) AddMedalDefinition(md *Medal) error {
 }
 
 // GetMedalDefinition はIDによってメダル定義を取得します。
-func (gdm *GameDataManager) GetMedalDefinition(id string) (*Medal, bool) {
+func (gdm *GameDataManager) GetMedalDefinition(id string) (*domain.Medal, bool) {
 	md, found := gdm.medalDefinitions[id]
 	return md, found
 }
 
 // GetAllPartDefinitions はすべてのパーツ定義のスライスを返します。
 // 注意: マップの反復処理は順序を保証しません。順序が必要な場合は、スライスとして格納するかソートしてください。
-func (gdm *GameDataManager) GetAllPartDefinitions() []*PartDefinition {
-	defs := make([]*PartDefinition, 0, len(gdm.partDefinitions))
+func (gdm *GameDataManager) GetAllPartDefinitions() []*domain.PartDefinition {
+	defs := make([]*domain.PartDefinition, 0, len(gdm.partDefinitions))
 	for _, pd := range gdm.partDefinitions {
 		defs = append(defs, pd)
 	}
@@ -82,8 +83,8 @@ func (gdm *GameDataManager) GetAllPartDefinitions() []*PartDefinition {
 }
 
 // GetAllMedalDefinitions はすべてのメダル定義のスライスを返します。
-func (gdm *GameDataManager) GetAllMedalDefinitions() []*Medal {
-	defs := make([]*Medal, 0, len(gdm.medalDefinitions))
+func (gdm *GameDataManager) GetAllMedalDefinitions() []*domain.Medal {
+	defs := make([]*domain.Medal, 0, len(gdm.medalDefinitions))
 	for _, md := range gdm.medalDefinitions {
 		defs = append(defs, md)
 	}

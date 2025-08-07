@@ -2,13 +2,12 @@ package main
 
 import (
 	"log"
+	"medarot-ebiten/domain"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
-
-
 
 // StatusEffectSystem はステータス効果の適用、更新、解除を管理します。
 type StatusEffectSystem struct {
@@ -31,11 +30,11 @@ func (s *StatusEffectSystem) Apply(entry *donburi.Entry, effectData interface{},
 	// 効果の持続時間を管理するコンポーネントを追加
 	if !entry.HasComponent(ActiveEffectsComponent) {
 		donburi.Add(entry, ActiveEffectsComponent, &ActiveEffects{
-			Effects: make([]*ActiveStatusEffectData, 0),
+			Effects: make([]*domain.ActiveStatusEffectData, 0),
 		})
 	}
 	activeEffects := ActiveEffectsComponent.Get(entry)
-	activeEffects.Effects = append(activeEffects.Effects, &ActiveStatusEffectData{
+	activeEffects.Effects = append(activeEffects.Effects, &domain.ActiveStatusEffectData{
 		EffectData:   effectData,
 		RemainingDur: duration,
 	})
@@ -47,7 +46,7 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effectData interface{}
 
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
-		newEffects := make([]*ActiveStatusEffectData, 0)
+		newEffects := make([]*domain.ActiveStatusEffectData, 0)
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.EffectData != effectData {
 				newEffects = append(newEffects, activeEffect)
@@ -61,7 +60,7 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effectData interface{}
 func (s *StatusEffectSystem) Update() {
 	query.NewQuery(filter.Contains(ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
-		effectsToRemove := make([]*ActiveStatusEffectData, 0)
+		effectsToRemove := make([]*domain.ActiveStatusEffectData, 0)
 
 		for _, effectData := range activeEffects.Effects {
 			if effectData.RemainingDur > 0 {
@@ -133,7 +132,7 @@ func (s *StatusEffectSystem) Update() {
 }
 
 // removeEffect はスライスから指定された効果を削除するヘルパー関数です。
-func removeEffect(slice []*ActiveStatusEffectData, element *ActiveStatusEffectData) []*ActiveStatusEffectData {
+func removeEffect(slice []*domain.ActiveStatusEffectData, element *domain.ActiveStatusEffectData) []*domain.ActiveStatusEffectData {
 	for i, v := range slice {
 		if v == element {
 			return append(slice[:i], slice[i+1:]...)

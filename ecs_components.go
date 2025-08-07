@@ -1,6 +1,8 @@
 package main
 
 import (
+	"medarot-ebiten/domain"
+
 	"github.com/yohamta/donburi"
 )
 
@@ -9,7 +11,7 @@ import (
 var (
 	SettingsComponent      = donburi.NewComponentType[Settings]()
 	PartsComponent         = donburi.NewComponentType[PartsComponentData]()
-	MedalComponent         = donburi.NewComponentType[Medal]()
+	MedalComponent         = donburi.NewComponentType[domain.Medal]()
 	GaugeComponent         = donburi.NewComponentType[Gauge]()
 	LogComponent           = donburi.NewComponentType[Log]()
 	PlayerControlComponent = donburi.NewComponentType[PlayerControl]()
@@ -39,8 +41,6 @@ var (
 	// --- Game State Component ---
 	GameStateComponent = donburi.NewComponentType[GameStateData]()
 
-	
-
 	// --- Player Action Queue Component ---
 	PlayerActionQueueComponent = donburi.NewComponentType[PlayerActionQueueComponentData]()
 
@@ -58,14 +58,12 @@ var worldStateTag = donburi.NewComponentType[struct{}]()
 
 // GameStateData はゲーム全体の現在の状態を保持します。
 type GameStateData struct {
-	CurrentState GameState
+	CurrentState domain.GameState
 }
-
-
 
 // ActiveEffects はエンティティに現在適用されているすべてのステータス効果のデータを保持します。
 type ActiveEffects struct {
-	Effects []*ActiveStatusEffectData
+	Effects []*domain.ActiveStatusEffectData
 }
 
 // ChargeStopEffectData はチャージを一時停止させるデバフのデータです。
@@ -106,19 +104,19 @@ type BattleUIState struct {
 type Settings struct {
 	ID        string
 	Name      string
-	Team      TeamID
+	Team      domain.TeamID
 	IsLeader  bool
 	DrawIndex int // 描画順やY座標の決定に使用されます。
 }
 
 // PartsComponentData はメダロットのパーツ一式を保持します。
 type PartsComponentData struct {
-	Map map[PartSlotKey]*PartInstanceData
+	Map map[domain.PartSlotKey]*domain.PartInstanceData
 }
 
 // State はエンティティの現在の状態と関連データを保持します。
 type State struct {
-	CurrentState StateType
+	CurrentState domain.StateType
 }
 
 // Gauge はチャージやクールダウンの進行状況を保持します。
@@ -131,16 +129,16 @@ type Gauge struct {
 // ActionIntent は、AIまたはプレイヤーによって決定された行動の「意図」を表します。
 // これは、ターゲットがまだ解決されていない段階です。
 type ActionIntent struct {
-	SelectedPartKey PartSlotKey
+	SelectedPartKey domain.PartSlotKey
 	PendingEffects  []interface{} // チャージ開始時などに適用が予定される効果のデータ
 }
 
 // Target は、行動の対象となるエンティティとパーツ、およびその決定方針を表します。
 // TargetingSystemによってActionIntentが解決された後に設定されます。
 type Target struct {
-	Policy         TargetingPolicyType
+	Policy         domain.TargetingPolicyType
 	TargetEntity   donburi.Entity // *donburi.Entry から donburi.Entity に変更
-	TargetPartSlot PartSlotKey
+	TargetPartSlot domain.PartSlotKey
 }
 
 // Log は最後に行われた行動の結果を保持します。
@@ -166,19 +164,19 @@ type TargetHistoryData struct {
 // LastActionHistoryData は、このエンティティが最後に攻撃を成功させたターゲットとパーツを記録します。
 type LastActionHistoryData struct {
 	LastHitTarget   *donburi.Entry
-	LastHitPartSlot PartSlotKey
+	LastHitPartSlot domain.PartSlotKey
 }
 
 // TeamBuffs はチーム全体にかかるバフ効果を管理します。
 // このコンポーネントを持つエンティティはワールドに1つだけ存在することを想定しています。
 type TeamBuffs struct {
 	// Buffs[TeamID][BuffType]
-	Buffs map[TeamID]map[BuffType][]*BuffSource
+	Buffs map[domain.TeamID]map[domain.BuffType][]*BuffSource
 }
 
 // BuffSource は、どのエンティティのどのパーツからバフが発生しているかを記録します。
 type BuffSource struct {
 	SourceEntry *donburi.Entry
-	SourcePart  PartSlotKey
+	SourcePart  domain.PartSlotKey
 	Value       float64 // 効果量 (例: 命中率1.2倍なら1.2)
 }
