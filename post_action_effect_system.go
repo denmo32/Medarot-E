@@ -26,7 +26,7 @@ func NewPostActionEffectSystem(world donburi.World, statusEffectSystem *StatusEf
 }
 
 // Process は、ActionResultに基づいてアクション後の効果を処理します。
-func (s *PostActionEffectSystem) Process(result *ActionResult) {
+func (s *PostActionEffectSystem) Process(result *domain.ActionResult) {
 	if result == nil {
 		return
 	}

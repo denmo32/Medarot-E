@@ -54,7 +54,7 @@ func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, 
 }
 
 // ExecuteAction は単一のアクションを実行し、その結果を返します。
-func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult {
+func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) domain.ActionResult {
 	intent := ActionIntentComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
@@ -63,7 +63,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ActionResult 
 	handler, ok := e.handlers[actingPartDef.Trait]
 	if !ok {
 		log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
-		return ActionResult{
+		return domain.ActionResult{
 			ActingEntry:  actingEntry,
 			ActionDidHit: false,
 		}

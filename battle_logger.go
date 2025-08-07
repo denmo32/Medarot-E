@@ -54,7 +54,7 @@ func (l *BattleLoggerImpl) LogDefenseSuccess(targetName, defensePartName string,
 }
 
 // buildActionLogMessagesFromActionResult はActionResultから表示用のメッセージスライスを構築します。
-func buildActionLogMessagesFromActionResult(result ActionResult, gameDataManager *GameDataManager) []string {
+func buildActionLogMessagesFromActionResult(result domain.ActionResult, gameDataManager *GameDataManager) []string {
 	messages := []string{}
 
 	// 攻撃開始メッセージ

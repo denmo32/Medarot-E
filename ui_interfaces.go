@@ -15,7 +15,7 @@ type UIInterface interface {
 	Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager)
 	DrawBackground(screen *ebiten.Image)
 	GetRootContainer() *widget.Container
-	SetAnimation(anim *ActionAnimationData)
+	SetAnimation(anim *domain.ActionAnimationData)
 	ClearAnimation()
 	ShowActionModal(vm ActionModalViewModel)
 	HideActionModal()
@@ -23,7 +23,7 @@ type UIInterface interface {
 	PostEvent(event UIEvent)
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool
-	GetCurrentAnimationResult() ActionResult
+	GetCurrentAnimationResult() domain.ActionResult
 	GetActionTargetMap() map[domain.PartSlotKey]domain.ActionTarget
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()

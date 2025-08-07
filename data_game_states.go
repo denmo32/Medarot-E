@@ -31,7 +31,7 @@ type BattleContext struct {
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(ctx *BattleContext) ([]GameEvent, error)
+	Update(ctx *BattleContext) ([]domain.GameEvent, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -39,8 +39,8 @@ type BattleState interface {
 
 type GaugeProgressState struct{}
 
-func (s *GaugeProgressState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	var gameEvents []GameEvent
+func (s *GaugeProgressState) Update(ctx *BattleContext) ([]domain.GameEvent, error) {
+	var gameEvents []domain.GameEvent
 
 	// ゲージ進行
 	UpdateGaugeSystem(ctx.World)
@@ -49,7 +49,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	playerInputEvents := UpdatePlayerInputSystem(ctx.World)
 	if len(playerInputEvents) > 0 {
 		gameEvents = append(gameEvents, playerInputEvents...)
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
+		gameEvents = append(gameEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
 		return gameEvents, nil
 	}
 
@@ -59,7 +59,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	// アクション実行キューをチェック
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) > 0 {
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateActionExecution})
+		gameEvents = append(gameEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateActionExecution})
 		return gameEvents, nil
 	}
 
@@ -69,8 +69,8 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	// ゲーム終了判定
 	gameEndResult := CheckGameEndSystem(ctx.World)
 	if gameEndResult.IsGameOver {
-		gameEvents = append(gameEvents, MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
-		gameEvents = append(gameEvents, GameOverGameEvent{Winner: gameEndResult.Winner})
+		gameEvents = append(gameEvents, domain.MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
+		gameEvents = append(gameEvents, domain.GameOverGameEvent{Winner: gameEndResult.Winner})
 	}
 
 	return gameEvents, nil
@@ -84,12 +84,12 @@ func (s *GaugeProgressState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error) {
+func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]domain.GameEvent, error) {
 	viewModelFactory := ctx.ViewModelFactory
 
 	battleLogic := ctx.BattleLogic
 
-	var gameEvents []GameEvent
+	var gameEvents []domain.GameEvent
 
 	playerActionQueue := GetPlayerActionQueueComponent(ctx.World)
 
@@ -126,7 +126,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic.GetPartInfoProvider(), ctx.GameDataManager)
 			// モーダルが既に表示されていない場合のみイベントを発行
 			if !ctx.UI.IsActionModalVisible() { // Use ctx.UI
-				gameEvents = append(gameEvents, ShowActionModalGameEvent{ViewModel: actionModalVM})
+				gameEvents = append(gameEvents, domain.ShowActionModalGameEvent{ViewModel: actionModalVM})
 			}
 		} else {
 			// 無効または待機状態でないならキューから削除
@@ -135,8 +135,8 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]GameEvent, error
 		}
 	} else {
 		// キューが空なら処理完了
-		gameEvents = append(gameEvents, PlayerActionSelectFinishedGameEvent{})
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
+		gameEvents = append(gameEvents, domain.PlayerActionSelectFinishedGameEvent{})
+		gameEvents = append(gameEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -148,8 +148,8 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type ActionExecutionState struct{}
 
-func (s *ActionExecutionState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	var gameEvents []GameEvent
+func (s *ActionExecutionState) Update(ctx *BattleContext) ([]domain.GameEvent, error) {
+	var gameEvents []domain.GameEvent
 
 	actionResults, err := UpdateActionQueueSystem(
 		ctx.World,
@@ -168,8 +168,8 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
-			gameEvents = append(gameEvents, ActionAnimationStartedGameEvent{AnimationData: ActionAnimationData{Result: result, StartTime: ctx.Tick}})
-			gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateAnimatingAction})
+			gameEvents = append(gameEvents, domain.ActionAnimationStartedGameEvent{AnimationData: domain.ActionAnimationData{Result: result, StartTime: ctx.Tick}})
+			gameEvents = append(gameEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateAnimatingAction})
 			return gameEvents, nil
 		}
 	}
@@ -177,7 +177,7 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	// キューが空になったらゲージ進行に戻る
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) == 0 {
-		gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
+		gameEvents = append(gameEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -189,8 +189,8 @@ func (s *ActionExecutionState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	var gameEvents []GameEvent
+func (s *AnimatingActionState) Update(ctx *BattleContext) ([]domain.GameEvent, error) {
+	var gameEvents []domain.GameEvent
 	// 何もしない。状態遷移は ActionAnimationFinishedGameEvent によってトリガーされる。
 	return gameEvents, nil
 }
@@ -201,8 +201,8 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type PostActionState struct{}
 
-func (s *PostActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	var gameEvents []GameEvent
+func (s *PostActionState) Update(ctx *BattleContext) ([]domain.GameEvent, error) {
+	var gameEvents []domain.GameEvent
 
 	lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(ctx.World)
 	if !ok {
@@ -222,9 +222,9 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]GameEvent, error) {
 	})
 
 	// 処理が終わったらLastActionResultをクリア
-	*result = ActionResult{}
+	*result = domain.ActionResult{}
 
-	gameEvents = append(gameEvents, StateChangeRequestedGameEvent{NextState: domain.StateMessage})
+	gameEvents = append(gameEvents, domain.StateChangeRequestedGameEvent{NextState: domain.StateMessage})
 	return gameEvents, nil
 }
 
@@ -234,12 +234,12 @@ func (s *PostActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	var gameEvents []GameEvent
+func (s *MessageState) Update(ctx *BattleContext) ([]domain.GameEvent, error) {
+	var gameEvents []domain.GameEvent
 
 	ctx.MessageManager.Update() // Use ctx.MessageManager
 	if ctx.MessageManager.IsFinished() {
-		gameEvents = append(gameEvents, MessageDisplayFinishedGameEvent{})
+		gameEvents = append(gameEvents, domain.MessageDisplayFinishedGameEvent{})
 	}
 
 	return gameEvents, nil
@@ -251,10 +251,10 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(ctx *BattleContext) ([]GameEvent, error) {
-	var gameEvents []GameEvent
+func (s *GameOverState) Update(ctx *BattleContext) ([]domain.GameEvent, error) {
+	var gameEvents []domain.GameEvent
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		gameEvents = append(gameEvents, GoToTitleSceneGameEvent{})
+		gameEvents = append(gameEvents, domain.GoToTitleSceneGameEvent{})
 	}
 	return gameEvents, nil
 }

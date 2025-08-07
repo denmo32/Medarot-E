@@ -45,7 +45,7 @@ var (
 	PlayerActionQueueComponent = donburi.NewComponentType[domain.PlayerActionQueueComponentData]()
 
 	// --- Last Action Result Component ---
-	LastActionResultComponent = donburi.NewComponentType[ActionResult]()
+	LastActionResultComponent = donburi.NewComponentType[domain.ActionResult]()
 )
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。

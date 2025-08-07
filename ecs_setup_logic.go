@@ -23,7 +23,7 @@ func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam
 
 	// Ensure LastActionResultComponent entity exists
 	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
-	LastActionResultComponent.SetValue(lastActionResultEntry, ActionResult{})
+	LastActionResultComponent.SetValue(lastActionResultEntry, domain.ActionResult{})
 
 	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
 	TeamBuffsComponent.SetValue(teamBuffsEntry, domain.TeamBuffs{

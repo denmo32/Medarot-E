@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"image/color"
 
+	"medarot-ebiten/domain"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -12,7 +14,7 @@ import (
 // UIAnimationDrawer はUIアニメーションの描画に特化した構造体です。
 type UIAnimationDrawer struct {
 	config           *Config
-	currentAnimation *ActionAnimationData // BattleAnimationManagerから移動
+	currentAnimation *domain.ActionAnimationData // BattleAnimationManagerから移動
 	font             text.Face
 	eventChannel     chan UIEvent // 追加
 }
@@ -39,7 +41,7 @@ func (d *UIAnimationDrawer) Update(tick float64) {
 }
 
 // SetAnimation は現在再生するアニメーションを設定します。
-func (d *UIAnimationDrawer) SetAnimation(anim *ActionAnimationData) {
+func (d *UIAnimationDrawer) SetAnimation(anim *domain.ActionAnimationData) {
 	d.currentAnimation = anim
 }
 
@@ -59,7 +61,7 @@ func (d *UIAnimationDrawer) ClearAnimation() {
 }
 
 // GetCurrentAnimationResult は現在のアニメーションの結果を返します。
-func (d *UIAnimationDrawer) GetCurrentAnimationResult() ActionResult {
+func (d *UIAnimationDrawer) GetCurrentAnimationResult() domain.ActionResult {
 	return d.currentAnimation.Result
 }
 

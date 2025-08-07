@@ -259,7 +259,7 @@ func (u *UI) GetRootContainer() *widget.Container {
 }
 
 // SetAnimation はアニメーションを設定します。
-func (u *UI) SetAnimation(anim *ActionAnimationData) {
+func (u *UI) SetAnimation(anim *domain.ActionAnimationData) {
 	u.animationDrawer.SetAnimation(anim)
 }
 
@@ -274,7 +274,7 @@ func (u *UI) ClearAnimation() {
 }
 
 // GetCurrentAnimationResult は現在のアニメーションの結果を返します。
-func (u *UI) GetCurrentAnimationResult() ActionResult {
+func (u *UI) GetCurrentAnimationResult() domain.ActionResult {
 	return u.animationDrawer.GetCurrentAnimationResult()
 }
 

@@ -21,12 +21,12 @@ func UpdateActionQueueSystem(
 	statusEffectSystem *StatusEffectSystem,
 	postActionEffectSystem *PostActionEffectSystem,
 	rand *rand.Rand,
-) ([]ActionResult, error) {
+) ([]domain.ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
 		return nil, nil
 	}
-	results := []ActionResult{}
+	results := []domain.ActionResult{}
 
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
 		if partInfoProvider == nil {
@@ -82,5 +82,3 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProv
 	gauge.ProgressCounter = 0
 	state.CurrentState = domain.StateCooldown
 }
-
-

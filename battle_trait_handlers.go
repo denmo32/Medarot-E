@@ -28,15 +28,15 @@ func (h *BaseAttackHandler) Execute(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) ActionResult {
+) domain.ActionResult {
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
 	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, nil, actingPartDef, rand)
 }
 
 // initializeAttackResult は ActionResult を初期化します。
-func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *domain.PartDefinition) ActionResult {
-	return ActionResult{
+func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *domain.PartDefinition) domain.ActionResult {
+	return domain.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   false, // 初期値はfalse
 		AttackerName:   SettingsComponent.Get(actingEntry).Name,
@@ -59,7 +59,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) ActionResult {
+) domain.ActionResult {
 	result := initializeAttackResult(actingEntry, actingPartDef)
 
 	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, world, targetSelector, partInfoProvider, rand)
@@ -112,7 +112,7 @@ func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *dom
 }
 
 func applyDamageAndDefense(
-	result *ActionResult,
+	result *domain.ActionResult,
 	actingEntry *donburi.Entry,
 	actingPartDef *domain.PartDefinition,
 	selectedPartKey domain.PartSlotKey,
@@ -148,7 +148,7 @@ func applyDamageAndDefense(
 	}
 }
 
-func finalizeActionResult(result *ActionResult, partInfoProvider PartInfoProviderInterface) {
+func finalizeActionResult(result *domain.ActionResult, partInfoProvider PartInfoProviderInterface) {
 	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
 	actualHitPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(actualHitPartInst.DefinitionID)
 
@@ -211,9 +211,9 @@ func (h *SupportTraitExecutor) Execute(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) ActionResult {
+) domain.ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
-	result := ActionResult{
+	result := domain.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   true,
 		AttackerName:   settings.Name,
@@ -275,9 +275,9 @@ func (h *ObstructTraitExecutor) Execute(
 	_ *Config,
 	actingPartDef *domain.PartDefinition,
 	rand *rand.Rand,
-) ActionResult {
+) domain.ActionResult {
 	settings := SettingsComponent.Get(actingEntry)
-	result := ActionResult{
+	result := domain.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   true,
 		AttackerName:   settings.Name,

@@ -62,7 +62,7 @@ func (e HideActionModalUIEvent) isUIEvent() {}
 
 // SetAnimationUIEvent は、アニメーションを設定するUIイベントです。
 type SetAnimationUIEvent struct {
-	AnimationData ActionAnimationData
+	AnimationData domain.ActionAnimationData
 }
 
 func (e SetAnimationUIEvent) isUIEvent() {}
@@ -87,7 +87,7 @@ func (e MessageDisplayRequestUIEvent) isUIEvent() {}
 
 // AnimationFinishedUIEvent は、アニメーションが終了したことをUIから通知するイベントです。
 type AnimationFinishedUIEvent struct {
-	Result ActionResult
+	Result domain.ActionResult
 }
 
 func (e AnimationFinishedUIEvent) isUIEvent() {}

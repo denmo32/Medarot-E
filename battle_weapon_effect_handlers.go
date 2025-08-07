@@ -14,7 +14,7 @@ import (
 // ThunderEffectHandler はサンダー効果（チャージ停止）を付与します。
 type ThunderEffectHandler struct{}
 
-func (h *ThunderEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand) {
+func (h *ThunderEffectHandler) ApplyEffect(result *domain.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand) {
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にサンダー効果！チャージを停止させます。", result.DefenderName)
 		// ActionResult.AppliedEffectsにChargeStopEffectDataを追加
@@ -25,7 +25,7 @@ func (h *ThunderEffectHandler) ApplyEffect(result *ActionResult, world donburi.W
 // MeltEffectHandler はメルト効果（継続ダメージ）を付与します。
 type MeltEffectHandler struct{}
 
-func (h *MeltEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand) {
+func (h *MeltEffectHandler) ApplyEffect(result *domain.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand) {
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にメルト効果！継続ダメージを与えます。", result.DefenderName)
 		// ActionResult.AppliedEffectsにDamageOverTimeEffectDataを追加
@@ -36,7 +36,7 @@ func (h *MeltEffectHandler) ApplyEffect(result *ActionResult, world donburi.Worl
 // VirusEffectHandler はウイルス効果（ターゲットのランダム化）を付与します。
 type VirusEffectHandler struct{}
 
-func (h *VirusEffectHandler) ApplyEffect(result *ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand) {
+func (h *VirusEffectHandler) ApplyEffect(result *domain.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand) {
 	if result.ActionDidHit && result.TargetEntry != nil {
 		log.Printf("%s にウイルス効果！ターゲットをランダム化します。", result.DefenderName)
 		// ActionResult.AppliedEffectsにTargetRandomEffectDataを追加

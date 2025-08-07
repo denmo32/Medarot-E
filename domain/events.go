@@ -1,8 +1,6 @@
-package main
+package domain
 
 import (
-	"medarot-ebiten/domain"
-
 	"github.com/yohamta/donburi"
 )
 
@@ -46,7 +44,7 @@ func (e MessageDisplayFinishedGameEvent) isGameEvent() {}
 
 // GameOverGameEvent は、ゲームオーバーになったことを示すイベントです。
 type GameOverGameEvent struct {
-	Winner domain.TeamID
+	Winner TeamID
 }
 
 func (e GameOverGameEvent) isGameEvent() {}
@@ -58,7 +56,7 @@ func (e HideActionModalGameEvent) isGameEvent() {}
 
 // ShowActionModalGameEvent は、アクションモーダルを表示する必要があることを示すイベントです。
 type ShowActionModalGameEvent struct {
-	ViewModel ActionModalViewModel
+	ViewModel any // ActionModalViewModel への依存をなくす
 }
 
 func (e ShowActionModalGameEvent) isGameEvent() {}
@@ -76,10 +74,10 @@ func (e ClearCurrentTargetGameEvent) isGameEvent() {}
 // ActionConfirmedGameEvent は、プレイヤーがアクションを確定したことを示すイベントです。
 type ActionConfirmedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedPartDef *domain.PartDefinition
-	SelectedSlotKey domain.PartSlotKey
+	SelectedPartDef *PartDefinition
+	SelectedSlotKey PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  domain.PartSlotKey
+	TargetPartSlot  PartSlotKey
 }
 
 func (e ActionConfirmedGameEvent) isGameEvent() {}
@@ -87,9 +85,9 @@ func (e ActionConfirmedGameEvent) isGameEvent() {}
 // ChargeRequestedGameEvent は、チャージ開始が要求されたことを示すイベントです。
 type ChargeRequestedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedSlotKey domain.PartSlotKey
+	SelectedSlotKey PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  domain.PartSlotKey
+	TargetPartSlot  PartSlotKey
 }
 
 func (e ChargeRequestedGameEvent) isGameEvent() {}
@@ -113,51 +111,14 @@ type PlayerActionSelectFinishedGameEvent struct{}
 
 func (e PlayerActionSelectFinishedGameEvent) isGameEvent() {}
 
+// GoToTitleSceneGameEvent は、タイトルシーンへの遷移を要求するイベントです。
 type GoToTitleSceneGameEvent struct{}
 
 func (e GoToTitleSceneGameEvent) isGameEvent() {}
 
 // StateChangeRequestedGameEvent は、ゲームの状態変更が要求されたことを示すイベントです。
 type StateChangeRequestedGameEvent struct {
-	NextState domain.GameState
+	NextState GameState
 }
 
 func (e StateChangeRequestedGameEvent) isGameEvent() {}
-
-// ActionResult はアクション実行の詳細な結果を保持します。
-type ActionResult struct {
-	// アクションの実行者とターゲットに関する情報
-	ActingEntry    *donburi.Entry
-	TargetEntry    *donburi.Entry
-	TargetPartSlot domain.PartSlotKey // ターゲットのパーツスロット
-
-	// アクションの結果に関する情報
-	ActionDidHit      bool        // 命中したかどうか
-	IsCritical        bool        // クリティカルだったか
-	OriginalDamage    int         // 元のダメージ量
-	DamageDealt       int         // 実際に与えたダメージ
-	ActionIsDefended  bool        // 攻撃が防御されたか
-	ActualHitPartSlot domain.PartSlotKey // 実際にヒットしたパーツのスロット
-
-	// メッセージ表示のための情報
-	AttackerName      string
-	DefenderName      string
-	ActionName        string // e.g., "パーツ名"
-	ActionTrait       domain.Trait  // e.g., "撃つ", "狙い撃ち" (Trait)
-	WeaponType        domain.WeaponType
-	ActionCategory    domain.PartCategory
-	TargetPartType    string // e.g., "頭部", "脚部"
-	DefendingPartType string // e.g., "頭部", "脚部"
-
-	// PostActionEffectSystem で処理される情報
-	AppliedEffects     []interface{}     // アクションによって適用されるステータス効果のデータ
-	DamageToApply      int               // 実際に適用するダメージ量
-	TargetPartInstance *domain.PartInstanceData // ダメージを受けるパーツインスタンスへのポインタ
-	IsTargetPartBroken bool              // ダメージ適用後にパーツが破壊されたか
-}
-
-// ActionAnimationData はアニメーションの再生に必要なデータを保持します。
-type ActionAnimationData struct {
-	Result    ActionResult
-	StartTime int
-}
