@@ -3,8 +3,7 @@ package main
 import (
 	"math/rand"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -15,7 +14,7 @@ type TargetingStrategy interface {
 		world donburi.World,
 		actingEntry *donburi.Entry,
 		battleLogic *BattleLogic,
-	) (*donburi.Entry, domain.PartSlotKey)
+	) (*donburi.Entry, component.PartSlotKey)
 }
 
 type BattleLogger interface {
@@ -23,7 +22,7 @@ type BattleLogger interface {
 	LogDefenseCheck(targetName string, defenseRate, successRate, chance float64, roll int)
 	LogCriticalHit(attackerName string, chance float64)
 	LogPartBroken(medarotName, partName, partID string)
-	LogActionInitiated(attackerName string, actionTrait domain.Trait, weaponType domain.WeaponType, category domain.PartCategory)
+	LogActionInitiated(attackerName string, actionTrait component.Trait, weaponType component.WeaponType, category component.PartCategory)
 	LogAttackMiss(attackerName, skillName, targetName string)
 	LogDamageDealt(defenderName, targetPartType string, damage int)
 	LogDefenseSuccess(targetName, defensePartName string, originalDamage, actualDamage int, isCritical bool)
@@ -35,43 +34,43 @@ type TraitActionHandler interface {
 	Execute(
 		actingEntry *donburi.Entry,
 		world donburi.World,
-		intent *domain.ActionIntent,
+		intent *component.ActionIntent,
 		damageCalculator *DamageCalculator,
 		hitCalculator *HitCalculator,
 		targetSelector *TargetSelector,
 		partInfoProvider PartInfoProviderInterface,
 		gameConfig *Config,
-		actingPartDef *domain.PartDefinition,
+		actingPartDef *component.PartDefinition,
 		rand *rand.Rand,
-	) ecs.ActionResult
+	) component.ActionResult
 }
 
 // WeaponTypeEffectHandler は weapon_type 固有の追加効果を処理します。
 // ActionResult を受け取り、デバフ付与などの副作用を適用します。
 type WeaponTypeEffectHandler interface {
-	ApplyEffect(result *ecs.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *domain.PartDefinition, rand *rand.Rand)
+	ApplyEffect(result *component.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *component.PartDefinition, rand *rand.Rand)
 }
 
 // PartInfoProviderInterface はパーツの状態や情報を取得・操作するロジックのインターフェースです。
 type PartInfoProviderInterface interface {
 	// パーツのパラメータ値を取得するメソッド
-	GetPartParameterValue(entry *donburi.Entry, partSlot domain.PartSlotKey, param domain.PartParameter) float64
+	GetPartParameterValue(entry *donburi.Entry, partSlot component.PartSlotKey, param component.PartParameter) float64
 
 	// パーツスロットを検索するメソッド
-	FindPartSlot(entry *donburi.Entry, partToFindInstance *domain.PartInstanceData) domain.PartSlotKey
+	FindPartSlot(entry *donburi.Entry, partToFindInstance *component.PartInstanceData) component.PartSlotKey
 
 	// 利用可能な攻撃パーツを取得するメソッド
-	GetAvailableAttackParts(entry *donburi.Entry) []ecs.AvailablePart
+	GetAvailableAttackParts(entry *donburi.Entry) []component.AvailablePart
 
 	// 全体的な推進力と機動力を取得するメソッド
 	GetOverallPropulsion(entry *donburi.Entry) int
 	GetOverallMobility(entry *donburi.Entry) int
 
 	// 脚部パーツの定義を取得するメソッド
-	GetLegsPartDefinition(entry *donburi.Entry) (*domain.PartDefinition, bool)
+	GetLegsPartDefinition(entry *donburi.Entry) (*component.PartDefinition, bool)
 
 	// 成功度、回避度、防御度を取得するメソッド
-	GetSuccessRate(entry *donburi.Entry, actingPartDef *domain.PartDefinition, selectedPartKey domain.PartSlotKey) float64
+	GetSuccessRate(entry *donburi.Entry, actingPartDef *component.PartDefinition, selectedPartKey component.PartSlotKey) float64
 	GetEvasionRate(entry *donburi.Entry) float64
 	GetDefenseRate(entry *donburi.Entry) float64
 
@@ -79,7 +78,7 @@ type PartInfoProviderInterface interface {
 	GetTeamAccuracyBuffMultiplier(entry *donburi.Entry) float64
 
 	// バフを削除するメソッド
-	RemoveBuffsFromSource(entry *donburi.Entry, partInst *domain.PartInstanceData)
+	RemoveBuffsFromSource(entry *donburi.Entry, partInst *component.PartInstanceData)
 
 	// ゲージの持続時間を計算するメソッド
 	CalculateGaugeDuration(baseSeconds float64, entry *donburi.Entry) float64

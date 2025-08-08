@@ -5,8 +5,7 @@ import (
 	"math/rand"
 	"sort"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -22,12 +21,12 @@ func UpdateActionQueueSystem(
 	statusEffectSystem *StatusEffectSystem,
 	postActionEffectSystem *PostActionEffectSystem,
 	rand *rand.Rand,
-) ([]ecs.ActionResult, error) {
+) ([]component.ActionResult, error) {
 	actionQueueComp := GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
 		return nil, nil
 	}
-	results := []ecs.ActionResult{}
+	results := []component.ActionResult{}
 
 	sort.SliceStable(actionQueueComp.Queue, func(i, j int) bool {
 		if partInfoProvider == nil {
@@ -54,7 +53,7 @@ func UpdateActionQueueSystem(
 func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProvider PartInfoProviderInterface) {
 	intent := ActionIntentComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
-	var actingPartDef *domain.PartDefinition
+	var actingPartDef *component.PartDefinition
 
 	if actingPartInstance, ok := partsComp.Map[intent.SelectedPartKey]; ok {
 		if def, defFound := partInfoProvider.GetGameDataManager().GetPartDefinition(actingPartInstance.DefinitionID); defFound {
@@ -81,5 +80,5 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProv
 
 	state := StateComponent.Get(entry)
 	gauge.ProgressCounter = 0
-	state.CurrentState = domain.StateCooldown
+	state.CurrentState = component.StateCooldown
 }

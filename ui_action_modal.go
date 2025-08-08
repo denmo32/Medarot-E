@@ -2,21 +2,21 @@ package main
 
 import (
 	"fmt"
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/ebitenui/ebitenui/widget"
 )
 
 func createActionModalUI(
-	vm *ecs.ActionModalViewModel,
+	vm *ui.ActionModalViewModel,
 	uiFactory *UIFactory,
 	eventChannel chan UIEvent,
 ) widget.PreferredSizeLocateableWidget {
 	c := uiFactory.Config.UI
 
 	// 各パーツカテゴリのボタンを格納するマップ
-	partButtons := make(map[domain.PartSlotKey][]widget.PreferredSizeLocateableWidget)
+	partButtons := make(map[component.PartSlotKey][]widget.PreferredSizeLocateableWidget)
 
 	if len(vm.Buttons) == 0 {
 		// ボタンがない場合のメッセージ
@@ -54,7 +54,7 @@ func createActionModalUI(
 			},
 			func(args *widget.ButtonHoverEventArgs) {
 				switch buttonVM.PartCategory {
-				case domain.CategoryRanged:
+				case component.CategoryRanged:
 					if buttonVM.TargetEntityID != 0 {
 						eventChannel <- TargetSelectedUIEvent{
 							ActingEntityID:  vm.ActingEntityID,
@@ -63,7 +63,7 @@ func createActionModalUI(
 							TargetPartSlot:  "",
 						}
 					}
-				case domain.CategoryIntervention:
+				case component.CategoryIntervention:
 					// 介入の場合はターゲット表示なし
 				default:
 					// 格闘など、他のカテゴリでターゲット表示が必要な場合はここに追加
@@ -125,7 +125,7 @@ func createActionModalUI(
 		})),
 	)
 
-	for _, btn := range partButtons[domain.PartSlotHead] {
+	for _, btn := range partButtons[component.PartSlotHead] {
 		headPartsContainer.AddChild(btn)
 	}
 	headRowContainer.AddChild(headPartsContainer)
@@ -154,7 +154,7 @@ func createActionModalUI(
 			VerticalPosition:   widget.AnchorLayoutPositionCenter,
 		})),
 	)
-	for _, btn := range partButtons[domain.PartSlotRightArm] {
+	for _, btn := range partButtons[component.PartSlotRightArm] {
 		rightArmPartsContainer.AddChild(btn)
 	}
 	rightArmContainer.AddChild(rightArmPartsContainer)
@@ -174,7 +174,7 @@ func createActionModalUI(
 			VerticalPosition:   widget.AnchorLayoutPositionCenter,
 		})),
 	)
-	for _, btn := range partButtons[domain.PartSlotLeftArm] {
+	for _, btn := range partButtons[component.PartSlotLeftArm] {
 		leftArmPartsContainer.AddChild(btn)
 	}
 	leftArmContainer.AddChild(leftArmPartsContainer)

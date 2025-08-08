@@ -5,8 +5,8 @@ import (
 	"log"
 	"math/rand"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/event"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -32,7 +32,7 @@ type BattleContext struct {
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
 type BattleState interface {
-	Update(ctx *BattleContext) ([]ecs.GameEvent, error)
+	Update(ctx *BattleContext) ([]event.GameEvent, error)
 	Draw(screen *ebiten.Image)
 }
 
@@ -40,8 +40,8 @@ type BattleState interface {
 
 type GaugeProgressState struct{}
 
-func (s *GaugeProgressState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
-	var gameEvents []ecs.GameEvent
+func (s *GaugeProgressState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
+	var gameEvents []event.GameEvent
 
 	// ゲージ進行
 	UpdateGaugeSystem(ctx.World)
@@ -50,7 +50,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]ecs.GameEvent, error)
 	playerInputEvents := UpdatePlayerInputSystem(ctx.World)
 	if len(playerInputEvents) > 0 {
 		gameEvents = append(gameEvents, playerInputEvents...)
-		gameEvents = append(gameEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StatePlayerActionSelect})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StatePlayerActionSelect})
 		return gameEvents, nil
 	}
 
@@ -60,7 +60,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]ecs.GameEvent, error)
 	// アクション実行キューをチェック
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) > 0 {
-		gameEvents = append(gameEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateActionExecution})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateActionExecution})
 		return gameEvents, nil
 	}
 
@@ -70,8 +70,8 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]ecs.GameEvent, error)
 	// ゲーム終了判定
 	gameEndResult := CheckGameEndSystem(ctx.World)
 	if gameEndResult.IsGameOver {
-		gameEvents = append(gameEvents, ecs.MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
-		gameEvents = append(gameEvents, ecs.GameOverGameEvent{Winner: gameEndResult.Winner})
+		gameEvents = append(gameEvents, event.MessageDisplayRequestGameEvent{Messages: []string{gameEndResult.Message}, Callback: nil})
+		gameEvents = append(gameEvents, event.GameOverGameEvent{Winner: gameEndResult.Winner})
 	}
 
 	return gameEvents, nil
@@ -85,12 +85,12 @@ func (s *GaugeProgressState) Draw(screen *ebiten.Image) {
 
 type PlayerActionSelectState struct{}
 
-func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
+func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	viewModelFactory := ctx.ViewModelFactory
 
 	battleLogic := ctx.BattleLogic
 
-	var gameEvents []ecs.GameEvent
+	var gameEvents []event.GameEvent
 
 	playerActionQueue := GetPlayerActionQueueComponent(ctx.World)
 
@@ -99,16 +99,16 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]ecs.GameEvent, e
 		actingEntry := playerActionQueue.Queue[0]
 
 		// 有効で待機状態ならモーダルを表示
-		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == domain.StateIdle {
-			actionTargetMap := make(map[domain.PartSlotKey]ecs.ActionTarget)
+		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == component.StateIdle {
+			actionTargetMap := make(map[component.PartSlotKey]component.ActionTarget)
 			// ViewModelFactoryを介して利用可能なパーツを取得
 			availableParts := viewModelFactory.GetAvailableAttackParts(actingEntry)
 			for _, available := range availableParts {
 				partDef := available.PartDef
 				slotKey := available.Slot
 				var targetEntity *donburi.Entry
-				var targetPartSlot domain.PartSlotKey
-				if partDef.Category == domain.CategoryRanged || partDef.Category == domain.CategoryIntervention {
+				var targetPartSlot component.PartSlotKey
+				if partDef.Category == component.CategoryRanged || partDef.Category == component.CategoryIntervention {
 					medal := MedalComponent.Get(actingEntry)
 					personality, ok := PersonalityRegistry[medal.Personality]
 					if !ok {
@@ -120,14 +120,14 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]ecs.GameEvent, e
 				if targetEntity != nil {
 					targetID = targetEntity.Entity()
 				}
-				actionTargetMap[slotKey] = ecs.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot}
+				actionTargetMap[slotKey] = component.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot}
 			}
 
 			// ここでViewModelを構築し、UIに渡す
 			actionModalVM := viewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap, battleLogic.GetPartInfoProvider(), ctx.GameDataManager)
 			// モーダルが既に表示されていない場合のみイベントを発行
 			if !ctx.UI.IsActionModalVisible() { // Use ctx.UI
-				gameEvents = append(gameEvents, ecs.ShowActionModalGameEvent{ViewModel: actionModalVM})
+				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{ViewModel: actionModalVM})
 			}
 		} else {
 			// 無効または待機状態でないならキューから削除
@@ -136,8 +136,8 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]ecs.GameEvent, e
 		}
 	} else {
 		// キューが空なら処理完了
-		gameEvents = append(gameEvents, ecs.PlayerActionSelectFinishedGameEvent{})
-		gameEvents = append(gameEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
+		gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -149,8 +149,8 @@ func (s *PlayerActionSelectState) Draw(screen *ebiten.Image) {}
 
 type ActionExecutionState struct{}
 
-func (s *ActionExecutionState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
-	var gameEvents []ecs.GameEvent
+func (s *ActionExecutionState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
+	var gameEvents []event.GameEvent
 
 	actionResults, err := UpdateActionQueueSystem(
 		ctx.World,
@@ -169,8 +169,8 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]ecs.GameEvent, erro
 
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
-			gameEvents = append(gameEvents, ecs.ActionAnimationStartedGameEvent{AnimationData: ecs.ActionAnimationData{Result: result, StartTime: ctx.Tick}})
-			gameEvents = append(gameEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateAnimatingAction})
+			gameEvents = append(gameEvents, event.ActionAnimationStartedGameEvent{AnimationData: component.ActionAnimationData{Result: result, StartTime: ctx.Tick}})
+			gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateAnimatingAction})
 			return gameEvents, nil
 		}
 	}
@@ -178,7 +178,7 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]ecs.GameEvent, erro
 	// キューが空になったらゲージ進行に戻る
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) == 0 {
-		gameEvents = append(gameEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateGaugeProgress})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -190,8 +190,8 @@ func (s *ActionExecutionState) Draw(screen *ebiten.Image) {}
 
 type AnimatingActionState struct{}
 
-func (s *AnimatingActionState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
-	var gameEvents []ecs.GameEvent
+func (s *AnimatingActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
+	var gameEvents []event.GameEvent
 	// 何もしない。状態遷移は ActionAnimationFinishedGameEvent によってトリガーされる。
 	return gameEvents, nil
 }
@@ -202,8 +202,8 @@ func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
 
 type PostActionState struct{}
 
-func (s *PostActionState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
-	var gameEvents []ecs.GameEvent
+func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
+	var gameEvents []event.GameEvent
 
 	lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(ctx.World)
 	if !ok {
@@ -213,7 +213,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
 
 	// クールダウン開始
 	actingEntry := result.ActingEntry
-	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != domain.StateBroken {
+	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != component.StateBroken {
 		StartCooldownSystem(actingEntry, ctx.World, ctx.BattleLogic.GetPartInfoProvider())
 	}
 
@@ -223,9 +223,9 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
 	})
 
 	// 処理が終わったらLastActionResultをクリア
-	*result = ecs.ActionResult{}
+	*result = component.ActionResult{}
 
-	gameEvents = append(gameEvents, ecs.StateChangeRequestedGameEvent{NextState: domain.StateMessage})
+	gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateMessage})
 	return gameEvents, nil
 }
 
@@ -235,12 +235,12 @@ func (s *PostActionState) Draw(screen *ebiten.Image) {}
 
 type MessageState struct{}
 
-func (s *MessageState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
-	var gameEvents []ecs.GameEvent
+func (s *MessageState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
+	var gameEvents []event.GameEvent
 
 	ctx.MessageManager.Update() // Use ctx.MessageManager
 	if ctx.MessageManager.IsFinished() {
-		gameEvents = append(gameEvents, ecs.MessageDisplayFinishedGameEvent{})
+		gameEvents = append(gameEvents, event.MessageDisplayFinishedGameEvent{})
 	}
 
 	return gameEvents, nil
@@ -252,10 +252,10 @@ func (s *MessageState) Draw(screen *ebiten.Image) {}
 
 type GameOverState struct{}
 
-func (s *GameOverState) Update(ctx *BattleContext) ([]ecs.GameEvent, error) {
-	var gameEvents []ecs.GameEvent
+func (s *GameOverState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
+	var gameEvents []event.GameEvent
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		gameEvents = append(gameEvents, ecs.GoToTitleSceneGameEvent{})
+		gameEvents = append(gameEvents, event.GoToTitleSceneGameEvent{})
 	}
 	return gameEvents, nil
 }

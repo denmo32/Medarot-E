@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
 )
@@ -14,8 +14,8 @@ func UpdateUIEventProcessorSystem(
 	ui UIInterface,
 	messageManager *UIMessageDisplayManager,
 	eventChannel chan UIEvent,
-) []ecs.GameEvent {
-	var gameEvents []ecs.GameEvent
+) []event.GameEvent {
+	var gameEvents []event.GameEvent
 	// var nextState = currentState // nextStateの宣言を削除
 
 	select {
@@ -66,18 +66,18 @@ func UpdateUIEventProcessorSystem(
 				}
 			}
 			// プレイヤーの行動が確定されたので、チャージ開始イベントを発行
-			gameEvents = append(gameEvents, ecs.ChargeRequestedGameEvent{
+			gameEvents = append(gameEvents, event.ChargeRequestedGameEvent{
 				ActingEntry:     actingEntry,
 				SelectedSlotKey: e.SelectedSlotKey,
 				TargetEntry:     targetEntry,
 				TargetPartSlot:  e.TargetPartSlot,
 			})
 			// アクションモーダルを非表示にする
-			gameEvents = append(gameEvents, ecs.HideActionModalGameEvent{})
+			gameEvents = append(gameEvents, event.HideActionModalGameEvent{})
 			// ターゲットインジケーターをクリア
-			gameEvents = append(gameEvents, ecs.ClearCurrentTargetGameEvent{})
+			gameEvents = append(gameEvents, event.ClearCurrentTargetGameEvent{})
 			// プレイヤーの行動選択フェーズが完了したことを通知
-			gameEvents = append(gameEvents, ecs.PlayerActionSelectFinishedGameEvent{})
+			gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})
 			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(actingEntry).Name)
 		case ActionCanceledUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
@@ -86,11 +86,11 @@ func UpdateUIEventProcessorSystem(
 				break
 			}
 			// アクションモーダルを非表示にする
-			gameEvents = append(gameEvents, ecs.HideActionModalGameEvent{})
+			gameEvents = append(gameEvents, event.HideActionModalGameEvent{})
 			// ターゲットインジケーターをクリア
-			gameEvents = append(gameEvents, ecs.ClearCurrentTargetGameEvent{})
+			gameEvents = append(gameEvents, event.ClearCurrentTargetGameEvent{})
 			// プレイヤーの行動選択フェーズが完了したことを通知
-			gameEvents = append(gameEvents, ecs.PlayerActionSelectFinishedGameEvent{})
+			gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})
 			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:
 			if !ui.IsActionModalVisible() { // モーダルが既に表示されていない場合のみ表示
@@ -107,7 +107,7 @@ func UpdateUIEventProcessorSystem(
 		case MessageDisplayRequestUIEvent:
 			messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
 		case AnimationFinishedUIEvent: // 新しいUIイベントの処理
-			gameEvents = append(gameEvents, ecs.ActionAnimationFinishedGameEvent{Result: e.Result, ActingEntry: e.Result.ActingEntry})
+			gameEvents = append(gameEvents, event.ActionAnimationFinishedGameEvent{Result: e.Result, ActingEntry: e.Result.ActingEntry})
 		default:
 			log.Printf("Unknown UI Event: %T", uiEvent)
 		}

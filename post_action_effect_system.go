@@ -3,8 +3,7 @@ package main
 import (
 	"log"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -28,7 +27,7 @@ func NewPostActionEffectSystem(world donburi.World, statusEffectSystem *StatusEf
 }
 
 // Process は、ActionResultに基づいてアクション後の効果を処理します。
-func (s *PostActionEffectSystem) Process(result *ecs.ActionResult) {
+func (s *PostActionEffectSystem) Process(result *component.ActionResult) {
 	if result == nil {
 		return
 	}
@@ -42,15 +41,15 @@ func (s *PostActionEffectSystem) Process(result *ecs.ActionResult) {
 			for _, effectData := range result.AppliedEffects {
 				// effectDataの型に応じてApplyを呼び出す
 				switch effect := effectData.(type) {
-				case *domain.ChargeStopEffectData:
+				case *component.ChargeStopEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *domain.DamageOverTimeEffectData:
+				case *component.DamageOverTimeEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *domain.TargetRandomEffectData:
+				case *component.TargetRandomEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *domain.EvasionDebuffEffectData:
+				case *component.EvasionDebuffEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
-				case *domain.DefenseDebuffEffectData:
+				case *component.DefenseDebuffEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
 				default:
 					log.Printf("警告: 未知の適用効果タイプです: %T", effectData)
@@ -87,9 +86,9 @@ func (s *PostActionEffectSystem) Process(result *ecs.ActionResult) {
 	}
 
 	// 3. 頭部パーツ破壊による機能停止
-	if result.TargetEntry != nil && result.IsTargetPartBroken && result.ActualHitPartSlot == domain.PartSlotHead {
+	if result.TargetEntry != nil && result.IsTargetPartBroken && result.ActualHitPartSlot == component.PartSlotHead {
 		state := StateComponent.Get(result.TargetEntry)
-		state.CurrentState = domain.StateBroken
+		state.CurrentState = component.StateBroken
 	}
 
 	// 4. 行動後のクリーンアップ

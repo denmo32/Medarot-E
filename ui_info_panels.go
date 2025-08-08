@@ -6,8 +6,8 @@ import (
 	"image/color"
 	"sort"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -18,7 +18,7 @@ type infoPanelUI struct {
 	rootPanel *UIPanel // rootContainer を UIPanel に変更
 	nameText  *widget.Text
 	stateText *widget.Text
-	partSlots map[domain.PartSlotKey]*infoPanelPartUI
+	partSlots map[component.PartSlotKey]*infoPanelPartUI
 }
 
 type infoPanelPartUI struct {
@@ -46,11 +46,11 @@ func NewInfoPanelManager(config *Config, uiFactory *UIFactory) *InfoPanelManager
 // InfoPanelCreationResult は生成された情報パネルとそのチーム情報を持つ構造体です。
 type InfoPanelCreationResult struct {
 	PanelUI *infoPanelUI
-	Team    domain.TeamID
+	Team    component.TeamID
 	ID      string
 }
 
-func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []ecs.InfoPanelViewModel, mainUIContainer *widget.Container, battlefieldRect image.Rectangle, iconVMs []*ecs.IconViewModel) {
+func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []ui.InfoPanelViewModel, mainUIContainer *widget.Container, battlefieldRect image.Rectangle, iconVMs []*ui.IconViewModel) {
 	// 既存のパネルをクリア
 	for _, panel := range ipm.panels {
 		mainUIContainer.RemoveChild(panel.rootPanel.RootContainer)
@@ -97,7 +97,7 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []ecs.InfoPanelViewModel,
 		// PreferredSizeを使用して、レンダリング前に正しいサイズを取得
 		panelWidth, panelHeight := panelUI.rootPanel.RootContainer.PreferredSize()
 
-		if vm.Team == domain.Team1 {
+		if vm.Team == component.Team1 {
 			panelX = int(bfOffsetX - float32(panelWidth) - float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの左側に配置
 		} else {
 			panelX = int(bfOffsetX + bfWidth + float32(ipm.config.UI.InfoPanel.Padding)) // バトルフィールドの右側に配置
@@ -119,7 +119,7 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []ecs.InfoPanelViewModel,
 	}
 }
 
-func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm ecs.InfoPanelViewModel) *infoPanelUI {
+func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm ui.InfoPanelViewModel) *infoPanelUI {
 	c := config.UI
 
 	// ヘッダー部分を作成
@@ -143,8 +143,8 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm ecs.I
 
 	// パーツ部分のウィジェットを作成
 	partWidgets := []widget.PreferredSizeLocateableWidget{}
-	partSlots := make(map[domain.PartSlotKey]*infoPanelPartUI)
-	for _, slotKey := range []domain.PartSlotKey{domain.PartSlotHead, domain.PartSlotRightArm, domain.PartSlotLeftArm, domain.PartSlotLegs} {
+	partSlots := make(map[component.PartSlotKey]*infoPanelPartUI)
+	for _, slotKey := range []component.PartSlotKey{component.PartSlotHead, component.PartSlotRightArm, component.PartSlotLeftArm, component.PartSlotLegs} {
 		partVM, ok := vm.Parts[slotKey]
 		partTypeStr := "---"
 		initialArmor := 0.0
@@ -233,7 +233,7 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm ecs.I
 // この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した
 // InfoPanelViewModelのリストを受け取るように変更されます。
 
-func updateSingleInfoPanel(ui *infoPanelUI, vm ecs.InfoPanelViewModel, config *Config) {
+func updateSingleInfoPanel(ui *infoPanelUI, vm ui.InfoPanelViewModel, config *Config) {
 	c := config.UI
 
 	ui.stateText.Label = vm.StateStr

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"image/color"
 
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -14,7 +15,7 @@ import (
 // UIAnimationDrawer はUIアニメーションの描画に特化した構造体です。
 type UIAnimationDrawer struct {
 	config           *Config
-	currentAnimation *ecs.ActionAnimationData // BattleAnimationManagerから移動
+	currentAnimation *component.ActionAnimationData // BattleAnimationManagerから移動
 	font             text.Face
 	eventChannel     chan UIEvent // 追加
 }
@@ -41,7 +42,7 @@ func (d *UIAnimationDrawer) Update(tick float64) {
 }
 
 // SetAnimation は現在再生するアニメーションを設定します。
-func (d *UIAnimationDrawer) SetAnimation(anim *ecs.ActionAnimationData) {
+func (d *UIAnimationDrawer) SetAnimation(anim *component.ActionAnimationData) {
 	d.currentAnimation = anim
 }
 
@@ -61,12 +62,12 @@ func (d *UIAnimationDrawer) ClearAnimation() {
 }
 
 // GetCurrentAnimationResult は現在のアニメーションの結果を返します。
-func (d *UIAnimationDrawer) GetCurrentAnimationResult() ecs.ActionResult {
+func (d *UIAnimationDrawer) GetCurrentAnimationResult() component.ActionResult {
 	return d.currentAnimation.Result
 }
 
 // Draw は現在のアニメーションを画面に描画します。
-func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefieldVM ecs.BattlefieldViewModel) {
+func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefieldVM ui.BattlefieldViewModel) {
 	anim := d.currentAnimation
 	if anim == nil {
 		return
@@ -74,7 +75,7 @@ func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefield
 
 	progress := tick - float64(anim.StartTime)
 
-	var attackerVM, targetVM *ecs.IconViewModel
+	var attackerVM, targetVM *ui.IconViewModel
 	for _, icon := range battlefieldVM.Icons {
 		if icon.EntryID == anim.Result.ActingEntry.Entity() { // uint32 へのキャストを削除
 			attackerVM = icon

@@ -1,7 +1,8 @@
 package main
 
 import (
-	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs/component"
+
 	"strconv"
 	"strings"
 )
@@ -25,17 +26,17 @@ func parseBool(s string) bool {
 }
 
 // GetStateDisplayName は StateType に対応する日本語の表示名を返します。
-func GetStateDisplayName(state domain.StateType) string {
+func GetStateDisplayName(state component.StateType) string {
 	switch state {
-	case domain.StateIdle:
+	case component.StateIdle:
 		return "待機"
-	case domain.StateCharging:
+	case component.StateCharging:
 		return "チャージ中"
-	case domain.StateReady:
+	case component.StateReady:
 		return "実行準備"
-	case domain.StateCooldown:
+	case component.StateCooldown:
 		return "クールダウン"
-	case domain.StateBroken:
+	case component.StateBroken:
 		return "機能停止"
 	default:
 		return "不明"

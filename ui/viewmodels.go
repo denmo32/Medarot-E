@@ -1,8 +1,8 @@
-package ecs
+package ui
 
 import (
 	"image/color"
-	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -16,10 +16,10 @@ type BattleUIState struct {
 // ActionModalButtonViewModel は、アクション選択モーダルのボタン一つ分のデータを保持します。
 type ActionModalButtonViewModel struct {
 	PartName          string
-	PartCategory      domain.PartCategory
-	SlotKey           domain.PartSlotKey
+	PartCategory      component.PartCategory
+	SlotKey           component.PartSlotKey
 	TargetEntityID    donburi.Entity // 射撃などのターゲットが必要な場合
-	TargetPartSlot    domain.PartSlotKey
+	TargetPartSlot    component.PartSlotKey
 	SelectedPartDefID string
 }
 
@@ -35,17 +35,17 @@ type InfoPanelViewModel struct {
 	ID        string         // 名前表示用としてstringに戻す
 	EntityID  donburi.Entity // アイコンとの対応付け用
 	Name      string
-	Team      domain.TeamID
+	Team      component.TeamID
 	DrawIndex int
 	StateStr  string
 	IsLeader  bool
-	Parts     map[domain.PartSlotKey]PartViewModel
+	Parts     map[component.PartSlotKey]PartViewModel
 }
 
 // PartViewModel は、単一のパーツUIが必要とするデータを保持します。
 type PartViewModel struct {
 	PartName     string
-	PartType     domain.PartType
+	PartType     component.PartType
 	CurrentArmor int
 	MaxArmor     int
 	IsBroken     bool
@@ -63,7 +63,7 @@ type IconViewModel struct {
 	X, Y          float32
 	Color         color.Color
 	IsLeader      bool
-	State         domain.StateType
+	State         component.StateType
 	GaugeProgress float64 // 0.0 to 1.0
 	DebugText     string
 }

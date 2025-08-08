@@ -1,8 +1,8 @@
 package main
 
 import (
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/yohamta/donburi"
 )
@@ -10,43 +10,43 @@ import (
 // --- Componentの型定義 ---
 // 各コンポーネントにユニークな型情報を持たせます。
 var (
-	SettingsComponent      = donburi.NewComponentType[domain.Settings]()
-	PartsComponent         = donburi.NewComponentType[domain.PartsComponentData]()
-	MedalComponent         = donburi.NewComponentType[domain.Medal]()
-	GaugeComponent         = donburi.NewComponentType[domain.Gauge]()
-	LogComponent           = donburi.NewComponentType[domain.Log]()
-	PlayerControlComponent = donburi.NewComponentType[domain.PlayerControl]()
+	SettingsComponent      = donburi.NewComponentType[component.Settings]()
+	PartsComponent         = donburi.NewComponentType[component.PartsComponentData]()
+	MedalComponent         = donburi.NewComponentType[component.Medal]()
+	GaugeComponent         = donburi.NewComponentType[component.Gauge]()
+	LogComponent           = donburi.NewComponentType[component.Log]()
+	PlayerControlComponent = donburi.NewComponentType[component.PlayerControl]()
 
 	// --- Action Components ---
-	ActionIntentComponent = donburi.NewComponentType[domain.ActionIntent]()
-	TargetComponent       = donburi.NewComponentType[ecs.Target]()
+	ActionIntentComponent = donburi.NewComponentType[component.ActionIntent]()
+	TargetComponent       = donburi.NewComponentType[component.Target]()
 
 	// --- State Components ---
-	StateComponent = donburi.NewComponentType[domain.State]()
+	StateComponent = donburi.NewComponentType[component.State]()
 
 	// --- AI Components ---
-	AIComponent = donburi.NewComponentType[ecs.AI]()
+	AIComponent = donburi.NewComponentType[component.AI]()
 
 	// --- Team Buff Component ---
-	TeamBuffsComponent = donburi.NewComponentType[ecs.TeamBuffs]()
+	TeamBuffsComponent = donburi.NewComponentType[component.TeamBuffs]()
 
 	// --- Status Effect Component ---
-	ActiveEffectsComponent = donburi.NewComponentType[domain.ActiveEffects]()
+	ActiveEffectsComponent = donburi.NewComponentType[component.ActiveEffects]()
 
 	// --- Debug Components ---
 	DebugModeComponent = donburi.NewComponentType[struct{}]()
 
 	// --- UI State Component ---
-	BattleUIStateComponent = donburi.NewComponentType[ecs.BattleUIState]()
+	BattleUIStateComponent = donburi.NewComponentType[ui.BattleUIState]()
 
 	// --- Game State Component ---
-	GameStateComponent = donburi.NewComponentType[domain.GameStateData]()
+	GameStateComponent = donburi.NewComponentType[component.GameStateData]()
 
 	// --- Player Action Queue Component ---
-	PlayerActionQueueComponent = donburi.NewComponentType[ecs.PlayerActionQueueComponentData]()
+	PlayerActionQueueComponent = donburi.NewComponentType[component.PlayerActionQueueComponentData]()
 
 	// --- Last Action Result Component ---
-	LastActionResultComponent = donburi.NewComponentType[ecs.ActionResult]()
+	LastActionResultComponent = donburi.NewComponentType[component.ActionResult]()
 )
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。

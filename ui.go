@@ -4,8 +4,8 @@ import (
 	"image"
 	"image/color"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
@@ -27,13 +27,13 @@ type UI struct {
 	actionModalManager     *UIActionModalManager
 	targetIndicatorManager *UITargetIndicatorManager
 	animationDrawer        *UIAnimationDrawer
-	lastWidth, lastHeight  int                // レイアウト更新の最適化用
-	battleUIState          *ecs.BattleUIState // UIの状態を保持
-	uiFactory              *UIFactory         // uiFactoryを保持
+	lastWidth, lastHeight  int               // レイアウト更新の最適化用
+	battleUIState          *ui.BattleUIState // UIの状態を保持
+	uiFactory              *UIFactory        // uiFactoryを保持
 }
 
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
-func (u *UI) SetBattleUIState(battleUIState *ecs.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
+func (u *UI) SetBattleUIState(battleUIState *ui.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
 	u.battleUIState = battleUIState // UI構造体に状態を保存
 	// uiFactoryも保存する必要があるが、UI構造体にはuiFactoryフィールドがないため、追加が必要
 	// 現状、uiFactoryはNewUIでしか渡されないため、updateLayoutで利用するにはUI構造体にフィールドを追加する必要がある
@@ -45,7 +45,7 @@ func (u *UI) SetBattleUIState(battleUIState *ecs.BattleUIState, config *Config, 
 	mainUIContainer := u.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
 
 	// マップからスライスに変換
-	infoPanelVMs := make([]ecs.InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
+	infoPanelVMs := make([]ui.InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
 	for _, vm := range battleUIState.InfoPanels {
 		infoPanelVMs = append(infoPanelVMs, vm)
 	}
@@ -140,7 +140,7 @@ func (u *UI) IsActionModalVisible() bool {
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (u *UI) ShowActionModal(vm ecs.ActionModalViewModel) {
+func (u *UI) ShowActionModal(vm ui.ActionModalViewModel) {
 	u.actionModalManager.ShowActionModal(vm)
 }
 
@@ -150,7 +150,7 @@ func (u *UI) HideActionModal() {
 }
 
 // GetActionTargetMap は現在のアクションターゲットマップを返します。
-func (u *UI) GetActionTargetMap() map[domain.PartSlotKey]ecs.ActionTarget {
+func (u *UI) GetActionTargetMap() map[component.PartSlotKey]component.ActionTarget {
 	return u.actionModalManager.GetActionTargetMap()
 }
 
@@ -202,7 +202,7 @@ func (u *UI) updateLayout() {
 	// ただし、レイアウト変更時に情報パネルも再配置されるように、SetBattleUIStateを呼び出す必要がある
 	// レイアウト更新時に情報パネルも再配置されるように、直接UpdatePanelsを呼び出す
 	if u.battleUIState != nil {
-		infoPanelVMs := make([]ecs.InfoPanelViewModel, 0, len(u.battleUIState.InfoPanels))
+		infoPanelVMs := make([]ui.InfoPanelViewModel, 0, len(u.battleUIState.InfoPanels))
 		for _, vm := range u.battleUIState.InfoPanels {
 			infoPanelVMs = append(infoPanelVMs, vm)
 		}
@@ -220,7 +220,7 @@ func (u *UI) Update(tick int) {
 // Draw はUIを描画します。
 func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
-	var indicatorTargetVM *ecs.IconViewModel
+	var indicatorTargetVM *ui.IconViewModel
 	if u.targetIndicatorManager.GetCurrentTarget() != 0 && u.battlefieldWidget.viewModel != nil {
 		for _, iconVM := range u.battlefieldWidget.viewModel.Icons {
 			if iconVM.EntryID == u.targetIndicatorManager.GetCurrentTarget() {
@@ -260,7 +260,7 @@ func (u *UI) GetRootContainer() *widget.Container {
 }
 
 // SetAnimation はアニメーションを設定します。
-func (u *UI) SetAnimation(anim *ecs.ActionAnimationData) {
+func (u *UI) SetAnimation(anim *component.ActionAnimationData) {
 	u.animationDrawer.SetAnimation(anim)
 }
 
@@ -275,7 +275,7 @@ func (u *UI) ClearAnimation() {
 }
 
 // GetCurrentAnimationResult は現在のアニメーションの結果を返します。
-func (u *UI) GetCurrentAnimationResult() ecs.ActionResult {
+func (u *UI) GetCurrentAnimationResult() component.ActionResult {
 	return u.animationDrawer.GetCurrentAnimationResult()
 }
 

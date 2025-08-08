@@ -3,8 +3,8 @@ package main
 import (
 	"image"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -17,16 +17,16 @@ type UIInterface interface {
 	Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager)
 	DrawBackground(screen *ebiten.Image)
 	GetRootContainer() *widget.Container
-	SetAnimation(anim *ecs.ActionAnimationData)
+	SetAnimation(anim *component.ActionAnimationData)
 	ClearAnimation()
-	ShowActionModal(vm ecs.ActionModalViewModel)
+	ShowActionModal(vm ui.ActionModalViewModel)
 	HideActionModal()
-	SetBattleUIState(battleUIState *ecs.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
+	SetBattleUIState(battleUIState *ui.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
 	PostEvent(event UIEvent)
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool
-	GetCurrentAnimationResult() ecs.ActionResult
-	GetActionTargetMap() map[domain.PartSlotKey]ecs.ActionTarget
+	GetCurrentAnimationResult() component.ActionResult
+	GetActionTargetMap() map[component.PartSlotKey]component.ActionTarget
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle

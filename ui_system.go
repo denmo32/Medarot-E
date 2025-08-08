@@ -1,7 +1,7 @@
 package main
 
 import (
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ui"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -9,7 +9,7 @@ import (
 )
 
 // UpdateInfoPanelViewModelSystem は、すべてのメダロットエンティティからInfoPanelViewModelを構築し、BattleUIStateComponentに格納します。
-func UpdateInfoPanelViewModelSystem(battleUIState *ecs.BattleUIState, world donburi.World, partInfoProvider PartInfoProviderInterface, factory ViewModelFactory) {
+func UpdateInfoPanelViewModelSystem(battleUIState *ui.BattleUIState, world donburi.World, partInfoProvider PartInfoProviderInterface, factory ViewModelFactory) {
 
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		settings := SettingsComponent.Get(entry)

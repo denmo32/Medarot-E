@@ -1,6 +1,4 @@
-package domain
-
-// NOTE: This file should NOT depend on "github.com/yohamta/donburi".
+package component
 
 // --- Enums and Constants ---
 

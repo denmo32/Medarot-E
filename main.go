@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"os"
 
-	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -68,7 +68,7 @@ func main() {
 
 	// シーンマネージャを作成
 	manager := NewSceneManager(&SharedResources{
-		GameData: &domain.GameData{
+		GameData: &component.GameData{
 			Medarots: medarotLoadouts,
 		},
 		Config:            config,

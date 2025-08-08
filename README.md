@@ -27,10 +27,10 @@ Domain (ゲームのコア)
 ゲームのルール、データ構造、インターフェースなど、プロジェクトの核心となるドメイン知識を定義します。
 このパッケージは、特定の技術（UIライブラリ、ECSフレームワークなど）から独立していることを目指します。
 
-*   `domain/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。
-*   `ecs/components.go`: **[データ]** `donburi.Entity`など、ECSの概念に依存する型定義を定義します。
-*   `ecs/events.go`: **[定義]** ゲーム内で発生するイベントの定義。
-*   `ecs/ui_viewmodels.go`
+*   `ecs/component/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。
+*   `ecs/component/components.go`: **[データ]** `donburi.Entity`など、ECSの概念に依存する型定義を定義します。
+*   `event/events.go`: **[定義]** ゲーム内で発生するイベントの定義。
+*   `ui/ui_viewmodels.go`
     *   役割: UI表示に必要な整形済みデータ（ViewModel）の定義。
     *   内容: `InfoPanelViewModel`, `ActionModalViewModel`, `BattlefieldViewModel`など、UIがECSの内部構造に直接依存しないためのデータ構造を定義します。
 *   `game_interfaces.go`: **[定義]** ゲーム全体で利用される主要なインターフェースを定義します。 `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。

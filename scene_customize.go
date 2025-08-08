@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-	"medarot-ebiten/domain"
 	"sort"
 	"strings"
+
+	"medarot-ebiten/ecs/component"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/image"
@@ -28,14 +29,14 @@ type CustomizeScene struct {
 	legsNameButton          *widget.Button
 	medarotSelectionButtons []*widget.Button
 
-	playerMedarots            []*domain.MedarotData
+	playerMedarots            []*component.MedarotData
 	currentTargetMedarotIndex int
 
-	medalList     []*domain.Medal
-	headPartsList []*domain.PartDefinition
-	rArmPartsList []*domain.PartDefinition
-	lArmPartsList []*domain.PartDefinition
-	legsPartsList []*domain.PartDefinition
+	medalList     []*component.Medal
+	headPartsList []*component.PartDefinition
+	rArmPartsList []*component.PartDefinition
+	lArmPartsList []*component.PartDefinition
+	legsPartsList []*component.PartDefinition
 
 	currentMedalIndex int
 	currentHeadIndex  int
@@ -83,20 +84,20 @@ func (cs *CustomizeScene) setupPartLists() {
 	allPartDefs := cs.resources.GameDataManager.GetAllPartDefinitions()
 	sort.Slice(allPartDefs, func(i, j int) bool { return allPartDefs[i].ID < allPartDefs[j].ID })
 
-	cs.headPartsList = []*domain.PartDefinition{}
-	cs.rArmPartsList = []*domain.PartDefinition{}
-	cs.lArmPartsList = []*domain.PartDefinition{}
-	cs.legsPartsList = []*domain.PartDefinition{}
+	cs.headPartsList = []*component.PartDefinition{}
+	cs.rArmPartsList = []*component.PartDefinition{}
+	cs.lArmPartsList = []*component.PartDefinition{}
+	cs.legsPartsList = []*component.PartDefinition{}
 
 	for _, pDef := range allPartDefs {
 		switch pDef.Type {
-		case domain.PartTypeHead:
+		case component.PartTypeHead:
 			cs.headPartsList = append(cs.headPartsList, pDef)
-		case domain.PartTypeRArm:
+		case component.PartTypeRArm:
 			cs.rArmPartsList = append(cs.rArmPartsList, pDef)
-		case domain.PartTypeLArm:
+		case component.PartTypeLArm:
 			cs.lArmPartsList = append(cs.lArmPartsList, pDef)
-		case domain.PartTypeLegs:
+		case component.PartTypeLegs:
 			cs.legsPartsList = append(cs.legsPartsList, pDef)
 		}
 	}
@@ -203,11 +204,11 @@ func (cs *CustomizeScene) selectMedarot(index int) {
 func (cs *CustomizeScene) refreshUIForSelectedMedarot() {
 	target := cs.playerMedarots[cs.currentTargetMedarotIndex]
 
-	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *domain.Medal) string { return m.ID })
-	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *domain.PartDefinition) string { return p.ID })
-	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *domain.PartDefinition) string { return p.ID })
-	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *domain.PartDefinition) string { return p.ID })
-	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *domain.PartDefinition) string { return p.ID })
+	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *component.Medal) string { return m.ID })
+	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *component.PartDefinition) string { return p.ID })
+	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *component.PartDefinition) string { return p.ID })
+	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *component.PartDefinition) string { return p.ID })
+	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *component.PartDefinition) string { return p.ID })
 
 	cs.medalNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryMedal)
 	cs.headNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryHead)
@@ -344,7 +345,7 @@ func (cs *CustomizeScene) updateStatus(id string) {
 		sb.WriteString(fmt.Sprintf("Accuracy: %d\n", partDef.Accuracy))
 		sb.WriteString(fmt.Sprintf("Charge: %d\n", partDef.Charge))
 		sb.WriteString(fmt.Sprintf("Cooldown: %d\n", partDef.Cooldown))
-		if partDef.Type == domain.PartTypeLegs {
+		if partDef.Type == component.PartTypeLegs {
 			sb.WriteString(fmt.Sprintf("\nPropulsion: %d\n", partDef.Propulsion))
 			sb.WriteString(fmt.Sprintf("Mobility: %d\n", partDef.Mobility))
 			sb.WriteString(fmt.Sprintf("Stability: %d\n", partDef.Stability)) // Added Stability

@@ -4,8 +4,7 @@ import (
 	"log"
 	"math/rand"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -20,8 +19,8 @@ type ActionExecutor struct {
 	gameConfig             *Config
 	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem // 新しく追加したシステム
-	handlers               map[domain.Trait]TraitActionHandler
-	weaponHandlers         map[domain.WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
+	handlers               map[component.Trait]TraitActionHandler
+	weaponHandlers         map[component.WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
 	rand                   *rand.Rand
 }
 
@@ -38,15 +37,15 @@ func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, 
 		postActionEffectSystem: postActionEffectSystem,
 		rand:                   rand,
 
-		handlers: map[domain.Trait]TraitActionHandler{
-			domain.TraitShoot:    &BaseAttackHandler{},
-			domain.TraitAim:      &BaseAttackHandler{},
-			domain.TraitStrike:   &BaseAttackHandler{},
-			domain.TraitBerserk:  &BaseAttackHandler{},
-			domain.TraitSupport:  &SupportTraitExecutor{},
-			domain.TraitObstruct: &ObstructTraitExecutor{},
+		handlers: map[component.Trait]TraitActionHandler{
+			component.TraitShoot:    &BaseAttackHandler{},
+			component.TraitAim:      &BaseAttackHandler{},
+			component.TraitStrike:   &BaseAttackHandler{},
+			component.TraitBerserk:  &BaseAttackHandler{},
+			component.TraitSupport:  &SupportTraitExecutor{},
+			component.TraitObstruct: &ObstructTraitExecutor{},
 		},
-		weaponHandlers: map[domain.WeaponType]WeaponTypeEffectHandler{
+		weaponHandlers: map[component.WeaponType]WeaponTypeEffectHandler{
 			// 将来の拡張に備え、ここにハンドラを登録していく
 			// 例: WeaponTypeThunder: &ThunderEffectHandler{},
 			// 例: WeaponTypeMelt:    &MeltEffectHandler{},
@@ -55,7 +54,7 @@ func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, 
 }
 
 // ExecuteAction は単一のアクションを実行し、その結果を返します。
-func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ecs.ActionResult {
+func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) component.ActionResult {
 	intent := ActionIntentComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
@@ -64,7 +63,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) ecs.ActionRes
 	handler, ok := e.handlers[actingPartDef.Trait]
 	if !ok {
 		log.Printf("未対応のTraitです: %s", actingPartDef.Trait)
-		return ecs.ActionResult{
+		return component.ActionResult{
 			ActingEntry:  actingEntry,
 			ActionDidHit: false,
 		}

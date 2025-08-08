@@ -3,8 +3,7 @@ package main
 import (
 	"log"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
 )
 
 // BattleLoggerImpl は BattleLogger インターフェースの実装です。
@@ -39,7 +38,7 @@ func (l *BattleLoggerImpl) LogPartBroken(medarotName, partName, partID string) {
 	}))
 }
 
-func (l *BattleLoggerImpl) LogActionInitiated(attackerName string, actionTrait domain.Trait, weaponType domain.WeaponType, category domain.PartCategory) {
+func (l *BattleLoggerImpl) LogActionInitiated(attackerName string, actionTrait component.Trait, weaponType component.WeaponType, category component.PartCategory) {
 	// このメッセージは ActionResult から構築されるため、ここでは直接ログ出力しない
 }
 
@@ -56,19 +55,19 @@ func (l *BattleLoggerImpl) LogDefenseSuccess(targetName, defensePartName string,
 }
 
 // buildActionLogMessagesFromActionResult はActionResultから表示用のメッセージスライスを構築します。
-func buildActionLogMessagesFromActionResult(result ecs.ActionResult, gameDataManager *GameDataManager) []string {
+func buildActionLogMessagesFromActionResult(result component.ActionResult, gameDataManager *GameDataManager) []string {
 	messages := []string{}
 
 	// 攻撃開始メッセージ
 	var actionInitiateMsg string
 	switch result.ActionCategory {
-	case domain.CategoryRanged, domain.CategoryMelee:
+	case component.CategoryRanged, component.CategoryMelee:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_attack", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正
 			"weapon_type":   result.WeaponType,
 		})
-	case domain.CategoryIntervention:
+	case component.CategoryIntervention:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_intervention", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正

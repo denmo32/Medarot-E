@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
@@ -14,11 +14,11 @@ import (
 type UIActionModalManager struct {
 	ebitenui             *ebitenui.UI // UIのルートコンテナにアクセスするため
 	actionModal          widget.PreferredSizeLocateableWidget
-	isActionModalVisible bool                                    // アクションモーダルが表示されているか
-	actionTargetMap      map[domain.PartSlotKey]ecs.ActionTarget // 選択可能なアクションとターゲットのマップ
-	eventChannel         chan UIEvent                            // UIイベント通知用
-	uiFactory            *UIFactory                              // 追加
-	commonUIPanel        *UIPanel                                // 共通のUIPanelを保持
+	isActionModalVisible bool                                             // アクションモーダルが表示されているか
+	actionTargetMap      map[component.PartSlotKey]component.ActionTarget // 選択可能なアクションとターゲットのマップ
+	eventChannel         chan UIEvent                                     // UIイベント通知用
+	uiFactory            *UIFactory                                       // 追加
+	commonUIPanel        *UIPanel                                         // 共通のUIPanelを保持
 }
 
 // NewUIActionModalManager は新しいUIActionModalManagerのインスタンスを作成します。
@@ -26,7 +26,7 @@ func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, u
 	return &UIActionModalManager{
 		ebitenui:             ebitenui,
 		isActionModalVisible: false,
-		actionTargetMap:      make(map[domain.PartSlotKey]ecs.ActionTarget),
+		actionTargetMap:      make(map[component.PartSlotKey]component.ActionTarget),
 		eventChannel:         eventChannel,
 		uiFactory:            uiFactory,
 		commonUIPanel:        commonUIPanel, // 共通UIPanelを設定
@@ -34,13 +34,13 @@ func NewUIActionModalManager(ebitenui *ebitenui.UI, eventChannel chan UIEvent, u
 }
 
 // ShowActionModal はアクション選択モーダルを表示します。
-func (m *UIActionModalManager) ShowActionModal(vm ecs.ActionModalViewModel) {
+func (m *UIActionModalManager) ShowActionModal(vm ui.ActionModalViewModel) {
 	m.isActionModalVisible = true
 
 	// actionTargetMap を ViewModel の情報から再構築
-	m.actionTargetMap = make(map[domain.PartSlotKey]ecs.ActionTarget)
+	m.actionTargetMap = make(map[component.PartSlotKey]component.ActionTarget)
 	for _, btn := range vm.Buttons {
-		m.actionTargetMap[btn.SlotKey] = ecs.ActionTarget{TargetEntityID: btn.TargetEntityID, Slot: btn.SlotKey}
+		m.actionTargetMap[btn.SlotKey] = component.ActionTarget{TargetEntityID: btn.TargetEntityID, Slot: btn.SlotKey}
 	}
 
 	// ViewModel を直接 createActionModalUI に渡す
@@ -60,7 +60,7 @@ func (m *UIActionModalManager) HideActionModal() {
 		m.actionModal = nil
 	}
 	m.isActionModalVisible = false
-	m.actionTargetMap = make(map[domain.PartSlotKey]ecs.ActionTarget) // ターゲットマップをクリア
+	m.actionTargetMap = make(map[component.PartSlotKey]component.ActionTarget) // ターゲットマップをクリア
 	log.Println("アクションモーダルを非表示にしました。")
 }
 
@@ -70,6 +70,6 @@ func (m *UIActionModalManager) IsVisible() bool {
 }
 
 // GetActionTargetMap は現在のアクションターゲットマップを返します。
-func (m *UIActionModalManager) GetActionTargetMap() map[domain.PartSlotKey]ecs.ActionTarget {
+func (m *UIActionModalManager) GetActionTargetMap() map[component.PartSlotKey]component.ActionTarget {
 	return m.actionTargetMap
 }

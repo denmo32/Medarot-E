@@ -1,8 +1,8 @@
 package main
 
 import (
-	"medarot-ebiten/domain"
-	"medarot-ebiten/ecs"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/yohamta/donburi"
 )
@@ -15,7 +15,7 @@ type UIEvent interface {
 // PartSelectedUIEvent は、プレイヤーがパーツを選択したときに発行されます。
 type PartSelectedUIEvent struct {
 	ActingEntityID  donburi.Entity
-	SelectedSlotKey domain.PartSlotKey
+	SelectedSlotKey component.PartSlotKey
 	TargetEntityID  donburi.Entity // 追加
 }
 
@@ -24,9 +24,9 @@ func (e PartSelectedUIEvent) isUIEvent() {}
 // TargetSelectedUIEvent は、プレイヤーがターゲットを選択したときに発行されます。
 type TargetSelectedUIEvent struct {
 	ActingEntityID  donburi.Entity
-	SelectedSlotKey domain.PartSlotKey
+	SelectedSlotKey component.PartSlotKey
 	TargetEntityID  donburi.Entity
-	TargetPartSlot  domain.PartSlotKey
+	TargetPartSlot  component.PartSlotKey
 }
 
 func (e TargetSelectedUIEvent) isUIEvent() {}
@@ -35,9 +35,9 @@ func (e TargetSelectedUIEvent) isUIEvent() {}
 type ActionConfirmedUIEvent struct {
 	ActingEntityID    donburi.Entity
 	SelectedPartDefID string
-	SelectedSlotKey   domain.PartSlotKey
+	SelectedSlotKey   component.PartSlotKey
 	TargetEntityID    donburi.Entity
-	TargetPartSlot    domain.PartSlotKey
+	TargetPartSlot    component.PartSlotKey
 }
 
 func (e ActionConfirmedUIEvent) isUIEvent() {}
@@ -51,7 +51,7 @@ func (e ActionCanceledUIEvent) isUIEvent() {}
 
 // ShowActionModalUIEvent は、アクションモーダルを表示するUIイベントです。
 type ShowActionModalUIEvent struct {
-	ViewModel ecs.ActionModalViewModel
+	ViewModel ui.ActionModalViewModel
 }
 
 func (e ShowActionModalUIEvent) isUIEvent() {}
@@ -63,7 +63,7 @@ func (e HideActionModalUIEvent) isUIEvent() {}
 
 // SetAnimationUIEvent は、アニメーションを設定するUIイベントです。
 type SetAnimationUIEvent struct {
-	AnimationData ecs.ActionAnimationData
+	AnimationData component.ActionAnimationData
 }
 
 func (e SetAnimationUIEvent) isUIEvent() {}
@@ -88,7 +88,7 @@ func (e MessageDisplayRequestUIEvent) isUIEvent() {}
 
 // AnimationFinishedUIEvent は、アニメーションが終了したことをUIから通知するイベントです。
 type AnimationFinishedUIEvent struct {
-	Result ecs.ActionResult
+	Result component.ActionResult
 }
 
 func (e AnimationFinishedUIEvent) isUIEvent() {}

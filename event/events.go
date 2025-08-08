@@ -1,7 +1,7 @@
-package ecs
+package event
 
 import (
-	"medarot-ebiten/domain"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -18,14 +18,14 @@ func (e PlayerActionRequiredGameEvent) isGameEvent() {}
 
 // ActionAnimationStartedGameEvent は、アクションアニメーションが開始されたことを示すイベントです。
 type ActionAnimationStartedGameEvent struct {
-	AnimationData ActionAnimationData
+	AnimationData component.ActionAnimationData
 }
 
 func (e ActionAnimationStartedGameEvent) isGameEvent() {}
 
 // ActionAnimationFinishedGameEvent は、アクションアニメーションが終了したことを示すイベントです。
 type ActionAnimationFinishedGameEvent struct {
-	Result      ActionResult
+	Result      component.ActionResult
 	ActingEntry *donburi.Entry // クールダウン開始のために追加
 }
 
@@ -46,7 +46,7 @@ func (e MessageDisplayFinishedGameEvent) isGameEvent() {}
 
 // GameOverGameEvent は、ゲームオーバーになったことを示すイベントです。
 type GameOverGameEvent struct {
-	Winner domain.TeamID
+	Winner component.TeamID
 }
 
 func (e GameOverGameEvent) isGameEvent() {}
@@ -76,10 +76,10 @@ func (e ClearCurrentTargetGameEvent) isGameEvent() {}
 // ActionConfirmedGameEvent は、プレイヤーがアクションを確定したことを示すイベントです。
 type ActionConfirmedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedPartDef *domain.PartDefinition
-	SelectedSlotKey domain.PartSlotKey
+	SelectedPartDef *component.PartDefinition
+	SelectedSlotKey component.PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  domain.PartSlotKey
+	TargetPartSlot  component.PartSlotKey
 }
 
 func (e ActionConfirmedGameEvent) isGameEvent() {}
@@ -87,9 +87,9 @@ func (e ActionConfirmedGameEvent) isGameEvent() {}
 // ChargeRequestedGameEvent は、チャージ開始が要求されたことを示すイベントです。
 type ChargeRequestedGameEvent struct {
 	ActingEntry     *donburi.Entry
-	SelectedSlotKey domain.PartSlotKey
+	SelectedSlotKey component.PartSlotKey
 	TargetEntry     *donburi.Entry
-	TargetPartSlot  domain.PartSlotKey
+	TargetPartSlot  component.PartSlotKey
 }
 
 func (e ChargeRequestedGameEvent) isGameEvent() {}
@@ -120,7 +120,7 @@ func (e GoToTitleSceneGameEvent) isGameEvent() {}
 
 // StateChangeRequestedGameEvent は、ゲームの状態変更が要求されたことを示すイベントです。
 type StateChangeRequestedGameEvent struct {
-	NextState domain.GameState
+	NextState component.GameState
 }
 
 func (e StateChangeRequestedGameEvent) isGameEvent() {}
