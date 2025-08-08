@@ -2,7 +2,6 @@ package main
 
 import (
 	"medarot-ebiten/ecs/component"
-	"medarot-ebiten/ui"
 
 	"github.com/yohamta/donburi"
 )
@@ -35,9 +34,6 @@ var (
 
 	// --- Debug Components ---
 	DebugModeComponent = donburi.NewComponentType[struct{}]()
-
-	// --- UI State Component ---
-	BattleUIStateComponent = donburi.NewComponentType[ui.BattleUIState]()
 
 	// --- Game State Component ---
 	GameStateComponent = donburi.NewComponentType[component.GameStateData]()

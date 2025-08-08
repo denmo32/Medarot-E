@@ -144,12 +144,12 @@ func (bs *BattleScene) Update() error {
 		}
 	}
 
-	battleUIStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bs.world)
+	battleUIStateEntry, ok := query.NewQuery(filter.Contains(ui.BattleUIStateComponent)).First(bs.world)
 	if !ok {
 		log.Println("エラー: BattleUIStateComponent がワールドに見つかりません。UI更新をスキップします。")
 		return nil
 	}
-	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
+	battleUIState := ui.BattleUIStateComponent.Get(battleUIStateEntry)
 
 	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic.GetPartInfoProvider(), bs.viewModelFactory)
 

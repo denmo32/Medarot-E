@@ -7,11 +7,7 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// BattleUIState is a singleton component that stores UI-specific data (ViewModels).
-type BattleUIState struct {
-	InfoPanels           map[string]InfoPanelViewModel // Map from Medarot ID to its ViewModel
-	BattlefieldViewModel BattlefieldViewModel          // Add BattlefieldViewModel here
-}
+
 
 // ActionModalButtonViewModel は、アクション選択モーダルのボタン一つ分のデータを保持します。
 type ActionModalButtonViewModel struct {

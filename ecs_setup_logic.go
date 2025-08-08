@@ -33,9 +33,9 @@ func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam
 	})
 
 	// Initialize BattleUIStateComponent
-	battleUIStateEntry := world.Entry(world.Create(BattleUIStateComponent))
+	battleUIStateEntry := world.Entry(world.Create(ui.BattleUIStateComponent))
 	if battleUIStateEntry.Valid() {
-		BattleUIStateComponent.SetValue(battleUIStateEntry, ui.BattleUIState{
+		ui.BattleUIStateComponent.SetValue(battleUIStateEntry, ui.BattleUIState{
 			InfoPanels: make(map[string]ui.InfoPanelViewModel),
 		})
 		log.Println("BattleUIStateComponent successfully created and initialized.")
