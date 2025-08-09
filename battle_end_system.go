@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -11,16 +11,16 @@ import (
 
 // CheckGameEndSystem はゲーム終了条件をチェックします。
 // BattleScene への依存をなくし、結果を構造体で返します。
-func CheckGameEndSystem(world donburi.World) component.GameEndResult {
-	team1Leader := FindLeader(world, component.Team1) // FindLeader は ecs_setup.go にあります
-	team2Leader := FindLeader(world, component.Team2) // FindLeader は ecs_setup.go にあります
+func CheckGameEndSystem(world donburi.World) core.GameEndResult {
+	team1Leader := FindLeader(world, core.Team1) // FindLeader は ecs_setup.go にあります
+	team2Leader := FindLeader(world, core.Team2) // FindLeader は ecs_setup.go にあります
 
 	team1FuncCount := 0
 	team2FuncCount := 0
 
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).CurrentState != component.StateBroken {
-			if SettingsComponent.Get(entry).Team == component.Team1 {
+		if StateComponent.Get(entry).CurrentState != core.StateBroken {
+			if SettingsComponent.Get(entry).Team == core.Team1 {
 				team1FuncCount++
 			} else {
 				team2FuncCount++
@@ -28,7 +28,7 @@ func CheckGameEndSystem(world donburi.World) component.GameEndResult {
 		}
 	})
 
-	var winner component.TeamID
+	var winner core.TeamID
 	var gameOverMsg string
 	isGameOver := false
 
@@ -41,10 +41,10 @@ func CheckGameEndSystem(world donburi.World) component.GameEndResult {
 	// 1. チーム1のリーダーが存在しない (nil)
 	// 2. チーム1のリーダーの頭部が破壊されている
 	// 3. チーム1の行動可能な機体が0 (リーダーが健在でも他の機体が全滅)
-	if team1Leader == nil || PartsComponent.Get(team1Leader).Map[component.PartSlotHead].IsBroken || team1FuncCount == 0 {
-		winner = component.Team2
+	if team1Leader == nil || PartsComponent.Get(team1Leader).Map[core.PartSlotHead].IsBroken || team1FuncCount == 0 {
+		winner = core.Team2
 		isGameOver = true
-		if team1Leader != nil && PartsComponent.Get(team1Leader).Map[component.PartSlotHead].IsBroken {
+		if team1Leader != nil && PartsComponent.Get(team1Leader).Map[core.PartSlotHead].IsBroken {
 			gameOverMsg = fmt.Sprintf("%sが機能停止！ チーム2の勝利！", SettingsComponent.Get(team1Leader).Name)
 		} else if team1FuncCount == 0 {
 			gameOverMsg = "チーム1が全滅！ チーム2の勝利！"
@@ -58,10 +58,10 @@ func CheckGameEndSystem(world donburi.World) component.GameEndResult {
 	// 2. チーム2のリーダーの頭部が破壊されている
 	// 3. チーム2の行動可能な機体が0 (リーダーが健在でも他の機体が全滅)
 	if !isGameOver { // チーム1がまだ敗北していない場合のみチーム2の敗北をチェック
-		if team2Leader == nil || PartsComponent.Get(team2Leader).Map[component.PartSlotHead].IsBroken || team2FuncCount == 0 {
-			winner = component.Team1
+		if team2Leader == nil || PartsComponent.Get(team2Leader).Map[core.PartSlotHead].IsBroken || team2FuncCount == 0 {
+			winner = core.Team1
 			isGameOver = true
-			if team2Leader != nil && PartsComponent.Get(team2Leader).Map[component.PartSlotHead].IsBroken {
+			if team2Leader != nil && PartsComponent.Get(team2Leader).Map[core.PartSlotHead].IsBroken {
 				gameOverMsg = fmt.Sprintf("%sが機能停止！ チーム1の勝利！", SettingsComponent.Get(team2Leader).Name)
 			} else if team2FuncCount == 0 {
 				gameOverMsg = "チーム2が全滅！ チーム1の勝利！"
@@ -71,7 +71,7 @@ func CheckGameEndSystem(world donburi.World) component.GameEndResult {
 		}
 	}
 
-	return component.GameEndResult{
+	return core.GameEndResult{
 		IsGameOver: isGameOver,
 		Winner:     winner,
 		Message:    gameOverMsg,

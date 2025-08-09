@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sort"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -53,7 +54,7 @@ func UpdateActionQueueSystem(
 func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProvider PartInfoProviderInterface) {
 	intent := ActionIntentComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
-	var actingPartDef *component.PartDefinition
+	var actingPartDef *core.PartDefinition
 
 	if actingPartInstance, ok := partsComp.Map[intent.SelectedPartKey]; ok {
 		if def, defFound := partInfoProvider.GetGameDataManager().GetPartDefinition(actingPartInstance.DefinitionID); defFound {
@@ -80,5 +81,5 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProv
 
 	state := StateComponent.Get(entry)
 	gauge.ProgressCounter = 0
-	state.CurrentState = component.StateCooldown
+	state.CurrentState = core.StateCooldown
 }

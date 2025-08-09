@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 	"medarot-ebiten/ui"
 
 	"github.com/ebitenui/ebitenui/widget"
@@ -16,7 +16,7 @@ func createActionModalUI(
 	c := uiFactory.Config.UI
 
 	// 各パーツカテゴリのボタンを格納するマップ
-	partButtons := make(map[component.PartSlotKey][]widget.PreferredSizeLocateableWidget)
+	partButtons := make(map[core.PartSlotKey][]widget.PreferredSizeLocateableWidget)
 
 	if len(vm.Buttons) == 0 {
 		// ボタンがない場合のメッセージ
@@ -54,7 +54,7 @@ func createActionModalUI(
 			},
 			func(args *widget.ButtonHoverEventArgs) {
 				switch buttonVM.PartCategory {
-				case component.CategoryRanged:
+				case core.CategoryRanged:
 					if buttonVM.TargetEntityID != 0 {
 						eventChannel <- TargetSelectedUIEvent{
 							ActingEntityID:  vm.ActingEntityID,
@@ -63,7 +63,7 @@ func createActionModalUI(
 							TargetPartSlot:  "",
 						}
 					}
-				case component.CategoryIntervention:
+				case core.CategoryIntervention:
 					// 介入の場合はターゲット表示なし
 				default:
 					// 格闘など、他のカテゴリでターゲット表示が必要な場合はここに追加
@@ -125,7 +125,7 @@ func createActionModalUI(
 		})),
 	)
 
-	for _, btn := range partButtons[component.PartSlotHead] {
+	for _, btn := range partButtons[core.PartSlotHead] {
 		headPartsContainer.AddChild(btn)
 	}
 	headRowContainer.AddChild(headPartsContainer)
@@ -154,7 +154,7 @@ func createActionModalUI(
 			VerticalPosition:   widget.AnchorLayoutPositionCenter,
 		})),
 	)
-	for _, btn := range partButtons[component.PartSlotRightArm] {
+	for _, btn := range partButtons[core.PartSlotRightArm] {
 		rightArmPartsContainer.AddChild(btn)
 	}
 	rightArmContainer.AddChild(rightArmPartsContainer)
@@ -174,7 +174,7 @@ func createActionModalUI(
 			VerticalPosition:   widget.AnchorLayoutPositionCenter,
 		})),
 	)
-	for _, btn := range partButtons[component.PartSlotLeftArm] {
+	for _, btn := range partButtons[core.PartSlotLeftArm] {
 		leftArmPartsContainer.AddChild(btn)
 	}
 	leftArmContainer.AddChild(leftArmPartsContainer)

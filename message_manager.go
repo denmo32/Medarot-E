@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	resource "github.com/quasilyte/ebitengine-resource" // resource パッケージを追加
 )
@@ -42,7 +42,7 @@ func (mm *MessageManager) LoadMessages(filePath string) error {
 		return fmt.Errorf("could not load message resource %s: data is nil", filePath)
 	}
 
-	var templates []component.MessageTemplate
+	var templates []core.MessageTemplate
 	err := json.Unmarshal(res.Data, &templates)
 	if err != nil {
 		return fmt.Errorf("could not parse message data from %s: %w", filePath, err)

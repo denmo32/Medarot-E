@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -19,8 +20,8 @@ type ActionExecutor struct {
 	gameConfig             *Config
 	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem // 新しく追加したシステム
-	handlers               map[component.Trait]TraitActionHandler
-	weaponHandlers         map[component.WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
+	handlers               map[core.Trait]TraitActionHandler
+	weaponHandlers         map[core.WeaponType]WeaponTypeEffectHandler // WeaponTypeごとのハンドラを追加
 	rand                   *rand.Rand
 }
 
@@ -37,15 +38,15 @@ func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, 
 		postActionEffectSystem: postActionEffectSystem,
 		rand:                   rand,
 
-		handlers: map[component.Trait]TraitActionHandler{
-			component.TraitShoot:    &BaseAttackHandler{},
-			component.TraitAim:      &BaseAttackHandler{},
-			component.TraitStrike:   &BaseAttackHandler{},
-			component.TraitBerserk:  &BaseAttackHandler{},
-			component.TraitSupport:  &SupportTraitExecutor{},
-			component.TraitObstruct: &ObstructTraitExecutor{},
+		handlers: map[core.Trait]TraitActionHandler{
+			core.TraitShoot:    &BaseAttackHandler{},
+			core.TraitAim:      &BaseAttackHandler{},
+			core.TraitStrike:   &BaseAttackHandler{},
+			core.TraitBerserk:  &BaseAttackHandler{},
+			core.TraitSupport:  &SupportTraitExecutor{},
+			core.TraitObstruct: &ObstructTraitExecutor{},
 		},
-		weaponHandlers: map[component.WeaponType]WeaponTypeEffectHandler{
+		weaponHandlers: map[core.WeaponType]WeaponTypeEffectHandler{
 			// 将来の拡張に備え、ここにハンドラを登録していく
 			// 例: WeaponTypeThunder: &ThunderEffectHandler{},
 			// 例: WeaponTypeMelt:    &MeltEffectHandler{},

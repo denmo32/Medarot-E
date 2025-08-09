@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -28,7 +29,7 @@ func (pip *PartInfoProvider) GetGameDataManager() *GameDataManager {
 }
 
 // GetPartParameterValue は指定されたパーツスロットとパラメータの値を取得する汎用ヘルパー関数です。
-func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlot component.PartSlotKey, param component.PartParameter) float64 {
+func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlot core.PartSlotKey, param core.PartParameter) float64 {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return 0
@@ -44,17 +45,17 @@ func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlo
 	}
 
 	switch param {
-	case component.Power:
+	case core.Power:
 		return float64(partDef.Power)
-	case component.Accuracy:
+	case core.Accuracy:
 		return float64(partDef.Accuracy)
-	case component.Mobility:
+	case core.Mobility:
 		return float64(partDef.Mobility)
-	case component.Propulsion:
+	case core.Propulsion:
 		return float64(partDef.Propulsion)
-	case component.Stability:
+	case core.Stability:
 		return float64(partDef.Stability)
-	case component.Defense:
+	case core.Defense:
 		return float64(partDef.Defense)
 	default:
 		return 0
@@ -62,7 +63,7 @@ func (pip *PartInfoProvider) GetPartParameterValue(entry *donburi.Entry, partSlo
 }
 
 // FindPartSlot は指定されたパーツインスタンスがどのスロットにあるかを返します。
-func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstance *component.PartInstanceData) component.PartSlotKey {
+func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstance *core.PartInstanceData) core.PartSlotKey {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil || partToFindInstance == nil {
 		return ""
@@ -89,7 +90,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []com
 		return nil
 	}
 	var availableParts []component.AvailablePart
-	slotsToConsider := []component.PartSlotKey{component.PartSlotHead, component.PartSlotRightArm, component.PartSlotLeftArm}
+	slotsToConsider := []core.PartSlotKey{core.PartSlotHead, core.PartSlotRightArm, core.PartSlotLeftArm}
 
 	for _, slot := range slotsToConsider {
 		partInst, ok := partsComp.Map[slot]
@@ -102,7 +103,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []com
 			continue
 		}
 
-		if partDef.Category == component.CategoryRanged || partDef.Category == component.CategoryMelee || partDef.Category == component.CategoryIntervention {
+		if partDef.Category == core.CategoryRanged || partDef.Category == core.CategoryMelee || partDef.Category == core.CategoryIntervention {
 			availableParts = append(availableParts, component.AvailablePart{PartDef: partDef, Slot: slot})
 		}
 	}
@@ -111,21 +112,21 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []com
 
 // GetOverallPropulsion はエンティティの総推進力を返します。
 func (pip *PartInfoProvider) GetOverallPropulsion(entry *donburi.Entry) int {
-	return int(pip.GetPartParameterValue(entry, component.PartSlotLegs, component.Propulsion))
+	return int(pip.GetPartParameterValue(entry, core.PartSlotLegs, core.Propulsion))
 }
 
 // GetOverallMobility はエンティティの総機動力を返します。
 func (pip *PartInfoProvider) GetOverallMobility(entry *donburi.Entry) int {
-	return int(pip.GetPartParameterValue(entry, component.PartSlotLegs, component.Mobility))
+	return int(pip.GetPartParameterValue(entry, core.PartSlotLegs, core.Mobility))
 }
 
 // GetLegsPartDefinition はエンティティの脚部パーツの定義を取得します。
-func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*component.PartDefinition, bool) {
+func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*core.PartDefinition, bool) {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return nil, false
 	}
-	legsInstance, ok := partsComp.Map[component.PartSlotLegs]
+	legsInstance, ok := partsComp.Map[core.PartSlotLegs]
 	if !ok || legsInstance == nil || legsInstance.IsBroken {
 		return nil, false
 	}
@@ -133,7 +134,7 @@ func (pip *PartInfoProvider) GetLegsPartDefinition(entry *donburi.Entry) (*compo
 }
 
 // GetSuccessRate はエンティティの成功度を計算します。
-func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *component.PartDefinition, selectedPartKey component.PartSlotKey) float64 {
+func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef *core.PartDefinition, selectedPartKey core.PartSlotKey) float64 {
 	successRate := float64(actingPartDef.Accuracy)
 
 	// 特性によるボーナスを加算
@@ -149,13 +150,13 @@ func (pip *PartInfoProvider) GetSuccessRate(entry *donburi.Entry, actingPartDef 
 
 // GetEvasionRate はエンティティの回避度を計算します。
 func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
-	evasion := pip.GetPartParameterValue(entry, component.PartSlotLegs, component.Mobility)
+	evasion := pip.GetPartParameterValue(entry, core.PartSlotLegs, core.Mobility)
 
 	// ActiveEffectsComponentから回避デバフの影響を適用
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
 		for _, activeEffect := range activeEffects.Effects {
-			if evasionDebuff, ok := activeEffect.EffectData.(*component.EvasionDebuffEffectData); ok {
+			if evasionDebuff, ok := activeEffect.EffectData.(*core.EvasionDebuffEffectData); ok {
 				evasion *= evasionDebuff.Multiplier
 			}
 		}
@@ -165,13 +166,13 @@ func (pip *PartInfoProvider) GetEvasionRate(entry *donburi.Entry) float64 {
 
 // GetDefenseRate はエンティティの防御度を計算します。
 func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
-	defense := pip.GetPartParameterValue(entry, component.PartSlotLegs, component.Defense)
+	defense := pip.GetPartParameterValue(entry, core.PartSlotLegs, core.Defense)
 
 	// ActiveEffectsComponentから防御デバフの影響を適用
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
 		for _, activeEffect := range activeEffects.Effects {
-			if defenseDebuff, ok := activeEffect.EffectData.(*component.DefenseDebuffEffectData); ok {
+			if defenseDebuff, ok := activeEffect.EffectData.(*core.DefenseDebuffEffectData); ok {
 				defense *= defenseDebuff.Multiplier
 			}
 		}
@@ -190,7 +191,7 @@ func (pip *PartInfoProvider) GetTeamAccuracyBuffMultiplier(entry *donburi.Entry)
 	settings := SettingsComponent.Get(entry)
 
 	teamID := settings.Team
-	buffType := component.BuffTypeAccuracy
+	buffType := core.BuffTypeAccuracy
 
 	maxMultiplier := 1.0
 
@@ -208,7 +209,7 @@ func (pip *PartInfoProvider) GetTeamAccuracyBuffMultiplier(entry *donburi.Entry)
 }
 
 // RemoveBuffsFromSource は、指定されたパーツインスタンスが提供していたバフをすべて削除します。
-func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partInst *component.PartInstanceData) {
+func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partInst *core.PartInstanceData) {
 	teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(pip.world)
 	if !ok {
 		return
@@ -242,7 +243,7 @@ func (pip *PartInfoProvider) CalculateGaugeDuration(baseSeconds float64, entry *
 	if entry != nil && entry.HasComponent(PartsComponent) {
 		partsComp := PartsComponent.Get(entry)
 		if partsComp != nil {
-			legsInstance, ok := partsComp.Map[component.PartSlotLegs]
+			legsInstance, ok := partsComp.Map[core.PartSlotLegs]
 			if ok && legsInstance != nil && !legsInstance.IsBroken {
 				propulsion = pip.GetOverallPropulsion(entry)
 			}
@@ -271,13 +272,13 @@ func (pip *PartInfoProvider) GetNormalizedActionProgress(entry *donburi.Entry) f
 	}
 
 	switch state.CurrentState {
-	case component.StateCharging:
+	case core.StateCharging:
 		return progress
-	case component.StateReady:
+	case core.StateReady:
 		return 1.0
-	case component.StateCooldown:
+	case core.StateCooldown:
 		return 1.0 - progress
-	case component.StateIdle, component.StateBroken:
+	case core.StateIdle, core.StateBroken:
 		return 0.0
 	default:
 		return 0.0 // 不明な状態の場合はホームポジション

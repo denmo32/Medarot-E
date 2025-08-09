@@ -1,6 +1,7 @@
 package main
 
 import (
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -15,7 +16,7 @@ type UIEvent interface {
 // PartSelectedUIEvent は、プレイヤーがパーツを選択したときに発行されます。
 type PartSelectedUIEvent struct {
 	ActingEntityID  donburi.Entity
-	SelectedSlotKey component.PartSlotKey
+	SelectedSlotKey core.PartSlotKey
 	TargetEntityID  donburi.Entity // 追加
 }
 
@@ -24,9 +25,9 @@ func (e PartSelectedUIEvent) isUIEvent() {}
 // TargetSelectedUIEvent は、プレイヤーがターゲットを選択したときに発行されます。
 type TargetSelectedUIEvent struct {
 	ActingEntityID  donburi.Entity
-	SelectedSlotKey component.PartSlotKey
+	SelectedSlotKey core.PartSlotKey
 	TargetEntityID  donburi.Entity
-	TargetPartSlot  component.PartSlotKey
+	TargetPartSlot  core.PartSlotKey
 }
 
 func (e TargetSelectedUIEvent) isUIEvent() {}
@@ -35,9 +36,9 @@ func (e TargetSelectedUIEvent) isUIEvent() {}
 type ActionConfirmedUIEvent struct {
 	ActingEntityID    donburi.Entity
 	SelectedPartDefID string
-	SelectedSlotKey   component.PartSlotKey
+	SelectedSlotKey   core.PartSlotKey
 	TargetEntityID    donburi.Entity
-	TargetPartSlot    component.PartSlotKey
+	TargetPartSlot    core.PartSlotKey
 }
 
 func (e ActionConfirmedUIEvent) isUIEvent() {}

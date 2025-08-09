@@ -1,7 +1,7 @@
 package main
 
 import (
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/yohamta/donburi"
 )
@@ -25,12 +25,12 @@ func NewChargeInitiationSystem(world donburi.World, partInfoProvider PartInfoPro
 // StartCharge はチャージ状態を開始するための主要なロジックを実行します。
 func (s *ChargeInitiationSystem) StartCharge(
 	entry *donburi.Entry,
-	partKey component.PartSlotKey,
+	partKey core.PartSlotKey,
 	targetEntry *donburi.Entry,
-	targetPartSlot component.PartSlotKey,
+	targetPartSlot core.PartSlotKey,
 ) bool {
 	state := StateComponent.Get(entry)
-	if state.CurrentState != component.StateIdle {
+	if state.CurrentState != core.StateIdle {
 		return false // アイドル状態でない場合は開始できない
 	}
 
@@ -59,12 +59,12 @@ func (s *ChargeInitiationSystem) StartCharge(
 
 	// カテゴリに基づいてターゲット決定方針を設定
 	switch actingPartDef.Category {
-	case component.CategoryRanged, component.CategoryIntervention:
-		target.Policy = component.PolicyPreselected
-	case component.CategoryMelee:
-		target.Policy = component.PolicyClosestAtExecution
+	case core.CategoryRanged, core.CategoryIntervention:
+		target.Policy = core.PolicyPreselected
+	case core.CategoryMelee:
+		target.Policy = core.PolicyClosestAtExecution
 	default:
-		target.Policy = component.PolicyPreselected // デフォルト
+		target.Policy = core.PolicyPreselected // デフォルト
 	}
 
 	// 1. 計算式の取得
@@ -77,10 +77,10 @@ func (s *ChargeInitiationSystem) StartCharge(
 			// ログは削除
 			var effectData interface{}
 			switch debuffInfo.Type {
-			case component.DebuffTypeEvasion:
-				effectData = &component.EvasionDebuffEffectData{Multiplier: debuffInfo.Multiplier}
-			case component.DebuffTypeDefense:
-				effectData = &component.DefenseDebuffEffectData{Multiplier: debuffInfo.Multiplier}
+			case core.DebuffTypeEvasion:
+				effectData = &core.EvasionDebuffEffectData{Multiplier: debuffInfo.Multiplier}
+			case core.DebuffTypeDefense:
+				effectData = &core.DefenseDebuffEffectData{Multiplier: debuffInfo.Multiplier}
 			default:
 				// ログは削除
 			}
@@ -90,9 +90,9 @@ func (s *ChargeInitiationSystem) StartCharge(
 		}
 	}
 
-	if actingPartDef.Category == component.CategoryRanged {
+	if actingPartDef.Category == core.CategoryRanged {
 		// targetEntry が有効なエンティティであるか、または破壊されていないかを確認
-		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).CurrentState == component.StateBroken {
+		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).CurrentState == core.StateBroken {
 			return false
 		}
 		// ログは削除
@@ -108,6 +108,6 @@ func (s *ChargeInitiationSystem) StartCharge(
 	gauge.TotalDuration = totalTicks
 	gauge.ProgressCounter = 0
 
-	state.CurrentState = component.StateCharging
+	state.CurrentState = core.StateCharging
 	return true
 }

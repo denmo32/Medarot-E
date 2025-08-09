@@ -3,6 +3,7 @@ package main
 import (
 	"image"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -26,7 +27,7 @@ type UIInterface interface {
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool
 	GetCurrentAnimationResult() component.ActionResult
-	GetActionTargetMap() map[component.PartSlotKey]component.ActionTarget
+	GetActionTargetMap() map[core.PartSlotKey]component.ActionTarget
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle

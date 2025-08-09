@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 )
 
@@ -38,7 +39,7 @@ func (l *BattleLoggerImpl) LogPartBroken(medarotName, partName, partID string) {
 	}))
 }
 
-func (l *BattleLoggerImpl) LogActionInitiated(attackerName string, actionTrait component.Trait, weaponType component.WeaponType, category component.PartCategory) {
+func (l *BattleLoggerImpl) LogActionInitiated(attackerName string, actionTrait core.Trait, weaponType core.WeaponType, category core.PartCategory) {
 	// このメッセージは ActionResult から構築されるため、ここでは直接ログ出力しない
 }
 
@@ -61,13 +62,13 @@ func buildActionLogMessagesFromActionResult(result component.ActionResult, gameD
 	// 攻撃開始メッセージ
 	var actionInitiateMsg string
 	switch result.ActionCategory {
-	case component.CategoryRanged, component.CategoryMelee:
+	case core.CategoryRanged, core.CategoryMelee:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_attack", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正
 			"weapon_type":   result.WeaponType,
 		})
-	case component.CategoryIntervention:
+	case core.CategoryIntervention:
 		actionInitiateMsg = gameDataManager.Messages.FormatMessage("action_initiate_intervention", map[string]interface{}{
 			"attacker_name": result.AttackerName,
 			"action_name":   result.ActionTrait, // ここを修正

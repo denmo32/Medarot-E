@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -26,14 +26,14 @@ func NewTargetSelector(world donburi.World, config *Config, pip PartInfoProvider
 }
 
 // SelectDefensePart は防御に使用するパーツのインスタンスを選択します。
-func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *component.PartInstanceData {
+func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *core.PartInstanceData {
 	partsComp := PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
 	}
 	partsMap := partsComp.Map // map[PartSlotKey]*PartInstanceData
 
-	var bestPartInstance *component.PartInstanceData
+	var bestPartInstance *core.PartInstanceData
 	maxArmor := -1 // Initialize with a value lower than any possible armor
 
 	// 腕部と脚部を優先して、最も装甲の高いパーツを探す
@@ -48,7 +48,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *component.Pa
 		}
 
 		switch partDef.Type {
-		case component.PartTypeRArm, component.PartTypeLArm, component.PartTypeLegs:
+		case core.PartTypeRArm, core.PartTypeLArm, core.PartTypeLegs:
 			if partInst.CurrentArmor > maxArmor {
 				maxArmor = partInst.CurrentArmor
 				bestPartInstance = partInst
@@ -58,7 +58,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *component.Pa
 
 	// 腕部と脚部が全て破壊されている場合、頭部をチェック
 	if bestPartInstance == nil {
-		if headPart, ok := partsMap[component.PartSlotHead]; ok && !headPart.IsBroken {
+		if headPart, ok := partsMap[core.PartSlotHead]; ok && !headPart.IsBroken {
 			bestPartInstance = headPart
 		}
 	}
@@ -67,14 +67,14 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *component.Pa
 }
 
 // SelectPartToDamage は、行動者の性格に基づいて攻撃対象のパーツインスタンスを選択します。
-func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry, rand *rand.Rand) *component.PartInstanceData {
+func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry, rand *rand.Rand) *core.PartInstanceData {
 	partsComp := PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
 	}
 
-	vulnerableInstances := []*component.PartInstanceData{}
-	slots := []component.PartSlotKey{component.PartSlotHead, component.PartSlotRightArm, component.PartSlotLeftArm, component.PartSlotLegs}
+	vulnerableInstances := []*core.PartInstanceData{}
+	slots := []core.PartSlotKey{core.PartSlotHead, core.PartSlotRightArm, core.PartSlotLeftArm, core.PartSlotLegs}
 	for _, s := range slots {
 		if partInst, ok := partsComp.Map[s]; ok && partInst != nil && !partInst.IsBroken {
 			vulnerableInstances = append(vulnerableInstances, partInst)
@@ -130,7 +130,7 @@ func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*do
 	opponentTeamID := ts.GetOpponentTeam(actingEntry)
 	candidates := []*donburi.Entry{}
 	query.NewQuery(filter.Contains(SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).CurrentState == component.StateBroken {
+		if StateComponent.Get(entry).CurrentState == core.StateBroken {
 			return
 		}
 		settings := SettingsComponent.Get(entry)
@@ -148,9 +148,9 @@ func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*do
 }
 
 // GetOpponentTeam は指定されたエンティティの敵チームIDを返します。
-func (ts *TargetSelector) GetOpponentTeam(actingEntry *donburi.Entry) component.TeamID {
-	if SettingsComponent.Get(actingEntry).Team == component.Team1 {
-		return component.Team2
+func (ts *TargetSelector) GetOpponentTeam(actingEntry *donburi.Entry) core.TeamID {
+	if SettingsComponent.Get(actingEntry).Team == core.Team1 {
+		return core.Team2
 	}
-	return component.Team1
+	return core.Team1
 }

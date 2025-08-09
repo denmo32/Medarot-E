@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -41,15 +42,15 @@ func (s *PostActionEffectSystem) Process(result *component.ActionResult) {
 			for _, effectData := range result.AppliedEffects {
 				// effectDataの型に応じてApplyを呼び出す
 				switch effect := effectData.(type) {
-				case *component.ChargeStopEffectData:
+				case *core.ChargeStopEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *component.DamageOverTimeEffectData:
+				case *core.DamageOverTimeEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *component.TargetRandomEffectData:
+				case *core.TargetRandomEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, effect.DurationTurns)
-				case *component.EvasionDebuffEffectData:
+				case *core.EvasionDebuffEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
-				case *component.DefenseDebuffEffectData:
+				case *core.DefenseDebuffEffectData:
 					s.statusEffectSystem.Apply(targetEntry, effect, 0) // Duration 0
 				default:
 					log.Printf("警告: 未知の適用効果タイプです: %T", effectData)
@@ -86,9 +87,9 @@ func (s *PostActionEffectSystem) Process(result *component.ActionResult) {
 	}
 
 	// 3. 頭部パーツ破壊による機能停止
-	if result.TargetEntry != nil && result.IsTargetPartBroken && result.ActualHitPartSlot == component.PartSlotHead {
+	if result.TargetEntry != nil && result.IsTargetPartBroken && result.ActualHitPartSlot == core.PartSlotHead {
 		state := StateComponent.Get(result.TargetEntry)
-		state.CurrentState = component.StateBroken
+		state.CurrentState = core.StateBroken
 	}
 
 	// 4. 行動後のクリーンアップ

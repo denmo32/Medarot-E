@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	resource "github.com/quasilyte/ebitengine-resource" // resource パッケージを追加
@@ -10,11 +10,11 @@ import (
 
 // GameDataManager はパーツやメダルなどのすべての静적ゲームデータ定義とメッセージを保持します。
 type GameDataManager struct {
-	partDefinitions  map[string]*component.PartDefinition
-	medalDefinitions map[string]*component.Medal                 // Medal構造体は今のところ主に定義情報と仮定
-	Messages         *MessageManager                             // メッセージマネージャー
-	Font             text.Face                                   // UIで使用するフォント
-	Formulas         map[component.Trait]component.ActionFormula // 追加: アクション計算式
+	partDefinitions  map[string]*core.PartDefinition
+	medalDefinitions map[string]*core.Medal            // Medal構造体は今のところ主に定義情報と仮定
+	Messages         *MessageManager                   // メッセージマネージャー
+	Font             text.Face                         // UIで使用するフォント
+	Formulas         map[core.Trait]core.ActionFormula // 追加: アクション計算式
 	// 他のゲームデータ定義もここに追加できます
 }
 
@@ -26,17 +26,17 @@ func NewGameDataManager(font text.Face, assetPaths *AssetPaths, r *resource.Load
 	}
 
 	gdm := &GameDataManager{
-		partDefinitions:  make(map[string]*component.PartDefinition),
-		medalDefinitions: make(map[string]*component.Medal),
-		Messages:         messageManager,                                    // メッセージマネージャー
-		Font:             font,                                              // UIで使用するフォント
-		Formulas:         make(map[component.Trait]component.ActionFormula), // 初期化
+		partDefinitions:  make(map[string]*core.PartDefinition),
+		medalDefinitions: make(map[string]*core.Medal),
+		Messages:         messageManager,                          // メッセージマネージャー
+		Font:             font,                                    // UIで使用するフォント
+		Formulas:         make(map[core.Trait]core.ActionFormula), // 初期化
 	}
 	return gdm, nil
 }
 
 // AddPartDefinition はパーツ定義をマネージャーに追加します。
-func (gdm *GameDataManager) AddPartDefinition(pd *component.PartDefinition) error {
+func (gdm *GameDataManager) AddPartDefinition(pd *core.PartDefinition) error {
 	if pd == nil {
 		return fmt.Errorf("nilのPartDefinitionを追加できません")
 	}
@@ -48,13 +48,13 @@ func (gdm *GameDataManager) AddPartDefinition(pd *component.PartDefinition) erro
 }
 
 // GetPartDefinition はIDによってパーツ定義を取得します。
-func (gdm *GameDataManager) GetPartDefinition(id string) (*component.PartDefinition, bool) {
+func (gdm *GameDataManager) GetPartDefinition(id string) (*core.PartDefinition, bool) {
 	pd, found := gdm.partDefinitions[id]
 	return pd, found
 }
 
 // AddMedalDefinition はメダル定義をマネージャーに追加します。
-func (gdm *GameDataManager) AddMedalDefinition(md *component.Medal) error {
+func (gdm *GameDataManager) AddMedalDefinition(md *core.Medal) error {
 	if md == nil {
 		return fmt.Errorf("nilのMedalDefinitionを追加できません")
 	}
@@ -66,15 +66,15 @@ func (gdm *GameDataManager) AddMedalDefinition(md *component.Medal) error {
 }
 
 // GetMedalDefinition はIDによってメダル定義を取得します。
-func (gdm *GameDataManager) GetMedalDefinition(id string) (*component.Medal, bool) {
+func (gdm *GameDataManager) GetMedalDefinition(id string) (*core.Medal, bool) {
 	md, found := gdm.medalDefinitions[id]
 	return md, found
 }
 
 // GetAllPartDefinitions はすべてのパーツ定義のスライスを返します。
 // 注意: マップの反復処理は順序を保証しません。順序が必要な場合は、スライスとして格納するかソートしてください。
-func (gdm *GameDataManager) GetAllPartDefinitions() []*component.PartDefinition {
-	defs := make([]*component.PartDefinition, 0, len(gdm.partDefinitions))
+func (gdm *GameDataManager) GetAllPartDefinitions() []*core.PartDefinition {
+	defs := make([]*core.PartDefinition, 0, len(gdm.partDefinitions))
 	for _, pd := range gdm.partDefinitions {
 		defs = append(defs, pd)
 	}
@@ -83,8 +83,8 @@ func (gdm *GameDataManager) GetAllPartDefinitions() []*component.PartDefinition 
 }
 
 // GetAllMedalDefinitions はすべてのメダル定義のスライスを返します。
-func (gdm *GameDataManager) GetAllMedalDefinitions() []*component.Medal {
-	defs := make([]*component.Medal, 0, len(gdm.medalDefinitions))
+func (gdm *GameDataManager) GetAllMedalDefinitions() []*core.Medal {
+	defs := make([]*core.Medal, 0, len(gdm.medalDefinitions))
 	for _, md := range gdm.medalDefinitions {
 		defs = append(defs, md)
 	}

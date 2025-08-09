@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -80,17 +80,17 @@ func LoadFonts(assetPaths *AssetPaths, config *Config) (text.Face, text.Face, te
 }
 
 // LoadFormulas loads action formulas from the JSON resource.
-func LoadFormulas() (map[component.Trait]component.ActionFormula, error) {
+func LoadFormulas() (map[core.Trait]core.ActionFormula, error) {
 	res := r.LoadRaw(RawFormulasJSON)
-	var formulasConfig map[component.Trait]component.ActionFormulaConfig
+	var formulasConfig map[core.Trait]core.ActionFormulaConfig
 	err := json.Unmarshal(res.Data, &formulasConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal formulas data: %w", err)
 	}
 
-	formulas := make(map[component.Trait]component.ActionFormula)
+	formulas := make(map[core.Trait]core.ActionFormula)
 	for trait, formulaCfg := range formulasConfig {
-		formulas[trait] = component.ActionFormula{
+		formulas[trait] = core.ActionFormula{
 			ID:                 string(trait),
 			SuccessRateBonuses: formulaCfg.SuccessRateBonuses,
 			PowerBonuses:       formulaCfg.PowerBonuses,
@@ -134,7 +134,7 @@ func LoadMedals(gdm *GameDataManager) error {
 			fmt.Printf("skipping malformed record in medals data (not enough columns): %v\n", record)
 			continue
 		}
-		medal := component.Medal{
+		medal := core.Medal{
 			ID:          record[0],
 			Name:        record[1],
 			Personality: record[2],
@@ -163,12 +163,12 @@ func LoadParts(gdm *GameDataManager) error {
 			continue
 		}
 		maxArmor := parseInt(record[6], 1)
-		partDef := &component.PartDefinition{
+		partDef := &core.PartDefinition{
 			ID:         record[0],
 			PartName:   record[1],
-			Type:       component.PartType(record[2]),
-			Category:   component.PartCategory(record[3]),
-			Trait:      component.Trait(record[4]),
+			Type:       core.PartType(record[2]),
+			Category:   core.PartCategory(record[3]),
+			Trait:      core.Trait(record[4]),
 			MaxArmor:   maxArmor,
 			Power:      parseInt(record[7], 0),
 			Charge:     parseInt(record[8], 1),
@@ -178,7 +178,7 @@ func LoadParts(gdm *GameDataManager) error {
 			Mobility:   parseInt(record[12], 0),
 			Propulsion: parseInt(record[13], 0),
 			Stability:  parseInt(record[14], 0),
-			WeaponType: component.WeaponType(record[5]), // WeaponType型にキャスト
+			WeaponType: core.WeaponType(record[5]), // WeaponType型にキャスト
 		}
 		if err := gdm.AddPartDefinition(partDef); err != nil {
 			fmt.Printf("error adding part definition %s: %v\n", partDef.ID, err)
@@ -188,7 +188,7 @@ func LoadParts(gdm *GameDataManager) error {
 }
 
 // LoadMedarotLoadouts loads medarot setup data from the CSV resource.
-func LoadMedarotLoadouts() ([]component.MedarotData, error) {
+func LoadMedarotLoadouts() ([]core.MedarotData, error) {
 	res := r.LoadRaw(RawMedarotsCSV)
 	reader := csv.NewReader(bytes.NewReader(res.Data))
 	_, err := reader.Read() // Skip header
@@ -196,7 +196,7 @@ func LoadMedarotLoadouts() ([]component.MedarotData, error) {
 		return nil, fmt.Errorf("failed to read header from medarots data: %w", err)
 	}
 
-	var medarots []component.MedarotData
+	var medarots []core.MedarotData
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -210,10 +210,10 @@ func LoadMedarotLoadouts() ([]component.MedarotData, error) {
 			fmt.Printf("skipping malformed record in medarots data (not enough columns): %v\n", record)
 			continue
 		}
-		medarot := component.MedarotData{
+		medarot := core.MedarotData{
 			ID:         record[0],
 			Name:       record[1],
-			Team:       component.TeamID(parseInt(record[2], 0)),
+			Team:       core.TeamID(parseInt(record[2], 0)),
 			IsLeader:   parseBool(record[3]),
 			DrawIndex:  parseInt(record[4], 0),
 			MedalID:    record[5],

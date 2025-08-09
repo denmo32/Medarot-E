@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -17,8 +18,8 @@ func aiSelectAction(
 ) {
 	settings := SettingsComponent.Get(entry)
 
-	var slotKey component.PartSlotKey
-	var selectedPartDef *component.PartDefinition
+	var slotKey core.PartSlotKey
+	var selectedPartDef *core.PartDefinition
 	var targetingStrategy TargetingStrategy
 	var partSelectionStrategy AIPartSelectionStrategyFunc
 
@@ -66,7 +67,7 @@ func aiSelectAction(
 	}
 
 	var targetEntry *donburi.Entry
-	var targetPartSlot component.PartSlotKey
+	var targetPartSlot core.PartSlotKey
 
 	if targetingStrategy != nil {
 		targetEntry, targetPartSlot = targetingStrategy.SelectTarget(world, entry, battleLogic)
@@ -76,16 +77,16 @@ func aiSelectAction(
 	}
 
 	switch selectedPartDef.Category {
-	case component.CategoryRanged:
+	case core.CategoryRanged:
 		if targetEntry == nil {
 			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
 			return
 		}
 		battleLogic.GetChargeInitiationSystem().StartCharge(entry, slotKey, targetEntry, targetPartSlot)
-	case component.CategoryMelee:
+	case core.CategoryMelee:
 		// 格闘の場合はターゲット選択が不要なので、nilを渡す
 		battleLogic.GetChargeInitiationSystem().StartCharge(entry, slotKey, nil, "")
-	case component.CategoryIntervention:
+	case core.CategoryIntervention:
 		if targetEntry == nil {
 			log.Printf("%s: AIは[介入]の対象がいないため待機。", settings.Name)
 			return
@@ -104,7 +105,7 @@ func SelectFirstAvailablePart(
 	availableParts []component.AvailablePart,
 	world donburi.World,
 	battleLogic *BattleLogic,
-) (component.PartSlotKey, *component.PartDefinition) {
+) (core.PartSlotKey, *core.PartDefinition) {
 	if len(availableParts) > 0 {
 		return availableParts[0].Slot, availableParts[0].PartDef
 	}
@@ -117,7 +118,7 @@ func SelectHighestPowerPart(
 	availableParts []component.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
 	battleLogic *BattleLogic,
-) (component.PartSlotKey, *component.PartDefinition) {
+) (core.PartSlotKey, *core.PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil
 	}
@@ -138,7 +139,7 @@ func SelectFastestChargePart(
 	availableParts []component.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
 	world donburi.World,
 	battleLogic *BattleLogic,
-) (component.PartSlotKey, *component.PartDefinition) {
+) (core.PartSlotKey, *core.PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil
 	}

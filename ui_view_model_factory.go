@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"math/rand"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -18,7 +19,7 @@ import (
 type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) ui.InfoPanelViewModel
 	BuildBattlefieldViewModel(world donburi.World, battleUIState *ui.BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) ui.BattlefieldViewModel
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[component.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ui.ActionModalViewModel
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ui.ActionModalViewModel
 	GetAvailableAttackParts(entry *donburi.Entry) []component.AvailablePart
 	IsActionModalVisible() bool
 }
@@ -47,7 +48,7 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 	state := StateComponent.Get(entry)
 	partsComp := PartsComponent.Get(entry)
 
-	partViewModels := make(map[component.PartSlotKey]ui.PartViewModel)
+	partViewModels := make(map[core.PartSlotKey]ui.PartViewModel)
 	if partsComp != nil {
 		for slotKey, partInst := range partsComp.Map {
 			if partInst == nil {
@@ -109,16 +110,16 @@ func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 		x := f.CalculateMedarotScreenXPosition(entry, partInfoProvider, bfWidth, config)
 		// アイコンのY座標を計算
 		// この値は game_settings.json の UI.Battlefield.MedarotVerticalSpacingFactor に影響されます。
-		y := (bfHeight / float32(component.PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
+		y := (bfHeight / float32(core.PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		// オフセットを適用
 		x += offsetX
 		y += offsetY
 
 		var iconColor color.Color
-		if state.CurrentState == component.StateBroken {
+		if state.CurrentState == core.StateBroken {
 			iconColor = config.UI.Colors.Broken
-		} else if settings.Team == component.Team1 {
+		} else if settings.Team == core.Team1 {
 			iconColor = config.UI.Colors.Team1
 		} else {
 			iconColor = config.UI.Colors.Team2
@@ -157,22 +158,22 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 	// ホームポジションと実行ラインのX座標を定義します。
 	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
 	homeX, execX := battlefieldWidth*config.UI.Battlefield.Team1HomeX, battlefieldWidth*config.UI.Battlefield.Team1ExecutionLineX
-	if settings.Team == component.Team2 {
+	if settings.Team == core.Team2 {
 		homeX, execX = battlefieldWidth*config.UI.Battlefield.Team2HomeX, battlefieldWidth*config.UI.Battlefield.Team2ExecutionLineX
 	}
 
 	var xPos float32
 	switch StateComponent.Get(entry).CurrentState {
-	case component.StateCharging:
+	case core.StateCharging:
 		// チャージ中はホームから実行ラインへ移動
 		xPos = homeX + (execX-homeX)*progress
-	case component.StateReady:
+	case core.StateReady:
 		// 準備完了状態は実行ラインに固定
 		xPos = execX
-	case component.StateCooldown:
+	case core.StateCooldown:
 		// クールダウン中は実行ラインからホームへ戻る
 		xPos = execX + (homeX-execX)*(1.0-progress)
-	case component.StateIdle, component.StateBroken:
+	case core.StateIdle, core.StateBroken:
 		// アイドル状態または機能停止状態はホームポジションに固定
 		xPos = homeX
 	default:
@@ -183,7 +184,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[component.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ui.ActionModalViewModel {
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ui.ActionModalViewModel {
 	settings := SettingsComponent.Get(actingEntry)
 	partsComp := PartsComponent.Get(actingEntry)
 

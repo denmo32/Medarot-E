@@ -1,6 +1,7 @@
 package main
 
 import (
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -13,7 +14,7 @@ type AIPartSelectionStrategyFunc func(
 	availableParts []component.AvailablePart,
 	world donburi.World,
 	battleLogic *BattleLogic,
-) (component.PartSlotKey, *component.PartDefinition)
+) (core.PartSlotKey, *core.PartDefinition)
 
 // AIPersonality はAIの性格に関連する戦略をカプセル化します。
 type AIPersonality struct {

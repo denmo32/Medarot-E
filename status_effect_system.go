@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -30,12 +30,12 @@ func (s *StatusEffectSystem) Apply(entry *donburi.Entry, effectData interface{},
 
 	// 効果の持続時間を管理するコンポーネントを追加
 	if !entry.HasComponent(ActiveEffectsComponent) {
-		donburi.Add(entry, ActiveEffectsComponent, &component.ActiveEffects{
-			Effects: make([]*component.ActiveStatusEffectData, 0),
+		donburi.Add(entry, ActiveEffectsComponent, &core.ActiveEffects{
+			Effects: make([]*core.ActiveStatusEffectData, 0),
 		})
 	}
 	activeEffects := ActiveEffectsComponent.Get(entry)
-	activeEffects.Effects = append(activeEffects.Effects, &component.ActiveStatusEffectData{
+	activeEffects.Effects = append(activeEffects.Effects, &core.ActiveStatusEffectData{
 		EffectData:   effectData,
 		RemainingDur: duration,
 	})
@@ -47,7 +47,7 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effectData interface{}
 
 	if entry.HasComponent(ActiveEffectsComponent) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
-		newEffects := make([]*component.ActiveStatusEffectData, 0)
+		newEffects := make([]*core.ActiveStatusEffectData, 0)
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.EffectData != effectData {
 				newEffects = append(newEffects, activeEffect)
@@ -61,7 +61,7 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effectData interface{}
 func (s *StatusEffectSystem) Update() {
 	query.NewQuery(filter.Contains(ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
 		activeEffects := ActiveEffectsComponent.Get(entry)
-		effectsToRemove := make([]*component.ActiveStatusEffectData, 0)
+		effectsToRemove := make([]*core.ActiveStatusEffectData, 0)
 
 		for _, effectData := range activeEffects.Effects {
 			if effectData.RemainingDur > 0 {
@@ -70,7 +70,7 @@ func (s *StatusEffectSystem) Update() {
 
 			// 効果のタイプに応じて処理を分岐
 			switch effect := effectData.EffectData.(type) {
-			case *component.DamageOverTimeEffectData:
+			case *core.DamageOverTimeEffectData:
 				// 継続ダメージの処理
 				if DurationDamageOverTimeEffect(effect) > 0 { // Duration()が0より大きい場合のみダメージを与える
 					// ダメージ計算ロジックを呼び出す
@@ -92,13 +92,13 @@ func (s *StatusEffectSystem) Update() {
 					}
 					log.Printf("%s は継続ダメージ %d を受けた。", SettingsComponent.Get(entry).Name, effect.DamagePerTurn)
 				}
-			case *component.ChargeStopEffectData:
+			case *core.ChargeStopEffectData:
 				// チャージ停止効果はChargeInitiationSystemで処理されるため、ここでは何もしない
-			case *component.TargetRandomEffectData:
+			case *core.TargetRandomEffectData:
 				// ターゲットランダム化効果はBattleTargetSelectorで処理されるため、ここでは何もしない
-			case *component.EvasionDebuffEffectData:
+			case *core.EvasionDebuffEffectData:
 				// 回避率デバフはPartInfoProviderInterfaceで処理されるため、ここでは何もしない
-			case *component.DefenseDebuffEffectData:
+			case *core.DefenseDebuffEffectData:
 				// 防御力デバフはPartInfoProviderInterfaceで処理されるため、ここでは何もしない
 			default:
 				log.Printf("未対応のステータス効果データ型です: %T", effectData.EffectData)
@@ -114,15 +114,15 @@ func (s *StatusEffectSystem) Update() {
 		for _, effectToRemove := range effectsToRemove {
 			// 効果の解除ロジックを呼び出す
 			switch effect := effectToRemove.EffectData.(type) {
-			case *component.ChargeStopEffectData:
+			case *core.ChargeStopEffectData:
 				RemoveChargeStopEffect(s.world, entry, effect)
-			case *component.DamageOverTimeEffectData:
+			case *core.DamageOverTimeEffectData:
 				RemoveDamageOverTimeEffect(s.world, entry, effect)
-			case *component.TargetRandomEffectData:
+			case *core.TargetRandomEffectData:
 				RemoveTargetRandomEffect(s.world, entry, effect)
-			case *component.EvasionDebuffEffectData:
+			case *core.EvasionDebuffEffectData:
 				RemoveEvasionDebuffEffect(s.world, entry, effect)
-			case *component.DefenseDebuffEffectData:
+			case *core.DefenseDebuffEffectData:
 				RemoveDefenseDebuffEffect(s.world, entry, effect)
 			default:
 				log.Printf("未対応のステータス効果データ型です（解除時）: %T", effectToRemove.EffectData)
@@ -133,7 +133,7 @@ func (s *StatusEffectSystem) Update() {
 }
 
 // removeEffect はスライスから指定された効果を削除するヘルパー関数です。
-func removeEffect(slice []*component.ActiveStatusEffectData, element *component.ActiveStatusEffectData) []*component.ActiveStatusEffectData {
+func removeEffect(slice []*core.ActiveStatusEffectData, element *core.ActiveStatusEffectData) []*core.ActiveStatusEffectData {
 	for i, v := range slice {
 		if v == element {
 			return append(slice[:i], slice[i+1:]...)

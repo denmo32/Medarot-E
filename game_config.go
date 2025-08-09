@@ -4,7 +4,7 @@ import (
 	"image/color"
 	"math/rand" // 追加
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -61,7 +61,7 @@ type BalanceConfig struct {
 		MinChance  float64
 		MaxChance  float64
 	}
-	Formulas map[component.Trait]component.ActionFormulaConfig // 新しく追加
+	Formulas map[core.Trait]core.ActionFormulaConfig // 新しく追加
 }
 
 type AssetPaths struct {
@@ -140,7 +140,7 @@ type UIConfig struct {
 }
 
 type SharedResources struct {
-	GameData          *component.GameData
+	GameData          *core.GameData
 	Config            Config
 	Font              text.Face
 	ModalButtonFont   text.Face // 追加

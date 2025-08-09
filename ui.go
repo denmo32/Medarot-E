@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -150,7 +151,7 @@ func (u *UI) HideActionModal() {
 }
 
 // GetActionTargetMap は現在のアクションターゲットマップを返します。
-func (u *UI) GetActionTargetMap() map[component.PartSlotKey]component.ActionTarget {
+func (u *UI) GetActionTargetMap() map[core.PartSlotKey]component.ActionTarget {
 	return u.actionModalManager.GetActionTargetMap()
 }
 

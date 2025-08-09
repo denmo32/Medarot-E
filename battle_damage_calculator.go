@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/rand"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/yohamta/donburi"
 )
@@ -31,12 +31,12 @@ func NewDamageCalculator(world donburi.World, config *Config, pip PartInfoProvid
 // }
 
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
-func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *component.PartDefinition, selectedPartKey component.PartSlotKey) (int, bool) {
+func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *core.PartDefinition, selectedPartKey core.PartSlotKey) (int, bool) {
 	// 1. 計算式の取得
 	formula, ok := dc.gameDataManager.Formulas[actingPartDef.Trait]
 	if !ok || formula.ID == "" { // IDがゼロ値の場合は見つからなかったと判断
 		log.Printf("警告: 特性 '%s' に対応する計算式が見つかりません。デフォルトを使用します。", actingPartDef.Trait)
-		formula = dc.gameDataManager.Formulas[component.TraitShoot]
+		formula = dc.gameDataManager.Formulas[core.TraitShoot]
 	}
 
 	// 2. 基本パラメータの取得
@@ -84,14 +84,14 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 // GenerateActionLog は行動の結果ログを生成します。
 // targetPartDef はダメージを受けたパーツの定義 (nilの場合あり)
 // actingPartDef は攻撃に使用されたパーツの定義
-func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, actingPartDef *component.PartDefinition, targetPartDef *component.PartDefinition, damage int, isCritical bool, didHit bool) string {
+func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, actingPartDef *core.PartDefinition, targetPartDef *core.PartDefinition, damage int, isCritical bool, didHit bool) string {
 	panic("GenerateActionLog should not be called directly. Use BattleLogger.")
 }
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
 func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry) int {
 	// ダメージ軽減ロジック: ダメージ = 元ダメージ - 脚部パーツの防御力
-	defenseValue := dc.partInfoProvider.GetPartParameterValue(targetEntry, component.PartSlotLegs, component.Defense)
+	defenseValue := dc.partInfoProvider.GetPartParameterValue(targetEntry, core.PartSlotLegs, core.Defense)
 	reducedDamage := originalDamage - int(defenseValue)
 	if reducedDamage < 1 {
 		reducedDamage = 1 // 最低でも1ダメージは保証
@@ -102,6 +102,6 @@ func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEnt
 
 // GenerateActionLogDefense は防御時のアクションログを生成します。
 // defensePartDef は防御に使用されたパーツの定義
-func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePartDef *component.PartDefinition, damageDealt int, originalDamage int, isCritical bool) string {
+func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePartDef *core.PartDefinition, damageDealt int, originalDamage int, isCritical bool) string {
 	panic("GenerateActionLogDefense should not be called directly. Use BattleLogger.")
 }

@@ -6,11 +6,11 @@ import (
 	"os"
 	"strconv"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 )
 
 // SaveMedarotLoadouts は、現在のメダロットの構成をCSVファイルに保存します。
-func SaveMedarotLoadouts(filePath string, medarots []component.MedarotData) error {
+func SaveMedarotLoadouts(filePath string, medarots []core.MedarotData) error {
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("ファイルの作成に失敗しました: %w", err)

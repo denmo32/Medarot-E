@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/image"
@@ -29,14 +29,14 @@ type CustomizeScene struct {
 	legsNameButton          *widget.Button
 	medarotSelectionButtons []*widget.Button
 
-	playerMedarots            []*component.MedarotData
+	playerMedarots            []*core.MedarotData
 	currentTargetMedarotIndex int
 
-	medalList     []*component.Medal
-	headPartsList []*component.PartDefinition
-	rArmPartsList []*component.PartDefinition
-	lArmPartsList []*component.PartDefinition
-	legsPartsList []*component.PartDefinition
+	medalList     []*core.Medal
+	headPartsList []*core.PartDefinition
+	rArmPartsList []*core.PartDefinition
+	lArmPartsList []*core.PartDefinition
+	legsPartsList []*core.PartDefinition
 
 	currentMedalIndex int
 	currentHeadIndex  int
@@ -84,20 +84,20 @@ func (cs *CustomizeScene) setupPartLists() {
 	allPartDefs := cs.resources.GameDataManager.GetAllPartDefinitions()
 	sort.Slice(allPartDefs, func(i, j int) bool { return allPartDefs[i].ID < allPartDefs[j].ID })
 
-	cs.headPartsList = []*component.PartDefinition{}
-	cs.rArmPartsList = []*component.PartDefinition{}
-	cs.lArmPartsList = []*component.PartDefinition{}
-	cs.legsPartsList = []*component.PartDefinition{}
+	cs.headPartsList = []*core.PartDefinition{}
+	cs.rArmPartsList = []*core.PartDefinition{}
+	cs.lArmPartsList = []*core.PartDefinition{}
+	cs.legsPartsList = []*core.PartDefinition{}
 
 	for _, pDef := range allPartDefs {
 		switch pDef.Type {
-		case component.PartTypeHead:
+		case core.PartTypeHead:
 			cs.headPartsList = append(cs.headPartsList, pDef)
-		case component.PartTypeRArm:
+		case core.PartTypeRArm:
 			cs.rArmPartsList = append(cs.rArmPartsList, pDef)
-		case component.PartTypeLArm:
+		case core.PartTypeLArm:
 			cs.lArmPartsList = append(cs.lArmPartsList, pDef)
-		case component.PartTypeLegs:
+		case core.PartTypeLegs:
 			cs.legsPartsList = append(cs.legsPartsList, pDef)
 		}
 	}
@@ -204,11 +204,11 @@ func (cs *CustomizeScene) selectMedarot(index int) {
 func (cs *CustomizeScene) refreshUIForSelectedMedarot() {
 	target := cs.playerMedarots[cs.currentTargetMedarotIndex]
 
-	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *component.Medal) string { return m.ID })
-	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *component.PartDefinition) string { return p.ID })
-	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *component.PartDefinition) string { return p.ID })
-	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *component.PartDefinition) string { return p.ID })
-	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *component.PartDefinition) string { return p.ID })
+	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *core.Medal) string { return m.ID })
+	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *core.PartDefinition) string { return p.ID })
+	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *core.PartDefinition) string { return p.ID })
+	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *core.PartDefinition) string { return p.ID })
+	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *core.PartDefinition) string { return p.ID })
 
 	cs.medalNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryMedal)
 	cs.headNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryHead)
@@ -345,7 +345,7 @@ func (cs *CustomizeScene) updateStatus(id string) {
 		sb.WriteString(fmt.Sprintf("Accuracy: %d\n", partDef.Accuracy))
 		sb.WriteString(fmt.Sprintf("Charge: %d\n", partDef.Charge))
 		sb.WriteString(fmt.Sprintf("Cooldown: %d\n", partDef.Cooldown))
-		if partDef.Type == component.PartTypeLegs {
+		if partDef.Type == core.PartTypeLegs {
 			sb.WriteString(fmt.Sprintf("\nPropulsion: %d\n", partDef.Propulsion))
 			sb.WriteString(fmt.Sprintf("Mobility: %d\n", partDef.Mobility))
 			sb.WriteString(fmt.Sprintf("Stability: %d\n", partDef.Stability)) // Added Stability

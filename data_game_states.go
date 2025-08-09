@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/event"
 
@@ -50,7 +51,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]event.GameEvent, erro
 	playerInputEvents := UpdatePlayerInputSystem(ctx.World)
 	if len(playerInputEvents) > 0 {
 		gameEvents = append(gameEvents, playerInputEvents...)
-		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StatePlayerActionSelect})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePlayerActionSelect})
 		return gameEvents, nil
 	}
 
@@ -60,7 +61,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]event.GameEvent, erro
 	// アクション実行キューをチェック
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) > 0 {
-		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateActionExecution})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateActionExecution})
 		return gameEvents, nil
 	}
 
@@ -99,16 +100,16 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 		actingEntry := playerActionQueue.Queue[0]
 
 		// 有効で待機状態ならモーダルを表示
-		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == component.StateIdle {
-			actionTargetMap := make(map[component.PartSlotKey]component.ActionTarget)
+		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == core.StateIdle {
+			actionTargetMap := make(map[core.PartSlotKey]component.ActionTarget)
 			// ViewModelFactoryを介して利用可能なパーツを取得
 			availableParts := viewModelFactory.GetAvailableAttackParts(actingEntry)
 			for _, available := range availableParts {
 				partDef := available.PartDef
 				slotKey := available.Slot
 				var targetEntity *donburi.Entry
-				var targetPartSlot component.PartSlotKey
-				if partDef.Category == component.CategoryRanged || partDef.Category == component.CategoryIntervention {
+				var targetPartSlot core.PartSlotKey
+				if partDef.Category == core.CategoryRanged || partDef.Category == core.CategoryIntervention {
 					medal := MedalComponent.Get(actingEntry)
 					personality, ok := PersonalityRegistry[medal.Personality]
 					if !ok {
@@ -137,7 +138,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 	} else {
 		// キューが空なら処理完了
 		gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})
-		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateGaugeProgress})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -170,7 +171,7 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]event.GameEvent, er
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
 			gameEvents = append(gameEvents, event.ActionAnimationStartedGameEvent{AnimationData: component.ActionAnimationData{Result: result, StartTime: ctx.Tick}})
-			gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateAnimatingAction})
+			gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateAnimatingAction})
 			return gameEvents, nil
 		}
 	}
@@ -178,7 +179,7 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]event.GameEvent, er
 	// キューが空になったらゲージ進行に戻る
 	actionQueueComp := GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) == 0 {
-		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateGaugeProgress})
+		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateGaugeProgress})
 	}
 
 	return gameEvents, nil
@@ -213,7 +214,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) 
 
 	// クールダウン開始
 	actingEntry := result.ActingEntry
-	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != component.StateBroken {
+	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != core.StateBroken {
 		StartCooldownSystem(actingEntry, ctx.World, ctx.BattleLogic.GetPartInfoProvider())
 	}
 
@@ -225,7 +226,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) 
 	// 処理が終わったらLastActionResultをクリア
 	*result = component.ActionResult{}
 
-	gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: component.StateMessage})
+	gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
 	return gameEvents, nil
 }
 

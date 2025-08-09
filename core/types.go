@@ -1,4 +1,4 @@
-package component
+package core
 
 // --- Enums and Constants ---
 

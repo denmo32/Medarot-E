@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 )
 
 // GameSettings は game_settings.json の構造を定義します。
@@ -61,7 +61,7 @@ type GameSettings struct {
 		MinChance  float64
 		MaxChance  float64
 	}
-	Formulas map[component.Trait]component.ActionFormulaConfig
+	Formulas map[core.Trait]core.ActionFormulaConfig
 	UI       struct {
 		Screen struct {
 			Width  int

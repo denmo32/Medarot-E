@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"math"
 
-	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/core"
 	"medarot-ebiten/ui"
 
 	eimage "github.com/ebitenui/ebitenui/image"
@@ -158,8 +158,8 @@ func (bf *BattlefieldWidget) drawBattlefieldLines(screen *ebiten.Image, rect ima
 
 	// ホームマーカー
 	// game_settings.json の UI.Battlefield.MedarotVerticalSpacingFactor を使用してY座標を計算します。
-	for i := 0; i < component.PlayersPerTeam; i++ {
-		yPos := offsetY + (height/float32(component.PlayersPerTeam+1))*(float32(i)+1)
+	for i := 0; i < core.PlayersPerTeam; i++ {
+		yPos := offsetY + (height/float32(core.PlayersPerTeam+1))*(float32(i)+1)
 
 		// チーム1のホームマーカー
 		vector.StrokeCircle(screen, team1HomeX, yPos,
@@ -217,7 +217,7 @@ func (bf *BattlefieldWidget) drawSingleIcon(screen *ebiten.Image, iconVM *ui.Ico
 // drawStateIndicator は状態インジケーターを描画します
 func (bf *BattlefieldWidget) drawStateIndicator(screen *ebiten.Image, iconVM *ui.IconViewModel, centerX, centerY float32) {
 	switch iconVM.State {
-	case component.StateBroken:
+	case core.StateBroken:
 		// X印を描画
 		lineWidth := float32(2)
 		size := float32(6)
@@ -228,13 +228,13 @@ func (bf *BattlefieldWidget) drawStateIndicator(screen *ebiten.Image, iconVM *ui
 			centerX+size, centerY-size, lineWidth,
 			bf.config.UI.Colors.White, true)
 
-	case component.StateReady:
+	case core.StateReady:
 		// 準備完了の点滅効果（静的版）
 		vector.StrokeCircle(screen, centerX, centerY,
 			bf.config.UI.Battlefield.IconRadius+5, 2,
 			bf.config.UI.Colors.Yellow, true)
 
-	case component.StateCharging, component.StateCooldown:
+	case core.StateCharging, core.StateCooldown:
 		// ゲージ表示
 		bf.drawCooldownGauge(screen, iconVM, centerX, centerY)
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"math/rand"
 
+	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -14,7 +15,7 @@ type TargetingStrategy interface {
 		world donburi.World,
 		actingEntry *donburi.Entry,
 		battleLogic *BattleLogic,
-	) (*donburi.Entry, component.PartSlotKey)
+	) (*donburi.Entry, core.PartSlotKey)
 }
 
 type BattleLogger interface {
@@ -22,7 +23,7 @@ type BattleLogger interface {
 	LogDefenseCheck(targetName string, defenseRate, successRate, chance float64, roll int)
 	LogCriticalHit(attackerName string, chance float64)
 	LogPartBroken(medarotName, partName, partID string)
-	LogActionInitiated(attackerName string, actionTrait component.Trait, weaponType component.WeaponType, category component.PartCategory)
+	LogActionInitiated(attackerName string, actionTrait core.Trait, weaponType core.WeaponType, category core.PartCategory)
 	LogAttackMiss(attackerName, skillName, targetName string)
 	LogDamageDealt(defenderName, targetPartType string, damage int)
 	LogDefenseSuccess(targetName, defensePartName string, originalDamage, actualDamage int, isCritical bool)
@@ -34,13 +35,13 @@ type TraitActionHandler interface {
 	Execute(
 		actingEntry *donburi.Entry,
 		world donburi.World,
-		intent *component.ActionIntent,
+		intent *core.ActionIntent,
 		damageCalculator *DamageCalculator,
 		hitCalculator *HitCalculator,
 		targetSelector *TargetSelector,
 		partInfoProvider PartInfoProviderInterface,
 		gameConfig *Config,
-		actingPartDef *component.PartDefinition,
+		actingPartDef *core.PartDefinition,
 		rand *rand.Rand,
 	) component.ActionResult
 }
@@ -48,16 +49,16 @@ type TraitActionHandler interface {
 // WeaponTypeEffectHandler は weapon_type 固有の追加効果を処理します。
 // ActionResult を受け取り、デバフ付与などの副作用を適用します。
 type WeaponTypeEffectHandler interface {
-	ApplyEffect(result *component.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *component.PartDefinition, rand *rand.Rand)
+	ApplyEffect(result *component.ActionResult, world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, actingPartDef *core.PartDefinition, rand *rand.Rand)
 }
 
 // PartInfoProviderInterface はパーツの状態や情報を取得・操作するロジックのインターフェースです。
 type PartInfoProviderInterface interface {
 	// パーツのパラメータ値を取得するメソッド
-	GetPartParameterValue(entry *donburi.Entry, partSlot component.PartSlotKey, param component.PartParameter) float64
+	GetPartParameterValue(entry *donburi.Entry, partSlot core.PartSlotKey, param core.PartParameter) float64
 
 	// パーツスロットを検索するメソッド
-	FindPartSlot(entry *donburi.Entry, partToFindInstance *component.PartInstanceData) component.PartSlotKey
+	FindPartSlot(entry *donburi.Entry, partToFindInstance *core.PartInstanceData) core.PartSlotKey
 
 	// 利用可能な攻撃パーツを取得するメソッド
 	GetAvailableAttackParts(entry *donburi.Entry) []component.AvailablePart
@@ -67,10 +68,10 @@ type PartInfoProviderInterface interface {
 	GetOverallMobility(entry *donburi.Entry) int
 
 	// 脚部パーツの定義を取得するメソッド
-	GetLegsPartDefinition(entry *donburi.Entry) (*component.PartDefinition, bool)
+	GetLegsPartDefinition(entry *donburi.Entry) (*core.PartDefinition, bool)
 
 	// 成功度、回避度、防御度を取得するメソッド
-	GetSuccessRate(entry *donburi.Entry, actingPartDef *component.PartDefinition, selectedPartKey component.PartSlotKey) float64
+	GetSuccessRate(entry *donburi.Entry, actingPartDef *core.PartDefinition, selectedPartKey core.PartSlotKey) float64
 	GetEvasionRate(entry *donburi.Entry) float64
 	GetDefenseRate(entry *donburi.Entry) float64
 
@@ -78,7 +79,7 @@ type PartInfoProviderInterface interface {
 	GetTeamAccuracyBuffMultiplier(entry *donburi.Entry) float64
 
 	// バフを削除するメソッド
-	RemoveBuffsFromSource(entry *donburi.Entry, partInst *component.PartInstanceData)
+	RemoveBuffsFromSource(entry *donburi.Entry, partInst *core.PartInstanceData)
 
 	// ゲージの持続時間を計算するメソッド
 	CalculateGaugeDuration(baseSeconds float64, entry *donburi.Entry) float64
