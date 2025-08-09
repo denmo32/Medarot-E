@@ -14,6 +14,15 @@ type TargetingPolicyType string
 type BuffType string
 type DebuffType string
 type PartParameter string
+type CustomizeCategory string
+
+const (
+	CustomizeCategoryMedal CustomizeCategory = "Medal"
+	CustomizeCategoryHead  CustomizeCategory = "Head"
+	CustomizeCategoryRArm  CustomizeCategory = "Right Arm"
+	CustomizeCategoryLArm  CustomizeCategory = "Left Arm"
+	CustomizeCategoryLegs  CustomizeCategory = "Legs"
+)
 
 const (
 	Team1    TeamID = 0

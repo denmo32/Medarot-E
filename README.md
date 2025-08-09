@@ -27,10 +27,10 @@ Domain (ゲームのコア)
 ゲームのルール、データ構造、インターフェースなど、プロジェクトの核心となるドメイン知識を定義します。
 このパッケージは、特定の技術（UIライブラリ、ECSフレームワークなど）から独立していることを目指します。
 
-*   `ecs/component/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。
-*   `ecs/component/components.go`: **[データ]** `donburi.Entity`など、ECSの概念に依存する型定義を定義します。
+*   `core/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。
+*   `ecs/component/components.go`: **[データ]** `donburi`フレームワークに依存するコンポーネントのデータ構造（`donburi.Entry`を含む構造体など）を定義します。
 *   `event/events.go`: **[定義]** ゲーム内で発生するイベントの定義。
-*   `ui/ui_viewmodels.go`
+*   `ui/viewmodels.go`
     *   役割: UI表示に必要な整形済みデータ（ViewModel）の定義。
     *   内容: `InfoPanelViewModel`, `ActionModalViewModel`, `BattlefieldViewModel`など、UIがECSの内部構造に直接依存しないためのデータ構造を定義します。
 *   `game_interfaces.go`: **[定義]** ゲーム全体で利用される主要なインターフェースを定義します。 `TargetingStrategy` や `TraitActionHandler` など、特定の振る舞いを抽象化するためのインターフェースが含まれます。
@@ -40,10 +40,10 @@ ECS (エンティティ・コンポーネント・システム)
 
 ECSアーキテクチャの構成要素を定義します。
 
-*   `ecs_components.go`: **[データ]** ECSの「C（コンポーネント）」を`donburi`に登録します。各コンポーネントが保持するデータ構造自体は`domain`パッケージで定義されます。
+*   `ecs_components.go`: **[データ]** ECSの「C（コンポーネント）」を`donburi`に登録します。各コンポーネントが保持するデータ構造自体は`ecs/component/components.go`で定義されます。
 *   `ecs_setup_logic.go`: 戦闘開始時のエンティティ生成と初期コンポーネント設定。
-*   `player_action_queue_component.go`: **[データ]** プレイヤーの行動実行待ちキューを保持するコンポーネントの定義。
-*   `battle_action_queue_component.go`: **[データ]** 戦闘中の行動実行待ちキューを保持するコンポーネントの定義。
+*   `player_action_queue_component.go`: **[ロジック/ヘルパー]** プレイヤーの行動待ちキュー（`PlayerActionQueueComponent`）を取得・操作するためのヘルパー関数を提供します。データ構造自体は`ecs/component/components.go`で定義されます。
+*   `battle_action_queue_component.go`: **[ロジック/ヘルパー]** 戦闘中の行動実行待ちキュー（`ActionQueueComponent`）を取得・操作するためのヘルパー関数を提供します。データ構造自体は`ecs/component/components.go`で定義されます。
 
 Scene (各画面の実装)
 -------------------
@@ -137,7 +137,7 @@ Configuration & Resources (設定とリソース)
 ゲームの設定値や外部リソースの読み込み・管理に関するファイル群です。
 
 *   `config_loader.go`: ゲームの固定設定値（画面サイズ、色など）をロードします。
-*   `game_config.go`: ゲームバランスに関する設定値やUIの固定値など、アプリケーション全体の設定（`Config`構造体）を定義します。ドメインルールに関する定義は`domain/types.go`に分離されました。
+*   `game_config.go`: ゲームバランスに関する設定値やUIの固定値など、アプリケーション全体の設定（`Config`構造体）を定義します。ドメインルールに関する定義は`core/types.go`に分離されました。
 *   `resource_ids.go`: `ebitengine-resource` ライブラリで使用するリソースIDを定義します。
 *   `resource_loader.go`: `ebitengine-resource` を使用したゲームリソース（CSVデータ、フォントなど）の読み込みと管理。
 *   `game_data_manager.go`: 静的なゲームデータ（パーツ定義、メダル定義など）の管理とアクセスを提供します。

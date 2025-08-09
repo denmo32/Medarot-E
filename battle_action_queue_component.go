@@ -3,23 +3,20 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/ecs/component"
+
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
 
-// ActionQueueComponentData は行動準備完了エンティティのキューを格納します。
-type ActionQueueComponentData struct {
-	Queue []*donburi.Entry
-}
-
 // ActionQueueComponentType は ActionQueueComponentData のコンポーネントタイプです。
-var ActionQueueComponentType = donburi.NewComponentType[ActionQueueComponentData]()
+var ActionQueueComponentType = donburi.NewComponentType[component.ActionQueueComponentData]()
 
 // GetActionQueueComponent はワールド状態エンティティから ActionQueueComponentData を取得します。
 // ActionQueueComponentType を持つエンティティが1つだけ存在することを期待します。
 // 注意: worldStateTag のチェックは EnsureActionQueueEntity で行われます。
-func GetActionQueueComponent(world donburi.World) *ActionQueueComponentData {
+func GetActionQueueComponent(world donburi.World) *component.ActionQueueComponentData {
 	// ActionQueueComponentType を持つエンティティをクエリします。
 	// EnsureActionQueueEntity が既にそのようなエンティティを作成済みであると想定されます。
 	// (おそらく worldStateTag も付与されているでしょう)。Get の簡潔さのため、ここではコンポーネントのみを探します。
@@ -43,7 +40,7 @@ func EnsureActionQueueEntity(world donburi.World) *donburi.Entry {
 
 	log.Println("ActionQueueComponent と worldStateTag を持つ ActionQueueEntity を作成します。")
 	newEntry := world.Entry(world.Create(ActionQueueComponentType, worldStateTag))
-	ActionQueueComponentType.SetValue(newEntry, ActionQueueComponentData{
+	ActionQueueComponentType.SetValue(newEntry, component.ActionQueueComponentData{
 		Queue: make([]*donburi.Entry, 0),
 	})
 	return newEntry

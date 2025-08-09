@@ -32,6 +32,10 @@ type PlayerActionQueueComponentData struct {
 	Queue []*donburi.Entry
 }
 
+type ActionQueueComponentData struct {
+	Queue []*donburi.Entry
+}
+
 type Target struct {
 	Policy         core.TargetingPolicyType
 	TargetEntity   donburi.Entity

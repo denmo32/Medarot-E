@@ -161,11 +161,11 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 		medarotSelectionContainer.AddChild(button)
 	}
 
-	cs.medalNameButton = cs.createPartSelectionRow(leftPanel, CustomizeCategoryMedal)
-	cs.headNameButton = cs.createPartSelectionRow(leftPanel, CustomizeCategoryHead)
-	cs.rArmNameButton = cs.createPartSelectionRow(leftPanel, CustomizeCategoryRArm)
-	cs.lArmNameButton = cs.createPartSelectionRow(leftPanel, CustomizeCategoryLArm)
-	cs.legsNameButton = cs.createPartSelectionRow(leftPanel, CustomizeCategoryLegs)
+	cs.medalNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryMedal)
+	cs.headNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryHead)
+	cs.rArmNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryRArm)
+	cs.lArmNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryLArm)
+	cs.legsNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryLegs)
 
 	saveButton := widget.NewButton(
 		widget.ButtonOpts.Image(&widget.ButtonImage{
@@ -210,11 +210,11 @@ func (cs *CustomizeScene) refreshUIForSelectedMedarot() {
 	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *core.PartDefinition) string { return p.ID })
 	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *core.PartDefinition) string { return p.ID })
 
-	cs.medalNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryMedal)
-	cs.headNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryHead)
-	cs.rArmNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryRArm)
-	cs.lArmNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryLArm)
-	cs.legsNameButton.Text().Label = cs.getCurrentName(CustomizeCategoryLegs)
+	cs.medalNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryMedal)
+	cs.headNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryHead)
+	cs.rArmNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryRArm)
+	cs.lArmNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryLArm)
+	cs.legsNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryLegs)
 
 	cs.updateStatus(target.MedalID)
 	cs.updateMedarotSelectionButtons()
@@ -241,7 +241,7 @@ func (cs *CustomizeScene) updateMedarotSelectionButtons() {
 	}
 }
 
-func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label CustomizeCategory) *widget.Button {
+func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label core.CustomizeCategory) *widget.Button {
 	res := cs.resources
 	rowContainer := widget.NewContainer(
 		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
@@ -291,22 +291,22 @@ func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label
 	return nameButton
 }
 
-func (cs *CustomizeScene) changeSelection(label CustomizeCategory, direction int) {
+func (cs *CustomizeScene) changeSelection(label core.CustomizeCategory, direction int) {
 	target := cs.playerMedarots[cs.currentTargetMedarotIndex]
 	var listSize int
 	var currentIndex *int
 	var nameButton *widget.Button
 
 	switch label {
-	case CustomizeCategoryMedal:
+	case core.CustomizeCategoryMedal:
 		listSize, currentIndex, nameButton = len(cs.medalList), &cs.currentMedalIndex, cs.medalNameButton
-	case CustomizeCategoryHead:
+	case core.CustomizeCategoryHead:
 		listSize, currentIndex, nameButton = len(cs.headPartsList), &cs.currentHeadIndex, cs.headNameButton
-	case CustomizeCategoryRArm:
+	case core.CustomizeCategoryRArm:
 		listSize, currentIndex, nameButton = len(cs.rArmPartsList), &cs.currentRArmIndex, cs.rArmNameButton
-	case CustomizeCategoryLArm:
+	case core.CustomizeCategoryLArm:
 		listSize, currentIndex, nameButton = len(cs.lArmPartsList), &cs.currentLArmIndex, cs.lArmNameButton
-	case CustomizeCategoryLegs:
+	case core.CustomizeCategoryLegs:
 		listSize, currentIndex, nameButton = len(cs.legsPartsList), &cs.currentLegsIndex, cs.legsNameButton
 	}
 
@@ -385,25 +385,25 @@ func findIndexByIDGeneric[T any](slice []T, id string, getID func(elem T) string
 	return 0 // 見つからない場合は0（または-1が望ましい場合もあります）
 }
 
-func (cs *CustomizeScene) getCurrentID(label CustomizeCategory) string {
+func (cs *CustomizeScene) getCurrentID(label core.CustomizeCategory) string {
 	switch label {
-	case CustomizeCategoryMedal:
+	case core.CustomizeCategoryMedal:
 		if len(cs.medalList) > 0 && cs.currentMedalIndex < len(cs.medalList) {
 			return cs.medalList[cs.currentMedalIndex].ID
 		}
-	case CustomizeCategoryHead:
+	case core.CustomizeCategoryHead:
 		if len(cs.headPartsList) > 0 && cs.currentHeadIndex < len(cs.headPartsList) {
 			return cs.headPartsList[cs.currentHeadIndex].ID
 		}
-	case CustomizeCategoryRArm:
+	case core.CustomizeCategoryRArm:
 		if len(cs.rArmPartsList) > 0 && cs.currentRArmIndex < len(cs.rArmPartsList) {
 			return cs.rArmPartsList[cs.currentRArmIndex].ID
 		}
-	case CustomizeCategoryLArm:
+	case core.CustomizeCategoryLArm:
 		if len(cs.lArmPartsList) > 0 && cs.currentLArmIndex < len(cs.lArmPartsList) {
 			return cs.lArmPartsList[cs.currentLArmIndex].ID
 		}
-	case CustomizeCategoryLegs:
+	case core.CustomizeCategoryLegs:
 		if len(cs.legsPartsList) > 0 && cs.currentLegsIndex < len(cs.legsPartsList) {
 			return cs.legsPartsList[cs.currentLegsIndex].ID
 		}
@@ -411,25 +411,25 @@ func (cs *CustomizeScene) getCurrentID(label CustomizeCategory) string {
 	return ""
 }
 
-func (cs *CustomizeScene) getCurrentName(label CustomizeCategory) string {
+func (cs *CustomizeScene) getCurrentName(label core.CustomizeCategory) string {
 	switch label {
-	case CustomizeCategoryMedal:
+	case core.CustomizeCategoryMedal:
 		if len(cs.medalList) > 0 && cs.currentMedalIndex < len(cs.medalList) {
 			return cs.medalList[cs.currentMedalIndex].Name
 		}
-	case CustomizeCategoryHead:
+	case core.CustomizeCategoryHead:
 		if len(cs.headPartsList) > 0 && cs.currentHeadIndex < len(cs.headPartsList) {
 			return cs.headPartsList[cs.currentHeadIndex].PartName
 		}
-	case CustomizeCategoryRArm:
+	case core.CustomizeCategoryRArm:
 		if len(cs.rArmPartsList) > 0 && cs.currentRArmIndex < len(cs.rArmPartsList) {
 			return cs.rArmPartsList[cs.currentRArmIndex].PartName
 		}
-	case CustomizeCategoryLArm:
+	case core.CustomizeCategoryLArm:
 		if len(cs.lArmPartsList) > 0 && cs.currentLArmIndex < len(cs.lArmPartsList) {
 			return cs.lArmPartsList[cs.currentLArmIndex].PartName
 		}
-	case CustomizeCategoryLegs:
+	case core.CustomizeCategoryLegs:
 		if len(cs.legsPartsList) > 0 && cs.currentLegsIndex < len(cs.legsPartsList) {
 			return cs.legsPartsList[cs.currentLegsIndex].PartName
 		}
