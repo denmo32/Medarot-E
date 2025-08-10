@@ -180,7 +180,7 @@ func (cs *CustomizeScene) createLayout() *widget.Container {
 			Position: widget.RowLayoutPositionEnd,
 		})),
 		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			err := SaveMedarotLoadouts(cs.resources.Config.AssetPaths.MedarotsCSV, cs.resources.GameData.Medarots)
+			err := data.SaveMedarotLoadouts(cs.resources.Config.AssetPaths.MedarotsCSV, cs.resources.GameData.Medarots)
 			if err != nil {
 				log.Printf("ERROR: Failed to save medarots.csv: %v", err)
 			} else {

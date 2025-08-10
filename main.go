@@ -19,7 +19,7 @@ import (
 // main関数がエントリーポイントであることは変わりません
 func main() {
 
-	config := LoadConfig()
+	config := data.LoadConfig()
 	wd, err := os.Getwd()
 	if err != nil {
 		// ここは標準のlogをそのまま使います
