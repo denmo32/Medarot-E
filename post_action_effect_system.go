@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -13,12 +14,12 @@ import (
 type PostActionEffectSystem struct {
 	world              donburi.World
 	statusEffectSystem *StatusEffectSystem
-	gameDataManager    *GameDataManager          // 追加
+	gameDataManager    *data.GameDataManager     // 追加
 	partInfoProvider   PartInfoProviderInterface // 追加
 }
 
 // NewPostActionEffectSystem は新しいPostActionEffectSystemのインスタンスを生成します。
-func NewPostActionEffectSystem(world donburi.World, statusEffectSystem *StatusEffectSystem, gameDataManager *GameDataManager, partInfoProvider PartInfoProviderInterface) *PostActionEffectSystem {
+func NewPostActionEffectSystem(world donburi.World, statusEffectSystem *StatusEffectSystem, gameDataManager *data.GameDataManager, partInfoProvider PartInfoProviderInterface) *PostActionEffectSystem {
 	return &PostActionEffectSystem{
 		world:              world,
 		statusEffectSystem: statusEffectSystem,
@@ -71,7 +72,7 @@ func (s *PostActionEffectSystem) Process(result *component.ActionResult) {
 
 		// パーツ破壊時のログメッセージ
 		if result.TargetPartInstance.IsBroken {
-			settings := SettingsComponent.Get(result.TargetEntry)
+			settings := component.SettingsComponent.Get(result.TargetEntry)
 			partDef, defFound := s.gameDataManager.GetPartDefinition(result.TargetPartInstance.DefinitionID)
 			partNameForLog := "(不明パーツ)"
 			if defFound {
@@ -88,13 +89,13 @@ func (s *PostActionEffectSystem) Process(result *component.ActionResult) {
 
 	// 3. 頭部パーツ破壊による機能停止
 	if result.TargetEntry != nil && result.IsTargetPartBroken && result.ActualHitPartSlot == core.PartSlotHead {
-		state := StateComponent.Get(result.TargetEntry)
+		state := component.StateComponent.Get(result.TargetEntry)
 		state.CurrentState = core.StateBroken
 	}
 
 	// 4. 行動後のクリーンアップ
-	if result.ActingEntry != nil && result.ActingEntry.HasComponent(ActiveEffectsComponent) {
-		activeEffects := ActiveEffectsComponent.Get(result.ActingEntry)
+	if result.ActingEntry != nil && result.ActingEntry.HasComponent(component.ActiveEffectsComponent) {
+		activeEffects := component.ActiveEffectsComponent.Get(result.ActingEntry)
 		effectsToRemove := []interface{}{} // interface{}のスライスに変更
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.RemainingDur == 0 {

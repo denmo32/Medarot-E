@@ -1,16 +1,11 @@
-package main
+package data
 
 import (
 	"image/color"
-	"math/rand" // 追加
 
 	"medarot-ebiten/core"
-
-	"github.com/ebitenui/ebitenui/widget"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// BalanceConfig 構造体を新しいルールに合わせて拡張します。
 type BalanceConfig struct {
 	Time struct {
 		PropulsionEffectRate float64
@@ -137,16 +132,4 @@ type UIConfig struct {
 		Background color.Color
 		Black      color.Color
 	}
-}
-
-type SharedResources struct {
-	GameData          *core.GameData
-	Config            Config
-	Font              text.Face
-	ModalButtonFont   text.Face // 追加
-	MessageWindowFont text.Face // 追加
-	GameDataManager   *GameDataManager
-	ButtonImage       *widget.ButtonImage
-	Rand              *rand.Rand   // 追加
-	BattleLogger      BattleLogger // 追加
 }

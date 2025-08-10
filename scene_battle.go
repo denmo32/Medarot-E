@@ -5,6 +5,9 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
 	"medarot-ebiten/ui"
 
@@ -15,7 +18,7 @@ import (
 )
 
 type BattleScene struct {
-	resources      *SharedResources
+	resources      *data.SharedResources
 	manager        *SceneManager
 	world          donburi.World
 	tickCount      int
@@ -25,7 +28,7 @@ type BattleScene struct {
 	messageManager *UIMessageDisplayManager
 	winner         core.TeamID
 
-	gameDataManager        *GameDataManager
+	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
 	uiEventChannel         chan UIEvent
 	battleUIState          *ui.BattleUIState
@@ -40,7 +43,7 @@ type BattleScene struct {
 	battleStates map[core.GameState]BattleState
 }
 
-func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
+func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleScene {
 	world := donburi.NewWorld()
 
 	bs := &BattleScene{
@@ -56,7 +59,7 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 		battleUIState:   &ui.BattleUIState{}, // ← これを追加
 	}
 
-	InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
+	entity.InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
 	bs.battleLogic = NewBattleLogic(bs.world, &bs.resources.Config, bs.resources.GameDataManager, bs.rand)
 
@@ -84,20 +87,20 @@ func NewBattleScene(res *SharedResources, manager *SceneManager) *BattleScene {
 }
 
 func (bs *BattleScene) SetState(newState core.GameState) {
-	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
 	}
-	GameStateComponent.Get(gameStateEntry).CurrentState = newState
+	component.GameStateComponent.Get(gameStateEntry).CurrentState = newState
 }
 
 func (bs *BattleScene) Update() error {
 	bs.tickCount++
-	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
 	}
-	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
+	currentGameStateComp := component.GameStateComponent.Get(gameStateEntry)
 
 	bs.ui.Update(bs.tickCount)
 
@@ -166,11 +169,11 @@ func (bs *BattleScene) Draw(screen *ebiten.Image) {
 	bs.ui.Draw(screen, bs.tickCount, bs.resources.GameDataManager)
 
 	// GameStateComponentから現在のゲーム状態を取得
-	gameStateEntry, ok := query.NewQuery(filter.Contains(GameStateComponent)).First(bs.world)
+	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
 	}
-	currentGameStateComp := GameStateComponent.Get(gameStateEntry)
+	currentGameStateComp := component.GameStateComponent.Get(gameStateEntry)
 
 	// Draw current BattleState implementation
 	if currentStateImpl, ok := bs.battleStates[currentGameStateComp.CurrentState]; ok {
@@ -189,11 +192,11 @@ func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.GameEvent {
 	var stateChangeEvents []event.GameEvent // 状態変更イベントを収集する新しいスライス
 
-	lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(bs.world)
+	lastActionResultEntry, ok := query.NewQuery(filter.Contains(component.LastActionResultComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("LastActionResultComponent がワールドに見つかりません。")
 	}
-	lastActionResultComp := LastActionResultComponent.Get(lastActionResultEntry)
+	lastActionResultComp := component.LastActionResultComponent.Get(lastActionResultEntry)
 
 	for _, evt := range gameEvents {
 		switch e := evt.(type) {
@@ -247,10 +250,10 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 			}
 			successful := bs.battleLogic.GetChargeInitiationSystem().StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot)
 			if !successful {
-				log.Printf("エラー: %s の行動開始に失敗しました。", SettingsComponent.Get(actingEntry).Name)
+				log.Printf("エラー: %s の行動開始に失敗しました。", component.SettingsComponent.Get(actingEntry).Name)
 			}
 		case event.PlayerActionSelectFinishedGameEvent:
-			playerActionQueue := GetPlayerActionQueueComponent(bs.world)
+			playerActionQueue := entity.GetPlayerActionQueueComponent(bs.world)
 			if len(playerActionQueue.Queue) > 0 {
 				stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePlayerActionSelect})
 			} else {

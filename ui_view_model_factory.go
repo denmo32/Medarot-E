@@ -7,6 +7,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -18,8 +19,8 @@ import (
 // ViewModelFactory は各種ViewModelを生成するためのインターフェースです。
 type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) ui.InfoPanelViewModel
-	BuildBattlefieldViewModel(world donburi.World, battleUIState *ui.BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) ui.BattlefieldViewModel
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ui.ActionModalViewModel
+	BuildBattlefieldViewModel(world donburi.World, battleUIState *ui.BattleUIState, partInfoProvider PartInfoProviderInterface, config *data.Config, battlefieldRect image.Rectangle) ui.BattlefieldViewModel
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *data.GameDataManager) ui.ActionModalViewModel
 	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
 	IsActionModalVisible() bool
 }
@@ -27,13 +28,13 @@ type ViewModelFactory interface {
 // viewModelFactoryImpl はViewModelFactoryインターフェースの実装です。
 type viewModelFactoryImpl struct {
 	partInfoProvider PartInfoProviderInterface
-	gameDataManager  *GameDataManager
+	gameDataManager  *data.GameDataManager
 	rand             *rand.Rand
 	ui               UIInterface
 }
 
 // NewViewModelFactory は新しいViewModelFactoryのインスタンスを作成します。
-func NewViewModelFactory(world donburi.World, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager, rand *rand.Rand, ui UIInterface) ViewModelFactory { // world の型を donburi.World に変更
+func NewViewModelFactory(world donburi.World, partInfoProvider PartInfoProviderInterface, gameDataManager *data.GameDataManager, rand *rand.Rand, ui UIInterface) ViewModelFactory { // world の型を donburi.World に変更
 	return &viewModelFactoryImpl{
 		partInfoProvider: partInfoProvider,
 		gameDataManager:  gameDataManager,
@@ -44,9 +45,9 @@ func NewViewModelFactory(world donburi.World, partInfoProvider PartInfoProviderI
 
 // BuildInfoPanelViewModel は、指定されたエンティティからInfoPanelViewModelを構築します。
 func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) ui.InfoPanelViewModel {
-	settings := SettingsComponent.Get(entry)
-	state := StateComponent.Get(entry)
-	partsComp := PartsComponent.Get(entry)
+	settings := component.SettingsComponent.Get(entry)
+	state := component.StateComponent.Get(entry)
+	partsComp := component.PartsComponent.Get(entry)
 
 	partViewModels := make(map[core.PartSlotKey]ui.PartViewModel)
 	if partsComp != nil {
@@ -85,19 +86,19 @@ func (f *viewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry, par
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battleUIState *ui.BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) ui.BattlefieldViewModel {
+func (f *viewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battleUIState *ui.BattleUIState, partInfoProvider PartInfoProviderInterface, config *data.Config, battlefieldRect image.Rectangle) ui.BattlefieldViewModel {
 	vm := ui.BattlefieldViewModel{
 		Icons: []*ui.IconViewModel{},
 		DebugMode: func() bool {
-			_, ok := query.NewQuery(filter.Contains(DebugModeComponent)).First(world) // f.world の代わりに world を使用
+			_, ok := query.NewQuery(filter.Contains(component.DebugModeComponent)).First(world) // f.world の代わりに world を使用
 			return ok
 		}(),
 	}
 
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) { // f.world の代わりに world を使用
-		settings := SettingsComponent.Get(entry)
-		state := StateComponent.Get(entry)
-		gauge := GaugeComponent.Get(entry)
+	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) { // f.world の代わりに world を使用
+		settings := component.SettingsComponent.Get(entry)
+		state := component.StateComponent.Get(entry)
+		gauge := component.GaugeComponent.Get(entry)
 
 		// バトルフィールドの描画領域を基準にX, Y座標を計算
 		bfWidth := float32(battlefieldRect.Dx())
@@ -151,8 +152,8 @@ Prog: %.1f / %.1f`,
 
 // CalculateMedarotScreenXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // battlefieldWidth はバトルフィールドの表示幅です。
-func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32, config *Config) float32 {
-	settings := SettingsComponent.Get(entry)
+func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface, battlefieldWidth float32, config *data.Config) float32 {
+	settings := component.SettingsComponent.Get(entry)
 	progress := partInfoProvider.GetNormalizedActionProgress(entry)
 
 	// ホームポジションと実行ラインのX座標を定義します。
@@ -163,7 +164,7 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 	}
 
 	var xPos float32
-	switch StateComponent.Get(entry).CurrentState {
+	switch component.StateComponent.Get(entry).CurrentState {
 	case core.StateCharging:
 		// チャージ中はホームから実行ラインへ移動
 		xPos = homeX + (execX-homeX)*progress
@@ -184,9 +185,9 @@ func (f *viewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ui.ActionModalViewModel {
-	settings := SettingsComponent.Get(actingEntry)
-	partsComp := PartsComponent.Get(actingEntry)
+func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *data.GameDataManager) ui.ActionModalViewModel {
+	settings := component.SettingsComponent.Get(actingEntry)
+	partsComp := component.PartsComponent.Get(actingEntry)
 
 	var buttons []ui.ActionModalButtonViewModel
 	if partsComp == nil {

@@ -1,11 +1,11 @@
-package main
+package data
 
 import (
 	"fmt"
+
 	"medarot-ebiten/core"
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	resource "github.com/quasilyte/ebitengine-resource" // resource パッケージを追加
 )
 
 // GameDataManager はパーツやメダルなどのすべての静적ゲームデータ定義とメッセージを保持します。
@@ -19,8 +19,8 @@ type GameDataManager struct {
 }
 
 // NewGameDataManager はGameDataManagerの新しいインスタンスを作成し、初期化します。
-func NewGameDataManager(font text.Face, assetPaths *AssetPaths, r *resource.Loader) (*GameDataManager, error) {
-	messageManager, err := NewMessageManager(assetPaths.Messages, r) // r を渡す
+func NewGameDataManager(font text.Face, assetPaths *AssetPaths) (*GameDataManager, error) {
+	messageManager, err := NewMessageManager(assetPaths.Messages)
 	if err != nil {
 		return nil, fmt.Errorf("メッセージマネージャーの初期化に失敗しました: %w", err)
 	}

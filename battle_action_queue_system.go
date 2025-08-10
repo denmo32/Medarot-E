@@ -6,7 +6,9 @@ import (
 	"sort"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ecs/entity"
 
 	"github.com/yohamta/donburi"
 )
@@ -18,12 +20,12 @@ func UpdateActionQueueSystem(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	gameConfig *Config,
+	gameConfig *data.Config,
 	statusEffectSystem *StatusEffectSystem,
 	postActionEffectSystem *PostActionEffectSystem,
 	rand *rand.Rand,
 ) ([]component.ActionResult, error) {
-	actionQueueComp := GetActionQueueComponent(world)
+	actionQueueComp := entity.GetActionQueueComponent(world)
 	if len(actionQueueComp.Queue) == 0 {
 		return nil, nil
 	}
@@ -52,8 +54,8 @@ func UpdateActionQueueSystem(
 
 // StartCooldownSystem はクールダウン状態を開始します。
 func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProvider PartInfoProviderInterface) {
-	intent := ActionIntentComponent.Get(entry)
-	partsComp := PartsComponent.Get(entry)
+	intent := component.ActionIntentComponent.Get(entry)
+	partsComp := component.PartsComponent.Get(entry)
 	var actingPartDef *core.PartDefinition
 
 	if actingPartInstance, ok := partsComp.Map[intent.SelectedPartKey]; ok {
@@ -74,12 +76,12 @@ func StartCooldownSystem(entry *donburi.Entry, world donburi.World, partInfoProv
 	// 新しい共通関数を呼び出す
 	totalTicks := partInfoProvider.CalculateGaugeDuration(baseSeconds, entry)
 
-	gauge := GaugeComponent.Get(entry)
+	gauge := component.GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
 	gauge.ProgressCounter = 0
 	gauge.CurrentGauge = 0
 
-	state := StateComponent.Get(entry)
+	state := component.StateComponent.Get(entry)
 	gauge.ProgressCounter = 0
 	state.CurrentState = core.StateCooldown
 }

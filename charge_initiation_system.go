@@ -2,6 +2,8 @@ package main
 
 import (
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -10,7 +12,7 @@ import (
 type ChargeInitiationSystem struct {
 	world            donburi.World
 	partInfoProvider PartInfoProviderInterface
-	gameDataManager  *GameDataManager
+	gameDataManager  *data.GameDataManager
 }
 
 // NewChargeInitiationSystem は新しいChargeInitiationSystemのインスタンスを生成します。
@@ -29,12 +31,12 @@ func (s *ChargeInitiationSystem) StartCharge(
 	targetEntry *donburi.Entry,
 	targetPartSlot core.PartSlotKey,
 ) bool {
-	state := StateComponent.Get(entry)
+	state := component.StateComponent.Get(entry)
 	if state.CurrentState != core.StateIdle {
 		return false // アイドル状態でない場合は開始できない
 	}
 
-	partsComp := PartsComponent.Get(entry)
+	partsComp := component.PartsComponent.Get(entry)
 	actingPartInstance := partsComp.Map[partKey]
 
 	if actingPartInstance == nil {
@@ -45,11 +47,11 @@ func (s *ChargeInitiationSystem) StartCharge(
 		return false
 	}
 
-	intent := ActionIntentComponent.Get(entry)
+	intent := component.ActionIntentComponent.Get(entry)
 	intent.SelectedPartKey = partKey
 	intent.PendingEffects = make([]interface{}, 0) // 既存の効果をクリア
 
-	target := TargetComponent.Get(entry)
+	target := component.TargetComponent.Get(entry)
 	if targetEntry != nil { // targetEntry が nil でない場合のみIDをセット
 		target.TargetEntity = targetEntry.Entity()
 	} else {
@@ -92,7 +94,7 @@ func (s *ChargeInitiationSystem) StartCharge(
 
 	if actingPartDef.Category == core.CategoryRanged {
 		// targetEntry が有効なエンティティであるか、または破壊されていないかを確認
-		if targetEntry == nil || !targetEntry.Valid() || StateComponent.Get(targetEntry).CurrentState == core.StateBroken {
+		if targetEntry == nil || !targetEntry.Valid() || component.StateComponent.Get(targetEntry).CurrentState == core.StateBroken {
 			return false
 		}
 		// ログは削除
@@ -104,7 +106,7 @@ func (s *ChargeInitiationSystem) StartCharge(
 	// 新しい共通関数を呼び出す
 	totalTicks := s.partInfoProvider.CalculateGaugeDuration(baseSeconds, entry)
 
-	gauge := GaugeComponent.Get(entry)
+	gauge := component.GaugeComponent.Get(entry)
 	gauge.TotalDuration = totalTicks
 	gauge.ProgressCounter = 0
 

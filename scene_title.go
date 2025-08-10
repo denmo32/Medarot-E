@@ -3,6 +3,8 @@ package main
 import (
 	"image/color"
 
+	"medarot-ebiten/data" // dataパッケージをインポート
+
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -11,13 +13,13 @@ import (
 
 // TitleScene はタイトル画面のシーンです
 type TitleScene struct {
-	resources *SharedResources
+	resources *data.SharedResources
 	manager   *SceneManager // シーンマネージャへの参照
 	ui        *ebitenui.UI
 }
 
 // NewTitleScene は新しいタイトルシーンを作成します
-func NewTitleScene(res *SharedResources, manager *SceneManager) *TitleScene {
+func NewTitleScene(res *data.SharedResources, manager *SceneManager) *TitleScene {
 	t := &TitleScene{
 		resources: res,
 		manager:   manager, // マネージャを保持

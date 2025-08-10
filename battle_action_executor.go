@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -17,7 +18,7 @@ type ActionExecutor struct {
 	hitCalculator          *HitCalculator
 	targetSelector         *TargetSelector
 	partInfoProvider       PartInfoProviderInterface
-	gameConfig             *Config
+	gameConfig             *data.Config
 	statusEffectSystem     *StatusEffectSystem
 	postActionEffectSystem *PostActionEffectSystem // 新しく追加したシステム
 	handlers               map[core.Trait]TraitActionHandler
@@ -26,7 +27,7 @@ type ActionExecutor struct {
 }
 
 // NewActionExecutor は新しいActionExecutorのインスタンスを生成します。
-func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, gameConfig *Config, statusEffectSystem *StatusEffectSystem, postActionEffectSystem *PostActionEffectSystem, rand *rand.Rand) *ActionExecutor {
+func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, hitCalculator *HitCalculator, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, gameConfig *data.Config, statusEffectSystem *StatusEffectSystem, postActionEffectSystem *PostActionEffectSystem, rand *rand.Rand) *ActionExecutor {
 	return &ActionExecutor{
 		world:                  world,
 		damageCalculator:       damageCalculator,
@@ -56,8 +57,8 @@ func NewActionExecutor(world donburi.World, damageCalculator *DamageCalculator, 
 
 // ExecuteAction は単一のアクションを実行し、その結果を返します。
 func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) component.ActionResult {
-	intent := ActionIntentComponent.Get(actingEntry)
-	partsComp := PartsComponent.Get(actingEntry)
+	intent := component.ActionIntentComponent.Get(actingEntry)
+	partsComp := component.PartsComponent.Get(actingEntry)
 	actingPartInst := partsComp.Map[intent.SelectedPartKey]
 	actingPartDef, _ := e.partInfoProvider.GetGameDataManager().GetPartDefinition(actingPartInst.DefinitionID)
 

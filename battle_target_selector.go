@@ -7,6 +7,8 @@ import (
 	"sort"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -16,18 +18,18 @@ import (
 // TargetSelector はターゲット選択やパーツ選択に関連するロジックを担当します。
 type TargetSelector struct {
 	world            donburi.World
-	config           *Config
+	config           *data.Config
 	partInfoProvider PartInfoProviderInterface
 }
 
 // NewTargetSelector は新しい TargetSelector のインスタンスを生成します。
-func NewTargetSelector(world donburi.World, config *Config, pip PartInfoProviderInterface) *TargetSelector {
+func NewTargetSelector(world donburi.World, config *data.Config, pip PartInfoProviderInterface) *TargetSelector {
 	return &TargetSelector{world: world, config: config, partInfoProvider: pip}
 }
 
 // SelectDefensePart は防御に使用するパーツのインスタンスを選択します。
 func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *core.PartInstanceData {
-	partsComp := PartsComponent.Get(target)
+	partsComp := component.PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
 	}
@@ -68,7 +70,7 @@ func (ts *TargetSelector) SelectDefensePart(target *donburi.Entry) *core.PartIns
 
 // SelectPartToDamage は、行動者の性格に基づいて攻撃対象のパーツインスタンスを選択します。
 func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry, rand *rand.Rand) *core.PartInstanceData {
-	partsComp := PartsComponent.Get(target)
+	partsComp := component.PartsComponent.Get(target)
 	if partsComp == nil {
 		return nil
 	}
@@ -86,8 +88,8 @@ func (ts *TargetSelector) SelectPartToDamage(target, actingEntry *donburi.Entry,
 
 	// 行動者の性格を取得
 	personality := "ジョーカー" // デフォルト
-	if actingEntry.HasComponent(MedalComponent) {
-		personality = MedalComponent.Get(actingEntry).Personality
+	if actingEntry.HasComponent(component.MedalComponent) {
+		personality = component.MedalComponent.Get(actingEntry).Personality
 	}
 
 	switch personality {
@@ -129,19 +131,19 @@ func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry, partInfoP
 func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*donburi.Entry {
 	opponentTeamID := ts.GetOpponentTeam(actingEntry)
 	candidates := []*donburi.Entry{}
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).CurrentState == core.StateBroken {
+	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
+		if component.StateComponent.Get(entry).CurrentState == core.StateBroken {
 			return
 		}
-		settings := SettingsComponent.Get(entry)
+		settings := component.SettingsComponent.Get(entry)
 		if settings.Team == opponentTeamID {
 			candidates = append(candidates, entry)
 		}
 	})
 
 	sort.Slice(candidates, func(i, j int) bool {
-		iSettings := SettingsComponent.Get(candidates[i])
-		jSettings := SettingsComponent.Get(candidates[j])
+		iSettings := component.SettingsComponent.Get(candidates[i])
+		jSettings := component.SettingsComponent.Get(candidates[j])
 		return iSettings.DrawIndex < jSettings.DrawIndex
 	})
 	return candidates
@@ -149,7 +151,7 @@ func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*do
 
 // GetOpponentTeam は指定されたエンティティの敵チームIDを返します。
 func (ts *TargetSelector) GetOpponentTeam(actingEntry *donburi.Entry) core.TeamID {
-	if SettingsComponent.Get(actingEntry).Team == core.Team1 {
+	if component.SettingsComponent.Get(actingEntry).Team == core.Team1 {
 		return core.Team2
 	}
 	return core.Team1

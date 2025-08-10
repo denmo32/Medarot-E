@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -40,7 +41,7 @@ type TraitActionHandler interface {
 		hitCalculator *HitCalculator,
 		targetSelector *TargetSelector,
 		partInfoProvider PartInfoProviderInterface,
-		gameConfig *Config,
+		gameConfig *data.Config,
 		actingPartDef *core.PartDefinition,
 		rand *rand.Rand,
 	) component.ActionResult
@@ -88,5 +89,5 @@ type PartInfoProviderInterface interface {
 	GetNormalizedActionProgress(entry *donburi.Entry) float32
 
 	// GameDataManagerへのアクセスを提供するメソッド
-	GetGameDataManager() *GameDataManager
+	GetGameDataManager() *data.GameDataManager
 }

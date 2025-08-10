@@ -4,6 +4,8 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -11,14 +13,14 @@ import (
 // HitCalculator は命中・回避・防御判定に関連するロジックを担当します。
 type HitCalculator struct {
 	world            donburi.World
-	config           *Config
+	config           *data.Config
 	partInfoProvider PartInfoProviderInterface
 	rand             *rand.Rand
 	logger           BattleLogger // 追加
 }
 
 // NewHitCalculator は新しい HitCalculator のインスタンスを生成します。
-func NewHitCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface, r *rand.Rand, logger BattleLogger) *HitCalculator {
+func NewHitCalculator(world donburi.World, config *data.Config, pip PartInfoProviderInterface, r *rand.Rand, logger BattleLogger) *HitCalculator {
 	return &HitCalculator{world: world, config: config, partInfoProvider: pip, rand: r, logger: logger}
 }
 
@@ -45,7 +47,7 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 	}
 
 	roll := hc.rand.Intn(100)
-	hc.logger.LogHitCheck(SettingsComponent.Get(attacker).Name, SettingsComponent.Get(target).Name, chance, successRate, evasion, roll)
+	hc.logger.LogHitCheck(component.SettingsComponent.Get(attacker).Name, component.SettingsComponent.Get(target).Name, chance, successRate, evasion, roll)
 	return float64(roll) < chance
 }
 
@@ -69,6 +71,6 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 	}
 
 	roll := hc.rand.Intn(100)
-	hc.logger.LogDefenseCheck(SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll)
+	hc.logger.LogDefenseCheck(component.SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll)
 	return float64(roll) < chance
 }

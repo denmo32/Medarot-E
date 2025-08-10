@@ -7,17 +7,14 @@ import (
 	"os"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data" // dataパッケージをインポート
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
-	resource "github.com/quasilyte/ebitengine-resource"
 )
-
-// グローバルなリソースローダーを宣言
-var r *resource.Loader
 
 // main関数がエントリーポイントであることは変わりません
 func main() {
@@ -33,29 +30,29 @@ func main() {
 
 	// Initialize audio context for the resource loader
 	audioContext := audio.NewContext(44100)
-	initResources(audioContext, &config.AssetPaths) // initResources は r を初期化する
+	data.InitResources(audioContext, &config.AssetPaths) // data.InitResources は r を初期化する
 
-	normalFont, modalButtonFont, messageWindowFont, err := LoadFonts(&config.AssetPaths, &config)
+	normalFont, modalButtonFont, messageWindowFont, err := data.LoadFonts(&config.AssetPaths, &config)
 	if err != nil {
 		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
 	}
 
-	gameDataManager, err := NewGameDataManager(normalFont, &config.AssetPaths, r)
+	gameDataManager, err := data.NewGameDataManager(normalFont, &config.AssetPaths)
 	if err != nil {
 		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
 	}
 
-	formulas, err := LoadFormulas()
+	formulas, err := data.LoadFormulas()
 	if err != nil {
 		log.Fatalf("Failed to load formulas: %v", err)
 	}
 	gameDataManager.Formulas = formulas
 
-	if err := LoadAllStaticGameData(gameDataManager); err != nil {
+	if err := data.LoadAllStaticGameData(gameDataManager); err != nil {
 		log.Fatalf("静的ゲームデータの読み込みに失敗しました: %v", err)
 	}
 
-	medarotLoadouts, err := LoadMedarotLoadouts()
+	medarotLoadouts, err := data.LoadMedarotLoadouts()
 	if err != nil {
 		log.Fatalf("メダロットロードアウトの読み込みに失敗しました: %v", err)
 	}
@@ -67,7 +64,7 @@ func main() {
 	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色
 
 	// シーンマネージャを作成
-	manager := NewSceneManager(&SharedResources{
+	manager := NewSceneManager(&data.SharedResources{
 		GameData: &core.GameData{
 			Medarots: medarotLoadouts,
 		},
@@ -82,7 +79,7 @@ func main() {
 			Pressed: image.NewNineSliceSimple(buttonImage, 10, 10),
 		},
 		Rand:         rand.New(rand.NewSource(config.Game.RandomSeed)),
-		BattleLogger: NewBattleLogger(gameDataManager),
+		BattleLogger: data.NewBattleLogger(gameDataManager),
 	})
 
 	// Ebitenのゲームを実行します。渡すのはbamennのシーケンスです。

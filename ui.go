@@ -5,6 +5,7 @@ import (
 	"image/color"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -22,7 +23,7 @@ type UI struct {
 	// イベント通知用チャネル
 	eventChannel chan UIEvent
 	// 依存性
-	config                 *Config
+	config                 *data.Config
 	whitePixel             *ebiten.Image
 	messageManager         *UIMessageDisplayManager
 	actionModalManager     *UIActionModalManager
@@ -34,7 +35,7 @@ type UI struct {
 }
 
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
-func (u *UI) SetBattleUIState(battleUIState *ui.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
+func (u *UI) SetBattleUIState(battleUIState *ui.BattleUIState, config *data.Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
 	u.battleUIState = battleUIState // UI構造体に状態を保存
 	// uiFactoryも保存する必要があるが、UI構造体にはuiFactoryフィールドがないため、追加が必要
 	// 現状、uiFactoryはNewUIでしか渡されないため、updateLayoutで利用するにはUI構造体にフィールドを追加する必要がある
@@ -61,7 +62,7 @@ func (u *UI) PostEvent(event UIEvent) {
 }
 
 // NewUI は新しいUIインスタンスを作成します。
-func NewUI(config *Config, eventChannel chan UIEvent, uiFactory *UIFactory, gameDataManager *GameDataManager) *UI {
+func NewUI(config *data.Config, eventChannel chan UIEvent, uiFactory *UIFactory, gameDataManager *data.GameDataManager) *UI {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
@@ -219,7 +220,7 @@ func (u *UI) Update(tick int) {
 }
 
 // Draw はUIを描画します。
-func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager) {
+func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *data.GameDataManager) {
 	// ターゲットインジケーターの描画に必要な IconViewModel を取得
 	var indicatorTargetVM *ui.IconViewModel
 	if u.targetIndicatorManager.GetCurrentTarget() != 0 && u.battlefieldWidget.viewModel != nil {

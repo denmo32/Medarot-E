@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -15,7 +16,7 @@ func aiSelectAction(
 	entry *donburi.Entry,
 	battleLogic *BattleLogic,
 ) {
-	settings := SettingsComponent.Get(entry)
+	settings := component.SettingsComponent.Get(entry)
 
 	var slotKey core.PartSlotKey
 	var selectedPartDef *core.PartDefinition
@@ -34,8 +35,8 @@ func aiSelectAction(
 		return
 	}
 
-	if entry.HasComponent(AIComponent) {
-		ai := AIComponent.Get(entry)
+	if entry.HasComponent(component.AIComponent) {
+		ai := component.AIComponent.Get(entry)
 		personality, ok := PersonalityRegistry[ai.PersonalityID]
 		if !ok {
 			log.Printf("%s: AIエラー - PersonalityID '%s' がレジストリに見つかりません。デフォルト（ジョーカー）を使用。", settings.Name, ai.PersonalityID)

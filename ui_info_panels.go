@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ui"
 
 	eimage "github.com/ebitenui/ebitenui/image"
@@ -31,11 +32,11 @@ type infoPanelPartUI struct {
 
 type InfoPanelManager struct {
 	panels    map[donburi.Entity]*infoPanelUI // map[string]からmap[donburi.Entity]に変更
-	config    *Config
+	config    *data.Config
 	uiFactory *UIFactory
 }
 
-func NewInfoPanelManager(config *Config, uiFactory *UIFactory) *InfoPanelManager {
+func NewInfoPanelManager(config *data.Config, uiFactory *UIFactory) *InfoPanelManager {
 	return &InfoPanelManager{
 		panels:    make(map[donburi.Entity]*infoPanelUI), // map[string]からmap[donburi.Entity]に変更
 		config:    config,
@@ -119,7 +120,7 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []ui.InfoPanelViewModel, 
 	}
 }
 
-func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm ui.InfoPanelViewModel) *infoPanelUI {
+func createSingleMedarotInfoPanel(config *data.Config, uiFactory *UIFactory, vm ui.InfoPanelViewModel) *infoPanelUI {
 	c := config.UI
 
 	// ヘッダー部分を作成
@@ -233,7 +234,7 @@ func createSingleMedarotInfoPanel(config *Config, uiFactory *UIFactory, vm ui.In
 // この関数はworldを直接クエリするのではなく、ViewModelFactoryまたはUpdateInfoPanelViewModelSystemが生成した
 // InfoPanelViewModelのリストを受け取るように変更されます。
 
-func updateSingleInfoPanel(ui *infoPanelUI, vm ui.InfoPanelViewModel, config *Config) {
+func updateSingleInfoPanel(ui *infoPanelUI, vm ui.InfoPanelViewModel, config *data.Config) {
 	c := config.UI
 
 	ui.stateText.Label = vm.StateStr

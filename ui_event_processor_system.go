@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
@@ -37,7 +38,7 @@ func UpdateUIEventProcessorSystem(
 			}
 			// ターゲットインジケーターを表示
 			ui.SetCurrentTarget(e.TargetEntityID) // donburi.Entity を渡す
-			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", SettingsComponent.Get(actingEntry).Name, e.SelectedSlotKey)
+			log.Printf("UI Event: PartSelectedUIEvent - %s selected part %s", component.SettingsComponent.Get(actingEntry).Name, e.SelectedSlotKey)
 		case TargetSelectedUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
 			if actingEntry == nil {
@@ -50,7 +51,7 @@ func UpdateUIEventProcessorSystem(
 				break
 			}
 			ui.SetCurrentTarget(e.TargetEntityID) // donburi.Entity を渡す
-			log.Printf("UI Event: TargetSelectedUIEvent - %s selected target %s", SettingsComponent.Get(actingEntry).Name, SettingsComponent.Get(targetEntry).Name)
+			log.Printf("UI Event: TargetSelectedUIEvent - %s selected target %s", component.SettingsComponent.Get(actingEntry).Name, component.SettingsComponent.Get(targetEntry).Name)
 		case ActionConfirmedUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
 			if actingEntry == nil {
@@ -78,7 +79,7 @@ func UpdateUIEventProcessorSystem(
 			gameEvents = append(gameEvents, event.ClearCurrentTargetGameEvent{})
 			// プレイヤーの行動選択フェーズが完了したことを通知
 			gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})
-			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", SettingsComponent.Get(actingEntry).Name)
+			log.Printf("UI Event: ActionConfirmedUIEvent - %s confirmed action", component.SettingsComponent.Get(actingEntry).Name)
 		case ActionCanceledUIEvent:
 			actingEntry := world.Entry(e.ActingEntityID)
 			if actingEntry == nil {
@@ -91,7 +92,7 @@ func UpdateUIEventProcessorSystem(
 			gameEvents = append(gameEvents, event.ClearCurrentTargetGameEvent{})
 			// プレイヤーの行動選択フェーズが完了したことを通知
 			gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})
-			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", SettingsComponent.Get(actingEntry).Name)
+			log.Printf("UI Event: ActionCanceledUIEvent - %s canceled action", component.SettingsComponent.Get(actingEntry).Name)
 		case ShowActionModalUIEvent:
 			if !ui.IsActionModalVisible() { // モーダルが既に表示されていない場合のみ表示
 				ui.ShowActionModal(e.ViewModel)

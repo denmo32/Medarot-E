@@ -17,15 +17,15 @@ func UpdateHistorySystem(world donburi.World, result *component.ActionResult) {
 
 	// --- 攻撃者側の履歴更新 ---
 	// 自分が最後に攻撃をヒットさせたターゲットとパーツを記録します。
-	if result.ActingEntry != nil && result.ActingEntry.Valid() && result.ActingEntry.HasComponent(AIComponent) {
+	if result.ActingEntry != nil && result.ActingEntry.Valid() && result.ActingEntry.HasComponent(component.AIComponent) {
 		if result.ActionDidHit {
-			ai := AIComponent.Get(result.ActingEntry)
+			ai := component.AIComponent.Get(result.ActingEntry)
 			ai.LastActionHistory.LastHitTarget = result.TargetEntry
 			ai.LastActionHistory.LastHitPartSlot = result.ActualHitPartSlot
 			log.Printf(
 				"履歴更新 (Focus): %s が %s の %s にヒットさせたことを記録しました。",
-				SettingsComponent.Get(result.ActingEntry).Name,
-				SettingsComponent.Get(result.TargetEntry).Name,
+				component.SettingsComponent.Get(result.ActingEntry).Name,
+				component.SettingsComponent.Get(result.TargetEntry).Name,
 				result.ActualHitPartSlot,
 			)
 		}
@@ -33,15 +33,15 @@ func UpdateHistorySystem(world donburi.World, result *component.ActionResult) {
 
 	// --- 防御者側の履歴更新 ---
 	// 自分を最後に攻撃してきた相手を記録します。
-	if result.TargetEntry != nil && result.TargetEntry.Valid() && result.TargetEntry.HasComponent(AIComponent) {
+	if result.TargetEntry != nil && result.TargetEntry.Valid() && result.TargetEntry.HasComponent(component.AIComponent) {
 		// 命中したかどうかに関わらず、攻撃してきた相手として記録します。
 		// これにより、回避した場合でもカウンターの対象となります。
-		ai := AIComponent.Get(result.TargetEntry)
+		ai := component.AIComponent.Get(result.TargetEntry)
 		ai.TargetHistory.LastAttacker = result.ActingEntry
 		log.Printf(
 			"履歴更新 (Counter): %s が %s から攻撃されたことを記録しました。",
-			SettingsComponent.Get(result.TargetEntry).Name,
-			SettingsComponent.Get(result.ActingEntry).Name,
+			component.SettingsComponent.Get(result.TargetEntry).Name,
+			component.SettingsComponent.Get(result.ActingEntry).Name,
 		)
 	}
 

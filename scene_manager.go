@@ -3,17 +3,19 @@ package main
 import (
 	"log"
 
+	"medarot-ebiten/data"
+
 	"github.com/noppikinatta/bamenn"
 )
 
 // SceneManagerはbamennのシーケンスと共有リソースを管理します
 type SceneManager struct {
 	sequence  *bamenn.Sequence
-	resources *SharedResources
+	resources *data.SharedResources
 }
 
 // NewSceneManagerは新しいシーンマネージャを作成し、初期シーンを設定します
-func NewSceneManager(res *SharedResources) *SceneManager {
+func NewSceneManager(res *data.SharedResources) *SceneManager {
 	m := &SceneManager{
 		resources: res,
 	}

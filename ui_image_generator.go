@@ -4,6 +4,8 @@ import (
 	"image/color"
 	"math"
 
+	"medarot-ebiten/data"
+
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -12,11 +14,11 @@ import (
 
 // UIImageGenerator はUIコンポーネントの画像生成ロジックをカプセル化します。
 type UIImageGenerator struct {
-	config *Config
+	config *data.Config
 }
 
 // NewUIImageGenerator は新しいUIImageGeneratorのインスタンスを作成します。
-func NewUIImageGenerator(config *Config) *UIImageGenerator {
+func NewUIImageGenerator(config *data.Config) *UIImageGenerator {
 	return &UIImageGenerator{
 		config: config,
 	}

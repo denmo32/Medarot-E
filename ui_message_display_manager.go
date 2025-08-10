@@ -1,6 +1,8 @@
 package main
 
 import (
+	"medarot-ebiten/data"
+
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -13,15 +15,15 @@ type UIMessageDisplayManager struct {
 	messageQueue        []string
 	currentMessageIndex int
 	postMessageCallback func()
-	messageManager      *MessageManager
-	config              *Config
+	messageManager      *data.MessageManager
+	config              *data.Config
 	font                text.Face
 	uiFactory           *UIFactory
 	commonUIPanel       *UIPanel // 共通のUIPanelを保持
 }
 
 // NewUIMessageDisplayManager は新しいUIMessageDisplayManagerのインスタンスを作成します。
-func NewUIMessageDisplayManager(messageManager *MessageManager, config *Config, font text.Face, uiFactory *UIFactory, commonUIPanel *UIPanel) *UIMessageDisplayManager {
+func NewUIMessageDisplayManager(messageManager *data.MessageManager, config *data.Config, font text.Face, uiFactory *UIFactory, commonUIPanel *UIPanel) *UIMessageDisplayManager {
 	return &UIMessageDisplayManager{
 		messageQueue:   make([]string, 0),
 		messageManager: messageManager,

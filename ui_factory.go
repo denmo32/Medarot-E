@@ -1,22 +1,24 @@
 package main
 
 import (
+	"medarot-ebiten/data"
+
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 // UIFactory はUIコンポーネントの生成とスタイリングを一元的に管理します。
 type UIFactory struct {
-	Config            *Config
+	Config            *data.Config
 	Font              text.Face // 通常のフォント
 	ModalButtonFont   text.Face // モーダルボタン用フォント
 	MessageWindowFont text.Face // メッセージウィンドウ用フォント
-	MessageManager    *MessageManager
+	MessageManager    *data.MessageManager
 	imageGenerator    *UIImageGenerator
 }
 
 // NewUIFactory は新しいUIFactoryのインスタンスを作成します。
-func NewUIFactory(config *Config, font text.Face, modalButtonFont text.Face, messageWindowFont text.Face, messageManager *MessageManager) *UIFactory {
+func NewUIFactory(config *data.Config, font text.Face, modalButtonFont text.Face, messageWindowFont text.Face, messageManager *data.MessageManager) *UIFactory {
 	return &UIFactory{
 		Config:            config,
 		Font:              font,

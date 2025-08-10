@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -26,7 +27,7 @@ func (h *BaseAttackHandler) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *Config,
+	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
@@ -40,7 +41,7 @@ func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *core.Part
 	return component.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   false, // 初期値はfalse
-		AttackerName:   SettingsComponent.Get(actingEntry).Name,
+		AttackerName:   component.SettingsComponent.Get(actingEntry).Name,
 		ActionName:     actingPartDef.PartName,
 		ActionTrait:    actingPartDef.Trait,
 		ActionCategory: actingPartDef.Category,
@@ -57,7 +58,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *Config,
+	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
@@ -70,7 +71,7 @@ func (h *BaseAttackHandler) performAttackLogic(
 
 	result.TargetEntry = targetEntry
 	result.TargetPartSlot = targetPartSlot
-	result.DefenderName = SettingsComponent.Get(targetEntry).Name
+	result.DefenderName = component.SettingsComponent.Get(targetEntry).Name
 	result.ActionDidHit = true // ターゲットが見つかったので、初期値をtrueに設定
 
 	if !validateTarget(targetEntry, targetPartSlot) {
@@ -98,10 +99,10 @@ func (h *BaseAttackHandler) performAttackLogic(
 // --- attack action helpers ---
 
 func validateTarget(targetEntry *donburi.Entry, targetPartSlot core.PartSlotKey) bool {
-	if StateComponent.Get(targetEntry).CurrentState == core.StateBroken {
+	if component.StateComponent.Get(targetEntry).CurrentState == core.StateBroken {
 		return false
 	}
-	targetParts := PartsComponent.Get(targetEntry)
+	targetParts := component.PartsComponent.Get(targetEntry)
 	if targetParts.Map[targetPartSlot] == nil || targetParts.Map[targetPartSlot].IsBroken {
 		return false
 	}
@@ -138,7 +139,7 @@ func applyDamageAndDefense(
 		// result.TargetPartBroken はPostActionEffectSystemで設定される
 	} else {
 		result.ActionIsDefended = false
-		intendedTargetPartInstance := PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
+		intendedTargetPartInstance := component.PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
 		result.DamageDealt = result.OriginalDamage
 		result.ActualHitPartSlot = result.TargetPartSlot
 
@@ -150,7 +151,7 @@ func applyDamageAndDefense(
 }
 
 func finalizeActionResult(result *component.ActionResult, partInfoProvider PartInfoProviderInterface) {
-	actualHitPartInst := PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
+	actualHitPartInst := component.PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
 	actualHitPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(actualHitPartInst.DefinitionID)
 
 	result.TargetPartType = string(actualHitPartDef.Type)
@@ -164,7 +165,7 @@ func resolveAttackTarget(
 	partInfoProvider PartInfoProviderInterface,
 	rand *rand.Rand,
 ) (targetEntry *donburi.Entry, targetPartSlot core.PartSlotKey) {
-	targetComp := TargetComponent.Get(actingEntry)
+	targetComp := component.TargetComponent.Get(actingEntry)
 	switch targetComp.Policy {
 	case core.PolicyPreselected:
 		if targetComp.TargetEntity == 0 { // nil から 0 に変更
@@ -209,11 +210,11 @@ func (h *SupportTraitExecutor) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *Config,
+	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
-	settings := SettingsComponent.Get(actingEntry)
+	settings := component.SettingsComponent.Get(actingEntry)
 	result := component.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   true,
@@ -224,13 +225,13 @@ func (h *SupportTraitExecutor) Execute(
 		WeaponType:     actingPartDef.WeaponType,
 	}
 
-	teamBuffsEntry, ok := query.NewQuery(filter.Contains(TeamBuffsComponent)).First(world)
+	teamBuffsEntry, ok := query.NewQuery(filter.Contains(component.TeamBuffsComponent)).First(world)
 	if !ok {
 		log.Println("エラー: TeamBuffsComponent がワールドに見つかりません。")
 		result.ActionDidHit = false
 		return result
 	}
-	teamBuffs := TeamBuffsComponent.Get(teamBuffsEntry)
+	teamBuffs := component.TeamBuffsComponent.Get(teamBuffsEntry)
 
 	buffValue := 1.0 + (float64(actingPartDef.Power) / 100.0)
 	newBuffSource := &component.BuffSource{
@@ -273,11 +274,11 @@ func (h *ObstructTraitExecutor) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *Config,
+	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
-	settings := SettingsComponent.Get(actingEntry)
+	settings := component.SettingsComponent.Get(actingEntry)
 	result := component.ActionResult{
 		ActingEntry:    actingEntry,
 		ActionDidHit:   true,
@@ -287,7 +288,7 @@ func (h *ObstructTraitExecutor) Execute(
 		ActionCategory: actingPartDef.Category,
 		WeaponType:     actingPartDef.WeaponType,
 	}
-	targetComp := TargetComponent.Get(actingEntry)
+	targetComp := component.TargetComponent.Get(actingEntry)
 	if targetComp.TargetEntity == 0 { // nil から 0 に変更
 		log.Printf("%s は妨害ターゲットが未選択です。", settings.Name)
 		result.ActionDidHit = false
@@ -301,7 +302,7 @@ func (h *ObstructTraitExecutor) Execute(
 		return result
 	}
 	result.TargetEntry = targetEntry
-	result.DefenderName = SettingsComponent.Get(targetEntry).Name
+	result.DefenderName = component.SettingsComponent.Get(targetEntry).Name
 
 	log.Printf("%s が %s に妨害を実行しました（現在効果なし）。", settings.Name, result.DefenderName)
 	return result

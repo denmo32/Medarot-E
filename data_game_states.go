@@ -6,7 +6,9 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -19,8 +21,8 @@ import (
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 type BattleContext struct {
 	World                  donburi.World
-	Config                 *Config
-	GameDataManager        *GameDataManager
+	Config                 *data.Config
+	GameDataManager        *data.GameDataManager
 	Rand                   *rand.Rand
 	Tick                   int
 	ViewModelFactory       ViewModelFactory
@@ -59,7 +61,7 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]event.GameEvent, erro
 	UpdateAIInputSystem(ctx.World, ctx.BattleLogic)
 
 	// アクション実行キューをチェック
-	actionQueueComp := GetActionQueueComponent(ctx.World)
+	actionQueueComp := entity.GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) > 0 {
 		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateActionExecution})
 		return gameEvents, nil
@@ -93,14 +95,14 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 
 	var gameEvents []event.GameEvent
 
-	playerActionQueue := GetPlayerActionQueueComponent(ctx.World)
+	playerActionQueue := entity.GetPlayerActionQueueComponent(ctx.World)
 
 	// 待機中のプレイヤーがいるかチェック
 	if len(playerActionQueue.Queue) > 0 {
 		actingEntry := playerActionQueue.Queue[0]
 
 		// 有効で待機状態ならモーダルを表示
-		if actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState == core.StateIdle {
+		if actingEntry.Valid() && component.StateComponent.Get(actingEntry).CurrentState == core.StateIdle {
 			actionTargetMap := make(map[core.PartSlotKey]component.ActionTarget)
 			// ViewModelFactoryを介して利用可能なパーツを取得
 			availableParts := viewModelFactory.GetAvailableAttackParts(actingEntry)
@@ -110,7 +112,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 				var targetEntity *donburi.Entry
 				var targetPartSlot core.PartSlotKey
 				if partDef.Category == core.CategoryRanged || partDef.Category == core.CategoryIntervention {
-					medal := MedalComponent.Get(actingEntry)
+					medal := component.MedalComponent.Get(actingEntry)
 					personality, ok := PersonalityRegistry[medal.Personality]
 					if !ok {
 						personality = PersonalityRegistry["リーダー"]
@@ -177,7 +179,7 @@ func (s *ActionExecutionState) Update(ctx *BattleContext) ([]event.GameEvent, er
 	}
 
 	// キューが空になったらゲージ進行に戻る
-	actionQueueComp := GetActionQueueComponent(ctx.World)
+	actionQueueComp := entity.GetActionQueueComponent(ctx.World)
 	if len(actionQueueComp.Queue) == 0 {
 		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateGaugeProgress})
 	}
@@ -206,20 +208,20 @@ type PostActionState struct{}
 func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	var gameEvents []event.GameEvent
 
-	lastActionResultEntry, ok := query.NewQuery(filter.Contains(LastActionResultComponent)).First(ctx.World)
+	lastActionResultEntry, ok := query.NewQuery(filter.Contains(component.LastActionResultComponent)).First(ctx.World)
 	if !ok {
 		log.Panicln("LastActionResultComponent がワールドに見つかりません。")
 	}
-	result := LastActionResultComponent.Get(lastActionResultEntry)
+	result := component.LastActionResultComponent.Get(lastActionResultEntry)
 
 	// クールダウン開始
 	actingEntry := result.ActingEntry
-	if actingEntry != nil && actingEntry.Valid() && StateComponent.Get(actingEntry).CurrentState != core.StateBroken {
+	if actingEntry != nil && actingEntry.Valid() && component.StateComponent.Get(actingEntry).CurrentState != core.StateBroken {
 		StartCooldownSystem(actingEntry, ctx.World, ctx.BattleLogic.GetPartInfoProvider())
 	}
 
 	// メッセージ生成とエンキュー
-	ctx.MessageManager.EnqueueMessageQueue(buildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() {
+	ctx.MessageManager.EnqueueMessageQueue(data.BuildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() {
 		UpdateHistorySystem(ctx.World, result)
 	})
 

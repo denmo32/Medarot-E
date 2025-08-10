@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/image"
@@ -17,7 +18,7 @@ import (
 
 // CustomizeScene は機体カスタマイズ画面のシーンです
 type CustomizeScene struct {
-	resources *SharedResources
+	resources *data.SharedResources
 	manager   *SceneManager // bamennのシーンマネージャ
 	ui        *ebitenui.UI
 
@@ -45,7 +46,7 @@ type CustomizeScene struct {
 	currentLegsIndex  int
 }
 
-func NewCustomizeScene(res *SharedResources, manager *SceneManager) *CustomizeScene {
+func NewCustomizeScene(res *data.SharedResources, manager *SceneManager) *CustomizeScene {
 	cs := &CustomizeScene{
 		resources: res,
 		manager:   manager,

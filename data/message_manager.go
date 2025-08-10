@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	"encoding/json"
@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"medarot-ebiten/core"
-
-	resource "github.com/quasilyte/ebitengine-resource" // resource パッケージを追加
 )
 
 var placeholderRegex = regexp.MustCompile(`{(\w+)}`)
@@ -17,14 +15,12 @@ var placeholderRegex = regexp.MustCompile(`{(\w+)}`)
 // MessageManager handles loading and retrieving formatted messages.
 type MessageManager struct {
 	messages map[string]string
-	loader   *resource.Loader // resource.Loader を追加
 }
 
 // NewMessageManager creates and initializes a new MessageManager.
-func NewMessageManager(filePath string, loader *resource.Loader) (*MessageManager, error) {
+func NewMessageManager(filePath string) (*MessageManager, error) {
 	mm := &MessageManager{
 		messages: make(map[string]string),
-		loader:   loader, // loader を設定
 	}
 	err := mm.LoadMessages(filePath)
 	if err != nil {
@@ -37,7 +33,7 @@ func NewMessageManager(filePath string, loader *resource.Loader) (*MessageManage
 func (mm *MessageManager) LoadMessages(filePath string) error {
 	// resource loader を使用してメッセージデータをロード
 	// filePath は assetPaths.Messages から来るので、RawMessagesJSON を使用
-	res := mm.loader.LoadRaw(RawMessagesJSON)
+	res := r.LoadRaw(RawMessagesJSON)
 	if res.Data == nil { // res.Data が nil かどうかでチェック
 		return fmt.Errorf("could not load message resource %s: data is nil", filePath)
 	}

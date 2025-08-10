@@ -1,6 +1,7 @@
 package main
 
 import (
+	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
 	"github.com/yohamta/donburi"
@@ -11,8 +12,8 @@ import (
 // UpdateInfoPanelViewModelSystem は、すべてのメダロットエンティティからInfoPanelViewModelを構築し、BattleUIStateComponentに格納します。
 func UpdateInfoPanelViewModelSystem(battleUIState *ui.BattleUIState, world donburi.World, partInfoProvider PartInfoProviderInterface, factory ViewModelFactory) {
 
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
-		settings := SettingsComponent.Get(entry)
+	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+		settings := component.SettingsComponent.Get(entry)
 		battleUIState.InfoPanels[settings.ID] = factory.BuildInfoPanelViewModel(entry, partInfoProvider)
 	})
 }

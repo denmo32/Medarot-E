@@ -3,6 +3,8 @@ package main
 import (
 	"image/color"
 
+	"medarot-ebiten/data"
+
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -11,13 +13,13 @@ import (
 
 // PlaceholderScene は「未実装」などを表示するための汎用シーンです
 type PlaceholderScene struct {
-	resources *SharedResources
+	resources *data.SharedResources
 	manager   *SceneManager // bamennのシーンマネージャ
 	ui        *ebitenui.UI
 }
 
 // NewPlaceholderScene は新しいプレースホルダーシーンを作成します
-func NewPlaceholderScene(res *SharedResources, manager *SceneManager, message string) *PlaceholderScene {
+func NewPlaceholderScene(res *data.SharedResources, manager *SceneManager, message string) *PlaceholderScene {
 	p := &PlaceholderScene{
 		resources: res,
 		manager:   manager,

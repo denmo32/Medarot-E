@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -29,12 +30,12 @@ func (s *StatusEffectSystem) Apply(entry *donburi.Entry, effectData interface{},
 	// log.Printf("Applying effect to %s", SettingsComponent.Get(entry).Name) // Description()がなくなったため汎用的なログに
 
 	// 効果の持続時間を管理するコンポーネントを追加
-	if !entry.HasComponent(ActiveEffectsComponent) {
-		donburi.Add(entry, ActiveEffectsComponent, &core.ActiveEffects{
+	if !entry.HasComponent(component.ActiveEffectsComponent) {
+		donburi.Add(entry, component.ActiveEffectsComponent, &core.ActiveEffects{
 			Effects: make([]*core.ActiveStatusEffectData, 0),
 		})
 	}
-	activeEffects := ActiveEffectsComponent.Get(entry)
+	activeEffects := component.ActiveEffectsComponent.Get(entry)
 	activeEffects.Effects = append(activeEffects.Effects, &core.ActiveStatusEffectData{
 		EffectData:   effectData,
 		RemainingDur: duration,
@@ -45,8 +46,8 @@ func (s *StatusEffectSystem) Apply(entry *donburi.Entry, effectData interface{},
 func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effectData interface{}) {
 	// log.Printf("Removing effect from %s", SettingsComponent.Get(entry).Name) // Description()がなくなったため汎用的なログに
 
-	if entry.HasComponent(ActiveEffectsComponent) {
-		activeEffects := ActiveEffectsComponent.Get(entry)
+	if entry.HasComponent(component.ActiveEffectsComponent) {
+		activeEffects := component.ActiveEffectsComponent.Get(entry)
 		newEffects := make([]*core.ActiveStatusEffectData, 0)
 		for _, activeEffect := range activeEffects.Effects {
 			if activeEffect.EffectData != effectData {
@@ -59,8 +60,8 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effectData interface{}
 
 // Update は毎フレーム呼び出され、効果の持続時間を更新し、期限切れの効果を削除します。
 func (s *StatusEffectSystem) Update() {
-	query.NewQuery(filter.Contains(ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
-		activeEffects := ActiveEffectsComponent.Get(entry)
+	query.NewQuery(filter.Contains(component.ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
+		activeEffects := component.ActiveEffectsComponent.Get(entry)
 		effectsToRemove := make([]*core.ActiveStatusEffectData, 0)
 
 		for _, effectData := range activeEffects.Effects {
@@ -78,7 +79,7 @@ func (s *StatusEffectSystem) Update() {
 					// ここでは簡略化のため、直接ダメージを適用するロジックを記述
 					// 実際のゲームでは、BattleDamageCalculatorの適切なメソッドを呼び出すか、
 					// ダメージ適用ロジックをStatusEffectSystemに持たせるべきです。
-					targetParts := PartsComponent.Get(entry)
+					targetParts := component.PartsComponent.Get(entry)
 					if targetParts != nil && len(targetParts.Map) > 0 {
 						// 適当なパーツにダメージを適用する例
 						for _, partInst := range targetParts.Map {
@@ -86,11 +87,11 @@ func (s *StatusEffectSystem) Update() {
 							if partInst.CurrentArmor < 0 {
 								partInst.CurrentArmor = 0
 							}
-							log.Printf("%s のパーツに継続ダメージ %d を与えた。残りアーマー: %d", SettingsComponent.Get(entry).Name, effect.DamagePerTurn, partInst.CurrentArmor)
+							log.Printf("%s のパーツに継続ダメージ %d を与えた。残りアーマー: %d", component.SettingsComponent.Get(entry).Name, effect.DamagePerTurn, partInst.CurrentArmor)
 							break // 最初のパーツにダメージを与えたら終了
 						}
 					}
-					log.Printf("%s は継続ダメージ %d を受けた。", SettingsComponent.Get(entry).Name, effect.DamagePerTurn)
+					log.Printf("%s は継続ダメージ %d を受けた。", component.SettingsComponent.Get(entry).Name, effect.DamagePerTurn)
 				}
 			case *core.ChargeStopEffectData:
 				// チャージ停止効果はChargeInitiationSystemで処理されるため、ここでは何もしない

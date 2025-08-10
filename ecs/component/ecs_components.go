@@ -1,8 +1,7 @@
-package main
+package component
 
 import (
 	"medarot-ebiten/core"
-	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -19,16 +18,16 @@ var (
 
 	// --- Action Components ---
 	ActionIntentComponent = donburi.NewComponentType[core.ActionIntent]()
-	TargetComponent       = donburi.NewComponentType[component.Target]()
+	TargetComponent       = donburi.NewComponentType[Target]()
 
 	// --- State Components ---
 	StateComponent = donburi.NewComponentType[core.State]()
 
 	// --- AI Components ---
-	AIComponent = donburi.NewComponentType[component.AI]()
+	AIComponent = donburi.NewComponentType[AI]()
 
 	// --- Team Buff Component ---
-	TeamBuffsComponent = donburi.NewComponentType[component.TeamBuffs]()
+	TeamBuffsComponent = donburi.NewComponentType[TeamBuffs]()
 
 	// --- Status Effect Component ---
 	ActiveEffectsComponent = donburi.NewComponentType[core.ActiveEffects]()
@@ -40,11 +39,14 @@ var (
 	GameStateComponent = donburi.NewComponentType[core.GameStateData]()
 
 	// --- Player Action Queue Component ---
-	PlayerActionQueueComponent = donburi.NewComponentType[component.PlayerActionQueueComponentData]()
+	PlayerActionQueueComponent = donburi.NewComponentType[PlayerActionQueueComponentData]()
+
+	// --- Battle Action Queue Component ---
+	ActionQueueComponentType = donburi.NewComponentType[ActionQueueComponentData]()
 
 	// --- Last Action Result Component ---
-	LastActionResultComponent = donburi.NewComponentType[component.ActionResult]()
+	LastActionResultComponent = donburi.NewComponentType[ActionResult]()
 )
 
 // worldStateTag はワールド状態エンティティを識別するためのタグコンポーネントです。
-var worldStateTag = donburi.NewComponentType[struct{}]()
+var WorldStateTag = donburi.NewComponentType[struct{}]()

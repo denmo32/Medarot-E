@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -15,14 +16,14 @@ import (
 // UIInterface はUIの描画とイベント処理に必要なメソッドを定義します。
 type UIInterface interface {
 	Update(tick int)
-	Draw(screen *ebiten.Image, tick int, gameDataManager *GameDataManager)
+	Draw(screen *ebiten.Image, tick int, gameDataManager *data.GameDataManager)
 	DrawBackground(screen *ebiten.Image)
 	GetRootContainer() *widget.Container
 	SetAnimation(anim *component.ActionAnimationData)
 	ClearAnimation()
 	ShowActionModal(vm ui.ActionModalViewModel)
 	HideActionModal()
-	SetBattleUIState(battleUIState *ui.BattleUIState, config *Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
+	SetBattleUIState(battleUIState *ui.BattleUIState, config *data.Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
 	PostEvent(event UIEvent)
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool

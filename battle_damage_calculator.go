@@ -6,6 +6,8 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
+	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
 )
@@ -13,15 +15,15 @@ import (
 // DamageCalculator はダメージ計算に関連するロジックを担当します。
 type DamageCalculator struct {
 	world            donburi.World
-	config           *Config
+	config           *data.Config
 	partInfoProvider PartInfoProviderInterface
-	gameDataManager  *GameDataManager
+	gameDataManager  *data.GameDataManager
 	rand             *rand.Rand
 	logger           BattleLogger // 追加
 }
 
 // NewDamageCalculator は新しい DamageCalculator のインスタンスを生成します。
-func NewDamageCalculator(world donburi.World, config *Config, pip PartInfoProviderInterface, gdm *GameDataManager, r *rand.Rand, logger BattleLogger) *DamageCalculator {
+func NewDamageCalculator(world donburi.World, config *data.Config, pip PartInfoProviderInterface, gdm *data.GameDataManager, r *rand.Rand, logger BattleLogger) *DamageCalculator {
 	return &DamageCalculator{world: world, config: config, partInfoProvider: pip, gameDataManager: gdm, rand: r, logger: logger}
 }
 
@@ -60,7 +62,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 
 	if dc.rand.Intn(100) < int(criticalChance) {
 		isCritical = true
-		dc.logger.LogCriticalHit(SettingsComponent.Get(attacker).Name, criticalChance)
+		dc.logger.LogCriticalHit(component.SettingsComponent.Get(attacker).Name, criticalChance)
 		// クリティカル時は回避度を0にする
 		evasion = 0
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"medarot-ebiten/data"
 
 	"github.com/yohamta/donburi"
 )
@@ -42,8 +43,8 @@ func (bl *BattleLogic) GetChargeInitiationSystem() *ChargeInitiationSystem {
 }
 
 // NewBattleLogic は BattleLogic とそのすべての依存ヘルパーを初期化します。
-func NewBattleLogic(world donburi.World, config *Config, gameDataManager *GameDataManager, rng *rand.Rand) *BattleLogic {
-	logger := NewBattleLogger(gameDataManager) // BattleLoggerを初期化
+func NewBattleLogic(world donburi.World, config *data.Config, gameDataManager *data.GameDataManager, rng *rand.Rand) *BattleLogic {
+	logger := data.NewBattleLogger(gameDataManager) // BattleLoggerを初期化
 	partInfoProvider := NewPartInfoProvider(world, config, gameDataManager)
 	damageCalculator := NewDamageCalculator(world, config, partInfoProvider, gameDataManager, rng, logger)
 	hitCalculator := NewHitCalculator(world, config, partInfoProvider, rng, logger)

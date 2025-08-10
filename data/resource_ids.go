@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	resource "github.com/quasilyte/ebitengine-resource"
@@ -8,8 +8,8 @@ import (
 const (
 	_ resource.FontID = iota
 	FontMPLUS1pRegular
-	FontModalButton   // 追加
-	FontMessageWindow // 追加
+	FontModalButton
+	FontMessageWindow
 )
 
 const (
@@ -23,5 +23,5 @@ const (
 	RawPartsCSV
 	RawMedarotsCSV
 	RawFormulasJSON
-	RawMessagesJSON // 追加
+	RawMessagesJSON
 )

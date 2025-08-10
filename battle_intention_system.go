@@ -2,6 +2,8 @@ package main
 
 import (
 	"medarot-ebiten/core"
+	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
@@ -13,13 +15,13 @@ import (
 // このシステムは BattleScene に直接依存しません。
 // 行動が必要なプレイヤーエンティティのリストを返します。
 func UpdatePlayerInputSystem(world donburi.World) []event.GameEvent {
-	playerActionQueue := GetPlayerActionQueueComponent(world)
+	playerActionQueue := entity.GetPlayerActionQueueComponent(world)
 	var gameEvents []event.GameEvent
 
 	// キューをクリアし、現在のアイドル状態のプレイヤーエンティティを再収集
 	playerActionQueue.Queue = make([]*donburi.Entry, 0)
-	query.NewQuery(filter.Contains(PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
-		if StateComponent.Get(entry).CurrentState == core.StateIdle {
+	query.NewQuery(filter.Contains(component.PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
+		if component.StateComponent.Get(entry).CurrentState == core.StateIdle {
 			playerActionQueue.Queue = append(playerActionQueue.Queue, entry)
 		}
 	})
@@ -40,9 +42,9 @@ func UpdateAIInputSystem(
 	battleLogic *BattleLogic,
 ) {
 	query.NewQuery(
-		filter.Not(filter.Contains(PlayerControlComponent)), // プレイヤー制御ではないエンティティ
+		filter.Not(filter.Contains(component.PlayerControlComponent)), // プレイヤー制御ではないエンティティ
 	).Each(world, func(entry *donburi.Entry) {
-		if !entry.HasComponent(StateComponent) || StateComponent.Get(entry).CurrentState != core.StateIdle {
+		if !entry.HasComponent(component.StateComponent) || component.StateComponent.Get(entry).CurrentState != core.StateIdle {
 			return
 		}
 		aiSelectAction(world, entry, battleLogic)

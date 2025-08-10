@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -14,14 +15,14 @@ import (
 
 // UIAnimationDrawer はUIアニメーションの描画に特化した構造体です。
 type UIAnimationDrawer struct {
-	config           *Config
+	config           *data.Config
 	currentAnimation *component.ActionAnimationData // BattleAnimationManagerから移動
 	font             text.Face
 	eventChannel     chan UIEvent // 追加
 }
 
 // NewUIAnimationDrawer は新しいUIAnimationDrawerインスタンスを作成します。
-func NewUIAnimationDrawer(config *Config, font text.Face, eventChannel chan UIEvent) *UIAnimationDrawer {
+func NewUIAnimationDrawer(config *data.Config, font text.Face, eventChannel chan UIEvent) *UIAnimationDrawer {
 	return &UIAnimationDrawer{
 		config:       config,
 		font:         font,

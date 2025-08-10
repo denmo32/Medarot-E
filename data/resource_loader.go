@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	"bytes"
@@ -15,7 +15,9 @@ import (
 	resource "github.com/quasilyte/ebitengine-resource"
 )
 
-func initResources(audioContext *audio.Context, assetPaths *AssetPaths) {
+var r *resource.Loader
+
+func InitResources(audioContext *audio.Context, assetPaths *AssetPaths) {
 	r = resource.NewLoader(audioContext)
 
 	// In a real application, you would use something like go:embed
@@ -225,4 +227,8 @@ func LoadMedarotLoadouts() ([]core.MedarotData, error) {
 		medarots = append(medarots, medarot)
 	}
 	return medarots, nil
+}
+
+func GetImage(id resource.ImageID) resource.Image {
+	return r.LoadImage(id)
 }

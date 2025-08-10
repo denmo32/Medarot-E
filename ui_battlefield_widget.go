@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 	"medarot-ebiten/ui"
 
 	eimage "github.com/ebitenui/ebitenui/image"
@@ -18,14 +19,14 @@ import (
 // BattlefieldWidget はバトルフィールドの描画に必要なデータを保持します。
 type BattlefieldWidget struct {
 	*widget.Container
-	config       *Config
+	config       *data.Config
 	whitePixel   *ebiten.Image
 	viewModel    *ui.BattlefieldViewModel
 	bgImage      *ebiten.Image   // 背景画像を直接保持
 	customWidget *widget.Graphic // カスタム描画ウィジェット
 }
 
-func NewBattlefieldWidget(config *Config) *BattlefieldWidget {
+func NewBattlefieldWidget(config *data.Config) *BattlefieldWidget {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
@@ -35,7 +36,7 @@ func NewBattlefieldWidget(config *Config) *BattlefieldWidget {
 	}
 
 	// 背景画像を読み込み
-	bf.bgImage = r.LoadImage(ImageBattleBackground).Data
+	bf.bgImage = data.GetImage(data.ImageBattleBackground).Data
 
 	// カスタム描画用のGraphicウィジェットを作成
 	bf.customWidget = widget.NewGraphic(

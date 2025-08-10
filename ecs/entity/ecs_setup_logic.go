@@ -1,9 +1,10 @@
-package main
+package entity
 
 import (
 	"log"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data" // dataパッケージをインポート
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ui"
 
@@ -13,23 +14,23 @@ import (
 )
 
 // InitializeBattleWorld は戦闘ワールドのECSエンティティを初期化します。
-func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam core.TeamID) {
-	EnsureActionQueueEntity(world)
+func InitializeBattleWorld(world donburi.World, res *data.SharedResources, playerTeam core.TeamID) {
+	EnsureActionQueueEntity(world) // entity. を削除
 
 	// Ensure GameStateComponent entity exists
-	gameStateEntry := world.Entry(world.Create(GameStateComponent, worldStateTag))
-	GameStateComponent.SetValue(gameStateEntry, core.GameStateData{CurrentState: core.StateGaugeProgress})
+	gameStateEntry := world.Entry(world.Create(component.GameStateComponent, component.WorldStateTag))
+	component.GameStateComponent.SetValue(gameStateEntry, core.GameStateData{CurrentState: core.StateGaugeProgress})
 
 	// Ensure PlayerActionQueueComponent entity exists
-	playerActionQueueEntry := world.Entry(world.Create(PlayerActionQueueComponent, worldStateTag))
-	PlayerActionQueueComponent.SetValue(playerActionQueueEntry, component.PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
+	playerActionQueueEntry := world.Entry(world.Create(component.PlayerActionQueueComponent, component.WorldStateTag))
+	component.PlayerActionQueueComponent.SetValue(playerActionQueueEntry, component.PlayerActionQueueComponentData{Queue: make([]*donburi.Entry, 0)})
 
 	// Ensure LastActionResultComponent entity exists
-	lastActionResultEntry := world.Entry(world.Create(LastActionResultComponent, worldStateTag))
-	LastActionResultComponent.SetValue(lastActionResultEntry, component.ActionResult{})
+	lastActionResultEntry := world.Entry(world.Create(component.LastActionResultComponent, component.WorldStateTag))
+	component.LastActionResultComponent.SetValue(lastActionResultEntry, component.ActionResult{})
 
-	teamBuffsEntry := world.Entry(world.Create(TeamBuffsComponent))
-	TeamBuffsComponent.SetValue(teamBuffsEntry, component.TeamBuffs{
+	teamBuffsEntry := world.Entry(world.Create(component.TeamBuffsComponent))
+	component.TeamBuffsComponent.SetValue(teamBuffsEntry, component.TeamBuffs{
 		Buffs: make(map[core.TeamID]map[core.BuffType][]*component.BuffSource),
 	})
 
@@ -48,19 +49,19 @@ func InitializeBattleWorld(world donburi.World, res *SharedResources, playerTeam
 }
 
 // CreateMedarotEntities はゲームデータからECSのエンティティを生成します。
-func CreateMedarotEntities(world donburi.World, gameData *core.GameData, playerTeam core.TeamID, gameDataManager *GameDataManager) {
+func CreateMedarotEntities(world donburi.World, gameData *core.GameData, playerTeam core.TeamID, gameDataManager *data.GameDataManager) {
 	for _, loadout := range gameData.Medarots {
 		entry := world.Entry(world.Create(
-			SettingsComponent,
-			PartsComponent,
-			MedalComponent,
-			StateComponent,
-			GaugeComponent,
-			LogComponent,
-			ActionIntentComponent,
-			TargetComponent,
+			component.SettingsComponent,
+			component.PartsComponent,
+			component.MedalComponent,
+			component.StateComponent,
+			component.GaugeComponent,
+			component.LogComponent,
+			component.ActionIntentComponent,
+			component.TargetComponent,
 		))
-		SettingsComponent.SetValue(entry, core.Settings{
+		component.SettingsComponent.SetValue(entry, core.Settings{
 			ID:        loadout.ID,
 			Name:      loadout.Name,
 			Team:      loadout.Team,
@@ -88,24 +89,24 @@ func CreateMedarotEntities(world donburi.World, gameData *core.GameData, playerT
 				log.Fatalf("エラー: ID %s のパーツ定義が見つかりません。", partID)
 			}
 		}
-		PartsComponent.SetValue(entry, core.PartsComponentData{Map: partsInstanceMap})
+		component.PartsComponent.SetValue(entry, core.PartsComponentData{Map: partsInstanceMap})
 
 		medalDef, medalFound := gameDataManager.GetMedalDefinition(loadout.MedalID)
 		if medalFound {
-			MedalComponent.SetValue(entry, *medalDef)
+			component.MedalComponent.SetValue(entry, *medalDef)
 		} else {
 			log.Fatalf("エラー: ID %s のメダル定義が見つかりません。", loadout.MedalID)
 		}
 
-		StateComponent.SetValue(entry, core.State{CurrentState: core.StateIdle})
-		GaugeComponent.SetValue(entry, core.Gauge{})
-		LogComponent.SetValue(entry, core.Log{})
-		ActionIntentComponent.SetValue(entry, core.ActionIntent{})
-		TargetComponent.SetValue(entry, component.Target{})
+		component.StateComponent.SetValue(entry, core.State{CurrentState: core.StateIdle})
+		component.GaugeComponent.SetValue(entry, core.Gauge{})
+		component.LogComponent.SetValue(entry, core.Log{})
+		component.ActionIntentComponent.SetValue(entry, core.ActionIntent{})
+		component.TargetComponent.SetValue(entry, component.Target{})
 
 		if loadout.Team != playerTeam { // AIのみ
 
-			donburi.Add(entry, AIComponent, &component.AI{
+			donburi.Add(entry, component.AIComponent, &component.AI{
 				PersonalityID:     medalDef.Personality,
 				TargetHistory:     component.TargetHistoryData{},
 				LastActionHistory: component.LastActionHistoryData{},
@@ -113,7 +114,7 @@ func CreateMedarotEntities(world donburi.World, gameData *core.GameData, playerT
 		}
 
 		if loadout.Team == playerTeam {
-			donburi.Add(entry, PlayerControlComponent, &core.PlayerControl{})
+			donburi.Add(entry, component.PlayerControlComponent, &core.PlayerControl{})
 		}
 	}
 	log.Printf("%d体のメダロットエンティティを生成しました。", len(gameData.Medarots))
@@ -121,8 +122,8 @@ func CreateMedarotEntities(world donburi.World, gameData *core.GameData, playerT
 
 func FindLeader(world donburi.World, teamID core.TeamID) *donburi.Entry {
 	var leaderEntry *donburi.Entry
-	query.NewQuery(filter.Contains(SettingsComponent)).Each(world, func(entry *donburi.Entry) {
-		settings := SettingsComponent.Get(entry)
+	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+		settings := component.SettingsComponent.Get(entry)
 		if settings.Team == teamID && settings.IsLeader {
 			leaderEntry = entry
 		}

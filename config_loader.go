@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/data"
 )
 
 // GameSettings は game_settings.json の構造を定義します。
@@ -116,10 +117,10 @@ type GameSettings struct {
 	}
 }
 
-func LoadConfig() Config {
+func LoadConfig() data.Config {
 	// game_settings.json から設定をロード
 	var gameSettings GameSettings
-	assetPaths := AssetPaths{
+	assetPaths := data.AssetPaths{
 		GameSettings: "assets/configs/game_settings.json",
 		Messages:     "assets/texts/messages.json",
 		MedalsCSV:    "assets/databases/medals.csv",
@@ -139,8 +140,8 @@ func LoadConfig() Config {
 		log.Fatalf("Error unmarshalling game_settings.json: %v", err)
 	}
 
-	cfg := Config{
-		Balance: BalanceConfig{
+	cfg := data.Config{
+		Balance: data.BalanceConfig{
 			Time:             gameSettings.Time,
 			HPAnimationSpeed: gameSettings.HPAnimationSpeed,
 			Factors:          gameSettings.Factors,
@@ -151,7 +152,7 @@ func LoadConfig() Config {
 			Formulas:         gameSettings.Formulas,
 		},
 		AssetPaths: assetPaths,
-		UI: UIConfig{
+		UI: data.UIConfig{
 			Screen: struct {
 				Width  int
 				Height int
