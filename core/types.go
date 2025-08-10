@@ -1,5 +1,9 @@
 package core
 
+// 依存関係の最も基礎となる定義を集約します。
+// このファイルは、特定ライブラリに依存することを禁止します。
+// 肥大化が進んだ場合、用途別にファイルを分割することを検討します。
+
 // --- Enums and Constants ---
 
 type TeamID int
@@ -114,6 +118,12 @@ type GameEndResult struct {
 	IsGameOver bool
 	Winner     TeamID
 	Message    string
+}
+
+// AvailablePart now holds PartDefinition for AI/UI to see base stats.
+type AvailablePart struct {
+	PartDef *PartDefinition
+	Slot    PartSlotKey
 }
 
 // MessageTemplate defines the structure for a single message in the JSON file.

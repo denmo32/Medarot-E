@@ -20,7 +20,7 @@ type ViewModelFactory interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry, partInfoProvider PartInfoProviderInterface) ui.InfoPanelViewModel
 	BuildBattlefieldViewModel(world donburi.World, battleUIState *ui.BattleUIState, partInfoProvider PartInfoProviderInterface, config *Config, battlefieldRect image.Rectangle) ui.BattlefieldViewModel
 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]component.ActionTarget, partInfoProvider PartInfoProviderInterface, gameDataManager *GameDataManager) ui.ActionModalViewModel
-	GetAvailableAttackParts(entry *donburi.Entry) []component.AvailablePart
+	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
 	IsActionModalVisible() bool
 }
 
@@ -193,7 +193,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 		// このエラーは通常、呼び出し元でエンティティの有効性を確認すべきですが、念のため
 		// log.Println("エラー: BuildActionModalViewModel - actingEntry に PartsComponent がありません。")
 	} else {
-		var displayableParts []component.AvailablePart
+		var displayableParts []core.AvailablePart
 		for slotKey, partInst := range partsComp.Map {
 			partDef, defFound := gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
@@ -201,7 +201,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 			}
 			// actionTargetMap に含まれるパーツのみを対象とする（行動可能なパーツ）
 			if _, ok := actionTargetMap[slotKey]; ok {
-				displayableParts = append(displayableParts, component.AvailablePart{PartDef: partDef, Slot: slotKey})
+				displayableParts = append(displayableParts, core.AvailablePart{PartDef: partDef, Slot: slotKey})
 			}
 		}
 
@@ -226,7 +226,7 @@ func (f *viewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 }
 
 // GetAvailableAttackParts は、指定されたエンティティが利用可能な攻撃パーツのリストを返します。
-func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []component.AvailablePart {
+func (f *viewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart {
 	return f.partInfoProvider.GetAvailableAttackParts(entry)
 }
 

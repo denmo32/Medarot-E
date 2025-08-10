@@ -84,12 +84,12 @@ func (pip *PartInfoProvider) FindPartSlot(entry *donburi.Entry, partToFindInstan
 }
 
 // GetAvailableAttackParts は攻撃に使用可能なパーツの定義リストを返します。
-func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []component.AvailablePart {
+func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart {
 	partsComp := PartsComponent.Get(entry)
 	if partsComp == nil {
 		return nil
 	}
-	var availableParts []component.AvailablePart
+	var availableParts []core.AvailablePart
 	slotsToConsider := []core.PartSlotKey{core.PartSlotHead, core.PartSlotRightArm, core.PartSlotLeftArm}
 
 	for _, slot := range slotsToConsider {
@@ -104,7 +104,7 @@ func (pip *PartInfoProvider) GetAvailableAttackParts(entry *donburi.Entry) []com
 		}
 
 		if partDef.Category == core.CategoryRanged || partDef.Category == core.CategoryMelee || partDef.Category == core.CategoryIntervention {
-			availableParts = append(availableParts, component.AvailablePart{PartDef: partDef, Slot: slot})
+			availableParts = append(availableParts, core.AvailablePart{PartDef: partDef, Slot: slot})
 		}
 	}
 	return availableParts

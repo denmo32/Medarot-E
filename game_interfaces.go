@@ -61,7 +61,7 @@ type PartInfoProviderInterface interface {
 	FindPartSlot(entry *donburi.Entry, partToFindInstance *core.PartInstanceData) core.PartSlotKey
 
 	// 利用可能な攻撃パーツを取得するメソッド
-	GetAvailableAttackParts(entry *donburi.Entry) []component.AvailablePart
+	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
 
 	// 全体的な推進力と機動力を取得するメソッド
 	GetOverallPropulsion(entry *donburi.Entry) int

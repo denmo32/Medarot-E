@@ -1,16 +1,15 @@
 package component
 
+// ECSのCに相当するコンポーネント定義を集約します。
+// coreパッケージ及びdonburiライブラリへの依存を想定しています。
+
 import (
 	"medarot-ebiten/core"
 
 	"github.com/yohamta/donburi"
 )
 
-// AvailablePart now holds PartDefinition for AI/UI to see base stats.
-type AvailablePart struct {
-	PartDef *core.PartDefinition
-	Slot    core.PartSlotKey
-}
+
 
 // TargetablePart はAIがターゲット可能なパーツの情報を保持します。
 type TargetablePart struct {
