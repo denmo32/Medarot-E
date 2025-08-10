@@ -7,7 +7,8 @@ import (
 	"os"
 
 	"medarot-ebiten/core"
-	"medarot-ebiten/data" // dataパッケージをインポート
+	"medarot-ebiten/data"
+	"medarot-ebiten/ui"
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -64,7 +65,7 @@ func main() {
 	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色
 
 	// シーンマネージャを作成
-	manager := NewSceneManager(&data.SharedResources{
+	manager := ui.NewSceneManager(&data.SharedResources{
 		GameData: &core.GameData{
 			Medarots: medarotLoadouts,
 		},
@@ -87,7 +88,7 @@ func main() {
 	ebiten.SetWindowTitle("Ebiten Medarot Battle (bamenn)")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 
-	if err := ebiten.RunGame(manager.sequence); err != nil {
+	if err := ebiten.RunGame(manager.Sequence); err != nil { // manager.sequence を manager.Sequence に変更
 		log.Fatal(err)
 	}
 }

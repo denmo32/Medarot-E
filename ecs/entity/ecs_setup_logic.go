@@ -6,7 +6,6 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data" // dataパッケージをインポート
 	"medarot-ebiten/ecs/component"
-	"medarot-ebiten/ui"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -33,17 +32,6 @@ func InitializeBattleWorld(world donburi.World, res *data.SharedResources, playe
 	component.TeamBuffsComponent.SetValue(teamBuffsEntry, component.TeamBuffs{
 		Buffs: make(map[core.TeamID]map[core.BuffType][]*component.BuffSource),
 	})
-
-	// Initialize BattleUIStateComponent
-	battleUIStateEntry := world.Entry(world.Create(ui.BattleUIStateComponent))
-	if battleUIStateEntry.Valid() {
-		ui.BattleUIStateComponent.SetValue(battleUIStateEntry, ui.BattleUIState{
-			InfoPanels: make(map[string]ui.InfoPanelViewModel),
-		})
-		log.Println("BattleUIStateComponent successfully created and initialized.")
-	} else {
-		log.Println("ERROR: Failed to create BattleUIStateComponent entry.")
-	}
 
 	CreateMedarotEntities(world, res.GameData, playerTeam, res.GameDataManager)
 }

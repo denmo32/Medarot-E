@@ -9,20 +9,12 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-
-
 // TargetablePart はAIがターゲット可能なパーツの情報を保持します。
 type TargetablePart struct {
 	Entity   *donburi.Entry
 	PartInst *core.PartInstanceData
 	PartDef  *core.PartDefinition
 	Slot     core.PartSlotKey
-}
-
-// ActionTarget はUIが選択したアクションのターゲット情報を保持します。
-type ActionTarget struct {
-	TargetEntityID donburi.Entity
-	Slot           core.PartSlotKey
 }
 
 // --- Component Data Structs (donburi-dependent) ---

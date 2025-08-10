@@ -1,7 +1,13 @@
 package core
 
+import (
+	"image/color"
+
+	"github.com/yohamta/donburi"
+)
+
 // 依存関係の最も基礎となる定義を集約します。
-// このファイルは、特定ライブラリに依存することを禁止します。
+// このファイルは、特定ライビラリに依存することを禁止します。
 // 肥大化が進んだ場合、用途別にファイルを分割することを検討します。
 
 // --- Enums and Constants ---
@@ -276,4 +282,67 @@ type ActionFormulaConfig struct {
 	PowerBonuses       []BonusTerm
 	CriticalRateBonus  float64
 	UserDebuffs        []DebuffEffect
+}
+
+// --- ViewModels ---
+
+// ActionModalButtonViewModel は、アクション選択モーダルのボタン一つ分のデータを保持します。
+type ActionModalButtonViewModel struct {
+	PartName          string
+	PartCategory      PartCategory
+	SlotKey           PartSlotKey
+	TargetEntityID    donburi.Entity // 射撃などのターゲットが必要な場合
+	TargetPartSlot    PartSlotKey
+	SelectedPartDefID string
+}
+
+// ActionModalViewModel は、アクション選択モーダル全体の表示に必要なデータを保持します。
+type ActionModalViewModel struct {
+	ActingMedarotName string
+	ActingEntityID    donburi.Entity // イベント発行時に必要
+	Buttons           []ActionModalButtonViewModel
+}
+
+// InfoPanelViewModel は、単一の情報パネルUIが必要とするすべてのデータを保持します。
+type InfoPanelViewModel struct {
+	ID        string         // 名前表示用としてstringに戻す
+	EntityID  donburi.Entity // アイコンとの対応付け用
+	Name      string
+	Team      TeamID
+	DrawIndex int
+	StateStr  string
+	IsLeader  bool
+	Parts     map[PartSlotKey]PartViewModel
+}
+
+// PartViewModel は、単一のパーツUIが必要とするデータを保持します。
+type PartViewModel struct {
+	PartName     string
+	PartType     PartType
+	CurrentArmor int
+	MaxArmor     int
+	IsBroken     bool
+}
+
+// BattlefieldViewModel は、バトルフィールド全体の描画に必要なデータを保持します。
+type BattlefieldViewModel struct {
+	Icons     []*IconViewModel
+	DebugMode bool
+}
+
+// IconViewModel は、個々のメダロットアイコンの描画に必要なデータを保持します。
+type IconViewModel struct {
+	EntryID       donburi.Entity // 元のdonburi.Entryを特定するためのID (uint32 から donburi.Entity に変更)
+	X, Y          float32
+	Color         color.Color
+	IsLeader      bool
+	State         StateType
+	GaugeProgress float64 // 0.0 to 1.0
+	DebugText     string
+}
+
+// ActionTarget はUIが選択したアクションのターゲット情報を保持します。
+type ActionTarget struct {
+	TargetEntityID donburi.Entity
+	Slot           PartSlotKey
 }

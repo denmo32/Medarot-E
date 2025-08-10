@@ -1,0 +1,439 @@
+package ui
+
+import (
+	"fmt"
+	"image/color"
+	"log"
+	"sort"
+	"strings"
+
+	"medarot-ebiten/core"
+	"medarot-ebiten/data"
+
+	"github.com/ebitenui/ebitenui"
+	"github.com/ebitenui/ebitenui/image"
+	"github.com/ebitenui/ebitenui/widget"
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
+// CustomizeScene は機体カスタマイズ画面のシーンです
+type CustomizeScene struct {
+	resources *data.SharedResources
+	manager   *SceneManager // bamennのシーンマネージャ
+	ui        *ebitenui.UI
+
+	statusText              *widget.Text
+	medalNameButton         *widget.Button
+	headNameButton          *widget.Button
+	rArmNameButton          *widget.Button
+	lArmNameButton          *widget.Button
+	legsNameButton          *widget.Button
+	medarotSelectionButtons []*widget.Button
+
+	playerMedarots            []*core.MedarotData
+	currentTargetMedarotIndex int
+
+	medalList     []*core.Medal
+	headPartsList []*core.PartDefinition
+	rArmPartsList []*core.PartDefinition
+	lArmPartsList []*core.PartDefinition
+	legsPartsList []*core.PartDefinition
+
+	currentMedalIndex int
+	currentHeadIndex  int
+	currentRArmIndex  int
+	currentLArmIndex  int
+	currentLegsIndex  int
+}
+
+func NewCustomizeScene(res *data.SharedResources, manager *SceneManager) *CustomizeScene {
+	cs := &CustomizeScene{
+		resources: res,
+		manager:   manager,
+	}
+
+	for i := range res.GameData.Medarots {
+		cs.playerMedarots = append(cs.playerMedarots, &res.GameData.Medarots[i])
+	}
+	sort.Slice(cs.playerMedarots, func(i, j int) bool {
+		if cs.playerMedarots[i].Team != cs.playerMedarots[j].Team {
+			return cs.playerMedarots[i].Team < cs.playerMedarots[j].Team
+		}
+		return cs.playerMedarots[i].DrawIndex < cs.playerMedarots[j].DrawIndex
+	})
+
+	if len(cs.playerMedarots) == 0 {
+		rootContainer := widget.NewContainer()
+		rootContainer.AddChild(widget.NewText(widget.TextOpts.Text("Player team not found.", cs.resources.GameDataManager.Font, color.White)))
+		cs.ui = &ebitenui.UI{Container: rootContainer}
+		return cs
+	}
+
+	cs.currentTargetMedarotIndex = 0
+	cs.setupPartLists()
+	rootContainer := cs.createLayout()
+	cs.ui = &ebitenui.UI{Container: rootContainer}
+	cs.refreshUIForSelectedMedarot()
+
+	return cs
+}
+
+func (cs *CustomizeScene) setupPartLists() {
+	cs.medalList = cs.resources.GameDataManager.GetAllMedalDefinitions()
+	sort.Slice(cs.medalList, func(i, j int) bool { return cs.medalList[i].ID < cs.medalList[j].ID })
+
+	allPartDefs := cs.resources.GameDataManager.GetAllPartDefinitions()
+	sort.Slice(allPartDefs, func(i, j int) bool { return allPartDefs[i].ID < allPartDefs[j].ID })
+
+	cs.headPartsList = []*core.PartDefinition{}
+	cs.rArmPartsList = []*core.PartDefinition{}
+	cs.lArmPartsList = []*core.PartDefinition{}
+	cs.legsPartsList = []*core.PartDefinition{}
+
+	for _, pDef := range allPartDefs {
+		switch pDef.Type {
+		case core.PartTypeHead:
+			cs.headPartsList = append(cs.headPartsList, pDef)
+		case core.PartTypeRArm:
+			cs.rArmPartsList = append(cs.rArmPartsList, pDef)
+		case core.PartTypeLArm:
+			cs.lArmPartsList = append(cs.lArmPartsList, pDef)
+		case core.PartTypeLegs:
+			cs.legsPartsList = append(cs.legsPartsList, pDef)
+		}
+	}
+}
+
+func (cs *CustomizeScene) createLayout() *widget.Container {
+	rootContainer := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(3),
+			widget.GridLayoutOpts.Stretch([]bool{false, true, false}, []bool{true}),
+			widget.GridLayoutOpts.Spacing(10, 0),
+			widget.GridLayoutOpts.Padding(widget.NewInsetsSimple(20)),
+		)),
+	)
+
+	leftPanel := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewRowLayout(
+			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
+			widget.RowLayoutOpts.Spacing(15),
+		)),
+	)
+	rootContainer.AddChild(leftPanel)
+
+	rightPanel := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewRowLayout(
+			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
+			widget.RowLayoutOpts.Padding(widget.NewInsetsSimple(15)),
+		)),
+		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.NRGBA{50, 50, 70, 200})),
+	)
+	rootContainer.AddChild(rightPanel)
+
+	cs.statusText = widget.NewText(
+		widget.TextOpts.Text("", cs.resources.GameDataManager.Font, color.White),
+	)
+	rightPanel.AddChild(cs.statusText)
+
+	medarotSelectionContainer := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewRowLayout(
+			widget.RowLayoutOpts.Spacing(10),
+		)),
+	)
+	leftPanel.AddChild(medarotSelectionContainer)
+
+	buttonImage := &widget.ButtonImage{
+		Idle:    image.NewNineSliceColor(cs.resources.Config.UI.Colors.Gray),
+		Hover:   image.NewNineSliceColor(color.NRGBA{180, 180, 180, 255}),
+		Pressed: image.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+	}
+	for i := 0; i < len(cs.playerMedarots); i++ {
+		idx := i
+		button := widget.NewButton(
+			widget.ButtonOpts.Image(buttonImage),
+			widget.ButtonOpts.Text(cs.playerMedarots[idx].Name, cs.resources.GameDataManager.Font, &widget.ButtonTextColor{Idle: color.White}),
+			widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
+			widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+				cs.selectMedarot(idx)
+			}),
+		)
+		cs.medarotSelectionButtons = append(cs.medarotSelectionButtons, button)
+		medarotSelectionContainer.AddChild(button)
+	}
+
+	cs.medalNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryMedal)
+	cs.headNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryHead)
+	cs.rArmNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryRArm)
+	cs.lArmNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryLArm)
+	cs.legsNameButton = cs.createPartSelectionRow(leftPanel, core.CustomizeCategoryLegs)
+
+	saveButton := widget.NewButton(
+		widget.ButtonOpts.Image(&widget.ButtonImage{
+			Idle:    image.NewNineSliceColor(cs.resources.Config.UI.Colors.Gray),
+			Hover:   image.NewNineSliceColor(color.NRGBA{180, 180, 180, 255}),
+			Pressed: image.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+		}),
+		widget.ButtonOpts.Text("Save & Back to Title", cs.resources.GameDataManager.Font, &widget.ButtonTextColor{Idle: color.White}),
+		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(10)),
+		widget.ButtonOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+			Position: widget.RowLayoutPositionEnd,
+		})),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			err := data.SaveMedarotLoadouts(cs.resources.Config.AssetPaths.MedarotsCSV, cs.resources.GameData.Medarots)
+			if err != nil {
+				log.Printf("ERROR: Failed to save medarots.csv: %v", err)
+			} else {
+				log.Println("Successfully saved medarots.csv")
+			}
+			cs.manager.GoToTitleScene() // マネージャ経由で遷移
+		}),
+	)
+	leftPanel.AddChild(saveButton)
+
+	return rootContainer
+}
+
+func (cs *CustomizeScene) selectMedarot(index int) {
+	if cs.currentTargetMedarotIndex == index {
+		return
+	}
+	cs.currentTargetMedarotIndex = index
+	cs.refreshUIForSelectedMedarot()
+}
+
+func (cs *CustomizeScene) refreshUIForSelectedMedarot() {
+	target := cs.playerMedarots[cs.currentTargetMedarotIndex]
+
+	cs.currentMedalIndex = findIndexByIDGeneric(cs.medalList, target.MedalID, func(m *core.Medal) string { return m.ID })
+	cs.currentHeadIndex = findIndexByIDGeneric(cs.headPartsList, target.HeadID, func(p *core.PartDefinition) string { return p.ID })
+	cs.currentRArmIndex = findIndexByIDGeneric(cs.rArmPartsList, target.RightArmID, func(p *core.PartDefinition) string { return p.ID })
+	cs.currentLArmIndex = findIndexByIDGeneric(cs.lArmPartsList, target.LeftArmID, func(p *core.PartDefinition) string { return p.ID })
+	cs.currentLegsIndex = findIndexByIDGeneric(cs.legsPartsList, target.LegsID, func(p *core.PartDefinition) string { return p.ID })
+
+	cs.medalNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryMedal)
+	cs.headNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryHead)
+	cs.rArmNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryRArm)
+	cs.lArmNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryLArm)
+	cs.legsNameButton.Text().Label = cs.getCurrentName(core.CustomizeCategoryLegs)
+
+	cs.updateStatus(target.MedalID)
+	cs.updateMedarotSelectionButtons()
+}
+
+func (cs *CustomizeScene) updateMedarotSelectionButtons() {
+	highlightedImage := &widget.ButtonImage{
+		Idle:    image.NewNineSliceColor(color.NRGBA{100, 100, 120, 255}),
+		Hover:   image.NewNineSliceColor(color.NRGBA{120, 120, 140, 255}),
+		Pressed: image.NewNineSliceColor(color.NRGBA{80, 80, 100, 255}),
+	}
+	normalImage := &widget.ButtonImage{
+		Idle:    image.NewNineSliceColor(cs.resources.Config.UI.Colors.Gray),
+		Hover:   image.NewNineSliceColor(color.NRGBA{180, 180, 180, 255}),
+		Pressed: image.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+	}
+
+	for i, button := range cs.medarotSelectionButtons {
+		if i == cs.currentTargetMedarotIndex {
+			button.Image = highlightedImage
+		} else {
+			button.Image = normalImage
+		}
+	}
+}
+
+func (cs *CustomizeScene) createPartSelectionRow(parent *widget.Container, label core.CustomizeCategory) *widget.Button {
+	res := cs.resources
+	rowContainer := widget.NewContainer(
+		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+			Stretch: true,
+		})),
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(3),
+			widget.GridLayoutOpts.Stretch([]bool{false, true, false}, []bool{true}),
+			widget.GridLayoutOpts.Spacing(10, 0),
+		)),
+	)
+	parent.AddChild(rowContainer)
+
+	buttonImage := &widget.ButtonImage{
+		Idle:    image.NewNineSliceColor(res.Config.UI.Colors.Gray),
+		Hover:   image.NewNineSliceColor(color.NRGBA{180, 180, 180, 255}),
+		Pressed: image.NewNineSliceColor(color.NRGBA{100, 100, 100, 255}),
+	}
+	textColor := &widget.ButtonTextColor{Idle: color.White}
+
+	leftButton := widget.NewButton(
+		widget.ButtonOpts.Image(buttonImage),
+		widget.ButtonOpts.Text("◀", cs.resources.GameDataManager.Font, textColor),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) { cs.changeSelection(label, -1) }),
+	)
+	rowContainer.AddChild(leftButton)
+
+	nameButton := widget.NewButton(
+		widget.ButtonOpts.Image(buttonImage),
+		widget.ButtonOpts.Text("", cs.resources.GameDataManager.Font, textColor),
+		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(5)),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			currentID := cs.getCurrentID(label)
+			cs.updateStatus(currentID)
+		}),
+	)
+	rowContainer.AddChild(nameButton)
+
+	rightButton := widget.NewButton(
+		widget.ButtonOpts.Image(buttonImage),
+		widget.ButtonOpts.Text("▶", cs.resources.GameDataManager.Font, textColor),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) { cs.changeSelection(label, 1) }),
+	)
+	rowContainer.AddChild(rightButton)
+
+	nameButton.Text().Label = cs.getCurrentName(label)
+	return nameButton
+}
+
+func (cs *CustomizeScene) changeSelection(label core.CustomizeCategory, direction int) {
+	target := cs.playerMedarots[cs.currentTargetMedarotIndex]
+	var listSize int
+	var currentIndex *int
+	var nameButton *widget.Button
+
+	switch label {
+	case core.CustomizeCategoryMedal:
+		listSize, currentIndex, nameButton = len(cs.medalList), &cs.currentMedalIndex, cs.medalNameButton
+	case core.CustomizeCategoryHead:
+		listSize, currentIndex, nameButton = len(cs.headPartsList), &cs.currentHeadIndex, cs.headNameButton
+	case core.CustomizeCategoryRArm:
+		listSize, currentIndex, nameButton = len(cs.rArmPartsList), &cs.currentRArmIndex, cs.rArmNameButton
+	case core.CustomizeCategoryLArm:
+		listSize, currentIndex, nameButton = len(cs.lArmPartsList), &cs.currentLArmIndex, cs.lArmNameButton
+	case core.CustomizeCategoryLegs:
+		listSize, currentIndex, nameButton = len(cs.legsPartsList), &cs.currentLegsIndex, cs.legsNameButton
+	}
+
+	if listSize == 0 {
+		return
+	}
+	*currentIndex = (*currentIndex + direction + listSize) % listSize
+
+	newID := cs.getCurrentID(label)
+	switch label {
+	case "Medal":
+		target.MedalID = newID
+	case "Head":
+		target.HeadID = newID
+	case "Right Arm":
+		target.RightArmID = newID
+	case "Left Arm":
+		target.LeftArmID = newID
+	case "Legs":
+		target.LegsID = newID
+	}
+
+	nameButton.Text().Label = cs.getCurrentName(label)
+	cs.updateStatus(newID)
+}
+
+func (cs *CustomizeScene) updateStatus(id string) {
+	var sb strings.Builder
+	if partDef, found := cs.resources.GameDataManager.GetPartDefinition(id); found {
+		sb.WriteString(fmt.Sprintf("Name: %s\n", partDef.PartName))
+		sb.WriteString(fmt.Sprintf("Type: %s\n", partDef.Type))
+		sb.WriteString(fmt.Sprintf("Category: %s\n", partDef.Category))
+		sb.WriteString(fmt.Sprintf("Trait: %s\n\n", partDef.Trait))
+		sb.WriteString(fmt.Sprintf("MaxArmor: %d\n", partDef.MaxArmor))
+		sb.WriteString(fmt.Sprintf("Power: %d\n", partDef.Power))
+		sb.WriteString(fmt.Sprintf("Accuracy: %d\n", partDef.Accuracy))
+		sb.WriteString(fmt.Sprintf("Charge: %d\n", partDef.Charge))
+		sb.WriteString(fmt.Sprintf("Cooldown: %d\n", partDef.Cooldown))
+		if partDef.Type == core.PartTypeLegs {
+			sb.WriteString(fmt.Sprintf("\nPropulsion: %d\n", partDef.Propulsion))
+			sb.WriteString(fmt.Sprintf("Mobility: %d\n", partDef.Mobility))
+			sb.WriteString(fmt.Sprintf("Stability: %d\n", partDef.Stability)) // Added Stability
+			sb.WriteString(fmt.Sprintf("Defense: %d\n", partDef.Defense))     // Added Defense for legs
+		}
+	} else if medal, found := cs.resources.GameDataManager.GetMedalDefinition(id); found { // Use GameDataManager
+		sb.WriteString(fmt.Sprintf("Name: %s\n", medal.Name))
+		sb.WriteString(fmt.Sprintf("Personality: %s\n\n", medal.Personality))
+		sb.WriteString(fmt.Sprintf("Skill Level: %d\n", medal.SkillLevel))
+	} else {
+		sb.WriteString("No data available.")
+	}
+	cs.statusText.Label = sb.String()
+}
+
+func (cs *CustomizeScene) Update() error {
+	cs.ui.Update()
+	return nil
+}
+
+func (cs *CustomizeScene) Draw(screen *ebiten.Image) {
+	screen.Fill(cs.resources.Config.UI.Colors.Background)
+	cs.ui.Draw(screen)
+}
+
+func (cs *CustomizeScene) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return cs.resources.Config.UI.Screen.Width, cs.resources.Config.UI.Screen.Height
+}
+
+// findIndexByIDGeneric はスライス内のインデックスを見つけるためのジェネリック関数です。
+func findIndexByIDGeneric[T any](slice []T, id string, getID func(elem T) string) int {
+	for i, v := range slice {
+		if getID(v) == id {
+			return i
+		}
+	}
+	return 0 // 見つからない場合は0（または-1が望ましい場合もあります）
+}
+
+func (cs *CustomizeScene) getCurrentID(label core.CustomizeCategory) string {
+	switch label {
+	case core.CustomizeCategoryMedal:
+		if len(cs.medalList) > 0 && cs.currentMedalIndex < len(cs.medalList) {
+			return cs.medalList[cs.currentMedalIndex].ID
+		}
+	case core.CustomizeCategoryHead:
+		if len(cs.headPartsList) > 0 && cs.currentHeadIndex < len(cs.headPartsList) {
+			return cs.headPartsList[cs.currentHeadIndex].ID
+		}
+	case core.CustomizeCategoryRArm:
+		if len(cs.rArmPartsList) > 0 && cs.currentRArmIndex < len(cs.rArmPartsList) {
+			return cs.rArmPartsList[cs.currentRArmIndex].ID
+		}
+	case core.CustomizeCategoryLArm:
+		if len(cs.lArmPartsList) > 0 && cs.currentLArmIndex < len(cs.lArmPartsList) {
+			return cs.lArmPartsList[cs.currentLArmIndex].ID
+		}
+	case core.CustomizeCategoryLegs:
+		if len(cs.legsPartsList) > 0 && cs.currentLegsIndex < len(cs.legsPartsList) {
+			return cs.legsPartsList[cs.currentLegsIndex].ID
+		}
+	}
+	return ""
+}
+
+func (cs *CustomizeScene) getCurrentName(label core.CustomizeCategory) string {
+	switch label {
+	case core.CustomizeCategoryMedal:
+		if len(cs.medalList) > 0 && cs.currentMedalIndex < len(cs.medalList) {
+			return cs.medalList[cs.currentMedalIndex].Name
+		}
+	case core.CustomizeCategoryHead:
+		if len(cs.headPartsList) > 0 && cs.currentHeadIndex < len(cs.headPartsList) {
+			return cs.headPartsList[cs.currentHeadIndex].PartName
+		}
+	case core.CustomizeCategoryRArm:
+		if len(cs.rArmPartsList) > 0 && cs.currentRArmIndex < len(cs.rArmPartsList) {
+			return cs.rArmPartsList[cs.currentRArmIndex].PartName
+		}
+	case core.CustomizeCategoryLArm:
+		if len(cs.lArmPartsList) > 0 && cs.currentLArmIndex < len(cs.lArmPartsList) {
+			return cs.lArmPartsList[cs.currentLArmIndex].PartName
+		}
+	case core.CustomizeCategoryLegs:
+		if len(cs.legsPartsList) > 0 && cs.currentLegsIndex < len(cs.legsPartsList) {
+			return cs.legsPartsList[cs.currentLegsIndex].PartName
+		}
+	}
+	return "N/A"
+}
