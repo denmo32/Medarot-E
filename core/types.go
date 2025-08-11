@@ -113,6 +113,13 @@ const (
 
 const PlayersPerTeam = 3
 
+// UI Constants
+const (
+	ButtonImageWidth  = 30
+	ButtonImageHeight = 30
+	ButtonImageBorder = 10
+)
+
 // --- Data Structures ---
 
 // GameEndResult はゲーム終了チェックの結果を保持します。

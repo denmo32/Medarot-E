@@ -1,17 +1,12 @@
 package main
 
 import (
-	"image/color"
 	"log"
-	"math/rand"
 	"os"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/scene"
-
-	"github.com/ebitenui/ebitenui/image"
-	"github.com/ebitenui/ebitenui/widget"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -58,37 +53,25 @@ func main() {
 		log.Fatalf("メダロットロードアウトの読み込みに失敗しました: %v", err)
 	}
 
-	// bamennを使ったシーンマネージャをセットアップします
 	// 共有リソースを作成
-	// ボタン用のシンプルな画像を作成
-	buttonImage := ebiten.NewImage(30, 30)                           // 適当なサイズ
-	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色
+	sharedResources := data.NewSharedResources(
+		&core.GameData{Medarots: medarotLoadouts},
+		config,
+		normalFont,
+		modalButtonFont,
+		messageWindowFont,
+		gameDataManager,
+	)
 
 	// シーンマネージャを作成
-	manager := scene.NewSceneManager(&data.SharedResources{
-		GameData: &core.GameData{
-			Medarots: medarotLoadouts,
-		},
-		Config:            config,
-		Font:              normalFont,        // 通常のフォントを渡す
-		ModalButtonFont:   modalButtonFont,   // 追加
-		MessageWindowFont: messageWindowFont, // 追加
-		GameDataManager:   gameDataManager,
-		ButtonImage: &widget.ButtonImage{
-			Idle:    image.NewNineSliceSimple(buttonImage, 10, 10),
-			Hover:   image.NewNineSliceSimple(buttonImage, 10, 10),
-			Pressed: image.NewNineSliceSimple(buttonImage, 10, 10),
-		},
-		Rand:         rand.New(rand.NewSource(config.Game.RandomSeed)),
-		BattleLogger: data.NewBattleLogger(gameDataManager),
-	})
+	manager := scene.NewSceneManager(sharedResources)
 
 	// Ebitenのゲームを実行します。渡すのはbamennのシーケンスです。
 	ebiten.SetWindowSize(config.UI.Screen.Width, config.UI.Screen.Height)
 	ebiten.SetWindowTitle("Ebiten Medarot Battle (bamenn)")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 
-	if err := ebiten.RunGame(manager.Sequence); err != nil { // manager.sequence を manager.Sequence に変更
+	if err := ebiten.RunGame(manager.Sequence); err != nil {
 		log.Fatal(err)
 	}
 }
