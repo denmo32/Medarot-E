@@ -30,8 +30,6 @@ type BattleScene struct {
 
 	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
-	// uiEventChannel         chan ui.UIEvent
-	battleUIState          *ui.BattleUIState
 	statusEffectSystem     *system.StatusEffectSystem
 	postActionEffectSystem *system.PostActionEffectSystem
 
@@ -53,8 +51,6 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 		winner:          core.TeamNone,
 		gameDataManager: res.GameDataManager,
 		rand:            res.Rand,
-		// uiEventChannel:  make(chan ui.UIEvent, 10),
-		battleUIState:   &ui.BattleUIState{},
 	}
 
 	entity.InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
@@ -64,12 +60,12 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 	bs.statusEffectSystem = system.NewStatusEffectSystem(bs.world, bs.battleLogic.GetDamageCalculator())
 	bs.postActionEffectSystem = system.NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.battleLogic.GetPartInfoProvider())
 
-	// Initialize BattleUI related components
+	// Initialize BattleUIManager, which now handles all UI components
 	bs.battleUIManager = ui.NewBattleUIManager(
 		&bs.resources.Config,
 		bs.resources,
 		bs.world,
-		*bs.battleLogic.GetPartInfoProvider().(*system.PartInfoProvider), // インターフェースから基になる構造体のポインタを取り出し、その値を渡す
+		bs.battleLogic.GetPartInfoProvider(), // GetPartInfoProviderはインターフェースを返すのでキャスト不要
 		bs.rand,
 	)
 
@@ -188,7 +184,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		case event.PlayerActionRequiredGameEvent:
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePlayerActionSelect})
 		case event.ActionAnimationStartedGameEvent:
-			bs.battleUIManager.PostUIEvent(ui.SetAnimationUIEvent(e))
+			bs.battleUIManager.PostEvent(ui.SetAnimationUIEvent(e))
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateAnimatingAction})
 
 		case event.ActionAnimationFinishedGameEvent:
@@ -207,13 +203,13 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 			bs.winner = e.Winner
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
 		case event.HideActionModalGameEvent:
-			bs.battleUIManager.PostUIEvent(ui.HideActionModalUIEvent{})
+			bs.battleUIManager.PostEvent(ui.HideActionModalUIEvent{})
 		case event.ShowActionModalGameEvent:
-			bs.battleUIManager.PostUIEvent(ui.ShowActionModalUIEvent{ViewModel: e.ViewModel.(core.ActionModalViewModel)})
+			bs.battleUIManager.PostEvent(ui.ShowActionModalUIEvent{ViewModel: e.ViewModel.(core.ActionModalViewModel)})
 		case event.ClearAnimationGameEvent:
-			bs.battleUIManager.PostUIEvent(ui.ClearAnimationUIEvent{})
+			bs.battleUIManager.PostEvent(ui.ClearAnimationUIEvent{})
 		case event.ClearCurrentTargetGameEvent:
-			bs.battleUIManager.PostUIEvent(ui.ClearCurrentTargetUIEvent{})
+			bs.battleUIManager.PostEvent(ui.ClearCurrentTargetUIEvent{})
 		case event.ChargeRequestedGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {

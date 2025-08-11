@@ -8,14 +8,11 @@ import (
 	"medarot-ebiten/ecs/component"
 
 	"github.com/ebitenui/ebitenui/widget"
-	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
 )
 
 // UIInterface はUIの描画とイベント処理に必要なメソッドを定義します。
 type UIInterface interface {
-	Update(tick int)
-	Draw(screen *ebiten.Image, tick int, gameDataManager *data.GameDataManager)
 	GetRootContainer() *widget.Container
 	SetAnimation(anim *component.ActionAnimationData)
 	ClearAnimation()
