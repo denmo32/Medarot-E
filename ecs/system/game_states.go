@@ -25,7 +25,7 @@ type BattleContext struct {
 	GameDataManager        *data.GameDataManager
 	Rand                   *rand.Rand
 	Tick                   int
-	UIMediator             core.UIMediator // UI関連の依存をUIMediatorインターフェースに集約
+	UIMediator             UIMediator // UI関連の依存をUIMediatorインターフェースに集約
 	StatusEffectSystem     *StatusEffectSystem
 	PostActionEffectSystem *PostActionEffectSystem
 	BattleLogic            *BattleLogic

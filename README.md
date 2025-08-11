@@ -102,7 +102,7 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
     *   内容: EbitenUIのルートコンテナを構築し、各UI要素を配置します。UIイベントのハブとしても機能し、`BattleScene`に抽象化されたUIイベントを通知します。アニメーション描画の責務は`ui_animation_drawer.go`に委譲されています。
 *   `ui/ui_interfaces.go`
     *   役割: UIコンポーネントが満たすべきインターフェースを定義します。
-    *   内容: `UIInterface`など、UIの描画とイベント処理に必要なメソッドを定義します。
+    *   内容: `UIInterface`など、UIの描画とイベント処理に必要なメソッドを定義します。かつて`UIMediator`インターフェースが定義されていましたが、`ecs/system/game_interfaces.go`に移動されました。
 *   `ui/ui_factory.go`
     *   役割: UIコンポーネントの生成とスタイリングを一元的に管理するファクトリ。
     *   内容: `NewCyberpunkButton`など、共通のスタイルを持つUI要素を生成するメソッドを提供します。

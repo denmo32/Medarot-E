@@ -7,7 +7,7 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-		"medarot-ebiten/ecs/entity"
+	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/ecs/system"
 	"medarot-ebiten/event"
 

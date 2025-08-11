@@ -1,8 +1,5 @@
 package component
 
-// ECSのCに相当するコンポーネント定義を集約します。
-// coreパッケージ及びdonburiライブラリへの依存を想定しています。
-
 import (
 	"medarot-ebiten/core"
 

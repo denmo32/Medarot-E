@@ -6,10 +6,6 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// 依存関係の最も基礎となる定義を集約します。
-// このファイルは、特定ライビラリに依存することを禁止します。
-// 肥大化が進んだ場合、用途別にファイルを分割することを検討します。
-
 // --- Enums and Constants ---
 
 type TeamID int
