@@ -7,6 +7,7 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
 )
@@ -27,7 +28,7 @@ type UIMediator interface {
 	// Other UIInterface methods needed by ecs/system
 	ShowActionModal(vm core.ActionModalViewModel)
 	HideActionModal()
-	PostUIEvent(event any) // A generic event posting method
+	PostUIEvent(event event.GameEvent) // A generic event posting method
 	ClearAnimation()
 	ClearCurrentTarget()
 	IsActionModalVisible() bool // 追加

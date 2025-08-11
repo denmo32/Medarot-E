@@ -6,6 +6,7 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/event"
 
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/yohamta/donburi"
@@ -19,7 +20,7 @@ type UIInterface interface {
 	ShowActionModal(vm core.ActionModalViewModel)
 	HideActionModal()
 	SetBattleUIState(battleUIState *BattleUIState)
-	PostEvent(event UIEvent)
+	PostEvent(event event.GameEvent)
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool
 	GetCurrentAnimationResult() component.ActionResult
@@ -28,6 +29,6 @@ type UIInterface interface {
 	ClearCurrentTarget()
 	GetBattlefieldWidgetRect() image.Rectangle
 	GetMessageDisplayManager() *UIMessageDisplayManager
-	GetEventChannel() chan UIEvent
+	GetEventChannel() chan event.GameEvent
 	GetConfig() *data.Config
 }

@@ -10,6 +10,7 @@ import (
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/system"
+	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -230,8 +231,8 @@ func (f *viewModelFactoryImpl) HideActionModal() {
 }
 
 // PostUIEvent はUIイベントをBattleSceneのキューに追加します。
-func (f *viewModelFactoryImpl) PostUIEvent(event any) {
-	f.ui.PostEvent(event.(UIEvent)) // Cast to UIEvent
+func (f *viewModelFactoryImpl) PostUIEvent(event event.GameEvent) {
+	f.ui.PostEvent(event)
 }
 
 // ClearAnimation は現在のアニメーションをクリアします。

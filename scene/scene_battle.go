@@ -184,7 +184,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		case event.PlayerActionRequiredGameEvent:
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePlayerActionSelect})
 		case event.ActionAnimationStartedGameEvent:
-			bs.battleUIManager.PostEvent(ui.SetAnimationUIEvent(e))
+			bs.battleUIManager.SetAnimation(&e.AnimationData)
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateAnimatingAction})
 
 		case event.ActionAnimationFinishedGameEvent:
@@ -203,13 +203,13 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 			bs.winner = e.Winner
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
 		case event.HideActionModalGameEvent:
-			bs.battleUIManager.PostEvent(ui.HideActionModalUIEvent{})
+			bs.battleUIManager.HideActionModal()
 		case event.ShowActionModalGameEvent:
-			bs.battleUIManager.PostEvent(ui.ShowActionModalUIEvent{ViewModel: e.ViewModel.(core.ActionModalViewModel)})
+			bs.battleUIManager.ShowActionModal(e.ViewModel.(core.ActionModalViewModel))
 		case event.ClearAnimationGameEvent:
-			bs.battleUIManager.PostEvent(ui.ClearAnimationUIEvent{})
+			bs.battleUIManager.ClearAnimation()
 		case event.ClearCurrentTargetGameEvent:
-			bs.battleUIManager.PostEvent(ui.ClearCurrentTargetUIEvent{})
+			bs.battleUIManager.ClearCurrentTarget()
 		case event.ChargeRequestedGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {

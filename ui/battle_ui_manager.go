@@ -40,7 +40,7 @@ type BattleUIManager struct {
 	commonBottomPanel *UIPanel
 
 	// State & Events
-	eventChannel          chan UIEvent
+	eventChannel          chan event.GameEvent
 	battleUIState         *BattleUIState
 	lastWidth, lastHeight int
 }
@@ -56,7 +56,7 @@ func NewBattleUIManager(
 	bum := &BattleUIManager{
 		config:       config,
 		world:        world,
-		eventChannel: make(chan UIEvent, 10),
+		eventChannel: make(chan event.GameEvent, 10),
 	}
 
 	bum.uiFactory = NewUIFactory(config, resources.Font, resources.ModalButtonFont, resources.MessageWindowFont, resources.GameDataManager.Messages)
@@ -119,10 +119,11 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World, battleLog
 	bum.animationDrawer.Update(float64(tickCount))
 	bum.messageManager.Update()
 
-	// UIイベントを処理し、対応するゲームイベントを取得
-	uiGeneratedGameEvents := UpdateUIEventProcessorSystem(
-		world, bum, bum.messageManager, bum.eventChannel,
-	)
+	// UIイベントチャネルからゲームイベントを収集
+	var uiGeneratedGameEvents []event.GameEvent
+	for len(bum.eventChannel) > 0 {
+		uiGeneratedGameEvents = append(uiGeneratedGameEvents, <-bum.eventChannel)
+	}
 
 	// ViewModelを更新
 	UpdateInfoPanelViewModelSystem(bum.battleUIState, world, battleLogic.GetPartInfoProvider(), bum.viewModelFactory)
@@ -219,7 +220,7 @@ func (bum *BattleUIManager) SetBattleUIState(battleUIState *BattleUIState) {
 	bum.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, bum.GetBattlefieldWidgetRect(), battleUIState.BattlefieldViewModel.Icons)
 }
 
-func (bum *BattleUIManager) PostEvent(event UIEvent) {
+func (bum *BattleUIManager) PostEvent(event event.GameEvent) {
 	bum.eventChannel <- event
 }
 
@@ -228,7 +229,7 @@ func (bum *BattleUIManager) IsActionModalVisible() bool {
 }
 
 func (bum *BattleUIManager) ShowActionModal(vm core.ActionModalViewModel) {
-	bum.actionModalManager.ShowActionModal(vm)
+	bum.actionModalManager.ShowActionModal(vm, bum.world, bum)
 }
 
 func (bum *BattleUIManager) HideActionModal() {
@@ -275,7 +276,7 @@ func (bum *BattleUIManager) GetMessageDisplayManager() *UIMessageDisplayManager 
 	return bum.messageManager
 }
 
-func (bum *BattleUIManager) GetEventChannel() chan UIEvent {
+func (bum *BattleUIManager) GetEventChannel() chan event.GameEvent {
 	return bum.eventChannel
 }
 

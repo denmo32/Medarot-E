@@ -3,14 +3,18 @@ package ui
 import (
 	"fmt"
 	"medarot-ebiten/core"
+	"medarot-ebiten/event"
 
 	"github.com/ebitenui/ebitenui/widget"
+	"github.com/yohamta/donburi"
 )
 
 func createActionModalUI(
 	vm *core.ActionModalViewModel,
 	uiFactory *UIFactory,
-	eventChannel chan UIEvent,
+	eventChannel chan event.GameEvent,
+	world donburi.World,
+	bum *BattleUIManager,
 ) widget.PreferredSizeLocateableWidget {
 	c := uiFactory.Config.UI
 
@@ -41,26 +45,33 @@ func createActionModalUI(
 			buttonText,
 			buttonTextColor,
 			func(args *widget.ButtonClickedEventArgs) {
-				eventChannel <- ClearCurrentTargetUIEvent{}
-
-				eventChannel <- ActionConfirmedUIEvent{
-					ActingEntityID:    vm.ActingEntityID,
-					SelectedPartDefID: buttonVM.SelectedPartDefID,
-					SelectedSlotKey:   buttonVM.SlotKey,
-					TargetEntityID:    buttonVM.TargetEntityID,
-					TargetPartSlot:    buttonVM.TargetPartSlot,
+				actingEntry := world.Entry(vm.ActingEntityID)
+				if actingEntry == nil {
+					return
 				}
+				var targetEntry *donburi.Entry
+				if buttonVM.TargetEntityID != 0 {
+					targetEntry = world.Entry(buttonVM.TargetEntityID)
+				}
+
+				// ゲームイベントを発行
+				eventChannel <- event.ChargeRequestedGameEvent{
+					ActingEntry:     actingEntry,
+					SelectedSlotKey: buttonVM.SlotKey,
+					TargetEntry:     targetEntry,
+					TargetPartSlot:  buttonVM.TargetPartSlot,
+				}
+				eventChannel <- event.PlayerActionProcessedGameEvent{
+					ActingEntry: actingEntry,
+				}
+				eventChannel <- event.HideActionModalGameEvent{}
+				eventChannel <- event.ClearCurrentTargetGameEvent{}
 			},
 			func(args *widget.ButtonHoverEventArgs) {
 				switch buttonVM.PartCategory {
 				case core.CategoryRanged:
 					if buttonVM.TargetEntityID != 0 {
-						eventChannel <- TargetSelectedUIEvent{
-							ActingEntityID:  vm.ActingEntityID,
-							SelectedSlotKey: buttonVM.SlotKey,
-							TargetEntityID:  buttonVM.TargetEntityID,
-							TargetPartSlot:  "",
-						}
+						bum.SetCurrentTarget(buttonVM.TargetEntityID)
 					}
 				case core.CategoryIntervention:
 					// 介入の場合はターゲット表示なし
@@ -69,7 +80,7 @@ func createActionModalUI(
 				}
 			},
 			func(args *widget.ButtonHoverEventArgs) {
-				eventChannel <- ClearCurrentTargetUIEvent{}
+				bum.ClearCurrentTarget()
 			},
 		)
 		partButtons[buttonVM.SlotKey] = append(partButtons[buttonVM.SlotKey], actionButton)
