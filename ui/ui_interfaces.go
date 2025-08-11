@@ -21,7 +21,7 @@ type UIInterface interface {
 	ClearAnimation()
 	ShowActionModal(vm core.ActionModalViewModel)
 	HideActionModal()
-	SetBattleUIState(battleUIState *BattleUIState, config *data.Config, battlefieldRect image.Rectangle, uiFactory *UIFactory)
+	SetBattleUIState(battleUIState *BattleUIState)
 	PostEvent(event UIEvent)
 	IsActionModalVisible() bool
 	IsAnimationFinished(tick int) bool

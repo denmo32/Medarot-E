@@ -30,11 +30,12 @@ type UI struct {
 	animationDrawer        *UIAnimationDrawer
 	lastWidth, lastHeight  int            // レイアウト更新の最適化用
 	battleUIState          *BattleUIState // UIの状態を保持
-	uiFactory              *UIFactory     // uiFactoryを保持
+	uiFactory              *UIFactory     // uiFactoryを保存
+	gameDataManager        *data.GameDataManager // ゲームデータマネージャー
 }
 
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
-func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *data.Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
+func (u *UI) SetBattleUIState(battleUIState *BattleUIState) {
 	u.battleUIState = battleUIState // UI構造体に状態を保存
 
 	// BattlefieldViewModel を設定
@@ -50,7 +51,7 @@ func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *data.Config,
 	}
 
 	// InfoPanelManager に mainUIContainer と battlefieldRect、アイコンのY座標を渡す
-	u.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, battlefieldRect, battleUIState.BattlefieldViewModel.Icons)
+	u.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, u.GetBattlefieldWidgetRect(), battleUIState.BattlefieldViewModel.Icons)
 }
 
 // PostEvent はUIイベントをBattleSceneのキューに追加します。
@@ -64,29 +65,31 @@ func NewUI(config *data.Config, eventChannel chan UIEvent, uiFactory *UIFactory,
 	whiteImg.Fill(color.White)
 
 	ui := &UI{
-		infoPanelManager: NewInfoPanelManager(config, uiFactory), // InfoPanelManager を初期化
 		eventChannel:     eventChannel,
 		config:           config,
 		whitePixel:       whiteImg,
-		animationDrawer:  NewUIAnimationDrawer(config, uiFactory.Font, eventChannel), // uiFactory.Font を使用
-		uiFactory:        uiFactory,                                                  // uiFactoryを保存
+		uiFactory:        uiFactory,
+		gameDataManager:  gameDataManager, // Store gameDataManager
 	}
+
+	// Initialize sub-managers using ui fields
+	ui.infoPanelManager = NewInfoPanelManager(ui.config, ui.uiFactory)
+	ui.animationDrawer = NewUIAnimationDrawer(ui.config, ui.uiFactory.Font, ui.eventChannel)
 
 	rootContainer := createRootContainer()
 	baseLayoutContainer := createBaseLayoutContainer()
 	rootContainer.AddChild(baseLayoutContainer)
 
-	// 上部パネル（既存のmainUIContainer）
 	mainUIContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(nil), // レイアウトをnilに設定し、手動でRectを設定
+		widget.ContainerOpts.Layout(nil),
 		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})),
 	)
 	baseLayoutContainer.AddChild(mainUIContainer)
 
-	ui.commonBottomPanel = createCommonBottomPanel(config, uiFactory, gameDataManager)
+	ui.commonBottomPanel = createCommonBottomPanel(ui.config, ui.uiFactory, ui.gameDataManager) // Use ui.config, ui.uiFactory, ui.gameDataManager
 	bottomPanelWrapper := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
-		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})), // GridLayoutData を設定
+		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})),
 	)
 	ui.commonBottomPanel.RootContainer.GetWidget().LayoutData = widget.AnchorLayoutData{
 		HorizontalPosition: widget.AnchorLayoutPositionCenter,
@@ -95,13 +98,13 @@ func NewUI(config *data.Config, eventChannel chan UIEvent, uiFactory *UIFactory,
 	bottomPanelWrapper.AddChild(ui.commonBottomPanel.RootContainer)
 	baseLayoutContainer.AddChild(bottomPanelWrapper)
 
-	ui.battlefieldWidget = NewBattlefieldWidget(config)
+	ui.battlefieldWidget = NewBattlefieldWidget(ui.config) // Use ui.config
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)
-	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, uiFactory.MessageWindowFont, uiFactory, ui.commonBottomPanel)
+	ui.messageManager = NewUIMessageDisplayManager(ui.gameDataManager.Messages, ui.config, ui.uiFactory.MessageWindowFont, ui.uiFactory, ui.commonBottomPanel) // Use ui.gameDataManager, ui.config, ui.uiFactory
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
-	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, ui.commonBottomPanel)
+	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, ui.eventChannel, ui.uiFactory, ui.commonBottomPanel) // Use ui.ebitenui, ui.eventChannel, ui.uiFactory, ui.commonBottomPanel
 	ui.targetIndicatorManager = NewUITargetIndicatorManager()
 	return ui
 }

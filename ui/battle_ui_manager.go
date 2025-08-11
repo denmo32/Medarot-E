@@ -21,7 +21,6 @@ type BattleUIManager struct {
 	messageManager   *UIMessageDisplayManager
 	viewModelFactory *viewModelFactoryImpl
 	uiFactory        *UIFactory
-	uiEventChannel   chan UIEvent
 	config           *data.Config // UIFactoryから取得するため追加
 }
 
@@ -29,16 +28,17 @@ type BattleUIManager struct {
 func NewBattleUIManager(
 	config *data.Config,
 	resources *data.SharedResources,
-	gameDataManager *data.GameDataManager,
 	world donburi.World,
 	partInfoProvider system.PartInfoProvider,
 	rand *rand.Rand,
-	uiEventChannel chan UIEvent,
 ) *BattleUIManager {
-	uiFactory := NewUIFactory(config, resources.Font, resources.ModalButtonFont, resources.MessageWindowFont, gameDataManager.Messages)
-	ui := NewUI(config, uiEventChannel, uiFactory, gameDataManager)
-	messageManager := ui.GetMessageDisplayManager()
-	viewModelFactory := NewViewModelFactory(world, &partInfoProvider, gameDataManager, rand, ui)
+	// Create a new internal UI event channel
+	internalUIEventChannel := make(chan UIEvent, 10) // Buffer size 10
+
+	uiFactory := NewUIFactory(config, resources.Font, resources.ModalButtonFont, resources.MessageWindowFont, resources.GameDataManager.Messages)
+	ui := NewUI(config, internalUIEventChannel, uiFactory, resources.GameDataManager)
+	messageManager := ui.GetMessageDisplayManager() // Get from ui instance
+	viewModelFactory := NewViewModelFactory(world, &partInfoProvider, resources.GameDataManager, rand, ui)
 
 	// Initialize BattleUIStateComponent
 	battleUIStateEntry := world.Entry(world.Create(BattleUIStateComponent))
@@ -53,7 +53,6 @@ func NewBattleUIManager(
 		messageManager:   messageManager,
 		viewModelFactory: viewModelFactory,
 		uiFactory:        uiFactory,
-		uiEventChannel:   uiEventChannel,
 		config:           config,
 	}
 }
@@ -64,7 +63,7 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World, battleLog
 
 	// UIイベントの処理
 	uiGeneratedGameEvents := UpdateUIEventProcessorSystem(
-		world, bum.ui, bum.messageManager, bum.uiEventChannel,
+		world, bum.ui, bum.messageManager, bum.ui.GetEventChannel(),
 	)
 
 	// InfoPanelViewModel の更新
@@ -84,7 +83,7 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World, battleLog
 	}
 	battleUIState.BattlefieldViewModel = battlefieldViewModel
 
-	bum.ui.SetBattleUIState(battleUIState, bum.config, bum.ui.GetBattlefieldWidgetRect(), bum.uiFactory)
+	bum.ui.SetBattleUIState(battleUIState) // Simplified signature
 
 	return uiGeneratedGameEvents
 }

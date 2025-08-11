@@ -30,7 +30,7 @@ type BattleScene struct {
 
 	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
-	uiEventChannel         chan ui.UIEvent
+	// uiEventChannel         chan ui.UIEvent
 	battleUIState          *ui.BattleUIState
 	statusEffectSystem     *system.StatusEffectSystem
 	postActionEffectSystem *system.PostActionEffectSystem
@@ -53,7 +53,7 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 		winner:          core.TeamNone,
 		gameDataManager: res.GameDataManager,
 		rand:            res.Rand,
-		uiEventChannel:  make(chan ui.UIEvent, 10),
+		// uiEventChannel:  make(chan ui.UIEvent, 10),
 		battleUIState:   &ui.BattleUIState{},
 	}
 
@@ -68,11 +68,9 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 	bs.battleUIManager = ui.NewBattleUIManager(
 		&bs.resources.Config,
 		bs.resources,
-		bs.gameDataManager,
 		bs.world,
 		*bs.battleLogic.GetPartInfoProvider().(*system.PartInfoProvider), // インターフェースから基になる構造体のポインタを取り出し、その値を渡す
 		bs.rand,
-		bs.uiEventChannel,
 	)
 
 	// Initialize BattleStates map
