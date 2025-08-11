@@ -8,7 +8,7 @@ import (
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
-	"medarot-ebiten/ui"
+	"medarot-ebiten/scene"
 
 	"github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
@@ -65,7 +65,7 @@ func main() {
 	buttonImage.Fill(color.RGBA{R: 0x40, G: 0x40, B: 0x40, A: 0xFF}) // 暗い灰色
 
 	// シーンマネージャを作成
-	manager := ui.NewSceneManager(&data.SharedResources{
+	manager := scene.NewSceneManager(&data.SharedResources{
 		GameData: &core.GameData{
 			Medarots: medarotLoadouts,
 		},

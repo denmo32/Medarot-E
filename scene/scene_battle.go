@@ -1,4 +1,4 @@
-package ui
+package scene
 
 import (
 	"log"
@@ -10,6 +10,7 @@ import (
 	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/ecs/system"
 	"medarot-ebiten/event"
+	"medarot-ebiten/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/yohamta/donburi"
@@ -18,24 +19,21 @@ import (
 )
 
 type BattleScene struct {
-	resources      *data.SharedResources
-	manager        *SceneManager
-	world          donburi.World
-	tickCount      int
-	debugMode      bool
-	playerTeam     core.TeamID
-	ui             UIInterface
-	messageManager *UIMessageDisplayManager
-	winner         core.TeamID
+	resources       *data.SharedResources
+	manager         *SceneManager
+	world           donburi.World
+	tickCount       int
+	debugMode       bool
+	playerTeam      core.TeamID
+	winner          core.TeamID
+	battleUIManager *ui.BattleUIManager
 
 	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
-	uiEventChannel         chan UIEvent
-	battleUIState          *BattleUIState
+	uiEventChannel         chan ui.UIEvent
+	battleUIState          *ui.BattleUIState
 	statusEffectSystem     *system.StatusEffectSystem
 	postActionEffectSystem *system.PostActionEffectSystem
-	viewModelFactory       *viewModelFactoryImpl // Changed from ViewModelFactory
-	uiFactory              *UIFactory
 
 	battleLogic *system.BattleLogic
 
@@ -55,8 +53,8 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 		winner:          core.TeamNone,
 		gameDataManager: res.GameDataManager,
 		rand:            res.Rand,
-		uiEventChannel:  make(chan UIEvent, 10),
-		battleUIState:   &BattleUIState{},
+		uiEventChannel:  make(chan ui.UIEvent, 10),
+		battleUIState:   &ui.BattleUIState{},
 	}
 
 	entity.InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
@@ -66,19 +64,16 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 	bs.statusEffectSystem = system.NewStatusEffectSystem(bs.world, bs.battleLogic.GetDamageCalculator())
 	bs.postActionEffectSystem = system.NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.battleLogic.GetPartInfoProvider())
 
-	// Initialize UI related components
-	bs.uiFactory = NewUIFactory(&bs.resources.Config, bs.resources.Font, bs.resources.ModalButtonFont, bs.resources.MessageWindowFont, bs.gameDataManager.Messages)
-	bs.ui = NewUI(&bs.resources.Config, bs.uiEventChannel, bs.uiFactory, bs.gameDataManager)
-	bs.messageManager = bs.ui.GetMessageDisplayManager() // Get the manager from the initialized UI
-	bs.viewModelFactory = NewViewModelFactory(bs.world, bs.battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand, bs.ui)
-
-	// Initialize BattleUIStateComponent
-	battleUIStateEntry := bs.world.Entry(bs.world.Create(BattleUIStateComponent))
-	if battleUIStateEntry.Valid() {
-		BattleUIStateComponent.SetValue(battleUIStateEntry, BattleUIState{
-			InfoPanels: make(map[string]core.InfoPanelViewModel),
-		})
-	}
+	// Initialize BattleUI related components
+	bs.battleUIManager = ui.NewBattleUIManager(
+		&bs.resources.Config,
+		bs.resources,
+		bs.gameDataManager,
+		bs.world,
+		*bs.battleLogic.GetPartInfoProvider().(*system.PartInfoProvider), // インターフェースから基になる構造体のポインタを取り出し、その値を渡す
+		bs.rand,
+		bs.uiEventChannel,
+	)
 
 	// Initialize BattleStates map
 	bs.battleStates = map[core.GameState]system.BattleState{
@@ -112,15 +107,10 @@ func (bs *BattleScene) Update() error {
 	}
 	currentGameStateComp := component.GameStateComponent.Get(gameStateEntry)
 
-	var err error // Declare err here
-
-	bs.ui.Update(bs.tickCount)
-
-	uiGeneratedGameEvents := UpdateUIEventProcessorSystem(
-		bs.world, bs.ui, bs.messageManager, bs.uiEventChannel,
-	)
-
 	allGameEvents := make([]event.GameEvent, 0)
+
+	// Update BattleUIManager and collect UI generated game events
+	uiGeneratedGameEvents := bs.battleUIManager.Update(bs.tickCount, bs.world, *bs.battleLogic)
 	allGameEvents = append(allGameEvents, uiGeneratedGameEvents...)
 
 	// Create BattleContext
@@ -130,7 +120,7 @@ func (bs *BattleScene) Update() error {
 		GameDataManager:        bs.gameDataManager,
 		Rand:                   bs.rand,
 		Tick:                   bs.tickCount,
-		UIMediator:             bs.viewModelFactory,
+		UIMediator:             bs.battleUIManager.GetViewModelFactory(),
 		StatusEffectSystem:     bs.statusEffectSystem,
 		PostActionEffectSystem: bs.postActionEffectSystem,
 		BattleLogic:            bs.battleLogic,
@@ -157,30 +147,13 @@ func (bs *BattleScene) Update() error {
 		}
 	}
 
-	battleUIStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bs.world)
-	if !ok {
-		log.Println("エラー: BattleUIStateComponent がワールドに見つかりません。UI更新をスキップします。")
-		return nil
-	}
-	battleUIState := BattleUIStateComponent.Get(battleUIStateEntry)
-
-	UpdateInfoPanelViewModelSystem(battleUIState, bs.world, bs.battleLogic.GetPartInfoProvider(), bs.viewModelFactory)
-
-	battleUIState.BattlefieldViewModel, err = bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, bs.ui.GetBattlefieldWidgetRect())
-	if err != nil {
-		log.Printf("Error building battlefield view model: %v", err)
-		return err
-	}
-
-	bs.ui.SetBattleUIState(battleUIState, &bs.resources.Config, bs.ui.GetBattlefieldWidgetRect(), bs.uiFactory)
+	// UIの更新はBattleUIManager内で完結するため、ここでは不要
 
 	return nil
 }
 
 func (bs *BattleScene) Draw(screen *ebiten.Image) {
-	screen.Fill(bs.resources.Config.UI.Colors.Background)
-	bs.ui.DrawBackground(screen)
-	bs.ui.Draw(screen, bs.tickCount, bs.resources.GameDataManager)
+	bs.battleUIManager.Draw(screen, bs.tickCount, bs.resources.GameDataManager)
 
 	// GameStateComponentから現在のゲーム状態を取得
 	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
@@ -217,14 +190,14 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		case event.PlayerActionRequiredGameEvent:
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePlayerActionSelect})
 		case event.ActionAnimationStartedGameEvent:
-			bs.ui.PostEvent(SetAnimationUIEvent(e))
+			bs.battleUIManager.PostUIEvent(ui.SetAnimationUIEvent(e))
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateAnimatingAction})
 
 		case event.ActionAnimationFinishedGameEvent:
 			*lastActionResultComp = e.Result // Store the result
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePostAction})
 		case event.MessageDisplayRequestGameEvent:
-			bs.messageManager.EnqueueMessageQueue(e.Messages, e.Callback)
+			bs.battleUIManager.GetMessageDisplayManager().EnqueueMessageQueue(e.Messages, e.Callback)
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
 		case event.MessageDisplayFinishedGameEvent:
 			if bs.winner != core.TeamNone {
@@ -236,18 +209,13 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 			bs.winner = e.Winner
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
 		case event.HideActionModalGameEvent:
-			bs.ui.PostEvent(HideActionModalUIEvent{})
+			bs.battleUIManager.PostUIEvent(ui.HideActionModalUIEvent{})
 		case event.ShowActionModalGameEvent:
-			bs.ui.HideActionModal()
-			select {
-			case bs.ui.GetEventChannel() <- ShowActionModalUIEvent{ViewModel: e.ViewModel.(core.ActionModalViewModel)}: // core.ActionModalViewModel に変更
-			default:
-				log.Println("警告: ShowActionModalUIEvent の送信をスキップしました (チャネルがフルか重複)。")
-			}
+			bs.battleUIManager.PostUIEvent(ui.ShowActionModalUIEvent{ViewModel: e.ViewModel.(core.ActionModalViewModel)})
 		case event.ClearAnimationGameEvent:
-			bs.ui.PostEvent(ClearAnimationUIEvent{})
+			bs.battleUIManager.PostUIEvent(ui.ClearAnimationUIEvent{})
 		case event.ClearCurrentTargetGameEvent:
-			bs.ui.PostEvent(ClearCurrentTargetUIEvent{})
+			bs.battleUIManager.PostUIEvent(ui.ClearCurrentTargetUIEvent{})
 		case event.ChargeRequestedGameEvent:
 			actingEntry := e.ActingEntry
 			if actingEntry == nil || !actingEntry.Valid() {
