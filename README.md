@@ -28,7 +28,7 @@ Domain (ゲームのコア)
 このパッケージは、特定の技術（UIライブラリ、ECSフレームワークなど）から独立していることを目指します。
 
 *   `core/types.go`: **[データ]** ゲーム全体で使われる、`donburi`に依存しない基本的な型、定数、データ構造を定義します。また、UI表示に必要な整形済みデータ（ViewModel）の定義もここに含まれます。
-*   `ecs/component/components.go`: **[データ]** `donburi`フレームワークに依存するコンポーネントのデータ構造（`donburi.Entry`を含む構造体など）を定義します。
+*   `ecs/component/component_data.go`: **[データ]** `donburi`フレームワークに依存するコンポーネントのデータ構造（`donburi.Entry`を含む構造体など）を定義します。
 *   `event/events.go`: **[定義]** ゲーム内で発生するイベントの定義。
 *   `ui/viewmodels.go`: **[空]** ViewModelの定義は`core/types.go`に移動しました。
 
@@ -37,7 +37,7 @@ ECS (エンティティ・コンポーネント・システム)
 
 ECSアーキテクチャの構成要素を定義します。
 
-*   `ecs/component/ecs_components.go`: **[データ]** ECSの「C（コンポーネント）」を`donburi`に登録します。各コンポーネントが保持するデータ構造自体は`ecs/component/components.go`で定義されます。
+*   `ecs/component/component_types.go`: **[データ]** ECSの「C（コンポーネント）」を`donburi`に登録します。各コンポーネントが保持するデータ構造自体は`ecs/component/components.go`で定義されます。
 *   `ecs/entity/ecs_setup_logic.go`: 戦闘開始時のエンティティ生成と初期コンポーネント設定を行います。
 *   `ecs/entity/world_state.go`: **[ロジック/ヘルパー]** `PlayerActionQueueComponent`や`ActionQueueComponent`など、ワールド全体の状態を管理するシングルトンエンティティへのアクセスと操作を提供します。
 
