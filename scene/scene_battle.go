@@ -104,11 +104,11 @@ func (bs *BattleScene) Update() error {
 	allGameEvents := make([]event.GameEvent, 0)
 
 	// Update BattleUIManager and collect UI generated game events
-	uiGeneratedGameEvents := bs.battleUIManager.Update(bs.tickCount, bs.world, *bs.battleLogic)
+	uiGeneratedGameEvents := bs.battleUIManager.Update(bs.tickCount, bs.world)
 	allGameEvents = append(allGameEvents, uiGeneratedGameEvents...)
 
 	// Create BattleContext
-	battleContext := &system.BattleContext{ // system. を追加
+	battleContext := &system.BattleContext{
 		World:                  bs.world,
 		Config:                 &bs.resources.Config,
 		GameDataManager:        bs.gameDataManager,
@@ -119,6 +119,9 @@ func (bs *BattleScene) Update() error {
 		PostActionEffectSystem: bs.postActionEffectSystem,
 		BattleLogic:            bs.battleLogic,
 	}
+
+	// Update BattleUIStateComponent
+	system.UpdateBattleUIStateSystem(bs.world, *bs.battleLogic, bs.battleUIManager.GetViewModelFactory(), bs.battleUIManager)
 
 	// Get current BattleState implementation and update it
 	if currentStateImpl, ok := bs.battleStates[currentGameStateComp.CurrentState]; ok {

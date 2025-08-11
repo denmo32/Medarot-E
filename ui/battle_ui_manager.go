@@ -2,13 +2,11 @@ package ui
 
 import (
 	"image"
-	"log"
 	"math/rand"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-	"medarot-ebiten/ecs/system"
 	"medarot-ebiten/event"
 
 	"github.com/ebitenui/ebitenui"
@@ -17,13 +15,40 @@ import (
 	"github.com/yohamta/donburi"
 )
 
+// UIInterface はUIマネージャーが提供する機能のインターフェースです。
+// viewModelFactoryImpl がUIマネージャーとやり取りするために使用されます。
+type UIInterface interface {
+	GetConfig() *data.Config
+	GetMessageDisplayManager() *UIMessageDisplayManager
+	ShowActionModal(vm core.ActionModalViewModel)
+	HideActionModal()
+	PostEvent(event event.GameEvent)
+	ClearAnimation()
+	ClearCurrentTarget()
+	IsActionModalVisible() bool
+	GetBattlefieldWidgetRect() image.Rectangle     // 追加
+	SetBattleUIState(battleUIState *BattleUIState) // 追加
+}
+
+// ViewModelFactoryInterface は ViewModelFactory が提供する機能のインターフェースです。
+type ViewModelFactoryInterface interface {
+	BuildBattlefieldViewModel(world donburi.World, rect image.Rectangle) (core.BattlefieldViewModel, error)
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error)
+}
+
+// ViewModelPartInfoProvider は ViewModelFactory がパーツ情報にアクセスするために必要なインターフェースです。
+type ViewModelPartInfoProvider interface {
+	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
+	GetNormalizedActionProgress(entry *donburi.Entry) float32 // 追加
+}
+
 // BattleUIManager はバトルシーンのUI要素の管理と描画を担当する唯一の司令塔です。
 // UIInterfaceを実装します。
 type BattleUIManager struct {
 	config           *data.Config
 	world            donburi.World
 	uiFactory        *UIFactory
-	viewModelFactory *viewModelFactoryImpl
+	viewModelFactory *ViewModelFactoryImpl // 型名を修正
 
 	// ebitenui root
 	ebitenui *ebitenui.UI
@@ -50,7 +75,7 @@ func NewBattleUIManager(
 	config *data.Config,
 	resources *data.SharedResources,
 	world donburi.World,
-	partInfoProvider system.PartInfoProviderInterface,
+	partInfoProvider ViewModelPartInfoProvider,
 	rand *rand.Rand,
 ) *BattleUIManager {
 	bum := &BattleUIManager{
@@ -113,7 +138,7 @@ func NewBattleUIManager(
 }
 
 // Update はUI全体の状態を更新します。
-func (bum *BattleUIManager) Update(tickCount int, world donburi.World, battleLogic system.BattleLogic) []event.GameEvent {
+func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.GameEvent {
 	bum.updateLayout()
 	bum.ebitenui.Update()
 	bum.animationDrawer.Update(float64(tickCount))
@@ -124,17 +149,6 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World, battleLog
 	for len(bum.eventChannel) > 0 {
 		uiGeneratedGameEvents = append(uiGeneratedGameEvents, <-bum.eventChannel)
 	}
-
-	// ViewModelを更新
-	UpdateInfoPanelViewModelSystem(bum.battleUIState, world, battleLogic.GetPartInfoProvider(), bum.viewModelFactory)
-	battlefieldViewModel, err := bum.viewModelFactory.BuildBattlefieldViewModel(world, bum.GetBattlefieldWidgetRect())
-	if err != nil {
-		log.Printf("Error building battlefield view model: %v", err)
-	}
-	bum.battleUIState.BattlefieldViewModel = battlefieldViewModel
-
-	// 更新されたViewModelをUIウィジェットに設定
-	bum.SetBattleUIState(bum.battleUIState)
 
 	return uiGeneratedGameEvents
 }
@@ -202,7 +216,7 @@ func (bum *BattleUIManager) updateLayout() {
 
 // --- UIInterfaceの実装 ---
 
-func (bum *BattleUIManager) GetViewModelFactory() *viewModelFactoryImpl {
+func (bum *BattleUIManager) GetViewModelFactory() *ViewModelFactoryImpl { // 戻り値の型を修正
 	return bum.viewModelFactory
 }
 
