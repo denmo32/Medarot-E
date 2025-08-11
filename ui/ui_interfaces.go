@@ -16,7 +16,6 @@ import (
 type UIInterface interface {
 	Update(tick int)
 	Draw(screen *ebiten.Image, tick int, gameDataManager *data.GameDataManager)
-	DrawBackground(screen *ebiten.Image)
 	GetRootContainer() *widget.Container
 	SetAnimation(anim *component.ActionAnimationData)
 	ClearAnimation()

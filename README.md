@@ -63,7 +63,7 @@ Battle Action (メダロットの行動)
 *   `ecs/system/ai_target_strategies.go`: **[ロジック/振る舞い]** AIのターゲット選択戦略の具体的な実装を定義します。
 *   `ecs/system/battle_action_queue_system.go`: **[ロジック/振る舞い]** 行動実行キューを処理し、適切な `ActionExecutor` を呼び出して行動を実行します。
 *   `ecs/system/battle_action_executor.go`: **[ロジック/振る舞い]** アクションの実行に関する主要なロジックをカプセル化します。特性や武器タイプごとの具体的な処理は、`battle_trait_handlers.go` および `battle_weapon_effect_handlers.go` に委譲されます。
-*   `ecs/system/battle_trait_handlers.go`: **[ロジック/振る舞い]** 各特性（Trait）に応じたアクションの実行ロジックを定義します。`BaseAttackHandler`、`SupportTraitExecutor`、`ObstructTraitExecutor` などが含まれます。
+*   `ecs/system/battle_trait_handlers.go`: **[ロジック/振る舞い]** 各特性（Trait）に応じたアクションの実行ロジックを定義します。`BaseAttackHandler`、`SupportTraitExecutor`、`ObstructTraitExecutor` などが含まれます。共通の攻撃ロジックヘルパー関数は `ecs/system/battle_logic_helpers.go` に移動されました。
 *   `ecs/system/battle_weapon_effect_handlers.go`: **[ロジック/振る舞い]** 各武器タイプ（WeaponType）に応じた追加効果の適用ロジックを定義します。`ThunderEffectHandler`、`MeltEffectHandler`、`VirusEffectHandler` などが含まれます。
 *   `ecs/system/charge_initiation_system.go`: **[ロジック/振る舞い]** メダロットが行動を開始する際のチャージ状態の開始ロジックを管理します。`StartCharge` メソッドを提供します。
 *   `ecs/system/post_action_effect_system.go`: **[ロジック/振る舞い]** アクション実行後のステータス効果の適用やパーツ破壊による状態遷移などを処理します。
@@ -72,6 +72,8 @@ Battle Logic & AI (戦闘ルールと思考)
 ---------------------------------
 
 戦闘のコアロジックやAIの思考ルーチンです。
+
+*   `ecs/system/battle_logic_helpers.go`: **[ロジック/ヘルパー]** 戦闘ロジック内で共通して利用されるヘルパー関数群（命中判定、ダメージ適用、ターゲット解決など）を定義します。
 
 *   `data/battle_logger.go`: **[ロジック/振る舞い]** 戦闘中のログメッセージの生成と管理を行います。
 *   `ecs/system/game_states.go`: **[ロジック/振る舞い]** 戦闘全体の進行を制御する各`GameState`（`GaugeProgressState`, `PlayerActionSelectState`, `ActionExecutionState`など）の具体的なロジックを実装します。各状態は、戦闘フローの特定のフェーズ（ゲージ進行、行動選択、アニメーションなど）を担当します。
@@ -98,11 +100,11 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 
 *   `ui/ui.go`
     *   役割: UI全体のレイアウトと管理、およびUIの状態管理（モーダルの表示状態など）。
-    *   内容: EbitenUIのルートコンテナを構築し、各UI要素を配置します。UIイベントのハブとしても機能し、`BattleScene`に抽象化されたUIイベントを通知します。アニメーション描画の責務は`ui_animation_drawer.go`に委譲されています。
+    *   内容: EbitenUIのルートコンテナを構築し、各UI要素を配置します。UIイベントのハブとしても機能し、`BattleScene`に抽象化されたUIイベントを通知します。`NewUI`関数は複数のヘルパー関数に分割され、初期化ロジックが整理されました。アニメーション描画の責務は`ui_animation_drawer.go`に委譲されており、`DrawBackground`関数は削除されました。
 *   `ui/state.go`: **[データ]** UIの状態を保持するシングルトンコンポーネント`BattleUIState`を定義します。戦闘UIの表示/非表示、選択中のパーツ、ターゲットなどの状態を管理します。
 *   `ui/ui_interfaces.go`
     *   役割: UIコンポーネントが満たすべきインターフェースを定義します。
-    *   内容: `UIInterface`など、UIの描画とイベント処理に必要なメソッドを定義します。かつて`UIMediator`インターフェースが定義されていましたが、`ecs/system/game_interfaces.go`に移動されました。
+    *   内容: `UIInterface`など、UIの描画とイベント処理に必要なメソッドを定義します。`DrawBackground`メソッドは削除されました。かつて`UIMediator`インターフェースが定義されていましたが、`ecs/system/game_interfaces.go`に移動されました。
 *   `ui/ui_factory.go`
     *   役割: UIコンポーネントの生成とスタイリングを一元的に管理するファクトリ。
     *   内容: `NewCyberpunkButton`など、共通のスタイルを持つUI要素を生成するメソッドを提供します。

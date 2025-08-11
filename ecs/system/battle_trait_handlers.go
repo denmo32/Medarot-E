@@ -5,7 +5,6 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
-	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 
 	"github.com/yohamta/donburi"
@@ -27,26 +26,12 @@ func (h *BaseAttackHandler) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
 	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
 	// Execute メソッドから呼び出されるため、引数を調整します。
-	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, nil, actingPartDef, rand)
-}
-
-// initializeAttackResult は ActionResult を初期化します。
-func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *core.PartDefinition) component.ActionResult {
-	return component.ActionResult{
-		ActingEntry:    actingEntry,
-		ActionDidHit:   false, // 初期値はfalse
-		AttackerName:   component.SettingsComponent.Get(actingEntry).Name,
-		ActionName:     actingPartDef.PartName,
-		ActionTrait:    actingPartDef.Trait,
-		ActionCategory: actingPartDef.Category,
-		WeaponType:     actingPartDef.WeaponType,
-	}
+	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, actingPartDef, rand)
 }
 
 // performAttackLogic は攻撃アクションの主要なロジックを実行します。
@@ -58,7 +43,6 @@ func (h *BaseAttackHandler) performAttackLogic(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
@@ -96,109 +80,6 @@ func (h *BaseAttackHandler) performAttackLogic(
 	return result
 }
 
-// --- attack action helpers ---
-
-func validateTarget(targetEntry *donburi.Entry, targetPartSlot core.PartSlotKey) bool {
-	if component.StateComponent.Get(targetEntry).CurrentState == core.StateBroken {
-		return false
-	}
-	targetParts := component.PartsComponent.Get(targetEntry)
-	if targetParts.Map[targetPartSlot] == nil || targetParts.Map[targetPartSlot].IsBroken {
-		return false
-	}
-	return true
-}
-
-func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *core.PartDefinition, selectedPartKey core.PartSlotKey, hitCalculator *HitCalculator) bool {
-	return hitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef, selectedPartKey)
-}
-
-func applyDamageAndDefense(
-	result *component.ActionResult,
-	actingEntry *donburi.Entry,
-	actingPartDef *core.PartDefinition,
-	selectedPartKey core.PartSlotKey,
-	damageCalculator *DamageCalculator,
-	hitCalculator *HitCalculator,
-	targetSelector *TargetSelector,
-	partInfoProvider PartInfoProviderInterface,
-) {
-	defendingPartInst := targetSelector.SelectDefensePart(result.TargetEntry)
-
-	if defendingPartInst != nil && hitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey) {
-		result.ActionIsDefended = true
-		defendingPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(defendingPartInst.DefinitionID)
-		result.DefendingPartType = string(defendingPartDef.Type)
-		result.ActualHitPartSlot = partInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
-
-		finalDamage := damageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
-		result.DamageDealt = finalDamage
-		// ここで直接ダメージを適用せず、ActionResultに情報を格納
-		result.DamageToApply = finalDamage
-		result.TargetPartInstance = defendingPartInst
-		// result.TargetPartBroken はPostActionEffectSystemで設定される
-	} else {
-		result.ActionIsDefended = false
-		intendedTargetPartInstance := component.PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
-		result.DamageDealt = result.OriginalDamage
-		result.ActualHitPartSlot = result.TargetPartSlot
-
-		// ここで直接ダメージを適用せず、ActionResultに情報を格納
-		result.DamageToApply = result.OriginalDamage
-		result.TargetPartInstance = intendedTargetPartInstance
-		// result.TargetPartBroken はPostActionEffectSystemで設定される
-	}
-}
-
-func finalizeActionResult(result *component.ActionResult, partInfoProvider PartInfoProviderInterface) {
-	actualHitPartInst := component.PartsComponent.Get(result.TargetEntry).Map[result.ActualHitPartSlot]
-	actualHitPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(actualHitPartInst.DefinitionID)
-
-	result.TargetPartType = string(actualHitPartDef.Type)
-}
-
-// resolveAttackTarget は攻撃アクションのターゲットを解決します。
-func resolveAttackTarget(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	targetSelector *TargetSelector,
-	partInfoProvider PartInfoProviderInterface,
-	rand *rand.Rand,
-) (targetEntry *donburi.Entry, targetPartSlot core.PartSlotKey) {
-	targetComp := component.TargetComponent.Get(actingEntry)
-	switch targetComp.Policy {
-	case core.PolicyPreselected:
-		if targetComp.TargetEntity == 0 { // nil から 0 に変更
-			log.Printf("エラー: PolicyPreselected なのにターゲットが設定されていません。")
-			return nil, ""
-		}
-		// donburi.Entity から *donburi.Entry を取得
-		targetEntry := world.Entry(targetComp.TargetEntity)
-		if targetEntry == nil {
-			log.Printf("エラー: ターゲットエンティティID %d がワールドに見つかりません。", targetComp.TargetEntity)
-			return nil, ""
-		}
-		return targetEntry, targetComp.TargetPartSlot
-	case core.PolicyClosestAtExecution:
-		closestEnemy := targetSelector.FindClosestEnemy(actingEntry, partInfoProvider)
-		if closestEnemy == nil {
-			return nil, "" // ターゲットが見つからない場合は失敗
-		}
-		targetPart := targetSelector.SelectPartToDamage(closestEnemy, actingEntry, rand)
-		if targetPart == nil {
-			return nil, "" // ターゲットパーツが見つからない場合は失敗
-		}
-		slot := partInfoProvider.FindPartSlot(closestEnemy, targetPart)
-		if slot == "" {
-			return nil, "" // ターゲットスロットが見つからない場合は失敗
-		}
-		return closestEnemy, slot
-	default:
-		log.Printf("未対応のTargetingPolicyです: %s", targetComp.Policy)
-		return nil, ""
-	}
-}
-
 // SupportTraitExecutor は TraitSupport の介入アクションを処理します。
 type SupportTraitExecutor struct{}
 
@@ -210,7 +91,6 @@ func (h *SupportTraitExecutor) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
@@ -274,7 +154,6 @@ func (h *ObstructTraitExecutor) Execute(
 	hitCalculator *HitCalculator,
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
-	_ *data.Config,
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {

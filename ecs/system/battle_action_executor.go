@@ -79,7 +79,7 @@ func (e *ActionExecutor) ExecuteAction(actingEntry *donburi.Entry) component.Act
 		}
 	}
 
-	actionResult := handler.Execute(actingEntry, e.world, intent, e.damageCalculator, e.hitCalculator, e.targetSelector, e.partInfoProvider, e.gameConfig, actingPartDef, e.rand)
+	actionResult := handler.Execute(actingEntry, e.world, intent, e.damageCalculator, e.hitCalculator, e.targetSelector, e.partInfoProvider, actingPartDef, e.rand)
 
 	// チャージ時に生成された保留中の効果をActionResultにコピー
 	if len(intent.PendingEffects) > 0 {

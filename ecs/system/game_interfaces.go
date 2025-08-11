@@ -64,7 +64,6 @@ type TraitActionHandler interface {
 		hitCalculator *HitCalculator,
 		targetSelector *TargetSelector,
 		partInfoProvider PartInfoProviderInterface,
-		gameConfig *data.Config,
 		actingPartDef *core.PartDefinition,
 		rand *rand.Rand,
 	) component.ActionResult

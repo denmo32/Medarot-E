@@ -36,8 +36,6 @@ type UI struct {
 // SetBattleUIState はUI全体のデータソースを一元的に設定します。
 func (u *UI) SetBattleUIState(battleUIState *BattleUIState, config *data.Config, battlefieldRect image.Rectangle, uiFactory *UIFactory) {
 	u.battleUIState = battleUIState // UI構造体に状態を保存
-	// uiFactoryも保存する必要があるが、UI構造体にはuiFactoryフィールドがないため、追加が必要
-	// 現状、uiFactoryはNewUIでしか渡されないため、updateLayoutで利用するにはUI構造体にフィールドを追加する必要がある
 
 	// BattlefieldViewModel を設定
 	u.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
@@ -74,19 +72,8 @@ func NewUI(config *data.Config, eventChannel chan UIEvent, uiFactory *UIFactory,
 		uiFactory:        uiFactory,                                                  // uiFactoryを保存
 	}
 
-	rootContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
-	)
-
-	// 画面を上下に分割するGridLayoutを持つベースコンテナ
-	baseLayoutContainer := widget.NewContainer(
-		widget.ContainerOpts.Layout(widget.NewGridLayout(
-			widget.GridLayoutOpts.Columns(1),
-			// 上の行がストレッチし、下の行は子のサイズに合わせる
-			widget.GridLayoutOpts.Stretch([]bool{true}, []bool{true, false}),
-			widget.GridLayoutOpts.Spacing(0, 10),
-		)),
-	)
+	rootContainer := createRootContainer()
+	baseLayoutContainer := createBaseLayoutContainer()
 	rootContainer.AddChild(baseLayoutContainer)
 
 	// 上部パネル（既存のmainUIContainer）
@@ -96,25 +83,11 @@ func NewUI(config *data.Config, eventChannel chan UIEvent, uiFactory *UIFactory,
 	)
 	baseLayoutContainer.AddChild(mainUIContainer)
 
-	// 下部パネル（モーダルとメッセージウィンドウ用）
-	// 常に表示される、背景と枠線を持つパネル
-	ui.commonBottomPanel = NewPanel(&PanelOptions{
-		PanelWidth:      814, // 固定幅
-		PanelHeight:     180, // 固定高さ
-		Padding:         widget.NewInsetsSimple(5),
-		Spacing:         5,
-		BackgroundColor: color.NRGBA{50, 50, 70, 200}, // 背景色を設定
-		BorderColor:     config.UI.Colors.Gray,        // 枠線の色
-		BorderThickness: 5,                            // 枠線の太さ
-		CenterContent:   true,                         // コンテンツを中央に配置
-	}, uiFactory.imageGenerator, gameDataManager.Font)
-
-	// commonBottomPanel を中央に配置するためのラッパーコンテナ
+	ui.commonBottomPanel = createCommonBottomPanel(config, uiFactory, gameDataManager)
 	bottomPanelWrapper := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
 		widget.ContainerOpts.WidgetOpts(widget.WidgetOpts.LayoutData(widget.GridLayoutData{})), // GridLayoutData を設定
 	)
-	// commonBottomPanel をラッパーコンテナの中央に配置
 	ui.commonBottomPanel.RootContainer.GetWidget().LayoutData = widget.AnchorLayoutData{
 		HorizontalPosition: widget.AnchorLayoutPositionCenter,
 		VerticalPosition:   widget.AnchorLayoutPositionCenter,
@@ -124,15 +97,42 @@ func NewUI(config *data.Config, eventChannel chan UIEvent, uiFactory *UIFactory,
 
 	ui.battlefieldWidget = NewBattlefieldWidget(config)
 	mainUIContainer.AddChild(ui.battlefieldWidget.Container)
-	// InfoPanelsの初期化はSetBattleUIStateで行われるため、ここでは行わない
-	// ui.medarotInfoPanelsはSetBattleUIStateで動的に構築される
-	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, uiFactory.MessageWindowFont, uiFactory, ui.commonBottomPanel) // uiFactory.MessageWindowFont を使用
+	ui.messageManager = NewUIMessageDisplayManager(gameDataManager.Messages, config, uiFactory.MessageWindowFont, uiFactory, ui.commonBottomPanel)
 	ui.ebitenui = &ebitenui.UI{
 		Container: rootContainer,
 	}
-	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, ui.commonBottomPanel) // commonBottomPanel を渡す
+	ui.actionModalManager = NewUIActionModalManager(ui.ebitenui, eventChannel, uiFactory, ui.commonBottomPanel)
 	ui.targetIndicatorManager = NewUITargetIndicatorManager()
 	return ui
+}
+
+func createRootContainer() *widget.Container {
+	return widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewStackedLayout()),
+	)
+}
+
+func createBaseLayoutContainer() *widget.Container {
+	return widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(1),
+			widget.GridLayoutOpts.Stretch([]bool{true}, []bool{true, false}),
+			widget.GridLayoutOpts.Spacing(0, 10),
+		)),
+	)
+}
+
+func createCommonBottomPanel(config *data.Config, uiFactory *UIFactory, gameDataManager *data.GameDataManager) *UIPanel {
+	return NewPanel(&PanelOptions{
+		PanelWidth:      814,
+		PanelHeight:     180,
+		Padding:         widget.NewInsetsSimple(5),
+		Spacing:         5,
+		BackgroundColor: color.NRGBA{50, 50, 70, 200},
+		BorderColor:     config.UI.Colors.Gray,
+		BorderThickness: 5,
+		CenterContent:   true,
+	}, uiFactory.imageGenerator, gameDataManager.Font)
 }
 
 // IsActionModalVisible はアクションモーダルが表示されているかどうかを返します。
@@ -243,12 +243,6 @@ func (u *UI) Draw(screen *ebiten.Image, tick int, gameDataManager *data.GameData
 	if u.battlefieldWidget.viewModel != nil {
 		u.animationDrawer.Draw(screen, float64(tick), *u.battlefieldWidget.viewModel)
 	}
-}
-
-// DrawBackground は背景を描画します。
-func (u *UI) DrawBackground(screen *ebiten.Image) {
-	// 背景画像はBattlefieldWidgetのContainerが描画するため、ここでは枠線のみ描画
-	// DrawBackgroundはBattlefieldWidget.Drawに統合されたため、ここでは何もしない
 }
 
 // GetBattlefieldWidgetRect はバトルフィールドウィジェットの矩形を返します。

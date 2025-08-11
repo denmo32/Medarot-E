@@ -92,7 +92,6 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World, battleLog
 // Draw はUI要素を描画します。
 func (bum *BattleUIManager) Draw(screen *ebiten.Image, tickCount int, gameDataManager *data.GameDataManager) {
 	screen.Fill(bum.config.UI.Colors.Background) // 背景はUIマネージャーで描画
-	bum.ui.DrawBackground(screen)
 	bum.ui.Draw(screen, tickCount, gameDataManager)
 }
 
