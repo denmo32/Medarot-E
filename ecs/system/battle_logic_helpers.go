@@ -114,7 +114,7 @@ func resolveAttackTarget(
 func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *core.PartDefinition) component.ActionResult {
 	return component.ActionResult{
 		ActingEntry:    actingEntry,
-		ActionDidHit:   false,
+		
 		AttackerName:   component.SettingsComponent.Get(actingEntry).Name,
 		ActionName:     actingPartDef.PartName,
 		ActionTrait:    actingPartDef.Trait,

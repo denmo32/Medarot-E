@@ -83,12 +83,7 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	return int(damage), isCritical
 }
 
-// GenerateActionLog は行動の結果ログを生成します。
-// targetPartDef はダメージを受けたパーツの定義 (nilの場合あり)
-// actingPartDef は攻撃に使用されたパーツの定義
-func (dc *DamageCalculator) GenerateActionLog(attacker, target *donburi.Entry, actingPartDef *core.PartDefinition, targetPartDef *core.PartDefinition, damage int, isCritical bool, didHit bool) string {
-	panic("GenerateActionLog should not be called directly. Use BattleLogger.")
-}
+
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
 func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry) int {
@@ -102,8 +97,4 @@ func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEnt
 	return reducedDamage
 }
 
-// GenerateActionLogDefense は防御時のアクションログを生成します。
-// defensePartDef は防御に使用されたパーツの定義
-func (dc *DamageCalculator) GenerateActionLogDefense(target *donburi.Entry, defensePartDef *core.PartDefinition, damageDealt int, originalDamage int, isCritical bool) string {
-	panic("GenerateActionLogDefense should not be called directly. Use BattleLogger.")
-}
+

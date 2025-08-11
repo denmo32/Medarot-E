@@ -29,23 +29,7 @@ func (h *BaseAttackHandler) Execute(
 	actingPartDef *core.PartDefinition,
 	rand *rand.Rand,
 ) component.ActionResult {
-	// PerformAttack は、ターゲットの解決、命中判定、ダメージ計算、防御処理などの共通攻撃ロジックを実行します。
-	// Execute メソッドから呼び出されるため、引数を調整します。
-	return h.performAttackLogic(actingEntry, world, intent, damageCalculator, hitCalculator, targetSelector, partInfoProvider, actingPartDef, rand)
-}
-
-// performAttackLogic は攻撃アクションの主要なロジックを実行します。
-func (h *BaseAttackHandler) performAttackLogic(
-	actingEntry *donburi.Entry,
-	world donburi.World,
-	intent *core.ActionIntent,
-	damageCalculator *DamageCalculator,
-	hitCalculator *HitCalculator,
-	targetSelector *TargetSelector,
-	partInfoProvider PartInfoProviderInterface,
-	actingPartDef *core.PartDefinition,
-	rand *rand.Rand,
-) component.ActionResult {
+	
 	result := initializeAttackResult(actingEntry, actingPartDef)
 
 	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, world, targetSelector, partInfoProvider, rand)

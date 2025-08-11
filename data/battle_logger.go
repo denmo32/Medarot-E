@@ -42,7 +42,9 @@ func (l *BattleLoggerImpl) LogDefenseCheck(targetName string, defenseRate, succe
 }
 
 func (l *BattleLoggerImpl) LogCriticalHit(attackerName string, chance float64) {
-	log.Printf("%s の攻撃がクリティカル！ (確率: %.1f%%)", attackerName, chance)
+	log.Print(l.gameDataManager.Messages.FormatMessage("log_critical_hit_details", map[string]interface{}{
+		"ordered_args": []interface{}{attackerName, chance},
+	}))
 }
 
 func (l *BattleLoggerImpl) LogPartBroken(medarotName, partName, partID string) {

@@ -84,13 +84,13 @@ func TypeTargetRandomEffect(data *core.TargetRandomEffectData) core.DebuffType {
 // ApplyEvasionDebuffEffect はEvasionDebuffEffectDataを適用するロジックです。
 func ApplyEvasionDebuffEffect(world donburi.World, target *donburi.Entry, data *core.EvasionDebuffEffectData) {
 	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("EvasionDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
+	
 }
 
 // RemoveEvasionDebuffEffect はEvasionDebuffEffectDataを解除するロジックです。
 func RemoveEvasionDebuffEffect(world donburi.World, target *donburi.Entry, data *core.EvasionDebuffEffectData) {
 	// EvasionDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("EvasionDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
+	
 }
 
 // DescriptionEvasionDebuffEffect はEvasionDebuffEffectDataの説明を返します。
@@ -112,13 +112,13 @@ func TypeEvasionDebuffEffect(data *core.EvasionDebuffEffectData) core.DebuffType
 // ApplyDefenseDebuffEffect はDefenseDebuffEffectDataを適用するロジックです。
 func ApplyDefenseDebuffEffect(world donburi.World, target *donburi.Entry, data *core.DefenseDebuffEffectData) {
 	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("DefenseDebuffEffect applied to %s", SettingsComponent.Get(target).Name)
+	
 }
 
 // RemoveDefenseDebuffEffect はDefenseDebuffEffectDataを解除するロジックです。
 func RemoveDefenseDebuffEffect(world donburi.World, target *donburi.Entry, data *core.DefenseDebuffEffectData) {
 	// DefenseDebuffComponentはActiveEffectsComponentに統合されたため、直接追加・削除は不要
-	// log.Printf("DefenseDebuffEffect removed from %s", SettingsComponent.Get(target).Name)
+	
 }
 
 // DescriptionDefenseDebuffEffect はDefenseDebuffEffectDataの説明を返します。
