@@ -18,7 +18,6 @@ import (
 // UIInterface はUIマネージャーが提供する機能のインターフェースです。
 // viewModelFactoryImpl がUIマネージャーとやり取りするために使用されます。
 type UIInterface interface {
-	GetConfig() *data.Config
 	GetMessageDisplayManager() *UIMessageDisplayManager
 	ShowActionModal(vm core.ActionModalViewModel)
 	HideActionModal()
@@ -26,8 +25,8 @@ type UIInterface interface {
 	ClearAnimation()
 	ClearCurrentTarget()
 	IsActionModalVisible() bool
-	GetBattlefieldWidgetRect() image.Rectangle     // 追加
-	SetBattleUIState(battleUIState *BattleUIState) // 追加
+	GetBattlefieldWidgetRect() image.Rectangle
+	SetBattleUIState(battleUIState *BattleUIState)
 }
 
 // ViewModelFactoryInterface は ViewModelFactory が提供する機能のインターフェースです。
@@ -48,7 +47,7 @@ type BattleUIManager struct {
 	config           *data.Config
 	world            donburi.World
 	uiFactory        *UIFactory
-	viewModelFactory *ViewModelFactoryImpl // 型名を修正
+	viewModelFactory *ViewModelFactory // 型名を修正
 
 	// ebitenui root
 	ebitenui *ebitenui.UI
@@ -125,9 +124,8 @@ func NewBattleUIManager(
 	bum.messageManager = NewUIMessageDisplayManager(resources.GameDataManager.Messages, config, bum.uiFactory.MessageWindowFont, bum.uiFactory, bum.commonBottomPanel)
 	bum.actionModalManager = NewUIActionModalManager(bum.ebitenui, bum.eventChannel, bum.uiFactory, bum.commonBottomPanel)
 
-	// Initialize ViewModelFactory, which implements UIMediator
-	// It needs a reference to the fully constructed BattleUIManager to fulfill the UIInterface contract.
-	bum.viewModelFactory = NewViewModelFactory(world, partInfoProvider, resources.GameDataManager, rand, bum)
+	// Initialize ViewModelFactory
+	bum.viewModelFactory = NewViewModelFactory(partInfoProvider, resources.GameDataManager, rand, bum) // bum自身がUIConfigProviderを実装
 
 	// Initialize BattleUIStateComponent in the ECS world
 	battleUIStateEntry := world.Entry(world.Create(BattleUIStateComponent))
@@ -215,10 +213,6 @@ func (bum *BattleUIManager) updateLayout() {
 }
 
 // --- UIInterfaceの実装 ---
-
-func (bum *BattleUIManager) GetViewModelFactory() *ViewModelFactoryImpl { // 戻り値の型を修正
-	return bum.viewModelFactory
-}
 
 func (bum *BattleUIManager) SetBattleUIState(battleUIState *BattleUIState) {
 	bum.battleUIState = battleUIState

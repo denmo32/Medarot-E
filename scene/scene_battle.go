@@ -19,14 +19,16 @@ import (
 )
 
 type BattleScene struct {
-	resources       *data.SharedResources
-	manager         *SceneManager
-	world           donburi.World
-	tickCount       int
-	debugMode       bool
-	playerTeam      core.TeamID
-	winner          core.TeamID
-	battleUIManager *ui.BattleUIManager
+	resources        *data.SharedResources
+	manager          *SceneManager
+	world            donburi.World
+	tickCount        int
+	debugMode        bool
+	playerTeam       core.TeamID
+	winner           core.TeamID
+	battleUIManager  *ui.BattleUIManager
+	uiMediator       core.UIMediator // 新しく追加
+	viewModelFactory *ui.ViewModelFactory
 
 	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
@@ -60,14 +62,27 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 	bs.statusEffectSystem = system.NewStatusEffectSystem(bs.world, bs.battleLogic.GetDamageCalculator())
 	bs.postActionEffectSystem = system.NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.battleLogic.GetPartInfoProvider())
 
-	// Initialize BattleUIManager, which now handles all UI components
-	bs.battleUIManager = ui.NewBattleUIManager(
+	// Initialize BattleUIManager
+	battleUIManager := ui.NewBattleUIManager(
 		&bs.resources.Config,
 		bs.resources,
 		bs.world,
-		bs.battleLogic.GetPartInfoProvider(), // GetPartInfoProviderはインターフェースを返すのでキャスト不要
+		bs.battleLogic.GetPartInfoProvider(),
 		bs.rand,
 	)
+	bs.battleUIManager = battleUIManager // フィールドに設定
+
+	// Initialize ViewModelFactory
+	viewModelFactory := ui.NewViewModelFactory(
+		bs.battleLogic.GetPartInfoProvider(),
+		bs.gameDataManager,
+		bs.rand,
+		battleUIManager, // BattleUIManagerがUIConfigProviderを実装
+	)
+	bs.viewModelFactory = viewModelFactory
+
+	// Initialize UIMediator
+	bs.uiMediator = ui.NewUIMediator(viewModelFactory, battleUIManager)
 
 	// Initialize BattleStates map
 	bs.battleStates = map[core.GameState]system.BattleState{
@@ -114,14 +129,15 @@ func (bs *BattleScene) Update() error {
 		GameDataManager:        bs.gameDataManager,
 		Rand:                   bs.rand,
 		Tick:                   bs.tickCount,
-		UIMediator:             bs.battleUIManager.GetViewModelFactory(),
+		UIMediator:             bs.uiMediator, // UIMediatorを使用
+		ViewModelFactory:       bs.viewModelFactory,
 		StatusEffectSystem:     bs.statusEffectSystem,
 		PostActionEffectSystem: bs.postActionEffectSystem,
 		BattleLogic:            bs.battleLogic,
 	}
 
 	// Update BattleUIStateComponent
-	system.UpdateBattleUIStateSystem(bs.world, *bs.battleLogic, bs.battleUIManager.GetViewModelFactory(), bs.battleUIManager)
+	system.UpdateBattleUIStateSystem(bs.world, *bs.battleLogic, bs.uiMediator, bs.battleUIManager) // UIMediatorを使用
 
 	// Get current BattleState implementation and update it
 	if currentStateImpl, ok := bs.battleStates[currentGameStateComp.CurrentState]; ok {

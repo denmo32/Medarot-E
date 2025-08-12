@@ -10,6 +10,7 @@ import (
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
+	"medarot-ebiten/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -25,7 +26,8 @@ type BattleContext struct {
 	GameDataManager        *data.GameDataManager
 	Rand                   *rand.Rand
 	Tick                   int
-	UIMediator             UIMediator // UI関連の依存をUIMediatorインターフェースに集約
+	UIMediator             UIMediator           // UI関連の依存をUIMediatorインターフェースに集約
+	ViewModelFactory       *ui.ViewModelFactory // ViewModelFactoryを追加
 	StatusEffectSystem     *StatusEffectSystem
 	PostActionEffectSystem *PostActionEffectSystem
 	BattleLogic            *BattleLogic
@@ -126,7 +128,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 			}
 
 			// ここでViewModelを構築し、UIに渡す
-			actionModalVM, err := uiMediator.BuildActionModalViewModel(actingEntry, actionTargetMap) // UIMediator 経由で呼び出し
+			actionModalVM, err := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap) // ViewModelFactory 経由で呼び出し
 			if err != nil {
 				return nil, fmt.Errorf("failed to build action modal view model: %w", err)
 			}

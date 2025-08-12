@@ -1,37 +1,29 @@
 package system
 
 import (
-	"image" // imageパッケージを追加
 	"math/rand"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
 )
 
 // UIMediator defines the interface for communication from game logic (ECS) to the UI.
 // This helps to break the circular dependency between ecs/system and ui.
+// UIMediator defines the interface for communication from game logic (ECS) to the UI.
+// This helps to break the circular dependency between ecs/system and ui.
 type UIMediator interface {
-	// ViewModelFactory methods needed by ecs/system
-	BuildInfoPanelViewModel(entry *donburi.Entry) (core.InfoPanelViewModel, error)
-	BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle) (core.BattlefieldViewModel, error)
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error)
-
-	// UIMessageDisplayManager methods needed by ecs/system
 	EnqueueMessage(msg string, callback func())
 	EnqueueMessageQueue(messages []string, callback func())
 	IsMessageFinished() bool
-
-	// Other UIInterface methods needed by ecs/system
 	ShowActionModal(vm core.ActionModalViewModel)
 	HideActionModal()
-	PostUIEvent(event event.GameEvent) // A generic event posting method
+	PostUIEvent(event interface{}) // core.UIMediatorに合わせる
 	ClearAnimation()
 	ClearCurrentTarget()
-	IsActionModalVisible() bool // 追加
+	IsActionModalVisible() bool
 }
 
 // TargetingStrategy はAIのターゲット選択アルゴリズムをカプセル化するインターフェースです。

@@ -9,33 +9,32 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
 	"github.com/yohamta/donburi/query"
 )
 
-// ViewModelFactoryImpl は core.UIMediator インターフェースの実装です。
-type ViewModelFactoryImpl struct {
+// ViewModelFactory はViewModelの生成に特化します。
+type ViewModelFactory struct {
 	partInfoProvider ViewModelPartInfoProvider
 	gameDataManager  *data.GameDataManager
 	rand             *rand.Rand
-	ui               UIInterface
+	uiConfigProvider UIConfigProvider
 }
 
-// NewViewModelFactory は新しいViewModelFactoryImplのインスタンスを作成します。
-func NewViewModelFactory(world donburi.World, partInfoProvider ViewModelPartInfoProvider, gameDataManager *data.GameDataManager, rand *rand.Rand, ui UIInterface) *ViewModelFactoryImpl {
-	return &ViewModelFactoryImpl{ // 構造体名を修正
+// NewViewModelFactory は新しいViewModelFactoryのインスタンスを作成します。
+func NewViewModelFactory(partInfoProvider ViewModelPartInfoProvider, gameDataManager *data.GameDataManager, rand *rand.Rand, uiConfigProvider UIConfigProvider) *ViewModelFactory {
+	return &ViewModelFactory{
 		partInfoProvider: partInfoProvider,
 		gameDataManager:  gameDataManager,
 		rand:             rand,
-		ui:               ui,
+		uiConfigProvider: uiConfigProvider,
 	}
 }
 
 // BuildInfoPanelViewModel は、指定されたエンティティからInfoPanelViewModelを構築します。
-func (f *ViewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry) (core.InfoPanelViewModel, error) { // レシーバーの型を修正
+func (f *ViewModelFactory) BuildInfoPanelViewModel(entry *donburi.Entry) (core.InfoPanelViewModel, error) {
 	settings := component.SettingsComponent.Get(entry)
 	state := component.StateComponent.Get(entry)
 	partsComp := component.PartsComponent.Get(entry)
@@ -77,7 +76,7 @@ func (f *ViewModelFactoryImpl) BuildInfoPanelViewModel(entry *donburi.Entry) (co
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func (f *ViewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle) (core.BattlefieldViewModel, error) { // レシーバーの型を修正
+func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle) (core.BattlefieldViewModel, error) {
 	vm := core.BattlefieldViewModel{
 		Icons: []*core.IconViewModel{},
 		DebugMode: func() bool {
@@ -104,11 +103,11 @@ func (f *ViewModelFactoryImpl) BuildBattlefieldViewModel(world donburi.World, ba
 
 		var iconColor color.Color
 		if state.CurrentState == core.StateBroken {
-			iconColor = f.ui.GetConfig().UI.Colors.Broken
+			iconColor = f.uiConfigProvider.GetConfig().UI.Colors.Broken
 		} else if settings.Team == core.Team1 {
-			iconColor = f.ui.GetConfig().UI.Colors.Team1
+			iconColor = f.uiConfigProvider.GetConfig().UI.Colors.Team1
 		} else {
-			iconColor = f.ui.GetConfig().UI.Colors.Team2
+			iconColor = f.uiConfigProvider.GetConfig().UI.Colors.Team2
 		}
 
 		var debugText string
@@ -137,15 +136,15 @@ Prog: %.1f / %.1f`,
 
 // CalculateMedarotScreenXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // battlefieldWidth はバトルフィールドの表示幅です。
-func (f *ViewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider ViewModelPartInfoProvider, battlefieldWidth float32) float32 { // レシーバーの型を修正
+func (f *ViewModelFactory) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider ViewModelPartInfoProvider, battlefieldWidth float32) float32 {
 	settings := component.SettingsComponent.Get(entry)
 	progress := partInfoProvider.GetNormalizedActionProgress(entry)
 
 	// ホームポジションと実行ラインのX座標を定義します。
 	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
-	homeX, execX := battlefieldWidth*f.ui.GetConfig().UI.Battlefield.Team1HomeX, battlefieldWidth*f.ui.GetConfig().UI.Battlefield.Team1ExecutionLineX
+	homeX, execX := battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team1HomeX, battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team1ExecutionLineX
 	if settings.Team == core.Team2 {
-		homeX, execX = battlefieldWidth*f.ui.GetConfig().UI.Battlefield.Team2HomeX, battlefieldWidth*f.ui.GetConfig().UI.Battlefield.Team2ExecutionLineX
+		homeX, execX = battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team2HomeX, battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team2ExecutionLineX
 	}
 
 	var xPos float32
@@ -165,7 +164,7 @@ func (f *ViewModelFactoryImpl) CalculateMedarotScreenXPosition(entry *donburi.En
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
-func (f *ViewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error) { // レシーバーの型を修正
+func (f *ViewModelFactory) BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error) {
 	settings := component.SettingsComponent.Get(actingEntry)
 	partsComp := component.PartsComponent.Get(actingEntry)
 
@@ -204,53 +203,8 @@ func (f *ViewModelFactoryImpl) BuildActionModalViewModel(actingEntry *donburi.En
 	}, nil
 }
 
-// EnqueueMessage は単一のメッセージをキューに追加します。
-func (f *ViewModelFactoryImpl) EnqueueMessage(msg string, callback func()) { // レシーバーの型を修正
-	f.ui.GetMessageDisplayManager().EnqueueMessage(msg, callback)
-}
-
-// EnqueueMessageQueue は複数のメッセージをキューに追加します。
-func (f *ViewModelFactoryImpl) EnqueueMessageQueue(messages []string, callback func()) { // レシーバーの型を修正
-	f.ui.GetMessageDisplayManager().EnqueueMessageQueue(messages, callback)
-}
-
-// IsMessageFinished はメッセージキューが空で、かつメッセージウィンドウが表示されていない場合にtrueを返します。
-func (f *ViewModelFactoryImpl) IsMessageFinished() bool { // レシーバーの型を修正
-	return f.ui.GetMessageDisplayManager().IsFinished()
-}
-
-// ShowActionModal はアクション選択モーダルを表示します。
-func (f *ViewModelFactoryImpl) ShowActionModal(vm core.ActionModalViewModel) { // レシーバーの型を修正
-	f.ui.ShowActionModal(vm)
-}
-
-// HideActionModal はアクション選択モーダルを非表示にします。
-func (f *ViewModelFactoryImpl) HideActionModal() { // レシーバーの型を修正
-	f.ui.HideActionModal()
-}
-
-// PostUIEvent はUIイベントをBattleSceneのキューに追加します。
-func (f *ViewModelFactoryImpl) PostUIEvent(event event.GameEvent) { // レシーバーの型を修正
-	f.ui.PostEvent(event)
-}
-
-// ClearAnimation は現在のアニメーションをクリアします。
-func (f *ViewModelFactoryImpl) ClearAnimation() { // レシーバーの型を修正
-	f.ui.ClearAnimation()
-}
-
-// ClearCurrentTarget は現在のターゲットをクリアします。
-func (f *ViewModelFactoryImpl) ClearCurrentTarget() { // レシーバーの型を修正
-	f.ui.ClearCurrentTarget()
-}
-
-// IsActionModalVisible はアクションモーダルが表示されているかどうかを返します。
-func (f *ViewModelFactoryImpl) IsActionModalVisible() bool { // レシーバーの型を修正
-	return f.ui.IsActionModalVisible()
-}
-
 // GetAvailableAttackParts は、指定されたエンティティが利用可能な攻撃パーツのリストを返します。
-func (f *ViewModelFactoryImpl) GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart {
+func (f *ViewModelFactory) GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart {
 	return f.partInfoProvider.GetAvailableAttackParts(entry)
 }
 
@@ -270,4 +224,9 @@ func GetStateDisplayName(state core.StateType) string {
 	default:
 		return "不明"
 	}
+}
+
+// UIConfigProvider はUI設定を提供するインターフェースです。
+type UIConfigProvider interface {
+	GetConfig() *data.Config
 }

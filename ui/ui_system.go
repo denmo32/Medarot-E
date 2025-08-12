@@ -11,7 +11,7 @@ import (
 )
 
 // UpdateInfoPanelViewModelSystem は、すべてのメダロットエンティティからInfoPanelViewModelを構築し、BattleUIStateComponentに格納します。
-func UpdateInfoPanelViewModelSystem(battleUIState *BattleUIState, world donburi.World, partInfoProvider ViewModelPartInfoProvider, factory *ViewModelFactoryImpl) { // 型名を修正
+func UpdateInfoPanelViewModelSystem(battleUIState *BattleUIState, world donburi.World, partInfoProvider ViewModelPartInfoProvider, factory *ViewModelFactory) { // 型名を修正
 
 	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		settings := component.SettingsComponent.Get(entry)
