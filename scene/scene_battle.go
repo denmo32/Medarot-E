@@ -26,8 +26,8 @@ type BattleScene struct {
 	debugMode        bool
 	playerTeam       core.TeamID
 	winner           core.TeamID
-	battleUIManager  *ui.BattleUIManager
-	viewModelFactory *ui.ViewModelFactory
+	battleUIManager  system.UIUpdater
+	viewModelFactory system.ViewModelBuilder
 
 	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
@@ -210,7 +210,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		case event.HideActionModalGameEvent:
 			bs.battleUIManager.HideActionModal()
 		case event.ShowActionModalGameEvent:
-			bs.battleUIManager.ShowActionModal(e.ViewModel.(core.ActionModalViewModel))
+			bs.battleUIManager.ShowActionModal(e.ViewModel)
 		case event.ClearAnimationGameEvent:
 			bs.battleUIManager.ClearAnimation()
 		case event.ClearCurrentTargetGameEvent:

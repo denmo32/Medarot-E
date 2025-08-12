@@ -234,9 +234,9 @@ func (bum *BattleUIManager) hideMessageWindow() {
 
 // --- Action Modal Methods (from UIActionModalManager) ---
 
-func (bum *BattleUIManager) ShowActionModal(vm core.ActionModalViewModel) {
+func (bum *BattleUIManager) ShowActionModal(vm any) {
 	bum.isActionModalVisible = true
-	modal := createActionModalUI(&vm, bum.uiFactory, bum.eventChannel, bum.world, bum)
+	modal := createActionModalUI(vm.(*core.ActionModalViewModel), bum.uiFactory, bum.eventChannel, bum.world, bum)
 	bum.actionModal = modal
 	bum.commonBottomPanel.SetContent(bum.actionModal)
 	log.Println("アクションモーダルを表示しました。")

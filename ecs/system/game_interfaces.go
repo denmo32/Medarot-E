@@ -1,14 +1,43 @@
 package system
 
 import (
+	"image"
 	"math/rand"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/event"
 
 	"github.com/yohamta/donburi"
+	"github.com/hajimehoshi/ebiten/v2"
+	
 )
+
+// UIUpdater はUIの更新とイベント収集のインターフェースです。
+type UIUpdater interface {
+	SetViewModels(infoPanelVMs []core.InfoPanelViewModel, battlefieldVM core.BattlefieldViewModel)
+	Update(tickCount int) []event.GameEvent
+	EnqueueMessageQueue(messages []string, callback func())
+	IsMessageFinished() bool
+	ShowActionModal(vm any)
+	HideActionModal()
+	IsActionModalVisible() bool
+	SetCurrentTarget(entityID donburi.Entity)
+	ClearCurrentTarget()
+	SetAnimation(anim *component.ActionAnimationData)
+	ClearAnimation()
+	GetBattlefieldWidgetRect() image.Rectangle
+	Draw(screen *ebiten.Image, tickCount int, gameDataManager *data.GameDataManager)
+}
+
+// ViewModelBuilder はViewModelを構築するインターフェースです。
+type ViewModelBuilder interface {
+	BuildInfoPanelViewModel(entry *donburi.Entry) (core.InfoPanelViewModel, error)
+	BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle, config *data.Config) (core.BattlefieldViewModel, error)
+	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error)
+	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
+}
 
 
 

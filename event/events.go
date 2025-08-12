@@ -59,7 +59,7 @@ func (e HideActionModalGameEvent) isGameEvent() {}
 
 // ShowActionModalGameEvent は、アクションモーダルを表示する必要があることを示すイベントです。
 type ShowActionModalGameEvent struct {
-	ViewModel any // ActionModalViewModel への依存をなくす
+	ViewModel *core.ActionModalViewModel
 }
 
 func (e ShowActionModalGameEvent) isGameEvent() {}

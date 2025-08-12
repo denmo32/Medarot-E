@@ -10,7 +10,6 @@ import (
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
-	"medarot-ebiten/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -26,8 +25,8 @@ type BattleContext struct {
 	GameDataManager        *data.GameDataManager
 	Rand                   *rand.Rand
 	Tick                   int
-	BattleUIManager        *ui.BattleUIManager  // UIMediatorの代わりにBattleUIManagerを直接参照
-	ViewModelFactory       *ui.ViewModelFactory // ViewModelFactoryを追加
+	BattleUIManager        UIUpdater
+	ViewModelFactory       ViewModelBuilder
 	StatusEffectSystem     *StatusEffectSystem
 	PostActionEffectSystem *PostActionEffectSystem
 	BattleLogic            *BattleLogic
@@ -89,7 +88,7 @@ func (s *GaugeProgressState) Draw(screen *ebiten.Image) {
 type PlayerActionSelectState struct{}
 
 func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
-	battleUIManager := ctx.BattleUIManager // UIMediator を使用
+	// battleUIManager := ctx.BattleUIManager // UIMediator を使用
 
 	battleLogic := ctx.BattleLogic
 
@@ -133,8 +132,8 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 				return nil, fmt.Errorf("failed to build action modal view model: %w", err)
 			}
 			// モーダルが既に表示されていない場合のみイベントを発行
-			if !battleUIManager.IsActionModalVisible() { // UIMediator 経由で呼び出し
-				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{ViewModel: actionModalVM})
+			if !ctx.BattleUIManager.IsActionModalVisible() {
+				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{ViewModel: &actionModalVM})
 			}
 		} else {
 			// 無効または待機状態でないならキューから削除
@@ -225,7 +224,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) 
 	}
 
 	// メッセージ生成とエンキュー
-	ctx.BattleUIManager.EnqueueMessageQueue(data.BuildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() { // UIMediator 経由で呼び出し
+	ctx.BattleUIManager.EnqueueMessageQueue(data.BuildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() {
 		UpdateHistorySystem(ctx.World, result)
 	})
 
@@ -248,7 +247,7 @@ func (s *MessageState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	// UIMediator に Update メソッドがないため、ここでは直接呼び出さない。
 	// UIのUpdateはBattleSceneのUpdateで一括して行われる想定。
 	// メッセージ表示完了のチェックのみUIMediator経由で行う。
-	if ctx.BattleUIManager.IsMessageFinished() { // UIMediator 経由で呼び出し
+	if ctx.BattleUIManager.IsMessageFinished() {
 		gameEvents = append(gameEvents, event.MessageDisplayFinishedGameEvent{})
 	}
 
