@@ -26,7 +26,7 @@ type BattleContext struct {
 	GameDataManager        *data.GameDataManager
 	Rand                   *rand.Rand
 	Tick                   int
-	UIMediator             UIMediator           // UI関連の依存をUIMediatorインターフェースに集約
+	BattleUIManager        *ui.BattleUIManager  // UIMediatorの代わりにBattleUIManagerを直接参照
 	ViewModelFactory       *ui.ViewModelFactory // ViewModelFactoryを追加
 	StatusEffectSystem     *StatusEffectSystem
 	PostActionEffectSystem *PostActionEffectSystem
@@ -89,7 +89,7 @@ func (s *GaugeProgressState) Draw(screen *ebiten.Image) {
 type PlayerActionSelectState struct{}
 
 func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
-	uiMediator := ctx.UIMediator // UIMediator を使用
+	battleUIManager := ctx.BattleUIManager // UIMediator を使用
 
 	battleLogic := ctx.BattleLogic
 
@@ -133,7 +133,7 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 				return nil, fmt.Errorf("failed to build action modal view model: %w", err)
 			}
 			// モーダルが既に表示されていない場合のみイベントを発行
-			if !uiMediator.IsActionModalVisible() { // UIMediator 経由で呼び出し
+			if !battleUIManager.IsActionModalVisible() { // UIMediator 経由で呼び出し
 				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{ViewModel: actionModalVM})
 			}
 		} else {
@@ -225,7 +225,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) 
 	}
 
 	// メッセージ生成とエンキュー
-	ctx.UIMediator.EnqueueMessageQueue(data.BuildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() { // UIMediator 経由で呼び出し
+	ctx.BattleUIManager.EnqueueMessageQueue(data.BuildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() { // UIMediator 経由で呼び出し
 		UpdateHistorySystem(ctx.World, result)
 	})
 
@@ -248,7 +248,7 @@ func (s *MessageState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	// UIMediator に Update メソッドがないため、ここでは直接呼び出さない。
 	// UIのUpdateはBattleSceneのUpdateで一括して行われる想定。
 	// メッセージ表示完了のチェックのみUIMediator経由で行う。
-	if ctx.UIMediator.IsMessageFinished() { // UIMediator 経由で呼び出し
+	if ctx.BattleUIManager.IsMessageFinished() { // UIMediator 経由で呼び出し
 		gameEvents = append(gameEvents, event.MessageDisplayFinishedGameEvent{})
 	}
 

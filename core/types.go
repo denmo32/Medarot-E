@@ -350,16 +350,4 @@ type ActionTarget struct {
 	Slot           PartSlotKey
 }
 
-// UIMediator はUI関連の操作を抽象化するインターフェースです。
-// ECSシステムがUIの具体的な実装に依存しないようにするために使用されます。
-type UIMediator interface {
-	EnqueueMessage(msg string, callback func())
-	EnqueueMessageQueue(messages []string, callback func())
-	IsMessageFinished() bool
-	ShowActionModal(vm ActionModalViewModel)
-	HideActionModal()
-	PostUIEvent(event interface{}) // GameEventの循環参照を避けるためinterface{}に変更
-	ClearAnimation()
-	ClearCurrentTarget()
-	IsActionModalVisible() bool
-}
+

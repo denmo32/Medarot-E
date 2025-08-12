@@ -10,21 +10,7 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// UIMediator defines the interface for communication from game logic (ECS) to the UI.
-// This helps to break the circular dependency between ecs/system and ui.
-// UIMediator defines the interface for communication from game logic (ECS) to the UI.
-// This helps to break the circular dependency between ecs/system and ui.
-type UIMediator interface {
-	EnqueueMessage(msg string, callback func())
-	EnqueueMessageQueue(messages []string, callback func())
-	IsMessageFinished() bool
-	ShowActionModal(vm core.ActionModalViewModel)
-	HideActionModal()
-	PostUIEvent(event interface{}) // core.UIMediatorに合わせる
-	ClearAnimation()
-	ClearCurrentTarget()
-	IsActionModalVisible() bool
-}
+
 
 // TargetingStrategy はAIのターゲット選択アルゴリズムをカプセル化するインターフェースです。
 type TargetingStrategy interface {

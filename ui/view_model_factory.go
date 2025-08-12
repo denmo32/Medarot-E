@@ -15,21 +15,26 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
+// ViewModelPartInfoProvider は ViewModelFactory がパーツ情報にアクセスするために必要なインターフェースです。
+// このインターフェースは ecs/system.PartInfoProvider によって実装されます。
+type ViewModelPartInfoProvider interface {
+	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
+	GetNormalizedActionProgress(entry *donburi.Entry) float32
+}
+
 // ViewModelFactory はViewModelの生成に特化します。
 type ViewModelFactory struct {
 	partInfoProvider ViewModelPartInfoProvider
 	gameDataManager  *data.GameDataManager
 	rand             *rand.Rand
-	uiConfigProvider UIConfigProvider
 }
 
 // NewViewModelFactory は新しいViewModelFactoryのインスタンスを作成します。
-func NewViewModelFactory(partInfoProvider ViewModelPartInfoProvider, gameDataManager *data.GameDataManager, rand *rand.Rand, uiConfigProvider UIConfigProvider) *ViewModelFactory {
+func NewViewModelFactory(partInfoProvider ViewModelPartInfoProvider, gameDataManager *data.GameDataManager, rand *rand.Rand) *ViewModelFactory {
 	return &ViewModelFactory{
 		partInfoProvider: partInfoProvider,
 		gameDataManager:  gameDataManager,
 		rand:             rand,
-		uiConfigProvider: uiConfigProvider,
 	}
 }
 
@@ -76,7 +81,7 @@ func (f *ViewModelFactory) BuildInfoPanelViewModel(entry *donburi.Entry) (core.I
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle) (core.BattlefieldViewModel, error) {
+func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle, config *data.Config) (core.BattlefieldViewModel, error) {
 	vm := core.BattlefieldViewModel{
 		Icons: []*core.IconViewModel{},
 		DebugMode: func() bool {
@@ -95,7 +100,7 @@ func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World, battle
 		offsetX := float32(battlefieldRect.Min.X)
 		offsetY := float32(battlefieldRect.Min.Y)
 
-		x := f.CalculateMedarotScreenXPosition(entry, f.partInfoProvider, bfWidth)
+		x := f.CalculateMedarotScreenXPosition(entry, f.partInfoProvider, bfWidth, config)
 		y := (bfHeight / float32(core.PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
 
 		x += offsetX
@@ -103,11 +108,11 @@ func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World, battle
 
 		var iconColor color.Color
 		if state.CurrentState == core.StateBroken {
-			iconColor = f.uiConfigProvider.GetConfig().UI.Colors.Broken
+			iconColor = config.UI.Colors.Broken
 		} else if settings.Team == core.Team1 {
-			iconColor = f.uiConfigProvider.GetConfig().UI.Colors.Team1
+			iconColor = config.UI.Colors.Team1
 		} else {
-			iconColor = f.uiConfigProvider.GetConfig().UI.Colors.Team2
+			iconColor = config.UI.Colors.Team2
 		}
 
 		var debugText string
@@ -136,15 +141,15 @@ Prog: %.1f / %.1f`,
 
 // CalculateMedarotScreenXPosition はバトルフィールド上のアイコンのX座標を計算します。
 // battlefieldWidth はバトルフィールドの表示幅です。
-func (f *ViewModelFactory) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider ViewModelPartInfoProvider, battlefieldWidth float32) float32 {
+func (f *ViewModelFactory) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider ViewModelPartInfoProvider, battlefieldWidth float32, config *data.Config) float32 {
 	settings := component.SettingsComponent.Get(entry)
 	progress := partInfoProvider.GetNormalizedActionProgress(entry)
 
 	// ホームポジションと実行ラインのX座標を定義します。
 	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
-	homeX, execX := battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team1HomeX, battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team1ExecutionLineX
+	homeX, execX := battlefieldWidth*config.UI.Battlefield.Team1HomeX, battlefieldWidth*config.UI.Battlefield.Team1ExecutionLineX
 	if settings.Team == core.Team2 {
-		homeX, execX = battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team2HomeX, battlefieldWidth*f.uiConfigProvider.GetConfig().UI.Battlefield.Team2ExecutionLineX
+		homeX, execX = battlefieldWidth*config.UI.Battlefield.Team2HomeX, battlefieldWidth*config.UI.Battlefield.Team2ExecutionLineX
 	}
 
 	var xPos float32
@@ -226,7 +231,4 @@ func GetStateDisplayName(state core.StateType) string {
 	}
 }
 
-// UIConfigProvider はUI設定を提供するインターフェースです。
-type UIConfigProvider interface {
-	GetConfig() *data.Config
-}
+

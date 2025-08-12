@@ -49,7 +49,7 @@ Scene (各画面の実装)
     *   役割: すべてのシーンが満たすべき共通のルール（インターフェース）を定義します。
     *   内容: `Update`, `Draw` メソッドの型定義や、シーン間で共有するリソース（`SharedResources`）を定義します。
 *   `scene/scene_title.go`: タイトル画面の実装。
-*   `scene/scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）と、戦闘全体の進行を管理するステートマシン（`GameState`）を保持します。UI関連のロジックは`ui.BattleUIManager`に委譲され、`BattleScene`は現在の状態（`GameState`）に応じて適切な処理（ゲージ進行、行動選択、アニメーションなど）を実行し、状態間の遷移を制御します。
+*   `scene/scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）と、戦闘全体の進行を管理するステートマシン（`GameState`）を保持します。UIの更新は、`Update`ループ内で`ViewModelFactory`を用いてViewModelを生成し、`BattleUIManager`に渡すことで行われます。UIからの入力はゲームイベントとして処理されます。
 *   `scene/scene_customize.go`: メダロットのカスタマイズ画面の実装。
 *   `scene/scene_placeholder.go`: 未実装画面などのための、汎用的なプレースホルダー画面。
 
@@ -96,14 +96,11 @@ UI (ユーザーインターフェース)
 -----------------------
 
 ゲームのユーザーインターフェース関連のファイルです。
-UIはECSアーキテクチャの原則に基づき、ゲームロジックから明確に分離することを目標にしています。
+UIはECSアーキテクチャの原則に基づき、ゲームロジックから明確に分離することを目標にしています。データフローは「ECSデータ → ViewModel → UI描画」という単方向の流れを基本とします。
 
-*   `ui/battle_ui_manager.go`: **[ロジック/振る舞い]** バトルUI全体の司令塔。UIの初期化、更新、描画を統括します。UIウィジェットからの入力を受け取り、対応する**ゲームイベント**を`BattleScene`に通知する役割も担います。各種サブマネージャ（`InfoPanelManager`, `ActionModalManager`など）を内包し、UIのライフサイクル全体を管理します。
+*   `ui/battle_ui_manager.go`: **[ロジック/振る舞い]** バトルUI全体の司令塔。UIの初期化、更新、描画を統括します。`BattleScene`から渡されたViewModelに基づいてUIの状態を更新し、UIウィジェットからの入力をゲームイベントとして`BattleScene`に通知します。
 *   `ui/ui_layout.go`: **[ヘルパー]** `ebitenui`のコンテナなど、UIの基本的なレイアウト構造を生成するためのヘルパー関数を定義します。
 *   `ui/state.go`: **[データ]** UIの状態を保持するシングルトンコンポーネント`BattleUIState`を定義します。戦闘UIの表示/非表示、選択中のパーツ、ターゲットなどの状態を管理します。
-*   `ui/ui_interfaces.go`
-    *   役割: UIコンポーネントが満たすべきインターフェースを定義します。
-    *   内容: `UIInterface`など、UIの描画とイベント処理に必要なメソッドを定義します。`DrawBackground`メソッドは削除されました。かつて`UIMediator`インターフェースが定義されていましたが、`ecs/system/game_interfaces.go`に移動されました。
 *   `ui/ui_factory.go`
     *   役割: UIコンポーネントの生成とスタイリングを一元的に管理するファクトリ。
     *   内容: `NewCyberpunkButton`など、共通のスタイルを持つUI要素を生成するメソッドを提供します。
@@ -113,7 +110,7 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 *   `ui/ui_panel.go`
     *   役割: 汎用的なUIパネル（枠付きウィンドウ）の作成と管理。
     *   内容: 他のUI要素（情報パネル、アクションモーダル、メッセージウィンドウなど）の基盤となる、再利用可能なパネルコンポーネントを提供します。
-*   `ui/ui_view_model_factory.go`: **[ロジック/振る舞い]** ECSのデータからUI表示用のViewModelを構築するファクトリ。`InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。これにより、UIはECSの内部構造に直接依存しません。
+*   `ui/view_model_factory.go`: **[ロジック/振る舞い]** ECSのデータからUI表示用のViewModelを構築するファクトリ。`InfoPanelViewModel`や`BattlefieldViewModel`など、UIが必要とする整形されたデータを生成します。UIのレイアウト情報には依存せず、純粋なデータ変換に特化しています。
 *   `ui/ui_battlefield_widget.go`: 中央のバトルフィールド描画。ViewModelを受け取って描画します。メダロットのモデル、HPバー、状態アイコンなどを表示します。
 *   `ui/ui_info_panels.go`: 左右の情報パネル（HPゲージなど）の作成と更新。ViewModelを受け取って描画します。メダロットのHP、チャージゲージ、クールダウンゲージ、ステータス効果などを表示します。
 *   `ui/ui_action_modal.go`: プレイヤーの行動選択モーダルウィンドウ。下部の共通パネル上に、背景を透過させてパーツ選択ボタンを表示します。UIイベントを発行し、ViewModelを使用して表示します。
@@ -121,7 +118,6 @@ UIはECSアーキテクチャの原則に基づき、ゲームロジックから
 *   `ui/ui_message_window.go`: 画面下のメッセージウィンドウ。下部の共通パネル上に、背景を透過させてメッセージを表示します。戦闘中のイベントやシステムメッセージを表示します。
 *   `ui/ui_message_display_manager.go`: **[ロジック/振る舞い]** ゲーム内のメッセージ表示（キュー管理、ウィンドウ表示/非表示、進行）を管理します。
 *   `ui/ui_animation_drawer.go`: **[ロジック/振る舞い]** 戦闘中のアクションアニメーションの具体的な描画処理。攻撃エフェクト、ダメージ表示、ステータス効果アニメーションなどを担当します。
-*   `ui/ui_system.go`: **[ロジック/振る舞い]** UI関連のECSシステムを定義します。主に`UpdateInfoPanelViewModelSystem`が含まれ、情報パネルのViewModelを更新します。
 *   `ui/ui_target_indicator_manager.go`: **[ロジック/振る舞い]** ターゲットインジケーターの表示と状態を管理します。プレイヤーがターゲットを選択する際に、対象のメダロットやパーツを視覚的に示します。
 
 Configuration & Resources (設定とリソース)

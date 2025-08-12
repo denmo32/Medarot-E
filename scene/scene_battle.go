@@ -27,7 +27,6 @@ type BattleScene struct {
 	playerTeam       core.TeamID
 	winner           core.TeamID
 	battleUIManager  *ui.BattleUIManager
-	uiMediator       core.UIMediator // 新しく追加
 	viewModelFactory *ui.ViewModelFactory
 
 	gameDataManager        *data.GameDataManager
@@ -62,27 +61,9 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 	bs.statusEffectSystem = system.NewStatusEffectSystem(bs.world, bs.battleLogic.GetDamageCalculator())
 	bs.postActionEffectSystem = system.NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.battleLogic.GetPartInfoProvider())
 
-	// Initialize BattleUIManager
-	battleUIManager := ui.NewBattleUIManager(
-		&bs.resources.Config,
-		bs.resources,
-		bs.world,
-		bs.battleLogic.GetPartInfoProvider(),
-		bs.rand,
-	)
-	bs.battleUIManager = battleUIManager // フィールドに設定
-
-	// Initialize ViewModelFactory
-	viewModelFactory := ui.NewViewModelFactory(
-		bs.battleLogic.GetPartInfoProvider(),
-		bs.gameDataManager,
-		bs.rand,
-		battleUIManager, // BattleUIManagerがUIConfigProviderを実装
-	)
-	bs.viewModelFactory = viewModelFactory
-
-	// Initialize UIMediator
-	bs.uiMediator = ui.NewUIMediator(viewModelFactory, battleUIManager)
+	// Initialize UI and ViewModelFactory
+	bs.battleUIManager = ui.NewBattleUIManager(&bs.resources.Config, bs.resources, bs.world)
+	bs.viewModelFactory = ui.NewViewModelFactory(bs.battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand)
 
 	// Initialize BattleStates map
 	bs.battleStates = map[core.GameState]system.BattleState{
@@ -110,36 +91,43 @@ func (bs *BattleScene) SetState(newState core.GameState) {
 
 func (bs *BattleScene) Update() error {
 	bs.tickCount++
+
+	// 1. Create ViewModels from current game state
+	infoPanelVMs := make([]core.InfoPanelViewModel, 0)
+	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(bs.world, func(entry *donburi.Entry) {
+		vm, err := bs.viewModelFactory.BuildInfoPanelViewModel(entry)
+		if err == nil {
+			infoPanelVMs = append(infoPanelVMs, vm)
+		}
+	})
+	battlefieldVM, _ := bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, bs.battleUIManager.GetBattlefieldWidgetRect(), &bs.resources.Config)
+
+	// 2. Update UI with new ViewModels
+	bs.battleUIManager.SetViewModels(infoPanelVMs, battlefieldVM)
+
+	// 3. Update UI logic and collect UI-generated events
+	allGameEvents := bs.battleUIManager.Update(bs.tickCount)
+
+	// 4. Update game state machine
 	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
 	}
 	currentGameStateComp := component.GameStateComponent.Get(gameStateEntry)
 
-	allGameEvents := make([]event.GameEvent, 0)
-
-	// Update BattleUIManager and collect UI generated game events
-	uiGeneratedGameEvents := bs.battleUIManager.Update(bs.tickCount, bs.world)
-	allGameEvents = append(allGameEvents, uiGeneratedGameEvents...)
-
-	// Create BattleContext
 	battleContext := &system.BattleContext{
 		World:                  bs.world,
 		Config:                 &bs.resources.Config,
 		GameDataManager:        bs.gameDataManager,
 		Rand:                   bs.rand,
 		Tick:                   bs.tickCount,
-		UIMediator:             bs.uiMediator, // UIMediatorを使用
+		BattleUIManager:        bs.battleUIManager,
 		ViewModelFactory:       bs.viewModelFactory,
 		StatusEffectSystem:     bs.statusEffectSystem,
 		PostActionEffectSystem: bs.postActionEffectSystem,
 		BattleLogic:            bs.battleLogic,
 	}
 
-	// Update BattleUIStateComponent
-	system.UpdateBattleUIStateSystem(bs.world, *bs.battleLogic, bs.uiMediator, bs.battleUIManager) // UIMediatorを使用
-
-	// Get current BattleState implementation and update it
 	if currentStateImpl, ok := bs.battleStates[currentGameStateComp.CurrentState]; ok {
 		tempGameEvents, err := currentStateImpl.Update(battleContext)
 		if err != nil {
@@ -150,17 +138,15 @@ func (bs *BattleScene) Update() error {
 		log.Printf("Unknown game state: %s", currentGameStateComp.CurrentState)
 	}
 
-	// Process all collected game events and get state change requests
+	// 5. Process all collected game events and get state change requests
 	stateChangeRequests := bs.processGameEvents(allGameEvents)
 
-	// Apply state changes
+	// 6. Apply state changes
 	for _, req := range stateChangeRequests {
 		if stateChangeReq, ok := req.(event.StateChangeRequestedGameEvent); ok {
 			bs.SetState(stateChangeReq.NextState)
 		}
 	}
-
-	// UIの更新はBattleUIManager内で完結するため、ここでは不要
 
 	return nil
 }
@@ -210,7 +196,7 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 			*lastActionResultComp = e.Result // Store the result
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePostAction})
 		case event.MessageDisplayRequestGameEvent:
-			bs.battleUIManager.GetMessageDisplayManager().EnqueueMessageQueue(e.Messages, e.Callback)
+			bs.battleUIManager.EnqueueMessageQueue(e.Messages, e.Callback)
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
 		case event.MessageDisplayFinishedGameEvent:
 			if bs.winner != core.TeamNone {

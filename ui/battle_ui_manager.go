@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image"
-	"math/rand"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
@@ -15,39 +14,11 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-// UIInterface はUIマネージャーが提供する機能のインターフェースです。
-// viewModelFactoryImpl がUIマネージャーとやり取りするために使用されます。
-type UIInterface interface {
-	GetMessageDisplayManager() *UIMessageDisplayManager
-	ShowActionModal(vm core.ActionModalViewModel)
-	HideActionModal()
-	PostEvent(event event.GameEvent)
-	ClearAnimation()
-	ClearCurrentTarget()
-	IsActionModalVisible() bool
-	GetBattlefieldWidgetRect() image.Rectangle
-	SetBattleUIState(battleUIState *BattleUIState)
-}
-
-// ViewModelFactoryInterface は ViewModelFactory が提供する機能のインターフェースです。
-type ViewModelFactoryInterface interface {
-	BuildBattlefieldViewModel(world donburi.World, rect image.Rectangle) (core.BattlefieldViewModel, error)
-	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error)
-}
-
-// ViewModelPartInfoProvider は ViewModelFactory がパーツ情報にアクセスするために必要なインターフェースです。
-type ViewModelPartInfoProvider interface {
-	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
-	GetNormalizedActionProgress(entry *donburi.Entry) float32 // 追加
-}
-
 // BattleUIManager はバトルシーンのUI要素の管理と描画を担当する唯一の司令塔です。
-// UIInterfaceを実装します。
 type BattleUIManager struct {
-	config           *data.Config
-	world            donburi.World
-	uiFactory        *UIFactory
-	viewModelFactory *ViewModelFactory // 型名を修正
+	config    *data.Config
+	world     donburi.World
+	uiFactory *UIFactory
 
 	// ebitenui root
 	ebitenui *ebitenui.UI
@@ -65,7 +36,6 @@ type BattleUIManager struct {
 
 	// State & Events
 	eventChannel          chan event.GameEvent
-	battleUIState         *BattleUIState
 	lastWidth, lastHeight int
 }
 
@@ -74,8 +44,6 @@ func NewBattleUIManager(
 	config *data.Config,
 	resources *data.SharedResources,
 	world donburi.World,
-	partInfoProvider ViewModelPartInfoProvider,
-	rand *rand.Rand,
 ) *BattleUIManager {
 	bum := &BattleUIManager{
 		config:       config,
@@ -124,20 +92,11 @@ func NewBattleUIManager(
 	bum.messageManager = NewUIMessageDisplayManager(resources.GameDataManager.Messages, config, bum.uiFactory.MessageWindowFont, bum.uiFactory, bum.commonBottomPanel)
 	bum.actionModalManager = NewUIActionModalManager(bum.ebitenui, bum.eventChannel, bum.uiFactory, bum.commonBottomPanel)
 
-	// Initialize ViewModelFactory
-	bum.viewModelFactory = NewViewModelFactory(partInfoProvider, resources.GameDataManager, rand, bum) // bum自身がUIConfigProviderを実装
-
-	// Initialize BattleUIStateComponent in the ECS world
-	battleUIStateEntry := world.Entry(world.Create(BattleUIStateComponent))
-	bum.battleUIState = BattleUIStateComponent.Get(battleUIStateEntry)
-	bum.battleUIState.InfoPanels = make(map[string]core.InfoPanelViewModel)
-
 	return bum
 }
 
 // Update はUI全体の状態を更新します。
-func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.GameEvent {
-	bum.updateLayout()
+func (bum *BattleUIManager) Update(tickCount int) []event.GameEvent {
 	bum.ebitenui.Update()
 	bum.animationDrawer.Update(float64(tickCount))
 	bum.messageManager.Update()
@@ -149,6 +108,36 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.G
 	}
 
 	return uiGeneratedGameEvents
+}
+
+// SetViewModels は、渡されたViewModelに基づいてUI全体を更新します。
+func (bum *BattleUIManager) SetViewModels(infoPanelVMs []core.InfoPanelViewModel, battlefieldVM core.BattlefieldViewModel) {
+	// Battlefield
+	bum.battlefieldWidget.SetViewModel(battlefieldVM)
+
+	// Info Panels
+	mainUIContainer := bum.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
+	bum.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, bum.GetBattlefieldWidgetRect(), battlefieldVM.Icons)
+
+	// Ensure layout is up to date
+	rootRect := bum.ebitenui.Container.GetWidget().Rect
+	width, height := rootRect.Dx(), rootRect.Dy()
+	if bum.lastWidth != width || bum.lastHeight != height {
+		bum.lastWidth, bum.lastHeight = width, height
+		mainUIContainer := bum.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
+		containerRect := mainUIContainer.GetWidget().Rect
+
+		infoPanelWidth := int(bum.config.UI.InfoPanel.BlockWidth)
+		padding := int(bum.config.UI.InfoPanel.Padding)
+
+		bfWidth := containerRect.Dx() - (infoPanelWidth+padding)*2
+		bfHeight := containerRect.Dy()
+		bfX := infoPanelWidth + padding
+		bfY := 0
+
+		battlefieldRect := image.Rect(bfX, bfY, bfX+bfWidth, bfY+bfHeight)
+		bum.battlefieldWidget.Container.GetWidget().Rect = battlefieldRect
+	}
 }
 
 // Draw はUI全体を描画します。
@@ -179,61 +168,18 @@ func (bum *BattleUIManager) Draw(screen *ebiten.Image, tickCount int, gameDataMa
 	}
 }
 
-// updateLayout はUIのレイアウトを更新します。
-func (bum *BattleUIManager) updateLayout() {
-	rootRect := bum.ebitenui.Container.GetWidget().Rect
-	width, height := rootRect.Dx(), rootRect.Dy()
+// --- Public Methods for Scene interaction ---
 
-	if bum.lastWidth == width && bum.lastHeight == height {
-		return
-	}
-	bum.lastWidth, bum.lastHeight = width, height
-
-	mainUIContainer := bum.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
-	containerRect := mainUIContainer.GetWidget().Rect
-
-	infoPanelWidth := int(bum.config.UI.InfoPanel.BlockWidth)
-	padding := int(bum.config.UI.InfoPanel.Padding)
-
-	bfWidth := containerRect.Dx() - (infoPanelWidth+padding)*2
-	bfHeight := containerRect.Dy()
-	bfX := infoPanelWidth + padding
-	bfY := 0
-
-	battlefieldRect := image.Rect(bfX, bfY, bfX+bfWidth, bfY+bfHeight)
-	bum.battlefieldWidget.Container.GetWidget().Rect = battlefieldRect
-
-	if bum.battleUIState != nil {
-		infoPanelVMs := make([]core.InfoPanelViewModel, 0, len(bum.battleUIState.InfoPanels))
-		for _, vm := range bum.battleUIState.InfoPanels {
-			infoPanelVMs = append(infoPanelVMs, vm)
-		}
-		bum.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, battlefieldRect, bum.battleUIState.BattlefieldViewModel.Icons)
-	}
+func (bum *BattleUIManager) EnqueueMessage(msg string, callback func()) {
+	bum.messageManager.EnqueueMessage(msg, callback)
 }
 
-// --- UIInterfaceの実装 ---
-
-func (bum *BattleUIManager) SetBattleUIState(battleUIState *BattleUIState) {
-	bum.battleUIState = battleUIState
-	bum.battlefieldWidget.SetViewModel(battleUIState.BattlefieldViewModel)
-
-	mainUIContainer := bum.ebitenui.Container.Children()[0].(*widget.Container).Children()[0].(*widget.Container)
-
-	infoPanelVMs := make([]core.InfoPanelViewModel, 0, len(battleUIState.InfoPanels))
-	for _, vm := range battleUIState.InfoPanels {
-		infoPanelVMs = append(infoPanelVMs, vm)
-	}
-
-	bum.infoPanelManager.UpdatePanels(infoPanelVMs, mainUIContainer, bum.GetBattlefieldWidgetRect(), battleUIState.BattlefieldViewModel.Icons)
+func (bum *BattleUIManager) EnqueueMessageQueue(messages []string, callback func()) {
+	bum.messageManager.EnqueueMessageQueue(messages, callback)
 }
 
-func (bum *BattleUIManager) PostEvent(event event.GameEvent) {
-	bum.eventChannel <- event
-}
-
-func (bum *BattleUIManager) IsActionModalVisible() bool {
-	return bum.actionModalManager.IsVisible()
+func (bum *BattleUIManager) IsMessageFinished() bool {
+	return bum.messageManager.IsFinished()
 }
 
 func (bum *BattleUIManager) ShowActionModal(vm core.ActionModalViewModel) {
@@ -244,8 +190,8 @@ func (bum *BattleUIManager) HideActionModal() {
 	bum.actionModalManager.HideActionModal()
 }
 
-func (bum *BattleUIManager) GetActionTargetMap() map[core.PartSlotKey]core.ActionTarget {
-	return bum.actionModalManager.GetActionTargetMap()
+func (bum *BattleUIManager) IsActionModalVisible() bool {
+	return bum.actionModalManager.IsVisible()
 }
 
 func (bum *BattleUIManager) SetCurrentTarget(entityID donburi.Entity) {
@@ -256,38 +202,14 @@ func (bum *BattleUIManager) ClearCurrentTarget() {
 	bum.targetIndicatorManager.ClearCurrentTarget()
 }
 
-func (bum *BattleUIManager) GetBattlefieldWidgetRect() image.Rectangle {
-	return bum.battlefieldWidget.Container.GetWidget().Rect
-}
-
-func (bum *BattleUIManager) GetRootContainer() *widget.Container {
-	return bum.ebitenui.Container
-}
-
 func (bum *BattleUIManager) SetAnimation(anim *component.ActionAnimationData) {
 	bum.animationDrawer.SetAnimation(anim)
-}
-
-func (bum *BattleUIManager) IsAnimationFinished(tick int) bool {
-	return bum.animationDrawer.IsAnimationFinished(float64(tick))
 }
 
 func (bum *BattleUIManager) ClearAnimation() {
 	bum.animationDrawer.ClearAnimation()
 }
 
-func (bum *BattleUIManager) GetCurrentAnimationResult() component.ActionResult {
-	return bum.animationDrawer.GetCurrentAnimationResult()
-}
-
-func (bum *BattleUIManager) GetMessageDisplayManager() *UIMessageDisplayManager {
-	return bum.messageManager
-}
-
-func (bum *BattleUIManager) GetEventChannel() chan event.GameEvent {
-	return bum.eventChannel
-}
-
-func (bum *BattleUIManager) GetConfig() *data.Config {
-	return bum.config
+func (bum *BattleUIManager) GetBattlefieldWidgetRect() image.Rectangle {
+	return bum.battlefieldWidget.Container.GetWidget().Rect
 }
