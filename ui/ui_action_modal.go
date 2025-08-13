@@ -95,7 +95,7 @@ func (a *ActionModal) createUI(vm *core.ActionModalViewModel) widget.PreferredSi
 			buttonTextColor,
 			func(args *widget.ButtonClickedEventArgs) {
 				// ゲームイベントを発行
-				a.eventChannel <- event.ChargeRequestedGameEvent{
+				a.eventChannel <- event.PlayerActionIntentEvent{
 					ActingEntityID:  capturedVM.ActingEntityID,
 					SelectedSlotKey: capturedButtonVM.SlotKey,
 					TargetEntityID:  capturedButtonVM.TargetEntityID,

@@ -84,15 +84,15 @@ type ActionConfirmedGameEvent struct {
 
 func (e ActionConfirmedGameEvent) isGameEvent() {}
 
-// ChargeRequestedGameEvent は、チャージ開始が要求されたことを示すイベントです。
-type ChargeRequestedGameEvent struct {
+// PlayerActionIntentEvent はプレイヤーが特定の行動意図を示したことを示すイベントです。
+type PlayerActionIntentEvent struct {
 	ActingEntityID  donburi.Entity
 	SelectedSlotKey core.PartSlotKey
 	TargetEntityID  donburi.Entity
 	TargetPartSlot  core.PartSlotKey
 }
 
-func (e ChargeRequestedGameEvent) isGameEvent() {}
+func (e PlayerActionIntentEvent) isGameEvent() {}
 
 // ActionCanceledGameEvent は、プレイヤーが行動選択をキャンセルしたことを示すイベントです。
 type ActionCanceledGameEvent struct {

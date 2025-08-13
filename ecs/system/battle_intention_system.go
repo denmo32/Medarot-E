@@ -50,3 +50,31 @@ func UpdateAIInputSystem(
 		aiSelectAction(world, entry, battleLogic)
 	})
 }
+
+// ProcessPlayerIntent はプレイヤーの行動意図を解釈し、具体的なアクションを開始します。
+func ProcessPlayerIntent(world donburi.World, battleLogic *BattleLogic, event event.PlayerActionIntentEvent) {
+	actingEntry := world.Entry(event.ActingEntityID)
+	if actingEntry == nil || !actingEntry.Valid() {
+		return
+	}
+
+	var targetEntry *donburi.Entry
+	if event.TargetEntityID != 0 {
+		targetEntry = world.Entry(event.TargetEntityID)
+		if targetEntry == nil || !targetEntry.Valid() {
+			return // ターゲットが無効なら中断
+		}
+	}
+
+	successful := battleLogic.GetChargeInitiationSystem().StartCharge(
+		actingEntry,
+		event.SelectedSlotKey,
+		targetEntry,
+		event.TargetPartSlot,
+	)
+
+	if !successful {
+		// エラーログはStartCharge内で行われるため、ここでは不要
+	}
+}
+

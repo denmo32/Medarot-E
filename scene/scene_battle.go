@@ -225,25 +225,8 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 			bs.battleUIManager.ClearAnimation()
 		case event.ClearCurrentTargetGameEvent:
 			bs.battleUIManager.ClearCurrentTarget()
-		case event.ChargeRequestedGameEvent:
-			actingEntry := bs.world.Entry(e.ActingEntityID)
-			if actingEntry == nil || !actingEntry.Valid() {
-				log.Printf("Error: ChargeRequestedGameEvent - ActingEntityID is invalid or nil: %d", e.ActingEntityID)
-				break
-			}
-			var targetEntry *donburi.Entry
-			if e.TargetEntityID != 0 {
-				targetEntry = bs.world.Entry(e.TargetEntityID)
-				if targetEntry == nil || !targetEntry.Valid() {
-					log.Printf("Error: ChargeRequestedGameEvent - TargetEntityID is invalid or nil: %d", e.TargetEntityID)
-					break // ターゲットが無効なら中断
-				}
-			}
-
-			successful := bs.battleLogic.GetChargeInitiationSystem().StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot)
-			if !successful {
-				log.Printf("エラー: %s の行動開始に失敗しました。", component.SettingsComponent.Get(actingEntry).Name)
-			}
+		case event.PlayerActionIntentEvent:
+			system.ProcessPlayerIntent(bs.world, bs.battleLogic, e)
 		case event.PlayerActionProcessedGameEvent:
 			// モーダルを隠すイベントを発行
 			// allGameEvents はイミュータブルとして扱うべきなので、新しいイベントは返り値で返す
