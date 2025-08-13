@@ -11,6 +11,8 @@ import (
 type BattleUIState struct {
 	InfoPanels           map[string]core.InfoPanelViewModel // Map from Medarot ID to its ViewModel
 	BattlefieldViewModel core.BattlefieldViewModel
+	ActionModalVisible   bool
+	ActionModalViewModel *core.ActionModalViewModel
 }
 
 // BattleUIStateComponent is the component type for the BattleUIState.

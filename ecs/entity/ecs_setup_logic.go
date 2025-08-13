@@ -4,8 +4,9 @@ import (
 	"log"
 
 	"medarot-ebiten/core"
-	"medarot-ebiten/data" // dataパッケージをインポート
+	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ui"
 
 	"github.com/yohamta/donburi"
 	"github.com/yohamta/donburi/filter"
@@ -27,6 +28,12 @@ func InitializeBattleWorld(world donburi.World, res *data.SharedResources, playe
 	// Ensure LastActionResultComponent entity exists
 	lastActionResultEntry := world.Entry(world.Create(component.LastActionResultComponent, component.WorldStateTag))
 	component.LastActionResultComponent.SetValue(lastActionResultEntry, component.ActionResult{})
+
+	// Ensure BattleUIStateComponent entity exists
+	uiStateEntry := world.Entry(world.Create(ui.BattleUIStateComponent, component.WorldStateTag))
+	ui.BattleUIStateComponent.SetValue(uiStateEntry, ui.BattleUIState{
+		ActionModalVisible: false,
+	})
 
 	teamBuffsEntry := world.Entry(world.Create(component.TeamBuffsComponent))
 	component.TeamBuffsComponent.SetValue(teamBuffsEntry, component.TeamBuffs{

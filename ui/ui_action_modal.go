@@ -18,12 +18,11 @@ type TargetManager interface {
 
 // ActionModal はプレイヤーの行動選択UIを管理するコンポーネントです。
 type ActionModal struct {
-	widget       widget.PreferredSizeLocateableWidget
-	uiFactory    *UIFactory
-	eventChannel chan event.GameEvent
-	world        donburi.World
+	widget        widget.PreferredSizeLocateableWidget
+	uiFactory     *UIFactory
+	eventChannel  chan event.GameEvent
+	world         donburi.World
 	targetManager TargetManager
-	isVisible    bool
 }
 
 // NewActionModal は新しいActionModalのインスタンスを作成します。
@@ -44,7 +43,6 @@ func NewActionModal(
 		eventChannel:  eventChannel,
 		world:         world,
 		targetManager: targetManager,
-		isVisible:     false,
 	}
 }
 
@@ -53,22 +51,15 @@ func (a *ActionModal) Widget() widget.PreferredSizeLocateableWidget {
 	return a.widget
 }
 
-// IsVisible はモーダルが表示されているかどうかを返します。
-func (a *ActionModal) IsVisible() bool {
-	return a.isVisible
-}
-
-// Show はViewModelに基づいてモーダルの内容を構築し、表示状態にします。
+// Show はViewModelに基づいてモーダルの内容を構築します。
 func (a *ActionModal) Show(vm *core.ActionModalViewModel) {
 	a.widget = a.createUI(vm)
-	a.isVisible = true
 }
 
-// Hide はモーダルを非表示にし、内容をクリアします。
+// Hide はモーダルの内容をクリアします。
 func (a *ActionModal) Hide() {
 	// 新しい空のコンテナに置き換えることで内容をクリア
 	a.widget = widget.NewContainer()
-	a.isVisible = false
 }
 
 // createUI はViewModelから実際のUIウィジェットを構築します。
@@ -125,7 +116,6 @@ func (a *ActionModal) createUI(vm *core.ActionModalViewModel) widget.PreferredSi
 				a.eventChannel <- event.PlayerActionProcessedGameEvent{
 					ActingEntry: actingEntry,
 				}
-				a.eventChannel <- event.HideActionModalGameEvent{}
 				a.eventChannel <- event.ClearCurrentTargetGameEvent{}
 			},
 			func(args *widget.ButtonHoverEventArgs) {

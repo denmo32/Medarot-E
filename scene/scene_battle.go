@@ -184,6 +184,13 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 	}
 	lastActionResultComp := component.LastActionResultComponent.Get(lastActionResultEntry)
 
+	// ワールドから BattleUIState を取得 (イベント処理で使うため)
+	uiStateEntry, ok := query.NewQuery(filter.Contains(ui.BattleUIStateComponent)).First(bs.world)
+	if !ok {
+		log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
+	}
+	uiState := ui.BattleUIStateComponent.Get(uiStateEntry)
+
 	for _, evt := range gameEvents {
 		switch e := evt.(type) {
 		case event.PlayerActionRequiredGameEvent:
@@ -207,10 +214,6 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		case event.GameOverGameEvent:
 			bs.winner = e.Winner
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
-		case event.HideActionModalGameEvent:
-			bs.battleUIManager.HideActionModal()
-		case event.ShowActionModalGameEvent:
-			bs.battleUIManager.ShowActionModal(e.ViewModel)
 		case event.ClearAnimationGameEvent:
 			bs.battleUIManager.ClearAnimation()
 		case event.ClearCurrentTargetGameEvent:
@@ -234,6 +237,10 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 				log.Printf("エラー: %s の行動開始に失敗しました。", component.SettingsComponent.Get(actingEntry).Name)
 			}
 		case event.PlayerActionProcessedGameEvent:
+			// UI state を更新してモーダルを閉じる
+			uiState.ActionModalVisible = false
+			uiState.ActionModalViewModel = nil
+
 			playerActionQueue := entity.GetPlayerActionQueueComponent(bs.world)
 			// キューの先頭が処理されたエントリと一致するか確認
 			if len(playerActionQueue.Queue) > 0 && playerActionQueue.Queue[0] == e.ActingEntry {

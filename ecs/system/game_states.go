@@ -10,6 +10,7 @@ import (
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
+	"medarot-ebiten/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -126,14 +127,23 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 				actionTargetMap[slotKey] = core.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot} // core.ActionTarget を使用
 			}
 
-			// ここでViewModelを構築し、UIに渡す
-			actionModalVM, err := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap) // ViewModelFactory 経由で呼び出し
+			// ここでViewModelを構築し、UI状態を更新する
+			actionModalVM, err := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap)
 			if err != nil {
 				return nil, fmt.Errorf("failed to build action modal view model: %w", err)
 			}
-			// モーダルが既に表示されていない場合のみイベントを発行
-			if !ctx.BattleUIManager.IsActionModalVisible() {
-				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{ViewModel: &actionModalVM})
+
+			// ワールドから BattleUIState を取得
+			uiStateEntry, ok := query.NewQuery(filter.Contains(ui.BattleUIStateComponent)).First(ctx.World)
+			if !ok {
+				log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
+			}
+			uiState := ui.BattleUIStateComponent.Get(uiStateEntry)
+
+			// モーダルが既に表示されていない場合のみUI状態を更新
+			if !uiState.ActionModalVisible {
+				uiState.ActionModalVisible = true
+				uiState.ActionModalViewModel = &actionModalVM
 			}
 		} else {
 			// 無効または待機状態でないならキューから削除

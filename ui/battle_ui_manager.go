@@ -14,6 +14,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
 // BattleUIManager はバトルシーンのUI要素の管理と描画を担当する唯一の司令塔です。
@@ -46,8 +48,9 @@ type BattleUIManager struct {
 	currentTarget donburi.Entity
 
 	// State & Events
-	eventChannel          chan event.GameEvent
+	eventChannel       chan event.GameEvent
 	lastWidth, lastHeight int
+	actionModalVisible bool // ローカルな表示状態
 }
 
 // NewBattleUIManager は BattleUIManager の新しいインスタンスを作成します。
@@ -106,6 +109,30 @@ func NewBattleUIManager(
 
 // Update はUI全体の状態を更新します。
 func (bum *BattleUIManager) Update(tickCount int) []event.GameEvent {
+	// ワールドから BattleUIState を取得
+	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bum.world)
+	if !ok {
+		log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
+	}
+	uiState := BattleUIStateComponent.Get(uiStateEntry)
+
+	// UIStateに基づいてモーダルを更新
+	if uiState.ActionModalVisible {
+		// モーダルが表示されるべきで、まだ表示されていない場合
+		if !bum.actionModalVisible {
+			bum.actionModal.Show(uiState.ActionModalViewModel)
+			bum.commonBottomPanel.SetContent(bum.actionModal.Widget())
+			bum.actionModalVisible = true
+		}
+	} else {
+		// モーダルが非表示であるべきで、現在表示されている場合
+		if bum.actionModalVisible {
+			bum.actionModal.Hide()
+			bum.commonBottomPanel.SetContent(nil)
+			bum.actionModalVisible = false
+		}
+	}
+
 	bum.ebitenui.Update()
 	bum.animationDrawer.Update(float64(tickCount))
 
@@ -220,26 +247,7 @@ func (bum *BattleUIManager) hideMessageWindow() {
 	bum.commonBottomPanel.SetContent(nil)
 }
 
-// --- Action Modal Methods ---
 
-func (bum *BattleUIManager) ShowActionModal(vm any) {
-	bum.actionModal.Show(vm.(*core.ActionModalViewModel))
-	bum.commonBottomPanel.SetContent(bum.actionModal.Widget())
-	log.Println("アクションモーダルを表示しました。")
-}
-
-func (bum *BattleUIManager) HideActionModal() {
-	if !bum.actionModal.IsVisible() {
-		return
-	}
-	bum.actionModal.Hide()
-	bum.commonBottomPanel.SetContent(nil)
-	log.Println("アクションモーダルを非表示にしました。")
-}
-
-func (bum *BattleUIManager) IsActionModalVisible() bool {
-	return bum.actionModal.IsVisible()
-}
 
 // --- Target Indicator Methods (TargetManager interface implementation) ---
 

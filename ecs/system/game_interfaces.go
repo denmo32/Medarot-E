@@ -20,9 +20,6 @@ type UIUpdater interface {
 	Update(tickCount int) []event.GameEvent
 	EnqueueMessageQueue(messages []string, callback func())
 	IsMessageFinished() bool
-	ShowActionModal(vm any)
-	HideActionModal()
-	IsActionModalVisible() bool
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()
 	SetAnimation(anim *component.ActionAnimationData)
