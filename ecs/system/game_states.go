@@ -130,12 +130,11 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 					actionTargetMap[slotKey] = core.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot} // core.ActionTarget を使用
 				}
 
-				// ViewModelを構築し、モーダル表示イベントを発行する
-				actionModalVM, err := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap)
-				if err != nil {
-					return nil, fmt.Errorf("failed to build action modal view model: %w", err)
-				}
-				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{ViewModel: &actionModalVM})
+				// ViewModelの構築に必要な情報をイベントに詰めて発行する
+				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{
+					ActingEntry:     actingEntry,
+					ActionTargetMap: actionTargetMap,
+				})
 				s.processedEntry = actingEntry // 処理済みとしてマーク
 			} else {
 				// 無効または待機状態でないならキューから削除

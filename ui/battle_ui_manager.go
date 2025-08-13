@@ -2,10 +2,12 @@ package ui
 
 import (
 	"image"
+	"log"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
+	"medarot-ebiten/ecs/system"
 	"medarot-ebiten/event"
 
 	"github.com/ebitenui/ebitenui"
@@ -13,14 +15,17 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
+	"github.com/yohamta/donburi/filter"
+	"github.com/yohamta/donburi/query"
 )
 
 // BattleUIManager はバトルシーンのUI要素の管理と描画を担当する唯一の司令塔です。
 // 以前のサブマネージャー(ActionModal, MessageDisplay, TargetIndicator)の責務を統合しています。
 // TargetManagerインターフェースを実装します。
 type BattleUIManager struct {
-	config    *data.Config
-	uiFactory *UIFactory
+	config           *data.Config
+	uiFactory        *UIFactory
+	viewModelFactory system.ViewModelBuilder // New
 
 	// ebitenui root
 	ebitenui *ebitenui.UI
@@ -46,18 +51,20 @@ type BattleUIManager struct {
 	// State & Events
 	eventChannel          chan event.GameEvent
 	lastWidth, lastHeight int
-	actionModalVisible    bool // ローカルな表示状態
+	// actionModalVisible    bool // Removed: Will be managed by BattleUIState
 }
 
 // NewBattleUIManager は BattleUIManager の新しいインスタンスを作成します。
 func NewBattleUIManager(
 	config *data.Config,
 	resources *data.SharedResources,
+	viewModelFactory system.ViewModelBuilder,
 ) *BattleUIManager {
 	bum := &BattleUIManager{
-		config:       config,
-		eventChannel: make(chan event.GameEvent, 10),
-		messageQueue: make([]string, 0),
+		config:           config,
+		eventChannel:     make(chan event.GameEvent, 10),
+		messageQueue:     make([]string, 0),
+		viewModelFactory: viewModelFactory,
 	}
 
 	bum.uiFactory = NewUIFactory(config, resources.Font, resources.ModalButtonFont, resources.MessageWindowFont, resources.GameDataManager.Messages)
@@ -103,6 +110,20 @@ func NewBattleUIManager(
 
 // Update はUIの内部状態（アニメーションなど）を更新し、UIウィジェットから発生したイベントを収集します。
 func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.GameEvent {
+	// 1. Create ViewModels from current game state
+	infoPanelVMs := make([]core.InfoPanelViewModel, 0)
+	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+		vm, err := bum.viewModelFactory.BuildInfoPanelViewModel(entry)
+		if err == nil {
+			infoPanelVMs = append(infoPanelVMs, vm)
+		}
+	})
+	battlefieldVM, _ := bum.viewModelFactory.BuildBattlefieldViewModel(world, bum.GetBattlefieldWidgetRect(), bum.config)
+
+	// 2. Update UI with new ViewModels
+	bum.SetViewModels(infoPanelVMs, battlefieldVM)
+
+	// 3. Update UI logic
 	bum.ebitenui.Update()
 	bum.animationDrawer.Update(float64(tickCount))
 
@@ -121,7 +142,7 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.G
 		}
 	}
 
-	// UIイベントチャネルからゲームイベントを収集
+	// 4. Collect UI-generated events
 	var uiGeneratedGameEvents []event.GameEvent
 	for len(bum.eventChannel) > 0 {
 		uiGeneratedGameEvents = append(uiGeneratedGameEvents, <-bum.eventChannel)
@@ -131,32 +152,52 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.G
 }
 
 // ProcessEvents は、ゲームロジックから渡されたイベントを処理し、UIの状態を更新します。
-func (bum *BattleUIManager) ProcessEvents(events []event.GameEvent) {
+func (bum *BattleUIManager) ProcessEvents(world donburi.World, events []event.GameEvent) {
 	for _, e := range events {
 		switch event := e.(type) {
 		case event.ShowActionModalGameEvent:
-			bum.showActionModal(event.ViewModel)
+			// イベントからViewModelを構築してモーダルを表示
+			vm, err := bum.viewModelFactory.BuildActionModalViewModel(event.ActingEntry, event.ActionTargetMap)
+			if err != nil {
+				log.Printf("Error building action modal view model: %v", err)
+				continue
+			}
+			bum.showActionModal(world, &vm)
 		case event.HideActionModalGameEvent, event.PlayerActionProcessedGameEvent:
-			bum.hideActionModal()
+			bum.hideActionModal(world)
 		}
 	}
 }
 
 // showActionModal はアクションモーダルを表示します。
-func (bum *BattleUIManager) showActionModal(vm *core.ActionModalViewModel) {
-	if !bum.actionModalVisible {
+func (bum *BattleUIManager) showActionModal(world donburi.World, vm *core.ActionModalViewModel) {
+	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(world)
+	if !ok {
+		log.Println("BattleUIStateComponent が見つかりません。")
+		return
+	}
+	uiState := BattleUIStateComponent.Get(uiStateEntry)
+
+	if !uiState.IsActionModalVisible {
+		uiState.IsActionModalVisible = true
 		bum.actionModal.Show(vm)
 		bum.commonBottomPanel.SetContent(bum.actionModal.Widget())
-		bum.actionModalVisible = true
 	}
 }
 
 // hideActionModal はアクションモーダルを非表示にします。
-func (bum *BattleUIManager) hideActionModal() {
-	if bum.actionModalVisible {
+func (bum *BattleUIManager) hideActionModal(world donburi.World) {
+	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(world)
+	if !ok {
+		log.Println("BattleUIStateComponent が見つかりません。")
+		return
+	}
+	uiState := BattleUIStateComponent.Get(uiStateEntry)
+
+	if uiState.IsActionModalVisible {
+		uiState.IsActionModalVisible = false
 		bum.actionModal.Hide()
 		bum.commonBottomPanel.SetContent(nil)
-		bum.actionModalVisible = false
 	}
 }
 

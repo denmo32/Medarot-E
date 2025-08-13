@@ -19,15 +19,15 @@ import (
 )
 
 type BattleScene struct {
-	resources        *data.SharedResources
-	manager          *SceneManager
-	world            donburi.World
-	tickCount        int
-	debugMode        bool
-	playerTeam       core.TeamID
-	winner           core.TeamID
-	battleUIManager  system.UIUpdater
-	viewModelFactory system.ViewModelBuilder
+	resources       *data.SharedResources
+	manager         *SceneManager
+	world           donburi.World
+	tickCount       int
+	debugMode       bool
+	playerTeam      core.TeamID
+	winner          core.TeamID
+	battleUIManager system.UIUpdater
+	// viewModelFactory system.ViewModelBuilder // Removed
 
 	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
@@ -56,14 +56,19 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 
 	entity.InitializeBattleWorld(bs.world, bs.resources, bs.playerTeam)
 
+	// Ensure BattleUIStateComponent entity exists
+	uiStateEntry := bs.world.Entry(bs.world.Create(ui.BattleUIStateComponent, component.WorldStateTag))
+	ui.BattleUIStateComponent.SetValue(uiStateEntry, ui.BattleUIState{IsActionModalVisible: false})
+
 	// Initialize BattleLogic and its dependencies
 	bs.battleLogic = system.NewBattleLogic(bs.world, &bs.resources.Config, bs.gameDataManager, bs.rand)
 	bs.statusEffectSystem = system.NewStatusEffectSystem(bs.world, bs.battleLogic.GetDamageCalculator())
 	bs.postActionEffectSystem = system.NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.battleLogic.GetPartInfoProvider())
 
 	// Initialize UI and ViewModelFactory
-	bs.battleUIManager = ui.NewBattleUIManager(&bs.resources.Config, bs.resources)
-	bs.viewModelFactory = ui.NewViewModelFactory(bs.battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand)
+	viewModelFactory := ui.NewViewModelFactory(bs.battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand)
+	bs.battleUIManager = ui.NewBattleUIManager(&bs.resources.Config, bs.resources, viewModelFactory)
+	// bs.viewModelFactory = viewModelFactory // Removed
 
 	// Initialize BattleStates map
 	bs.battleStates = map[core.GameState]system.BattleState{
@@ -92,23 +97,11 @@ func (bs *BattleScene) SetState(newState core.GameState) {
 func (bs *BattleScene) Update() error {
 	bs.tickCount++
 
-	// 1. Create ViewModels from current game state
-	infoPanelVMs := make([]core.InfoPanelViewModel, 0)
-	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(bs.world, func(entry *donburi.Entry) {
-		vm, err := bs.viewModelFactory.BuildInfoPanelViewModel(entry)
-		if err == nil {
-			infoPanelVMs = append(infoPanelVMs, vm)
-		}
-	})
-	battlefieldVM, _ := bs.viewModelFactory.BuildBattlefieldViewModel(bs.world, bs.battleUIManager.GetBattlefieldWidgetRect(), &bs.resources.Config)
-
-	// 2. Update UI with new ViewModels
-	bs.battleUIManager.SetViewModels(infoPanelVMs, battlefieldVM)
-
-	// 3. Update UI logic and collect UI-generated events
+	// 1. Update UI logic and collect UI-generated events
+	//    ViewModel creation and UI updates are now handled within BattleUIManager.
 	allGameEvents := bs.battleUIManager.Update(bs.tickCount, bs.world)
 
-	// 4. Update game state machine
+	// 2. Update game state machine
 	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
@@ -122,7 +115,7 @@ func (bs *BattleScene) Update() error {
 		Rand:                   bs.rand,
 		Tick:                   bs.tickCount,
 		BattleUIManager:        bs.battleUIManager,
-		ViewModelFactory:       bs.viewModelFactory,
+		ViewModelFactory:       nil, // ViewModelFactory is no longer directly used by BattleScene
 		StatusEffectSystem:     bs.statusEffectSystem,
 		PostActionEffectSystem: bs.postActionEffectSystem,
 		BattleLogic:            bs.battleLogic,
@@ -138,11 +131,11 @@ func (bs *BattleScene) Update() error {
 		log.Printf("Unknown game state: %s", currentGameStateComp.CurrentState)
 	}
 
-	// 5. Process all collected game events and get state change requests
-	bs.battleUIManager.ProcessEvents(allGameEvents)
+	// 3. Process all collected game events and get state change requests
+	bs.battleUIManager.ProcessEvents(bs.world, allGameEvents)
 	stateChangeRequests := bs.processGameEvents(allGameEvents)
 
-	// 6. Apply state changes
+	// 4. Apply state changes
 	for _, req := range stateChangeRequests {
 		if stateChangeReq, ok := req.(event.StateChangeRequestedGameEvent); ok {
 			bs.SetState(stateChangeReq.NextState)

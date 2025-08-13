@@ -9,16 +9,15 @@ import (
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/event"
 
-	"github.com/yohamta/donburi"
 	"github.com/hajimehoshi/ebiten/v2"
-	
+	"github.com/yohamta/donburi"
 )
 
 // UIUpdater はUIの更新とイベント収集のインターフェースです。
 type UIUpdater interface {
 	SetViewModels(infoPanelVMs []core.InfoPanelViewModel, battlefieldVM core.BattlefieldViewModel)
 	Update(tickCount int, world donburi.World) []event.GameEvent
-	ProcessEvents(events []event.GameEvent)
+	ProcessEvents(world donburi.World, events []event.GameEvent)
 	EnqueueMessageQueue(messages []string, callback func())
 	IsMessageFinished() bool
 	SetCurrentTarget(entityID donburi.Entity)
@@ -36,8 +35,6 @@ type ViewModelBuilder interface {
 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error)
 	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
 }
-
-
 
 // TargetingStrategy はAIのターゲット選択アルゴリズムをカプセル化するインターフェースです。
 type TargetingStrategy interface {
