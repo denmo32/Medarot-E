@@ -62,7 +62,7 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 	bs.postActionEffectSystem = system.NewPostActionEffectSystem(bs.world, bs.statusEffectSystem, bs.gameDataManager, bs.battleLogic.GetPartInfoProvider())
 
 	// Initialize UI and ViewModelFactory
-	bs.battleUIManager = ui.NewBattleUIManager(&bs.resources.Config, bs.resources, bs.world)
+	bs.battleUIManager = ui.NewBattleUIManager(&bs.resources.Config, bs.resources)
 	bs.viewModelFactory = ui.NewViewModelFactory(bs.battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand)
 
 	// Initialize BattleStates map
@@ -106,7 +106,7 @@ func (bs *BattleScene) Update() error {
 	bs.battleUIManager.SetViewModels(infoPanelVMs, battlefieldVM)
 
 	// 3. Update UI logic and collect UI-generated events
-	allGameEvents := bs.battleUIManager.Update(bs.tickCount)
+	allGameEvents := bs.battleUIManager.Update(bs.tickCount, bs.world)
 
 	// 4. Update game state machine
 	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
@@ -219,19 +219,20 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		case event.ClearCurrentTargetGameEvent:
 			bs.battleUIManager.ClearCurrentTarget()
 		case event.ChargeRequestedGameEvent:
-			actingEntry := e.ActingEntry
+			actingEntry := bs.world.Entry(e.ActingEntityID)
 			if actingEntry == nil || !actingEntry.Valid() {
-				log.Printf("Error: ChargeRequestedGameEvent - ActingEntry is invalid or nil")
+				log.Printf("Error: ChargeRequestedGameEvent - ActingEntityID is invalid or nil: %d", e.ActingEntityID)
 				break
 			}
 			var targetEntry *donburi.Entry
-			if e.TargetEntry != nil && e.TargetEntry.Valid() {
-				targetEntry = e.TargetEntry
+			if e.TargetEntityID != 0 {
+				targetEntry = bs.world.Entry(e.TargetEntityID)
+				if targetEntry == nil || !targetEntry.Valid() {
+					log.Printf("Error: ChargeRequestedGameEvent - TargetEntityID is invalid or nil: %d", e.TargetEntityID)
+					break // ターゲットが無効なら中断
+				}
 			}
-			if targetEntry == nil && e.TargetPartSlot != "" {
-				log.Printf("Error: ChargeRequestedGameEvent - TargetEntry is nil but TargetPartSlot is provided")
-				break
-			}
+
 			successful := bs.battleLogic.GetChargeInitiationSystem().StartCharge(actingEntry, e.SelectedSlotKey, targetEntry, e.TargetPartSlot)
 			if !successful {
 				log.Printf("エラー: %s の行動開始に失敗しました。", component.SettingsComponent.Get(actingEntry).Name)
@@ -241,9 +242,15 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 			uiState.ActionModalVisible = false
 			uiState.ActionModalViewModel = nil
 
+			actingEntry := bs.world.Entry(e.ActingEntityID)
+			if actingEntry == nil {
+				log.Printf("警告: PlayerActionProcessedGameEvent の対象エントリが見つかりません (ID: %d)", e.ActingEntityID)
+				break
+			}
+
 			playerActionQueue := entity.GetPlayerActionQueueComponent(bs.world)
 			// キューの先頭が処理されたエントリと一致するか確認
-			if len(playerActionQueue.Queue) > 0 && playerActionQueue.Queue[0] == e.ActingEntry {
+			if len(playerActionQueue.Queue) > 0 && playerActionQueue.Queue[0].Entity() == e.ActingEntityID {
 				// キューから削除
 				playerActionQueue.Queue = playerActionQueue.Queue[1:]
 			} else {

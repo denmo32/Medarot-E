@@ -26,8 +26,7 @@ func (e ActionAnimationStartedGameEvent) isGameEvent() {}
 
 // ActionAnimationFinishedGameEvent は、アクションアニメーションが終了したことを示すイベントです。
 type ActionAnimationFinishedGameEvent struct {
-	Result      component.ActionResult
-	ActingEntry *donburi.Entry // クールダウン開始のために追加
+	Result component.ActionResult
 }
 
 func (e ActionAnimationFinishedGameEvent) isGameEvent() {}
@@ -76,10 +75,10 @@ func (e ClearCurrentTargetGameEvent) isGameEvent() {}
 
 // ActionConfirmedGameEvent は、プレイヤーがアクションを確定したことを示すイベントです。
 type ActionConfirmedGameEvent struct {
-	ActingEntry     *donburi.Entry
+	ActingEntityID  donburi.Entity
 	SelectedPartDef *core.PartDefinition
 	SelectedSlotKey core.PartSlotKey
-	TargetEntry     *donburi.Entry
+	TargetEntityID  donburi.Entity
 	TargetPartSlot  core.PartSlotKey
 }
 
@@ -87,9 +86,9 @@ func (e ActionConfirmedGameEvent) isGameEvent() {}
 
 // ChargeRequestedGameEvent は、チャージ開始が要求されたことを示すイベントです。
 type ChargeRequestedGameEvent struct {
-	ActingEntry     *donburi.Entry
+	ActingEntityID  donburi.Entity
 	SelectedSlotKey core.PartSlotKey
-	TargetEntry     *donburi.Entry
+	TargetEntityID  donburi.Entity
 	TargetPartSlot  core.PartSlotKey
 }
 
@@ -97,14 +96,14 @@ func (e ChargeRequestedGameEvent) isGameEvent() {}
 
 // ActionCanceledGameEvent は、プレイヤーが行動選択をキャンセルしたことを示すイベントです。
 type ActionCanceledGameEvent struct {
-	ActingEntry *donburi.Entry
+	ActingEntityID donburi.Entity
 }
 
 func (e ActionCanceledGameEvent) isGameEvent() {}
 
 // PlayerActionProcessedGameEvent は、プレイヤーの行動が処理されたことを示すイベントです。
 type PlayerActionProcessedGameEvent struct {
-	ActingEntry *donburi.Entry
+	ActingEntityID donburi.Entity
 }
 
 func (e PlayerActionProcessedGameEvent) isGameEvent() {}

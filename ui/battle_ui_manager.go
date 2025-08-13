@@ -23,7 +23,6 @@ import (
 // TargetManagerインターフェースを実装します。
 type BattleUIManager struct {
 	config    *data.Config
-	world     donburi.World
 	uiFactory *UIFactory
 
 	// ebitenui root
@@ -57,11 +56,9 @@ type BattleUIManager struct {
 func NewBattleUIManager(
 	config *data.Config,
 	resources *data.SharedResources,
-	world donburi.World,
 ) *BattleUIManager {
 	bum := &BattleUIManager{
 		config:       config,
-		world:        world,
 		eventChannel: make(chan event.GameEvent, 10),
 		messageQueue: make([]string, 0),
 	}
@@ -71,7 +68,7 @@ func NewBattleUIManager(
 	// Initialize sub-managers and components
 	bum.infoPanelManager = NewInfoPanelManager(config, bum.uiFactory)
 	bum.animationDrawer = NewUIAnimationDrawer(config, bum.uiFactory.Font, bum.eventChannel)
-	bum.actionModal = NewActionModal(bum.uiFactory, bum.eventChannel, bum.world, bum)
+	bum.actionModal = NewActionModal(bum.uiFactory, bum.eventChannel, bum)
 	bum.messageWindow = NewMessageWindow(bum.uiFactory)
 
 	// Build UI layout
@@ -108,9 +105,9 @@ func NewBattleUIManager(
 }
 
 // Update はUI全体の状態を更新します。
-func (bum *BattleUIManager) Update(tickCount int) []event.GameEvent {
+func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.GameEvent {
 	// ワールドから BattleUIState を取得
-	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(bum.world)
+	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(world)
 	if !ok {
 		log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
 	}

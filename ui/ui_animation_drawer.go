@@ -38,7 +38,7 @@ func (d *UIAnimationDrawer) Update(tick float64) {
 	}
 
 	if d.IsAnimationFinished(tick) {
-		d.eventChannel <- event.ActionAnimationFinishedGameEvent{Result: d.currentAnimation.Result, ActingEntry: d.currentAnimation.Result.ActingEntry}
+		d.eventChannel <- event.ActionAnimationFinishedGameEvent{Result: d.currentAnimation.Result}
 		d.ClearAnimation()
 	}
 }

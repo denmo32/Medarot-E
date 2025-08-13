@@ -21,7 +21,6 @@ type ActionModal struct {
 	widget        widget.PreferredSizeLocateableWidget
 	uiFactory     *UIFactory
 	eventChannel  chan event.GameEvent
-	world         donburi.World
 	targetManager TargetManager
 }
 
@@ -29,7 +28,6 @@ type ActionModal struct {
 func NewActionModal(
 	uiFactory *UIFactory,
 	eventChannel chan event.GameEvent,
-	world donburi.World,
 	targetManager TargetManager,
 ) *ActionModal {
 	// 初期状態では空のコンテナを持つ
@@ -41,7 +39,6 @@ func NewActionModal(
 		widget:        container,
 		uiFactory:     uiFactory,
 		eventChannel:  eventChannel,
-		world:         world,
 		targetManager: targetManager,
 	}
 }
@@ -97,24 +94,15 @@ func (a *ActionModal) createUI(vm *core.ActionModalViewModel) widget.PreferredSi
 			buttonText,
 			buttonTextColor,
 			func(args *widget.ButtonClickedEventArgs) {
-				actingEntry := a.world.Entry(capturedVM.ActingEntityID)
-				if actingEntry == nil {
-					return
-				}
-				var targetEntry *donburi.Entry
-				if capturedButtonVM.TargetEntityID != 0 {
-					targetEntry = a.world.Entry(capturedButtonVM.TargetEntityID)
-				}
-
 				// ゲームイベントを発行
 				a.eventChannel <- event.ChargeRequestedGameEvent{
-					ActingEntry:     actingEntry,
+					ActingEntityID:  capturedVM.ActingEntityID,
 					SelectedSlotKey: capturedButtonVM.SlotKey,
-					TargetEntry:     targetEntry,
+					TargetEntityID:  capturedButtonVM.TargetEntityID,
 					TargetPartSlot:  capturedButtonVM.TargetPartSlot,
 				}
 				a.eventChannel <- event.PlayerActionProcessedGameEvent{
-					ActingEntry: actingEntry,
+					ActingEntityID: capturedVM.ActingEntityID,
 				}
 				a.eventChannel <- event.ClearCurrentTargetGameEvent{}
 			},
