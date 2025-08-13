@@ -31,9 +31,7 @@ func InitializeBattleWorld(world donburi.World, res *data.SharedResources, playe
 
 	// Ensure BattleUIStateComponent entity exists
 	uiStateEntry := world.Entry(world.Create(ui.BattleUIStateComponent, component.WorldStateTag))
-	ui.BattleUIStateComponent.SetValue(uiStateEntry, ui.BattleUIState{
-		ActionModalVisible: false,
-	})
+	ui.BattleUIStateComponent.SetValue(uiStateEntry, ui.BattleUIState{})
 
 	teamBuffsEntry := world.Entry(world.Create(component.TeamBuffsComponent))
 	component.TeamBuffsComponent.SetValue(teamBuffsEntry, component.TeamBuffs{

@@ -10,7 +10,6 @@ import (
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
-	"medarot-ebiten/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -86,7 +85,9 @@ func (s *GaugeProgressState) Draw(screen *ebiten.Image) {
 
 // --- PlayerActionSelectState ---
 
-type PlayerActionSelectState struct{}
+type PlayerActionSelectState struct {
+	processedEntry *donburi.Entry
+}
 
 func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	// battleUIManager := ctx.BattleUIManager // UIMediator を使用
@@ -101,55 +102,49 @@ func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent,
 	if len(playerActionQueue.Queue) > 0 {
 		actingEntry := playerActionQueue.Queue[0]
 
-		// 有効で待機状態ならモーダルを表示
-		if actingEntry.Valid() && component.StateComponent.Get(actingEntry).CurrentState == core.StateIdle {
-			actionTargetMap := make(map[core.PartSlotKey]core.ActionTarget) // core.ActionTarget を使用
-			// ViewModelFactoryを介して利用可能なパーツを取得
-			// UIMediator 経由で ViewModelFactory のメソッドを呼び出す
-			availableParts := battleLogic.GetPartInfoProvider().GetAvailableAttackParts(actingEntry) // ViewModelFactory から直接取得しない
-			for _, available := range availableParts {
-				partDef := available.PartDef
-				slotKey := available.Slot
-				var targetEntity *donburi.Entry
-				var targetPartSlot core.PartSlotKey
-				if partDef.Category == core.CategoryRanged || partDef.Category == core.CategoryIntervention {
-					medal := component.MedalComponent.Get(actingEntry)
-					personality, ok := PersonalityRegistry[medal.Personality]
-					if !ok {
-						personality = PersonalityRegistry["リーダー"]
+		// まだ処理していないエントリの場合のみモーダル表示イベントを発行
+		if s.processedEntry != actingEntry {
+			// 有効で待機状態ならモーダルを表示
+			if actingEntry.Valid() && component.StateComponent.Get(actingEntry).CurrentState == core.StateIdle {
+				actionTargetMap := make(map[core.PartSlotKey]core.ActionTarget) // core.ActionTarget を使用
+				// ViewModelFactoryを介して利用可能なパーツを取得
+				// UIMediator 経由で ViewModelFactory のメソッドを呼び出す
+				availableParts := battleLogic.GetPartInfoProvider().GetAvailableAttackParts(actingEntry) // ViewModelFactory から直接取得しない
+				for _, available := range availableParts {
+					partDef := available.PartDef
+					slotKey := available.Slot
+					var targetEntity *donburi.Entry
+					var targetPartSlot core.PartSlotKey
+					if partDef.Category == core.CategoryRanged || partDef.Category == core.CategoryIntervention {
+						medal := component.MedalComponent.Get(actingEntry)
+						personality, ok := PersonalityRegistry[medal.Personality]
+						if !ok {
+							personality = PersonalityRegistry["リーダー"]
+						}
+						targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(ctx.World, actingEntry, battleLogic)
 					}
-					targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(ctx.World, actingEntry, battleLogic)
+					var targetID donburi.Entity
+					if targetEntity != nil {
+						targetID = targetEntity.Entity()
+					}
+					actionTargetMap[slotKey] = core.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot} // core.ActionTarget を使用
 				}
-				var targetID donburi.Entity
-				if targetEntity != nil {
-					targetID = targetEntity.Entity()
+
+				// ViewModelを構築し、モーダル表示イベントを発行する
+				actionModalVM, err := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap)
+				if err != nil {
+					return nil, fmt.Errorf("failed to build action modal view model: %w", err)
 				}
-				actionTargetMap[slotKey] = core.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot} // core.ActionTarget を使用
+				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{ViewModel: &actionModalVM})
+				s.processedEntry = actingEntry // 処理済みとしてマーク
+			} else {
+				// 無効または待機状態でないならキューから削除
+				playerActionQueue.Queue = playerActionQueue.Queue[1:]
+				// 次のフレームで再度Updateが呼ばれるのを待つ
 			}
-
-			// ここでViewModelを構築し、UI状態を更新する
-			actionModalVM, err := ctx.ViewModelFactory.BuildActionModalViewModel(actingEntry, actionTargetMap)
-			if err != nil {
-				return nil, fmt.Errorf("failed to build action modal view model: %w", err)
-			}
-
-			// ワールドから BattleUIState を取得
-			uiStateEntry, ok := query.NewQuery(filter.Contains(ui.BattleUIStateComponent)).First(ctx.World)
-			if !ok {
-				log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
-			}
-			uiState := ui.BattleUIStateComponent.Get(uiStateEntry)
-
-			// モーダルが既に表示されていない場合のみUI状態を更新
-			if !uiState.ActionModalVisible {
-				uiState.ActionModalVisible = true
-				uiState.ActionModalViewModel = &actionModalVM
-			}
-		} else {
-			// 無効または待機状態でないならキューから削除
-			playerActionQueue.Queue = playerActionQueue.Queue[1:]
-			// 次のフレームで再度Updateが呼ばれるのを待つ
 		}
+		// 既に処理済みのエントリの場合は、UIからのイベントを待つため何もしない
+
 	} else {
 		// キューが空なら処理完了
 		gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})

@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image"
-	"log"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
@@ -14,8 +13,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // BattleUIManager はバトルシーンのUI要素の管理と描画を担当する唯一の司令塔です。
@@ -47,9 +44,9 @@ type BattleUIManager struct {
 	currentTarget donburi.Entity
 
 	// State & Events
-	eventChannel       chan event.GameEvent
+	eventChannel          chan event.GameEvent
 	lastWidth, lastHeight int
-	actionModalVisible bool // ローカルな表示状態
+	actionModalVisible    bool // ローカルな表示状態
 }
 
 // NewBattleUIManager は BattleUIManager の新しいインスタンスを作成します。
@@ -104,32 +101,8 @@ func NewBattleUIManager(
 	return bum
 }
 
-// Update はUI全体の状態を更新します。
+// Update はUIの内部状態（アニメーションなど）を更新し、UIウィジェットから発生したイベントを収集します。
 func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.GameEvent {
-	// ワールドから BattleUIState を取得
-	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(world)
-	if !ok {
-		log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
-	}
-	uiState := BattleUIStateComponent.Get(uiStateEntry)
-
-	// UIStateに基づいてモーダルを更新
-	if uiState.ActionModalVisible {
-		// モーダルが表示されるべきで、まだ表示されていない場合
-		if !bum.actionModalVisible {
-			bum.actionModal.Show(uiState.ActionModalViewModel)
-			bum.commonBottomPanel.SetContent(bum.actionModal.Widget())
-			bum.actionModalVisible = true
-		}
-	} else {
-		// モーダルが非表示であるべきで、現在表示されている場合
-		if bum.actionModalVisible {
-			bum.actionModal.Hide()
-			bum.commonBottomPanel.SetContent(nil)
-			bum.actionModalVisible = false
-		}
-	}
-
 	bum.ebitenui.Update()
 	bum.animationDrawer.Update(float64(tickCount))
 
@@ -155,6 +128,36 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.G
 	}
 
 	return uiGeneratedGameEvents
+}
+
+// ProcessEvents は、ゲームロジックから渡されたイベントを処理し、UIの状態を更新します。
+func (bum *BattleUIManager) ProcessEvents(events []event.GameEvent) {
+	for _, e := range events {
+		switch event := e.(type) {
+		case event.ShowActionModalGameEvent:
+			bum.showActionModal(event.ViewModel)
+		case event.HideActionModalGameEvent, event.PlayerActionProcessedGameEvent:
+			bum.hideActionModal()
+		}
+	}
+}
+
+// showActionModal はアクションモーダルを表示します。
+func (bum *BattleUIManager) showActionModal(vm *core.ActionModalViewModel) {
+	if !bum.actionModalVisible {
+		bum.actionModal.Show(vm)
+		bum.commonBottomPanel.SetContent(bum.actionModal.Widget())
+		bum.actionModalVisible = true
+	}
+}
+
+// hideActionModal はアクションモーダルを非表示にします。
+func (bum *BattleUIManager) hideActionModal() {
+	if bum.actionModalVisible {
+		bum.actionModal.Hide()
+		bum.commonBottomPanel.SetContent(nil)
+		bum.actionModalVisible = false
+	}
 }
 
 // SetViewModels は、渡されたViewModelに基づいてUI全体を更新します。
@@ -243,8 +246,6 @@ func (bum *BattleUIManager) hideMessageWindow() {
 	bum.messageWindow.Hide()
 	bum.commonBottomPanel.SetContent(nil)
 }
-
-
 
 // --- Target Indicator Methods (TargetManager interface implementation) ---
 

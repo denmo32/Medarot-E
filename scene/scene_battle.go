@@ -139,6 +139,7 @@ func (bs *BattleScene) Update() error {
 	}
 
 	// 5. Process all collected game events and get state change requests
+	bs.battleUIManager.ProcessEvents(allGameEvents)
 	stateChangeRequests := bs.processGameEvents(allGameEvents)
 
 	// 6. Apply state changes
@@ -185,11 +186,11 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 	lastActionResultComp := component.LastActionResultComponent.Get(lastActionResultEntry)
 
 	// ワールドから BattleUIState を取得 (イベント処理で使うため)
-	uiStateEntry, ok := query.NewQuery(filter.Contains(ui.BattleUIStateComponent)).First(bs.world)
-	if !ok {
-		log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
-	}
-	uiState := ui.BattleUIStateComponent.Get(uiStateEntry)
+	// uiStateEntry, ok := query.NewQuery(filter.Contains(ui.BattleUIStateComponent)).First(bs.world)
+	// if !ok {
+	// 	log.Panicln("BattleUIStateComponent がワールドに見つかりません。")
+	// }
+	// uiState := ui.BattleUIStateComponent.Get(uiStateEntry)
 
 	for _, evt := range gameEvents {
 		switch e := evt.(type) {
@@ -198,6 +199,12 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		case event.ActionAnimationStartedGameEvent:
 			bs.battleUIManager.SetAnimation(&e.AnimationData)
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StateAnimatingAction})
+		case event.ShowActionModalGameEvent:
+			// このイベントはUIに直接渡されるため、BattleSceneでは何もしない
+			break
+		case event.HideActionModalGameEvent:
+			// このイベントはUIに直接渡されるため、BattleSceneでは何もしない
+			break
 
 		case event.ActionAnimationFinishedGameEvent:
 			*lastActionResultComp = e.Result // Store the result
@@ -238,9 +245,10 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 				log.Printf("エラー: %s の行動開始に失敗しました。", component.SettingsComponent.Get(actingEntry).Name)
 			}
 		case event.PlayerActionProcessedGameEvent:
-			// UI state を更新してモーダルを閉じる
-			uiState.ActionModalVisible = false
-			uiState.ActionModalViewModel = nil
+			// モーダルを隠すイベントを発行
+			// allGameEvents はイミュータブルとして扱うべきなので、新しいイベントは返り値で返す
+			// が、このイベントはUIへの一方的な通知であり、状態遷移ではないため、ここでは何もしない。
+			// UI側がこのイベントをリッスンして自身の状態を変更する。
 
 			actingEntry := bs.world.Entry(e.ActingEntityID)
 			if actingEntry == nil {
