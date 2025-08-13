@@ -18,6 +18,7 @@ import (
 
 // BattleUIManager はバトルシーンのUI要素の管理と描画を担当する唯一の司令塔です。
 // 以前のサブマネージャー(ActionModal, MessageDisplay, TargetIndicator)の責務を統合しています。
+// TargetManagerインターフェースを実装します。
 type BattleUIManager struct {
 	config    *data.Config
 	world     donburi.World
@@ -26,20 +27,17 @@ type BattleUIManager struct {
 	// ebitenui root
 	ebitenui *ebitenui.UI
 
-	// Sub-managers (Complex ones that remain)
+	// Sub-managers and components
 	infoPanelManager *InfoPanelManager
 	animationDrawer  *UIAnimationDrawer
+	actionModal      *ActionModal
+	messageWindow    *MessageWindow // 構造体へのポインタに変更
 
 	// Widgets
 	battlefieldWidget *BattlefieldWidget
 	commonBottomPanel *UIPanel
 
-	// --- State from UIActionModalManager ---
-	actionModal          widget.PreferredSizeLocateableWidget
-	isActionModalVisible bool
-
-	// --- State from UIMessageDisplayManager ---
-	messageWindow       widget.PreferredSizeLocateableWidget
+	// --- State for Message Queue ---
 	messageQueue        []string
 	currentMessageIndex int
 	postMessageCallback func()
@@ -59,18 +57,19 @@ func NewBattleUIManager(
 	world donburi.World,
 ) *BattleUIManager {
 	bum := &BattleUIManager{
-		config:               config,
-		world:                world,
-		eventChannel:         make(chan event.GameEvent, 10),
-		messageQueue:         make([]string, 0),
-		isActionModalVisible: false,
+		config:       config,
+		world:        world,
+		eventChannel: make(chan event.GameEvent, 10),
+		messageQueue: make([]string, 0),
 	}
 
 	bum.uiFactory = NewUIFactory(config, resources.Font, resources.ModalButtonFont, resources.MessageWindowFont, resources.GameDataManager.Messages)
 
-	// Initialize sub-managers that remain
+	// Initialize sub-managers and components
 	bum.infoPanelManager = NewInfoPanelManager(config, bum.uiFactory)
 	bum.animationDrawer = NewUIAnimationDrawer(config, bum.uiFactory.Font, bum.eventChannel)
+	bum.actionModal = NewActionModal(bum.uiFactory, bum.eventChannel, bum.world, bum)
+	bum.messageWindow = NewMessageWindow(bum.uiFactory)
 
 	// Build UI layout
 	rootContainer := createRootContainer()
@@ -110,7 +109,7 @@ func (bum *BattleUIManager) Update(tickCount int) []event.GameEvent {
 	bum.ebitenui.Update()
 	bum.animationDrawer.Update(float64(tickCount))
 
-	// --- Logic from UIMessageDisplayManager.Update ---
+	// --- Message Queue Logic ---
 	if len(bum.messageQueue) > 0 && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		bum.currentMessageIndex++
 		if bum.currentMessageIndex < len(bum.messageQueue) {
@@ -124,7 +123,6 @@ func (bum *BattleUIManager) Update(tickCount int) []event.GameEvent {
 			bum.messageQueue = make([]string, 0) // メッセージキューをクリア
 		}
 	}
-	// --- End of logic from UIMessageDisplayManager.Update ---
 
 	// UIイベントチャネルからゲームイベントを収集
 	var uiGeneratedGameEvents []event.GameEvent
@@ -193,11 +191,7 @@ func (bum *BattleUIManager) Draw(screen *ebiten.Image, tickCount int, gameDataMa
 	}
 }
 
-// --- Message Display Methods (from UIMessageDisplayManager) ---
-
-func (bum *BattleUIManager) EnqueueMessage(msg string, callback func()) {
-	bum.EnqueueMessageQueue([]string{msg}, callback)
-}
+// --- Message Display Methods ---
 
 func (bum *BattleUIManager) EnqueueMessageQueue(messages []string, callback func()) {
 	bum.messageQueue = messages
@@ -207,7 +201,7 @@ func (bum *BattleUIManager) EnqueueMessageQueue(messages []string, callback func
 }
 
 func (bum *BattleUIManager) IsMessageFinished() bool {
-	return len(bum.messageQueue) == 0 && bum.messageWindow == nil
+	return len(bum.messageQueue) == 0 && !bum.messageWindow.IsVisible()
 }
 
 func (bum *BattleUIManager) showCurrentMessage() {
@@ -217,48 +211,37 @@ func (bum *BattleUIManager) showCurrentMessage() {
 }
 
 func (bum *BattleUIManager) showMessageWindow(message string) {
-	if bum.messageWindow != nil {
-		bum.hideMessageWindow()
-	}
-	win := createMessageWindow(message, bum.uiFactory)
-	bum.messageWindow = win
-	bum.commonBottomPanel.SetContent(bum.messageWindow)
+	bum.messageWindow.SetMessage(message)
+	bum.commonBottomPanel.SetContent(bum.messageWindow.Widget())
 }
 
 func (bum *BattleUIManager) hideMessageWindow() {
-	if bum.messageWindow != nil {
-		bum.commonBottomPanel.SetContent(nil)
-		bum.messageWindow = nil
-	}
+	bum.messageWindow.Hide()
+	bum.commonBottomPanel.SetContent(nil)
 }
 
-// --- Action Modal Methods (from UIActionModalManager) ---
+// --- Action Modal Methods ---
 
 func (bum *BattleUIManager) ShowActionModal(vm any) {
-	bum.isActionModalVisible = true
-	modal := createActionModalUI(vm.(*core.ActionModalViewModel), bum.uiFactory, bum.eventChannel, bum.world, bum)
-	bum.actionModal = modal
-	bum.commonBottomPanel.SetContent(bum.actionModal)
+	bum.actionModal.Show(vm.(*core.ActionModalViewModel))
+	bum.commonBottomPanel.SetContent(bum.actionModal.Widget())
 	log.Println("アクションモーダルを表示しました。")
 }
 
 func (bum *BattleUIManager) HideActionModal() {
-	if !bum.isActionModalVisible {
+	if !bum.actionModal.IsVisible() {
 		return
 	}
-	if bum.actionModal != nil {
-		bum.commonBottomPanel.SetContent(nil)
-		bum.actionModal = nil
-	}
-	bum.isActionModalVisible = false
+	bum.actionModal.Hide()
+	bum.commonBottomPanel.SetContent(nil)
 	log.Println("アクションモーダルを非表示にしました。")
 }
 
 func (bum *BattleUIManager) IsActionModalVisible() bool {
-	return bum.isActionModalVisible
+	return bum.actionModal.IsVisible()
 }
 
-// --- Target Indicator Methods (from UITargetIndicatorManager) ---
+// --- Target Indicator Methods (TargetManager interface implementation) ---
 
 func (bum *BattleUIManager) SetCurrentTarget(entityID donburi.Entity) {
 	bum.currentTarget = entityID
@@ -266,10 +249,6 @@ func (bum *BattleUIManager) SetCurrentTarget(entityID donburi.Entity) {
 
 func (bum *BattleUIManager) ClearCurrentTarget() {
 	bum.currentTarget = 0 // donburi.Entity のゼロ値
-}
-
-func (bum *BattleUIManager) GetCurrentTarget() donburi.Entity {
-	return bum.currentTarget
 }
 
 // --- Animation Methods ---

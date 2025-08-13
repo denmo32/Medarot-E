@@ -9,14 +9,71 @@ import (
 	"github.com/yohamta/donburi"
 )
 
-func createActionModalUI(
-	vm *core.ActionModalViewModel,
+// TargetManager は、UIコンポーネントがターゲットのハイライトを管理するために必要なメソッドを定義します。
+// これにより、ActionModalがBattleUIManager全体に依存することを防ぎます。
+type TargetManager interface {
+	SetCurrentTarget(entityID donburi.Entity)
+	ClearCurrentTarget()
+}
+
+// ActionModal はプレイヤーの行動選択UIを管理するコンポーネントです。
+type ActionModal struct {
+	widget       widget.PreferredSizeLocateableWidget
+	uiFactory    *UIFactory
+	eventChannel chan event.GameEvent
+	world        donburi.World
+	targetManager TargetManager
+	isVisible    bool
+}
+
+// NewActionModal は新しいActionModalのインスタンスを作成します。
+func NewActionModal(
 	uiFactory *UIFactory,
 	eventChannel chan event.GameEvent,
 	world donburi.World,
-	bum *BattleUIManager,
-) widget.PreferredSizeLocateableWidget {
-	c := uiFactory.Config.UI
+	targetManager TargetManager,
+) *ActionModal {
+	// 初期状態では空のコンテナを持つ
+	container := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
+	)
+
+	return &ActionModal{
+		widget:        container,
+		uiFactory:     uiFactory,
+		eventChannel:  eventChannel,
+		world:         world,
+		targetManager: targetManager,
+		isVisible:     false,
+	}
+}
+
+// Widget はこのコンポーネントのルートウィジェットを返します。
+func (a *ActionModal) Widget() widget.PreferredSizeLocateableWidget {
+	return a.widget
+}
+
+// IsVisible はモーダルが表示されているかどうかを返します。
+func (a *ActionModal) IsVisible() bool {
+	return a.isVisible
+}
+
+// Show はViewModelに基づいてモーダルの内容を構築し、表示状態にします。
+func (a *ActionModal) Show(vm *core.ActionModalViewModel) {
+	a.widget = a.createUI(vm)
+	a.isVisible = true
+}
+
+// Hide はモーダルを非表示にし、内容をクリアします。
+func (a *ActionModal) Hide() {
+	// 新しい空のコンテナに置き換えることで内容をクリア
+	a.widget = widget.NewContainer()
+	a.isVisible = false
+}
+
+// createUI はViewModelから実際のUIウィジェットを構築します。
+func (a *ActionModal) createUI(vm *core.ActionModalViewModel) widget.PreferredSizeLocateableWidget {
+	c := a.uiFactory.Config.UI
 
 	// 各パーツカテゴリのボタンを格納するマップ
 	partButtons := make(map[core.PartSlotKey][]widget.PreferredSizeLocateableWidget)
@@ -24,7 +81,7 @@ func createActionModalUI(
 	if len(vm.Buttons) == 0 {
 		// ボタンがない場合のメッセージ
 		noPartsText := widget.NewText(
-			widget.TextOpts.Text(uiFactory.MessageManager.FormatMessage("ui_no_parts_available", nil), uiFactory.Font, c.Colors.White),
+			widget.TextOpts.Text(a.uiFactory.MessageManager.FormatMessage("ui_no_parts_available", nil), a.uiFactory.Font, c.Colors.White),
 		)
 		// 中央に配置するためのコンテナ
 		centeredTextContainer := widget.NewContainer(
@@ -41,37 +98,41 @@ func createActionModalUI(
 			Hover: c.Colors.Black,
 		}
 
-		actionButton := uiFactory.NewCyberpunkButton(
+		// この無名関数内で使用する変数をキャプチャする
+		capturedButtonVM := buttonVM
+		capturedVM := vm
+
+		actionButton := a.uiFactory.NewCyberpunkButton(
 			buttonText,
 			buttonTextColor,
 			func(args *widget.ButtonClickedEventArgs) {
-				actingEntry := world.Entry(vm.ActingEntityID)
+				actingEntry := a.world.Entry(capturedVM.ActingEntityID)
 				if actingEntry == nil {
 					return
 				}
 				var targetEntry *donburi.Entry
-				if buttonVM.TargetEntityID != 0 {
-					targetEntry = world.Entry(buttonVM.TargetEntityID)
+				if capturedButtonVM.TargetEntityID != 0 {
+					targetEntry = a.world.Entry(capturedButtonVM.TargetEntityID)
 				}
 
 				// ゲームイベントを発行
-				eventChannel <- event.ChargeRequestedGameEvent{
+				a.eventChannel <- event.ChargeRequestedGameEvent{
 					ActingEntry:     actingEntry,
-					SelectedSlotKey: buttonVM.SlotKey,
+					SelectedSlotKey: capturedButtonVM.SlotKey,
 					TargetEntry:     targetEntry,
-					TargetPartSlot:  buttonVM.TargetPartSlot,
+					TargetPartSlot:  capturedButtonVM.TargetPartSlot,
 				}
-				eventChannel <- event.PlayerActionProcessedGameEvent{
+				a.eventChannel <- event.PlayerActionProcessedGameEvent{
 					ActingEntry: actingEntry,
 				}
-				eventChannel <- event.HideActionModalGameEvent{}
-				eventChannel <- event.ClearCurrentTargetGameEvent{}
+				a.eventChannel <- event.HideActionModalGameEvent{}
+				a.eventChannel <- event.ClearCurrentTargetGameEvent{}
 			},
 			func(args *widget.ButtonHoverEventArgs) {
-				switch buttonVM.PartCategory {
+				switch capturedButtonVM.PartCategory {
 				case core.CategoryRanged:
-					if buttonVM.TargetEntityID != 0 {
-						bum.SetCurrentTarget(buttonVM.TargetEntityID)
+					if capturedButtonVM.TargetEntityID != 0 {
+						a.targetManager.SetCurrentTarget(capturedButtonVM.TargetEntityID)
 					}
 				case core.CategoryIntervention:
 					// 介入の場合はターゲット表示なし
@@ -80,7 +141,7 @@ func createActionModalUI(
 				}
 			},
 			func(args *widget.ButtonHoverEventArgs) {
-				bum.ClearCurrentTarget()
+				a.targetManager.ClearCurrentTarget()
 			},
 		)
 		partButtons[buttonVM.SlotKey] = append(partButtons[buttonVM.SlotKey], actionButton)
@@ -106,7 +167,7 @@ func createActionModalUI(
 
 	// タイトルセクション
 	title := widget.NewText(
-		widget.TextOpts.Text(uiFactory.MessageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}), uiFactory.Font, c.Colors.White),
+		widget.TextOpts.Text(a.uiFactory.MessageManager.FormatMessage("ui_action_select_title", map[string]interface{}{"MedarotName": vm.ActingMedarotName}), a.uiFactory.Font, c.Colors.White),
 	)
 	contentContainer.AddChild(title)
 
