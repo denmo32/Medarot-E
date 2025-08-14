@@ -1,7 +1,10 @@
 package data
 
 import (
+	"encoding/json"
+	"fmt"
 	"image/color"
+	"log"
 
 	"medarot-ebiten/core"
 )
@@ -129,10 +132,9 @@ type UIConfig struct {
 		MessageWindowFontSize float64 `json:"MessageWindowFontSize"`
 	} `json:"MessageWindow"`
 
-	// ColorsフィールドはJSONから直接デシリアライズせず、
-	// ローダーによって別途パース・設定されるため、jsonタグは付きません。
-	// ここに `json:"-"` を追加することで、最初のjson.Unmarshalでこのフィールドが無視されるようになります。
-	Colors ParsedColors `json:"-"`
+	// ColorsフィールドはJSONから直接デシリアライズされる際に、
+	// 下記で定義されたカスタムのUnmarshalJSONメソッドによってパースされます。
+	Colors ParsedColors `json:"Colors"`
 }
 
 // ParsedColors はパース済みの色情報を保持します。
@@ -150,4 +152,67 @@ type ParsedColors struct {
 	HPCritical color.Color
 	Background color.Color
 	Black      color.Color
+}
+
+// UnmarshalJSON は ParsedColors 型のカスタムデシリアライザです。
+// JSONの "Colors" オブジェクト（キーが色名、値が16進数文字列のマップ）を
+// ParsedColors 構造体の各 color.Color フィールドに変換します。
+func (p *ParsedColors) UnmarshalJSON(data []byte) error {
+	// JSONの "Colors" オブジェクトを、16進数文字列を保持する一時的な構造体にデコードします。
+	// この匿名構造体は、このメソッド内でのみ使用される使い捨ての型です。
+	var raw struct {
+		White      string `json:"White"`
+		Red        string `json:"Red"`
+		Blue       string `json:"Blue"`
+		Yellow     string `json:"Yellow"`
+		Gray       string `json:"Gray"`
+		Team1      string `json:"Team1"`
+		Team2      string `json:"Team2"`
+		Leader     string `json:"Leader"`
+		Broken     string `json:"Broken"`
+		HP         string `json:"HP"`
+		HPCritical string `json:"HPCritical"`
+		Background string `json:"Background"`
+		Black      string `json:"Black"`
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("色データのJSONアンマーシャルに失敗しました: %w", err)
+	}
+
+	// 16進数文字列をパースし、ParsedColors のフィールドに設定します。
+	// このアプローチはリフレクションよりも直感的で、パフォーマンスも優れています。
+	p.White = parseHexColor(raw.White)
+	p.Red = parseHexColor(raw.Red)
+	p.Blue = parseHexColor(raw.Blue)
+	p.Yellow = parseHexColor(raw.Yellow)
+	p.Gray = parseHexColor(raw.Gray)
+	p.Team1 = parseHexColor(raw.Team1)
+	p.Team2 = parseHexColor(raw.Team2)
+	p.Leader = parseHexColor(raw.Leader)
+	p.Broken = parseHexColor(raw.Broken)
+	p.HP = parseHexColor(raw.HP)
+	p.HPCritical = parseHexColor(raw.HPCritical)
+	p.Background = parseHexColor(raw.Background)
+	p.Black = parseHexColor(raw.Black)
+
+	return nil
+}
+
+// parseHexColor は16進数文字列からcolor.Colorをパースします。
+// UnmarshalJSONから利用されるため、このファイルに配置します。
+func parseHexColor(s string) color.Color {
+	var r, g, b uint8
+	// 期待する長さ(6)でなければデフォルト色を返す
+	if len(s) != 6 {
+		log.Printf("無効な16進数カラーコードです: %s。デフォルト色を使用します。", s)
+		return color.White
+	}
+	// 16進数文字列をRGBの各要素にスキャンします
+	_, err := fmt.Sscanf(s, "%02x%02x%02x", &r, &g, &b)
+	if err != nil {
+		log.Printf("16進数カラーコード '%s' のパースに失敗しました: %v", s, err)
+		return color.White // エラー時はデフォルト色として白を返す
+	}
+	return color.RGBA{R: r, G: g, B: b, A: 255}
 }
