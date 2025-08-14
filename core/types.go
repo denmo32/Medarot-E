@@ -335,13 +335,15 @@ type BattlefieldViewModel struct {
 
 // IconViewModel は、個々のメダロットアイコンの描画に必要なデータを保持します。
 type IconViewModel struct {
-	EntryID       donburi.Entity // 元のdonburi.Entryを特定するためのID (uint32 から donburi.Entity に変更)
-	X, Y          float32
-	Color         color.Color
-	IsLeader      bool
-	State         StateType
-	GaugeProgress float64 // 0.0 to 1.0
-	DebugText     string
+	EntryID            donburi.Entity // 元のdonburi.Entryを特定するためのID (uint32 から donburi.Entity に変更)
+	Team               TeamID
+	DrawIndex          int
+	NormalizedProgress float64 // 0.0 to 1.0
+	Color              color.Color
+	IsLeader           bool
+	State              StateType
+	GaugeProgress      float64 // 0.0 to 1.0
+	DebugText          string
 }
 
 // ActionTarget はUIが選択したアクションのターゲット情報を保持します。
@@ -349,5 +351,3 @@ type ActionTarget struct {
 	TargetEntityID donburi.Entity
 	Slot           PartSlotKey
 }
-
-

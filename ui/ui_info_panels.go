@@ -30,16 +30,18 @@ type infoPanelPartUI struct {
 }
 
 type InfoPanelManager struct {
-	panels    map[donburi.Entity]*infoPanelUI // map[string]からmap[donburi.Entity]に変更
-	config    *data.Config
-	uiFactory *UIFactory
+	panels            map[donburi.Entity]*infoPanelUI // map[string]からmap[donburi.Entity]に変更
+	config            *data.Config
+	uiFactory         *UIFactory
+	battlefieldWidget *BattlefieldWidget // BattlefieldWidgetを追加
 }
 
-func NewInfoPanelManager(config *data.Config, uiFactory *UIFactory) *InfoPanelManager {
+func NewInfoPanelManager(config *data.Config, uiFactory *UIFactory, battlefieldWidget *BattlefieldWidget) *InfoPanelManager {
 	return &InfoPanelManager{
-		panels:    make(map[donburi.Entity]*infoPanelUI), // map[string]からmap[donburi.Entity]に変更
-		config:    config,
-		uiFactory: uiFactory,
+		panels:            make(map[donburi.Entity]*infoPanelUI), // map[string]からmap[donburi.Entity]に変更
+		config:            config,
+		uiFactory:         uiFactory,
+		battlefieldWidget: battlefieldWidget, // 初期化
 	}
 }
 
@@ -60,7 +62,8 @@ func (ipm *InfoPanelManager) UpdatePanels(infoPanelVMs []core.InfoPanelViewModel
 	// アイコンのEntryIDをキーとしたY座標のマップを作成
 	iconYMap := make(map[donburi.Entity]float32)
 	for _, iconVM := range iconVMs {
-		iconYMap[iconVM.EntryID] = iconVM.Y
+		_, y := ipm.battlefieldWidget.CalculateMedarotScreenPosition(iconVM, battlefieldRect)
+		iconYMap[iconVM.EntryID] = y
 	}
 
 	// 新しいViewModelに基づいてパネルを再生成

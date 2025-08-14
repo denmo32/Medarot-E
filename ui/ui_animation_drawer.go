@@ -16,20 +16,22 @@ import (
 
 // UIAnimationDrawer はUIアニメーションの描画に特化した構造体です。
 type UIAnimationDrawer struct {
-	config           *data.Config
-	currentAnimation *component.ActionAnimationData
-	font             text.Face
-	eventChannel     chan event.GameEvent
+	config            *data.Config
+	currentAnimation  *component.ActionAnimationData
+	font              text.Face
+	eventChannel      chan event.GameEvent
+	battlefieldWidget *BattlefieldWidget // BattlefieldWidgetへの参照を追加
 }
 
 // NewUIAnimationDrawer は新しいUIAnimationDrawerインスタンスを作成します。
-func NewUIAnimationDrawer(config *data.Config, font text.Face, eventChannel chan event.GameEvent) *UIAnimationDrawer {
+func NewUIAnimationDrawer(config *data.Config, font text.Face, eventChannel chan event.GameEvent, battlefieldWidget *BattlefieldWidget) *UIAnimationDrawer {
 	return &UIAnimationDrawer{
-		config:       config,
-		font:         font,
-		eventChannel: eventChannel,
+		config:            config,
+		font:              font,
+		eventChannel:      eventChannel,
+		battlefieldWidget: battlefieldWidget, // 初期化
 	}
-}
+} // ここに閉じ括弧を追加
 
 // Update はアニメーションの進行状況を更新し、終了した場合はイベントを発行します。
 func (d *UIAnimationDrawer) Update(tick float64) {
@@ -41,7 +43,7 @@ func (d *UIAnimationDrawer) Update(tick float64) {
 		d.eventChannel <- event.ActionAnimationFinishedGameEvent{Result: d.currentAnimation.Result}
 		d.ClearAnimation()
 	}
-}
+} // ここに閉じ括弧を追加
 
 // SetAnimation は現在再生するアニメーションを設定します。
 func (d *UIAnimationDrawer) SetAnimation(anim *component.ActionAnimationData) {
@@ -87,19 +89,25 @@ func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefield
 	}
 
 	if attackerVM != nil && targetVM != nil {
+		// BattlefieldWidgetの描画領域を取得
+		rect := d.battlefieldWidget.Container.GetWidget().Rect
+
+		attackerX, attackerY := d.battlefieldWidget.CalculateMedarotScreenPosition(attackerVM, rect)
+		targetX, targetY := d.battlefieldWidget.CalculateMedarotScreenPosition(targetVM, rect)
+
 		const firstPingDuration = 30.0
 		const secondPingDuration = 30.0
 		const delayBetweenPings = 0.0
 
 		if progress >= 0 && progress < firstPingDuration {
 			pingProgress := progress / firstPingDuration
-			d.drawPingAnimation(screen, attackerVM.X, attackerVM.Y, pingProgress, true)
+			d.drawPingAnimation(screen, attackerX, attackerY, pingProgress, true)
 		}
 
 		secondPingStart := firstPingDuration + delayBetweenPings
 		if progress >= secondPingStart && progress < secondPingStart+secondPingDuration {
 			pingProgress := (progress - secondPingStart) / secondPingDuration
-			d.drawPingAnimation(screen, targetVM.X, targetVM.Y, pingProgress, false)
+			d.drawPingAnimation(screen, targetX, targetY, pingProgress, false)
 		}
 
 		const popupDelay = 60
@@ -126,8 +134,8 @@ func (d *UIAnimationDrawer) Draw(screen *ebiten.Image, tick float64, battlefield
 				yOffset = settleHeight
 			}
 
-			x := targetVM.X
-			y := targetVM.Y - 20 - yOffset
+			x := targetX
+			y := targetY - 20 - yOffset
 
 			drawOpts := &text.DrawOptions{}
 			drawOpts.GeoM.Scale(1.5, 1.5)

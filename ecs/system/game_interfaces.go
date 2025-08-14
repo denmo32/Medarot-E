@@ -30,7 +30,7 @@ type UIUpdater interface {
 // ViewModelBuilder はViewModelを構築するインターフェースです。
 type ViewModelBuilder interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry) (core.InfoPanelViewModel, error)
-	BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle, config *data.Config) (core.BattlefieldViewModel, error)
+	BuildBattlefieldViewModel(world donburi.World) (core.BattlefieldViewModel, error) // 引数をworldのみに変更
 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error)
 	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
 }

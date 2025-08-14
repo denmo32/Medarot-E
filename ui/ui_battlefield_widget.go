@@ -19,18 +19,20 @@ import (
 type BattlefieldWidget struct {
 	*widget.Container
 	config       *data.Config
+	resources    *data.SharedResources // resourcesを追加
 	whitePixel   *ebiten.Image
 	viewModel    *core.BattlefieldViewModel
 	bgImage      *ebiten.Image   // 背景画像を直接保持
 	customWidget *widget.Graphic // カスタム描画ウィジェット
 }
 
-func NewBattlefieldWidget(config *data.Config) *BattlefieldWidget {
+func NewBattlefieldWidget(config *data.Config, resources *data.SharedResources) *BattlefieldWidget {
 	whiteImg := ebiten.NewImage(1, 1)
 	whiteImg.Fill(color.White)
 
 	bf := &BattlefieldWidget{
 		config:     config,
+		resources:  resources, // resourcesを初期化
 		whitePixel: whiteImg,
 	}
 
@@ -195,9 +197,8 @@ func (bf *BattlefieldWidget) drawIcons(screen *ebiten.Image, rect image.Rectangl
 }
 
 // drawSingleIcon は単一のアイコンを描画します
-func (bf *BattlefieldWidget) drawSingleIcon(screen *ebiten.Image, iconVM *core.IconViewModel, _ image.Rectangle) {
-	centerX := iconVM.X
-	centerY := iconVM.Y
+func (bf *BattlefieldWidget) drawSingleIcon(screen *ebiten.Image, iconVM *core.IconViewModel, rect image.Rectangle) {
+	centerX, centerY := bf.CalculateMedarotScreenPosition(iconVM, rect)
 	iconColor := iconVM.Color
 	radius := bf.config.UI.Battlefield.IconRadius
 
@@ -276,15 +277,17 @@ func (bf *BattlefieldWidget) drawDebugInfo(screen *ebiten.Image, rect image.Rect
 			continue
 		}
 
-		x := int(iconVM.X + 20)
-		y := int(iconVM.Y - 20)
+		// Calculate position for debug text based on the new logic
+		iconX, iconY := bf.CalculateMedarotScreenPosition(iconVM, rect)
+		x := int(iconX + 20)
+		y := int(iconY - 20)
 
 		// デバッグテキストが画面外に出ないように調整
 		if x > rect.Max.X-200 {
-			x = int(iconVM.X - 150)
+			x = int(iconX - 150) // iconX を使用
 		}
 		if y < rect.Min.Y+40 {
-			y = int(iconVM.Y + 40)
+			y = int(iconY + 40) // iconY を使用
 		}
 
 		ebitenutil.DebugPrintAt(screen, iconVM.DebugText, x, y)
@@ -297,7 +300,8 @@ func (bf *BattlefieldWidget) DrawTargetIndicator(screen *ebiten.Image, targetIco
 		return
 	}
 
-	tx, ty := targetIconVM.X, targetIconVM.Y
+	rect := bf.Container.GetWidget().Rect
+	tx, ty := bf.CalculateMedarotScreenPosition(targetIconVM, rect)
 	indicatorColor := color.RGBA{R: 0, G: 255, B: 255, A: 255} // ネオン風の水色
 
 	// アニメーションパラメータ
@@ -335,4 +339,37 @@ func (bf *BattlefieldWidget) DrawDebug(screen *ebiten.Image) {
 
 func (bf *BattlefieldWidget) DrawBackground(screen *ebiten.Image) {
 	// 背景はContainerが自動描画するため、何もしない
+}
+
+// CalculateMedarotScreenPosition はメダロットアイコンの画面上のX, Y座標を計算します。
+func (bf *BattlefieldWidget) CalculateMedarotScreenPosition(iconVM *core.IconViewModel, rect image.Rectangle) (float32, float32) {
+	width := float32(rect.Dx())
+	height := float32(rect.Dy())
+	offsetX := float32(rect.Min.X)
+	offsetY := float32(rect.Min.Y)
+
+	// Y座標はDrawIndexに基づいて計算
+	yPos := (height/float32(core.PlayersPerTeam+1))*(float32(iconVM.DrawIndex)+1) + offsetY
+
+	// X座標はNormalizedProgressとチームに基づいて計算
+	homeX, execX := width*bf.config.UI.Battlefield.Team1HomeX, width*bf.config.UI.Battlefield.Team1ExecutionLineX
+	if iconVM.Team == core.Team2 {
+		homeX, execX = width*bf.config.UI.Battlefield.Team2HomeX, width*bf.config.UI.Battlefield.Team2ExecutionLineX
+	}
+
+	var xPos float32
+	switch iconVM.State {
+	case core.StateCharging:
+		xPos = homeX + (execX-homeX)*float32(iconVM.NormalizedProgress)
+	case core.StateReady:
+		xPos = execX
+	case core.StateCooldown:
+		xPos = execX + (homeX-execX)*(1.0-float32(iconVM.NormalizedProgress))
+	case core.StateIdle, core.StateBroken:
+		xPos = homeX
+	default:
+		xPos = homeX
+	}
+
+	return xPos + offsetX, yPos
 }

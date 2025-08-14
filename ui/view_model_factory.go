@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"image"
 	"image/color"
 	"math/rand"
 
@@ -81,7 +80,7 @@ func (f *ViewModelFactory) BuildInfoPanelViewModel(entry *donburi.Entry) (core.I
 }
 
 // BuildBattlefieldViewModel は、ワールドの状態からBattlefieldViewModelを構築します。
-func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World, battlefieldRect image.Rectangle, config *data.Config) (core.BattlefieldViewModel, error) {
+func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World) (core.BattlefieldViewModel, error) {
 	vm := core.BattlefieldViewModel{
 		Icons: []*core.IconViewModel{},
 		DebugMode: func() bool {
@@ -94,25 +93,20 @@ func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World, battle
 		settings := component.SettingsComponent.Get(entry)
 		state := component.StateComponent.Get(entry)
 		gauge := component.GaugeComponent.Get(entry)
-
-		bfWidth := float32(battlefieldRect.Dx())
-		bfHeight := float32(battlefieldRect.Dy())
-		offsetX := float32(battlefieldRect.Min.X)
-		offsetY := float32(battlefieldRect.Min.Y)
-
-		x := f.CalculateMedarotScreenXPosition(entry, f.partInfoProvider, bfWidth, config)
-		y := (bfHeight / float32(core.PlayersPerTeam+1)) * (float32(settings.DrawIndex) + 1)
-
-		x += offsetX
-		y += offsetY
+		progress := f.partInfoProvider.GetNormalizedActionProgress(entry)
 
 		var iconColor color.Color
+		// 色の決定はUIコンポーネントで行うため、ここでは仮の色を設定
+		// または、ViewModelに色情報を含めないように変更
+		// 今回はViewModelに色情報を含めるため、configから色を取得するロジックを削除
+		// configはBuildBattlefieldViewModelの引数から削除されたため、ここではアクセスできない
+		// 一旦、デフォルトの色を設定
 		if state.CurrentState == core.StateBroken {
-			iconColor = config.UI.Colors.Broken
+			iconColor = color.RGBA{255, 0, 0, 255} // 赤
 		} else if settings.Team == core.Team1 {
-			iconColor = config.UI.Colors.Team1
+			iconColor = color.RGBA{0, 0, 255, 255} // 青
 		} else {
-			iconColor = config.UI.Colors.Team2
+			iconColor = color.RGBA{0, 255, 0, 255} // 緑
 		}
 
 		var debugText string
@@ -125,47 +119,19 @@ Prog: %.1f / %.1f`,
 		}
 
 		vm.Icons = append(vm.Icons, &core.IconViewModel{
-			EntryID:       entry.Entity(),
-			X:             x,
-			Y:             y,
-			Color:         iconColor,
-			IsLeader:      settings.IsLeader,
-			State:         state.CurrentState,
-			GaugeProgress: gauge.CurrentGauge / 100.0,
-			DebugText:     debugText,
+			EntryID:            entry.Entity(),
+			Team:               settings.Team,
+			DrawIndex:          settings.DrawIndex,
+			NormalizedProgress: float64(progress),
+			Color:              iconColor, // 仮の色
+			IsLeader:           settings.IsLeader,
+			State:              state.CurrentState,
+			GaugeProgress:      gauge.CurrentGauge / 100.0,
+			DebugText:          debugText,
 		})
 	})
 
 	return vm, nil
-}
-
-// CalculateMedarotScreenXPosition はバトルフィールド上のアイコンのX座標を計算します。
-// battlefieldWidth はバトルフィールドの表示幅です。
-func (f *ViewModelFactory) CalculateMedarotScreenXPosition(entry *donburi.Entry, partInfoProvider ViewModelPartInfoProvider, battlefieldWidth float32, config *data.Config) float32 {
-	settings := component.SettingsComponent.Get(entry)
-	progress := partInfoProvider.GetNormalizedActionProgress(entry)
-
-	// ホームポジションと実行ラインのX座標を定義します。
-	// これらの値は game_settings.json の UI.Battlefield.Team1HomeX, Team2HomeX, Team1ExecutionLineX, Team2ExecutionLineX に対応します。
-	homeX, execX := battlefieldWidth*config.UI.Battlefield.Team1HomeX, battlefieldWidth*config.UI.Battlefield.Team1ExecutionLineX
-	if settings.Team == core.Team2 {
-		homeX, execX = battlefieldWidth*config.UI.Battlefield.Team2HomeX, battlefieldWidth*config.UI.Battlefield.Team2ExecutionLineX
-	}
-
-	var xPos float32
-	switch component.StateComponent.Get(entry).CurrentState {
-	case core.StateCharging:
-		xPos = homeX + (execX-homeX)*progress
-	case core.StateReady:
-		xPos = execX
-	case core.StateCooldown:
-		xPos = execX + (homeX-execX)*(1.0-progress)
-	case core.StateIdle, core.StateBroken:
-		xPos = homeX
-	default:
-		xPos = homeX
-	}
-	return xPos
 }
 
 // BuildActionModalViewModel は、アクション選択モーダルに必要なViewModelを構築します。
@@ -230,5 +196,3 @@ func GetStateDisplayName(state core.StateType) string {
 		return "不明"
 	}
 }
-
-

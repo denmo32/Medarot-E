@@ -70,8 +70,9 @@ func NewBattleUIManager(
 	bum.uiFactory = NewUIFactory(config, resources.Font, resources.ModalButtonFont, resources.MessageWindowFont, resources.GameDataManager.Messages)
 
 	// Initialize sub-managers and components
-	bum.infoPanelManager = NewInfoPanelManager(config, bum.uiFactory)
-	bum.animationDrawer = NewUIAnimationDrawer(config, bum.uiFactory.Font, bum.eventChannel)
+	bum.battlefieldWidget = NewBattlefieldWidget(config, resources)                                                 // ここで初期化
+	bum.infoPanelManager = NewInfoPanelManager(config, bum.uiFactory, bum.battlefieldWidget)                        // battlefieldWidgetを渡す
+	bum.animationDrawer = NewUIAnimationDrawer(config, bum.uiFactory.Font, bum.eventChannel, bum.battlefieldWidget) // battlefieldWidgetを渡す
 	bum.actionModal = NewActionModal(bum.uiFactory, bum.eventChannel, bum)
 	bum.messageWindow = NewMessageWindow(bum.uiFactory)
 
@@ -98,7 +99,7 @@ func NewBattleUIManager(
 	bottomPanelWrapper.AddChild(bum.commonBottomPanel.RootContainer)
 	baseLayoutContainer.AddChild(bottomPanelWrapper)
 
-	bum.battlefieldWidget = NewBattlefieldWidget(config)
+	// bum.battlefieldWidget は既に上で初期化されているため、この行は削除
 	mainUIContainer.AddChild(bum.battlefieldWidget.Container)
 
 	bum.ebitenui = &ebitenui.UI{
@@ -118,7 +119,7 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.G
 			infoPanelVMs = append(infoPanelVMs, vm)
 		}
 	})
-	battlefieldVM, _ := bum.viewModelFactory.BuildBattlefieldViewModel(world, bum.GetBattlefieldWidgetRect(), bum.config)
+	battlefieldVM, _ := bum.viewModelFactory.BuildBattlefieldViewModel(world) // 引数をworldのみに変更
 
 	// 2. Update UI with new ViewModels
 	bum.updateUIWithViewModels(infoPanelVMs, battlefieldVM)
