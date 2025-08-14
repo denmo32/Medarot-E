@@ -227,8 +227,11 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) 
 		StartCooldownSystem(actingEntry, ctx.World, ctx.BattleLogic.GetPartInfoProvider())
 	}
 
-	// メッセージ生成とエンキュー
-	ctx.BattleUIManager.EnqueueMessageQueue(data.BuildActionLogMessagesFromActionResult(*result, ctx.GameDataManager), func() {
+	// メッセージ生成とエンキューのロジックを修正。
+	// ActionResultを直接UIマネージャーに渡して、メッセージ生成を依頼します。
+	// これにより、このStateはUIメッセージの具体的な内容を知る必要がなくなります。
+	ctx.BattleUIManager.DisplayMessagesForResult(result, func() {
+		// メッセージ表示後のコールバックで履歴を更新
 		UpdateHistorySystem(ctx.World, result)
 	})
 

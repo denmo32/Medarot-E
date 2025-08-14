@@ -263,6 +263,13 @@ func (bum *BattleUIManager) Draw(screen *ebiten.Image, tickCount int, gameDataMa
 
 // --- Message Display Methods ---
 
+// DisplayMessagesForResult はActionResultからメッセージを構築し、キューに追加します。
+// これにより、ゲームロジック層はメッセージの具体的な内容を意識する必要がなくなります。
+func (bum *BattleUIManager) DisplayMessagesForResult(result *component.ActionResult, callback func()) {
+	messages := bum.buildActionLogMessages(result)
+	bum.EnqueueMessageQueue(messages, callback)
+}
+
 func (bum *BattleUIManager) EnqueueMessageQueue(messages []string, callback func()) {
 	bum.messageQueue = messages
 	bum.currentMessageIndex = 0
@@ -288,6 +295,86 @@ func (bum *BattleUIManager) showMessageWindow(message string) {
 func (bum *BattleUIManager) hideMessageWindow() {
 	bum.messageWindow.Hide()
 	bum.commonBottomPanel.SetContent(nil)
+}
+
+// buildActionLogMessages はActionResultから表示用のメッセージスライスを構築します。
+// このロジックは以前 data/battle_logger.go にありましたが、UIの責務としてこちらに移動しました。
+func (bum *BattleUIManager) buildActionLogMessages(result *component.ActionResult) []string {
+	messages := []string{}
+	messageManager := bum.uiFactory.MessageManager
+
+	// 攻撃開始メッセージ
+	var actionInitiateMsg string
+	switch result.ActionCategory {
+	case core.CategoryRanged, core.CategoryMelee:
+		actionInitiateMsg = messageManager.FormatMessage("action_initiate_attack", map[string]interface{}{
+			"attacker_name": result.AttackerName,
+			"action_name":   result.ActionTrait,
+			"weapon_type":   result.WeaponType,
+		})
+	case core.CategoryIntervention:
+		actionInitiateMsg = messageManager.FormatMessage("action_initiate_intervention", map[string]interface{}{
+			"attacker_name": result.AttackerName,
+			"action_name":   result.ActionTrait,
+			"weapon_type":   result.WeaponType,
+		})
+	default:
+		actionInitiateMsg = messageManager.FormatMessage("action_generic", map[string]interface{}{
+			"actor_name":  result.AttackerName,
+			"action_name": result.ActionName,
+		})
+	}
+	messages = append(messages, actionInitiateMsg)
+
+	if !result.ActionDidHit {
+		messages = append(messages, messageManager.FormatMessage("attack_miss", map[string]interface{}{
+			"target_name": result.DefenderName,
+		}))
+	} else {
+		// 防御メッセージ
+		if result.ActionIsDefended {
+			// クリティカルヒットが防御された場合の特別なメッセージ
+			if result.IsCritical {
+				messages = append(messages, messageManager.FormatMessage("defense_success_critical", map[string]interface{}{
+					"target_name":       result.DefenderName,
+					"defense_part_name": result.DefendingPartType,
+					"original_damage":   result.OriginalDamage,
+					"actual_damage":     result.DamageDealt,
+				}))
+			} else {
+				messages = append(messages, messageManager.FormatMessage("action_defend", map[string]interface{}{
+					"defending_part_type": result.DefendingPartType,
+				}))
+			}
+		}
+
+		// ダメージメッセージ
+		if result.DamageDealt > 0 && !result.ActionIsDefended { // 防御成功時は専用メッセージでダメージを表示するため重複を避ける
+			messages = append(messages, messageManager.FormatMessage("action_damage", map[string]interface{}{
+				"defender_name":    result.DefenderName,
+				"target_part_type": result.TargetPartType,
+				"damage":           result.DamageDealt,
+			}))
+		}
+
+		// パーツ破壊メッセージ
+		if result.IsTargetPartBroken {
+			// 防御したパーツが破壊された場合
+			if result.ActionIsDefended {
+				messages = append(messages, messageManager.FormatMessage("part_broken_on_defense", map[string]interface{}{
+					"target_name":      result.DefenderName,
+					"target_part_name": result.DefendingPartType, // 防御したパーツ名
+				}))
+			} else {
+				messages = append(messages, messageManager.FormatMessage("part_broken", map[string]interface{}{
+					"target_name":      result.DefenderName,
+					"target_part_name": result.TargetPartType, // 攻撃対象のパーツ名
+				}))
+			}
+		}
+	}
+
+	return messages
 }
 
 // --- Target Indicator Methods (TargetManager interface implementation) ---

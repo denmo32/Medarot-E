@@ -36,11 +36,9 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 	evasion := hc.partInfoProvider.GetEvasionRate(target)
 
 	// 命中確率 = 基準値 + (成功度 - 回避度)
-	// config.Balance.Hit を config.Hit に変更
 	chance := hc.config.Hit.BaseChance + (successRate - evasion)
 
 	// 確率の上下限を適用
-	// config.Balance.Hit を config.Hit に変更
 	if chance < hc.config.Hit.MinChance {
 		chance = hc.config.Hit.MinChance
 	}
@@ -54,7 +52,8 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 }
 
 // CalculateDefense は防御の成否を判定します。
-func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *core.PartDefinition, selectedPartKey core.PartSlotKey) bool {
+// 【修正点】防御するパーツの定義(defendingPartDef)を引数に追加し、ログ出力で使えるようにしました。
+func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actingPartDef *core.PartDefinition, selectedPartKey core.PartSlotKey, defendingPartDef *core.PartDefinition) bool {
 	// 攻撃側の成功度
 	successRate := hc.partInfoProvider.GetSuccessRate(attacker, actingPartDef, selectedPartKey)
 
@@ -62,11 +61,9 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 	defenseRate := hc.partInfoProvider.GetDefenseRate(target)
 
 	// 防御成功確率 = 基準値 + (防御度 - 成功度)
-	// config.Balance.Defense を config.Defense に変更
 	chance := hc.config.Defense.BaseChance + (defenseRate - successRate)
 
 	// 確率の上下限を適用
-	// config.Balance.Defense を config.Defense に変更
 	if chance < hc.config.Defense.MinChance {
 		chance = hc.config.Defense.MinChance
 	}
@@ -75,6 +72,8 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 	}
 
 	roll := hc.rand.Intn(100)
-	hc.logger.LogDefenseCheck(component.SettingsComponent.Get(target).Name, defenseRate, successRate, chance, roll)
+	// 【修正点】ログ出力時に防御パーツ名を渡すように修正しました。
+	// これにより、LogDefenseCheckの6つの引数要件を満たします。
+	hc.logger.LogDefenseCheck(component.SettingsComponent.Get(target).Name, defendingPartDef.PartName, chance, defenseRate, successRate, roll)
 	return float64(roll) < chance
 }

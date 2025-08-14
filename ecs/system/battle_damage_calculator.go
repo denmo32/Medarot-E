@@ -59,6 +59,8 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 
 	if dc.rand.Intn(100) < int(criticalChance) {
 		isCritical = true
+		// ログ出力用のchanceを渡す際に、期待される型(float64)を渡すようにします。
+		// BattleLoggerの実装側でintにキャストする責務を持ちます。
 		dc.logger.LogCriticalHit(component.SettingsComponent.Get(attacker).Name, criticalChance)
 		// クリティカル時は回避度を0にする
 		evasion = 0

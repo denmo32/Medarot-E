@@ -40,25 +40,32 @@ func applyDamageAndDefense(
 ) {
 	defendingPartInst := targetSelector.SelectDefensePart(result.TargetEntry)
 
-	if defendingPartInst != nil && hitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey) {
-		result.ActionIsDefended = true
+	// 防御パーツが存在する場合にのみ防御判定を行う
+	if defendingPartInst != nil {
 		defendingPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(defendingPartInst.DefinitionID)
-		result.DefendingPartType = string(defendingPartDef.Type)
-		result.ActualHitPartSlot = partInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
+		// 【修正点】CalculateDefenseに防御パーツの定義を渡すように修正。
+		// これにより、battle_hit_calculator.goのシグネチャ変更に追従します。
+		if hitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey, defendingPartDef) {
+			result.ActionIsDefended = true
+			result.DefendingPartType = string(defendingPartDef.Type)
+			result.ActualHitPartSlot = partInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
 
-		finalDamage := damageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
-		result.DamageDealt = finalDamage
-		result.DamageToApply = finalDamage
-		result.TargetPartInstance = defendingPartInst
-	} else {
-		result.ActionIsDefended = false
-		intendedTargetPartInstance := component.PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
-		result.DamageDealt = result.OriginalDamage
-		result.ActualHitPartSlot = result.TargetPartSlot
-
-		result.DamageToApply = result.OriginalDamage
-		result.TargetPartInstance = intendedTargetPartInstance
+			finalDamage := damageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
+			result.DamageDealt = finalDamage
+			result.DamageToApply = finalDamage
+			result.TargetPartInstance = defendingPartInst
+			return // 防御成功時はここで処理を終了
+		}
 	}
+
+	// 防御失敗、または防御パーツがなかった場合の処理
+	result.ActionIsDefended = false
+	intendedTargetPartInstance := component.PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
+	result.DamageDealt = result.OriginalDamage
+	result.ActualHitPartSlot = result.TargetPartSlot
+
+	result.DamageToApply = result.OriginalDamage
+	result.TargetPartInstance = intendedTargetPartInstance
 }
 
 // finalizeActionResult は ActionResult を最終化します。
@@ -114,7 +121,6 @@ func resolveAttackTarget(
 func initializeAttackResult(actingEntry *donburi.Entry, actingPartDef *core.PartDefinition) component.ActionResult {
 	return component.ActionResult{
 		ActingEntry:    actingEntry,
-		
 		AttackerName:   component.SettingsComponent.Get(actingEntry).Name,
 		ActionName:     actingPartDef.PartName,
 		ActionTrait:    actingPartDef.Trait,

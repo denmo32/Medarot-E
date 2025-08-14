@@ -17,7 +17,10 @@ import (
 type UIUpdater interface {
 	Update(tickCount int, world donburi.World) []event.GameEvent
 	ProcessEvents(world donburi.World, events []event.GameEvent)
+	// EnqueueMessageQueue は、UIに表示するメッセージ文字列のキューを直接受け取ります。
 	EnqueueMessageQueue(messages []string, callback func())
+	// DisplayMessagesForResult は、ActionResultからUIに表示するメッセージを生成し、表示キューに入れます。
+	DisplayMessagesForResult(result *component.ActionResult, callback func())
 	IsMessageFinished() bool
 	SetCurrentTarget(entityID donburi.Entity)
 	ClearCurrentTarget()
@@ -44,15 +47,13 @@ type TargetingStrategy interface {
 	) (*donburi.Entry, core.PartSlotKey)
 }
 
+// BattleLogger インターフェースを更新し、デバッグログ出力に特化させました。
+// UIメッセージに関連するメソッドは削除されました。
 type BattleLogger interface {
 	LogHitCheck(attackerName, targetName string, chance, successRate, evasion float64, roll int)
-	LogDefenseCheck(targetName string, defenseRate, successRate, chance float64, roll int)
+	LogDefenseCheck(targetName, defensePartName string, chance, defenseRate, successRate float64, roll int)
 	LogCriticalHit(attackerName string, chance float64)
 	LogPartBroken(medarotName, partName, partID string)
-	LogActionInitiated(attackerName string, actionTrait core.Trait, weaponType core.WeaponType, category core.PartCategory)
-	LogAttackMiss(attackerName, skillName, targetName string)
-	LogDamageDealt(defenderName, targetPartType string, damage int)
-	LogDefenseSuccess(targetName, defensePartName string, originalDamage, actualDamage int, isCritical bool)
 }
 
 // TraitActionHandler はカテゴリ固有のアクション処理全体をカプセル化します。
