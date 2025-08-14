@@ -153,6 +153,8 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.G
 }
 
 // ProcessEvents は、ゲームロジックから渡されたイベントを処理し、UIの状態を更新します。
+// ★★★ 修正点 ★★★
+// ここに ClearCurrentTargetGameEvent の処理を追加しました。
 func (bum *BattleUIManager) ProcessEvents(world donburi.World, events []event.GameEvent) {
 	for _, e := range events {
 		switch event := e.(type) {
@@ -166,6 +168,10 @@ func (bum *BattleUIManager) ProcessEvents(world donburi.World, events []event.Ga
 			bum.showActionModal(world, &vm)
 		case event.HideActionModalGameEvent, event.PlayerActionProcessedGameEvent:
 			bum.hideActionModal(world)
+		// 【修正】ClearCurrentTargetGameEvent をここで処理します。
+		// これにより、UIの状態（ターゲット表示）が正しくリセットされます。
+		case event.ClearCurrentTargetGameEvent:
+			bum.ClearCurrentTarget()
 		}
 	}
 }

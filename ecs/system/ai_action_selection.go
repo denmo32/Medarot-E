@@ -2,6 +2,7 @@ package system
 
 import (
 	"log"
+	"math/rand"
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
@@ -10,88 +11,69 @@ import (
 )
 
 // aiSelectAction はAI制御のメダロットの行動を決定します。
-// BattleScene への依存をなくし、必要な情報を引数で受け取ります。
+// BattleLogicへの依存をなくし、必要なインターフェースとシステムを直接引数で受け取ります。
 func aiSelectAction(
 	world donburi.World,
 	entry *donburi.Entry,
-	battleLogic *BattleLogic,
+	partInfoProvider PartInfoProviderInterface,
+	chargeSystem *ChargeInitiationSystem,
+	targetSelector *TargetSelector,
+	// randの型を *core.Rand から正しい *rand.Rand に修正しました。
+	rand *rand.Rand,
 ) {
 	settings := component.SettingsComponent.Get(entry)
 
-	var slotKey core.PartSlotKey
-	var selectedPartDef *core.PartDefinition
-	var targetingStrategy TargetingStrategy
-	var partSelectionStrategy AIPartSelectionStrategyFunc
-
-	partInfoProvider := battleLogic.GetPartInfoProvider()
-	if partInfoProvider == nil {
-		log.Printf("%s: AI行動選択エラー - PartInfoProviderが初期化されていません。", settings.Name)
-		return
-	}
+	// 利用可能な攻撃パーツを取得
 	availableParts := partInfoProvider.GetAvailableAttackParts(entry)
-
 	if len(availableParts) == 0 {
 		log.Printf("%s: AIは攻撃可能なパーツがないため待機。", settings.Name)
 		return
 	}
 
+	// AIの性格に基づいた戦略を取得
+	var targetingStrategy TargetingStrategy
+	var partSelectionStrategy AIPartSelectionStrategyFunc
 	if entry.HasComponent(component.AIComponent) {
 		ai := component.AIComponent.Get(entry)
 		personality, ok := PersonalityRegistry[ai.PersonalityID]
 		if !ok {
-			log.Printf("%s: AIエラー - PersonalityID '%s' がレジストリに見つかりません。デフォルト（ジョーカー）を使用。", settings.Name, ai.PersonalityID)
-			personality = PersonalityRegistry["ジョーカー"] // フォールバック
+			log.Printf("%s: AIエラー - PersonalityID '%s' がレジストリに見つかりません。デフォルト（リーダー）を使用。", settings.Name, ai.PersonalityID)
+			personality = PersonalityRegistry["リーダー"] // フォールバック
 		}
 		targetingStrategy = personality.TargetingStrategy
 		partSelectionStrategy = personality.PartSelectionStrategy
 	} else {
-		log.Printf("%s: AIエラー - AIComponentがありません。デフォルト（ジョーカー）を使用。", settings.Name)
-		personality := PersonalityRegistry["ジョーカー"] // フォールバック
+		// AIコンポーネントがない場合のフォールバック
+		log.Printf("%s: AIエラー - AIComponentがありません。デフォルト（リーダー）を使用。", settings.Name)
+		personality := PersonalityRegistry["リーダー"] // フォールバック
 		targetingStrategy = personality.TargetingStrategy
 		partSelectionStrategy = personality.PartSelectionStrategy
 	}
 
-	if partSelectionStrategy != nil {
-		slotKey, selectedPartDef = partSelectionStrategy(entry, availableParts, world, battleLogic)
-	} else {
-		log.Printf("%s: AIエラー - PartSelectionStrategyがnilです。デフォルトのパーツ選択（最初のパーツ）を使用。", settings.Name)
-		if len(availableParts) > 0 {
-			slotKey = availableParts[0].Slot
-			selectedPartDef = availableParts[0].PartDef
-		}
-	}
-
+	// 1. パーツ選択戦略の実行
+	// この戦略はパーツの静的データのみに依存するため、多くの引数は不要です。
+	slotKey, selectedPartDef := partSelectionStrategy(entry, availableParts)
 	if selectedPartDef == nil {
 		log.Printf("%s: AIは戦略に基づいて選択できるパーツがありませんでした。", settings.Name)
 		return
 	}
 
-	var targetEntry *donburi.Entry
-	var targetPartSlot core.PartSlotKey
+	// 2. ターゲット選択戦略の実行
+	// ターゲット選択はWorldの状態に依存するため、必要なシステムを渡します。
+	targetEntry, targetPartSlot := targetingStrategy.SelectTarget(world, entry, targetSelector, partInfoProvider, rand)
 
-	if targetingStrategy != nil {
-		targetEntry, targetPartSlot = targetingStrategy.SelectTarget(world, entry, battleLogic)
-	} else {
-		log.Printf("%s: AIエラー - TargetingStrategyがnilです。デフォルトのターゲット選択（リーダー）を使用します。", settings.Name)
-		targetEntry, targetPartSlot = (&LeaderStrategy{}).SelectTarget(world, entry, battleLogic)
-	}
-
+	// 3. 行動開始
+	// カテゴリに応じてチャージを開始します。
 	switch selectedPartDef.Category {
-	case core.CategoryRanged:
+	case core.CategoryRanged, core.CategoryIntervention:
 		if targetEntry == nil {
-			log.Printf("%s: AIは[射撃]の攻撃対象がいないため待機。", settings.Name)
+			log.Printf("%s: AIは[%s]の攻撃対象がいないため待機。", settings.Name, selectedPartDef.Category)
 			return
 		}
-		battleLogic.GetChargeInitiationSystem().StartCharge(entry, slotKey, targetEntry, targetPartSlot)
+		chargeSystem.StartCharge(entry, slotKey, targetEntry, targetPartSlot)
 	case core.CategoryMelee:
-		// 格闘の場合はターゲット選択が不要なので、nilを渡す
-		battleLogic.GetChargeInitiationSystem().StartCharge(entry, slotKey, nil, "")
-	case core.CategoryIntervention:
-		if targetEntry == nil {
-			log.Printf("%s: AIは[介入]の対象がいないため待機。", settings.Name)
-			return
-		}
-		battleLogic.GetChargeInitiationSystem().StartCharge(entry, slotKey, targetEntry, targetPartSlot)
+		// 格闘の場合は実行時にターゲットが決まるため、ここではターゲットを指定しません。
+		chargeSystem.StartCharge(entry, slotKey, nil, "")
 	default:
 		log.Printf("%s: AIはパーツカテゴリ '%s' (%s) の行動を決定できませんでした。", settings.Name, selectedPartDef.PartName, selectedPartDef.Category)
 	}
@@ -100,11 +82,10 @@ func aiSelectAction(
 // --- AIパーツ選択戦略 ---
 
 // SelectFirstAvailablePart は利用可能な最初のパーツを選択する単純な戦略です。
+// この関数は引数にWorldや他のシステムを必要としないため、シグネチャが簡潔になります。
 func SelectFirstAvailablePart(
 	actingEntry *donburi.Entry,
 	availableParts []core.AvailablePart,
-	world donburi.World,
-	battleLogic *BattleLogic,
 ) (core.PartSlotKey, *core.PartDefinition) {
 	if len(availableParts) > 0 {
 		return availableParts[0].Slot, availableParts[0].PartDef
@@ -115,41 +96,43 @@ func SelectFirstAvailablePart(
 // SelectHighestPowerPart は利用可能なパーツの中で最も威力のあるパーツを選択します。
 func SelectHighestPowerPart(
 	actingEntry *donburi.Entry,
-	availableParts []core.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
-	world donburi.World,
-	battleLogic *BattleLogic,
+	availableParts []core.AvailablePart,
 ) (core.PartSlotKey, *core.PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil
 	}
-	currentBestPartDef := availableParts[0].PartDef
-	currentBestSlot := availableParts[0].Slot
-	for _, ap := range availableParts[1:] { // ap は AvailablePart です
-		if ap.PartDef.Power > currentBestPartDef.Power {
-			currentBestPartDef = ap.PartDef
-			currentBestSlot = ap.Slot
+	var bestPartDef *core.PartDefinition
+	var bestSlot core.PartSlotKey
+	maxPower := -1
+
+	for _, ap := range availableParts {
+		if ap.PartDef.Power > maxPower {
+			maxPower = ap.PartDef.Power
+			bestPartDef = ap.PartDef
+			bestSlot = ap.Slot
 		}
 	}
-	return currentBestSlot, currentBestPartDef
+	return bestSlot, bestPartDef
 }
 
 // SelectFastestChargePart はチャージ時間が最も短いパーツを選択します。
 func SelectFastestChargePart(
 	actingEntry *donburi.Entry,
-	availableParts []core.AvailablePart, // これは []AvailablePart{PartDef *PartDefinition, Slot PartSlotKey} です
-	world donburi.World,
-	battleLogic *BattleLogic,
+	availableParts []core.AvailablePart,
 ) (core.PartSlotKey, *core.PartDefinition) {
 	if len(availableParts) == 0 {
 		return "", nil
 	}
-	currentBestPartDef := availableParts[0].PartDef
-	currentBestSlot := availableParts[0].Slot
-	for _, ap := range availableParts[1:] { // ap は AvailablePart です
-		if ap.PartDef.Charge < currentBestPartDef.Charge { // チャージ時間が短いほど速い
-			currentBestPartDef = ap.PartDef
-			currentBestSlot = ap.Slot
+	var bestPartDef *core.PartDefinition
+	var bestSlot core.PartSlotKey
+	minCharge := int(^uint(0) >> 1) // intの最大値
+
+	for _, ap := range availableParts {
+		if ap.PartDef.Charge < minCharge {
+			minCharge = ap.PartDef.Charge
+			bestPartDef = ap.PartDef
+			bestSlot = ap.Slot
 		}
 	}
-	return currentBestSlot, currentBestPartDef
+	return bestSlot, bestPartDef
 }

@@ -2,6 +2,7 @@ package system
 
 import (
 	"log"
+	"math/rand"
 	"sort"
 
 	"medarot-ebiten/core"
@@ -13,15 +14,14 @@ import (
 	"github.com/yohamta/donburi/query"
 )
 
-func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic, includeHead bool) []component.TargetablePart {
+// getAllTargetablePartsは、指定された攻撃者がターゲットにできる全てのパーツを取得します。
+// BattleLogicへの依存をなくし、必要なTargetSelectorとPartInfoProviderを直接受け取ります。
+func getAllTargetableParts(actingEntry *donburi.Entry, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, includeHead bool) []component.TargetablePart {
 	var allParts []component.TargetablePart
-	targetSelector := battleLogic.GetTargetSelector()
-	if targetSelector == nil {
-		log.Println("エラー: getAllTargetableParts - targetSelectorがnilです。")
-		return allParts
-	}
+
+	// ターゲット候補となる敵エンティティのリストを取得
 	candidates := targetSelector.GetTargetableEnemies(actingEntry)
-	gameDataManager := battleLogic.GetPartInfoProvider().GetGameDataManager()
+	gameDataManager := partInfoProvider.GetGameDataManager()
 
 	for _, enemyEntry := range candidates {
 		partsComp := component.PartsComponent.Get(enemyEntry)
@@ -32,14 +32,16 @@ func getAllTargetableParts(actingEntry *donburi.Entry, battleLogic *BattleLogic,
 			if partInst.IsBroken {
 				continue
 			}
+			// 頭部パーツを除外するオプション
+			if !includeHead && slotKey == core.PartSlotHead {
+				continue
+			}
 			partDef, defFound := gameDataManager.GetPartDefinition(partInst.DefinitionID)
 			if !defFound {
 				log.Printf("警告: getAllTargetableParts - PartDefinition %s が見つかりません。", partInst.DefinitionID)
 				continue
 			}
-			if !includeHead && partDef.Type == core.PartTypeHead {
-				continue
-			}
+
 			allParts = append(allParts, component.TargetablePart{
 				Entity:   enemyEntry,
 				PartInst: partInst,
@@ -58,10 +60,12 @@ type TargetSortFunc func(parts []component.TargetablePart)
 // --- 戦略の実装 ---
 
 // selectTargetWithSort は、提供されたソート関数を使用してターゲットを選択する共通ロジックです。
-func selectTargetWithSort(actingEntry *donburi.Entry, battleLogic *BattleLogic, sortFunc TargetSortFunc) (*donburi.Entry, core.PartSlotKey) {
-	targetParts := getAllTargetableParts(actingEntry, battleLogic, false)
+func selectTargetWithSort(actingEntry *donburi.Entry, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, sortFunc TargetSortFunc) (*donburi.Entry, core.PartSlotKey) {
+	// まずは頭部以外のパーツをターゲット候補とする
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, partInfoProvider, false)
+	// 候補がなければ頭部も含めて再検索
 	if len(targetParts) == 0 {
-		targetParts = getAllTargetableParts(actingEntry, battleLogic, true) // 頭部を含めて再試行
+		targetParts = getAllTargetableParts(actingEntry, targetSelector, partInfoProvider, true)
 	}
 	if len(targetParts) == 0 {
 		return nil, ""
@@ -76,8 +80,8 @@ func selectTargetWithSort(actingEntry *donburi.Entry, battleLogic *BattleLogic, 
 // CrusherStrategy は最も装甲の高いパーツを狙います。
 type CrusherStrategy struct{}
 
-func (s *CrusherStrategy) SelectTarget(world donburi.World, actingEntry *donburi.Entry, battleLogic *BattleLogic) (*donburi.Entry, core.PartSlotKey) {
-	return selectTargetWithSort(actingEntry, battleLogic, s.GetSortFunction())
+func (s *CrusherStrategy) SelectTarget(world donburi.World, actingEntry *donburi.Entry, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, rand *rand.Rand) (*donburi.Entry, core.PartSlotKey) {
+	return selectTargetWithSort(actingEntry, targetSelector, partInfoProvider, s.GetSortFunction())
 }
 
 func (s *CrusherStrategy) GetSortFunction() TargetSortFunc {
@@ -91,8 +95,8 @@ func (s *CrusherStrategy) GetSortFunction() TargetSortFunc {
 // HunterStrategy は最も装甲の低いパーツを狙います。
 type HunterStrategy struct{}
 
-func (s *HunterStrategy) SelectTarget(world donburi.World, actingEntry *donburi.Entry, battleLogic *BattleLogic) (*donburi.Entry, core.PartSlotKey) {
-	return selectTargetWithSort(actingEntry, battleLogic, s.GetSortFunction())
+func (s *HunterStrategy) SelectTarget(world donburi.World, actingEntry *donburi.Entry, targetSelector *TargetSelector, partInfoProvider PartInfoProviderInterface, rand *rand.Rand) (*donburi.Entry, core.PartSlotKey) {
+	return selectTargetWithSort(actingEntry, targetSelector, partInfoProvider, s.GetSortFunction())
 }
 
 func (s *HunterStrategy) GetSortFunction() TargetSortFunc {
@@ -109,14 +113,16 @@ type JokerStrategy struct{}
 func (s *JokerStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
-	allEnemyParts := getAllTargetableParts(actingEntry, battleLogic, true)
+	allEnemyParts := getAllTargetableParts(actingEntry, targetSelector, partInfoProvider, true)
 	if len(allEnemyParts) == 0 {
 		return nil, ""
 	}
 
-	idx := battleLogic.rand.Intn(len(allEnemyParts))
+	idx := rand.Intn(len(allEnemyParts))
 	return allEnemyParts[idx].Entity, allEnemyParts[idx].Slot
 }
 
@@ -126,20 +132,15 @@ type LeaderStrategy struct{}
 func (s *LeaderStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
-	targetSelector := battleLogic.GetTargetSelector()
-	partInfoProvider := battleLogic.GetPartInfoProvider()
-	if targetSelector == nil || partInfoProvider == nil {
-		log.Println("エラー: LeaderStrategy.SelectTarget - targetSelector または partInfoProvider がnilです。")
-		return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic) // フォールバック
-	}
-
 	opponentTeamID := targetSelector.GetOpponentTeam(actingEntry)
 	leader := entity.FindLeader(world, opponentTeamID)
 
 	if leader != nil && component.StateComponent.Get(leader).CurrentState != core.StateBroken {
-		targetPart := targetSelector.SelectPartToDamage(leader, actingEntry, battleLogic.rand)
+		targetPart := targetSelector.SelectPartToDamage(leader, actingEntry, rand)
 		if targetPart != nil {
 			slotKey := partInfoProvider.FindPartSlot(leader, targetPart)
 			if slotKey != "" {
@@ -148,7 +149,7 @@ func (s *LeaderStrategy) SelectTarget(
 		}
 	}
 	// リーダーを狙えない場合はランダムにフォールバック
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }
 
 // ChaseStrategy は最も推進力の高い脚部パーツを狙います。
@@ -157,9 +158,11 @@ type ChaseStrategy struct{}
 func (s *ChaseStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
-	targetParts := getAllTargetableParts(actingEntry, battleLogic, true)
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, partInfoProvider, true)
 	if len(targetParts) == 0 {
 		return nil, ""
 	}
@@ -183,7 +186,7 @@ func (s *ChaseStrategy) SelectTarget(
 				candidates = append(candidates, p)
 			}
 		}
-		selected := candidates[battleLogic.rand.Intn(len(candidates))]
+		selected := candidates[rand.Intn(len(candidates))]
 		return selected.Entity, selected.Slot
 	}
 
@@ -195,12 +198,12 @@ func (s *ChaseStrategy) SelectTarget(
 		}
 	}
 	if len(otherParts) > 0 {
-		selected := otherParts[battleLogic.rand.Intn(len(otherParts))]
+		selected := otherParts[rand.Intn(len(otherParts))]
 		return selected.Entity, selected.Slot
 	}
 
 	// フォールバック
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }
 
 // DuelStrategy は攻撃系腕パーツ（射撃/格闘）を優先して狙います。
@@ -209,9 +212,11 @@ type DuelStrategy struct{}
 func (s *DuelStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
-	targetParts := getAllTargetableParts(actingEntry, battleLogic, true)
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, partInfoProvider, true)
 	if len(targetParts) == 0 {
 		return nil, ""
 	}
@@ -225,12 +230,12 @@ func (s *DuelStrategy) SelectTarget(
 	}
 
 	if len(attackArmParts) > 0 {
-		selected := attackArmParts[battleLogic.rand.Intn(len(attackArmParts))]
+		selected := attackArmParts[rand.Intn(len(attackArmParts))]
 		return selected.Entity, selected.Slot
 	}
 
 	// 攻撃系腕パーツがない場合、ランダムなパーツを狙う
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }
 
 // InterceptStrategy は非攻撃系パーツ（射撃/格闘以外）を優先して狙います。
@@ -239,9 +244,11 @@ type InterceptStrategy struct{}
 func (s *InterceptStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
-	targetParts := getAllTargetableParts(actingEntry, battleLogic, true)
+	targetParts := getAllTargetableParts(actingEntry, targetSelector, partInfoProvider, true)
 	if len(targetParts) == 0 {
 		return nil, ""
 	}
@@ -254,12 +261,12 @@ func (s *InterceptStrategy) SelectTarget(
 	}
 
 	if len(nonAttackParts) > 0 {
-		selected := nonAttackParts[battleLogic.rand.Intn(len(nonAttackParts))]
+		selected := nonAttackParts[rand.Intn(len(nonAttackParts))]
 		return selected.Entity, selected.Slot
 	}
 
 	// 非攻撃系パーツがない場合、ランダムなパーツを狙う
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }
 
 // --- 履歴ベースの戦略 ---
@@ -270,7 +277,9 @@ type CounterStrategy struct{}
 func (s *CounterStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
 	if actingEntry.HasComponent(component.AIComponent) {
 		ai := component.AIComponent.Get(actingEntry)
@@ -278,9 +287,9 @@ func (s *CounterStrategy) SelectTarget(
 			lastAttacker := ai.TargetHistory.LastAttacker
 			// 攻撃者がまだ有効で、破壊されていないことを確認
 			if lastAttacker.Valid() && component.StateComponent.Get(lastAttacker).CurrentState != core.StateBroken {
-				targetPart := battleLogic.GetTargetSelector().SelectPartToDamage(lastAttacker, actingEntry, battleLogic.rand)
+				targetPart := targetSelector.SelectPartToDamage(lastAttacker, actingEntry, rand)
 				if targetPart != nil {
-					slotKey := battleLogic.GetPartInfoProvider().FindPartSlot(lastAttacker, targetPart)
+					slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
 					if slotKey != "" {
 						log.Printf("AI戦略 [カウンター]: %s が最後に攻撃してきた %s を狙います。", component.SettingsComponent.Get(actingEntry).Name, component.SettingsComponent.Get(lastAttacker).Name)
 						return lastAttacker, slotKey
@@ -291,7 +300,7 @@ func (s *CounterStrategy) SelectTarget(
 	}
 	// 履歴がない、または攻撃者が無効な場合はランダムにフォールバック
 	log.Printf("AI戦略 [カウンター]: 履歴がないため、ランダムターゲットにフォールバックします。")
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }
 
 // GuardStrategy は自チームのリーダーを最後に攻撃した敵を狙います。
@@ -300,7 +309,9 @@ type GuardStrategy struct{}
 func (s *GuardStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
 	settings := component.SettingsComponent.Get(actingEntry)
 	leader := entity.FindLeader(world, settings.Team)
@@ -311,9 +322,9 @@ func (s *GuardStrategy) SelectTarget(
 			if ai.TargetHistory.LastAttacker != nil {
 				lastAttacker := ai.TargetHistory.LastAttacker
 				if lastAttacker.Valid() && component.StateComponent.Get(lastAttacker).CurrentState != core.StateBroken {
-					targetPart := battleLogic.GetTargetSelector().SelectPartToDamage(lastAttacker, actingEntry, battleLogic.rand)
+					targetPart := targetSelector.SelectPartToDamage(lastAttacker, actingEntry, rand)
 					if targetPart != nil {
-						slotKey := battleLogic.GetPartInfoProvider().FindPartSlot(lastAttacker, targetPart)
+						slotKey := partInfoProvider.FindPartSlot(lastAttacker, targetPart)
 						if slotKey != "" {
 							log.Printf("AI戦略 [ガード]: %s がリーダーを攻撃した %s を狙います。", component.SettingsComponent.Get(actingEntry).Name, component.SettingsComponent.Get(lastAttacker).Name)
 							return lastAttacker, slotKey
@@ -325,7 +336,7 @@ func (s *GuardStrategy) SelectTarget(
 	}
 	// リーダーがいない、自分がリーダー、または履歴がない場合はランバック
 	log.Printf("AI戦略 [ガード]: 履歴がないため、ランダムターゲットにフォールバックします。")
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }
 
 // FocusStrategy は自分が最後に攻撃をヒットさせたパーツを再度狙います。
@@ -334,7 +345,9 @@ type FocusStrategy struct{}
 func (s *FocusStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
 	if actingEntry.HasComponent(component.AIComponent) {
 		ai := component.AIComponent.Get(actingEntry)
@@ -355,7 +368,7 @@ func (s *FocusStrategy) SelectTarget(
 	}
 	// 履歴がない、またはターゲットが無効な場合はランダムにフォールバック
 	log.Printf("AI戦略 [フォーカス]: 履歴がないため、ランダムターゲットにフォールバックします。")
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }
 
 // AssistStrategy は味方が最後に攻撃したパーツを狙います。
@@ -364,7 +377,9 @@ type AssistStrategy struct{}
 func (s *AssistStrategy) SelectTarget(
 	world donburi.World,
 	actingEntry *donburi.Entry,
-	battleLogic *BattleLogic,
+	targetSelector *TargetSelector,
+	partInfoProvider PartInfoProviderInterface,
+	rand *rand.Rand,
 ) (*donburi.Entry, core.PartSlotKey) {
 	actingSettings := component.SettingsComponent.Get(actingEntry)
 	var assistTarget *donburi.Entry
@@ -406,5 +421,5 @@ func (s *AssistStrategy) SelectTarget(
 
 	// 履歴がない場合はランダムにフォールバック
 	log.Printf("AI戦略 [アシスト]: 履歴がないため、ランダムターゲットにフォールバックします。")
-	return (&JokerStrategy{}).SelectTarget(world, actingEntry, battleLogic)
+	return (&JokerStrategy{}).SelectTarget(world, actingEntry, targetSelector, partInfoProvider, rand)
 }

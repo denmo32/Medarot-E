@@ -1,7 +1,6 @@
 package system
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 
@@ -19,17 +18,25 @@ import (
 )
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
+// BattleLogicを廃止し、個別のシステムへの参照を直接保持することで、依存関係を明確にしています。
 type BattleContext struct {
 	World                  donburi.World
 	Config                 *data.Config
 	GameDataManager        *data.GameDataManager
+	// Randの型を *core.Rand から正しい *rand.Rand に修正しました。
 	Rand                   *rand.Rand
 	Tick                   int
 	BattleUIManager        UIUpdater
 	ViewModelFactory       ViewModelBuilder
 	StatusEffectSystem     *StatusEffectSystem
 	PostActionEffectSystem *PostActionEffectSystem
-	BattleLogic            *BattleLogic
+
+	// BattleLogicの代わりに個別のシステムを保持
+	PartInfoProvider       PartInfoProviderInterface
+	ChargeInitiationSystem *ChargeInitiationSystem
+	TargetSelector         *TargetSelector
+	DamageCalculator       *DamageCalculator
+	HitCalculator          *HitCalculator
 }
 
 // BattleState は戦闘シーンの各状態が満たすべきインターフェースです。
@@ -52,12 +59,20 @@ func (s *GaugeProgressState) Update(ctx *BattleContext) ([]event.GameEvent, erro
 	playerInputEvents := UpdatePlayerInputSystem(ctx.World)
 	if len(playerInputEvents) > 0 {
 		gameEvents = append(gameEvents, playerInputEvents...)
+		// 状態遷移イベントを発行
 		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePlayerActionSelect})
 		return gameEvents, nil
 	}
 
 	// AIの行動選択を試みる
-	UpdateAIInputSystem(ctx.World, ctx.BattleLogic)
+	// BattleLogicの代わりに、必要なシステムを直接渡す
+	UpdateAIInputSystem(
+		ctx.World,
+		ctx.PartInfoProvider,
+		ctx.ChargeInitiationSystem,
+		ctx.TargetSelector,
+		ctx.Rand,
+	)
 
 	// アクション実行キューをチェック
 	actionQueueComp := entity.GetActionQueueComponent(ctx.World)
@@ -90,62 +105,57 @@ type PlayerActionSelectState struct {
 }
 
 func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
-	// battleUIManager := ctx.BattleUIManager // UIMediator を使用
-
-	battleLogic := ctx.BattleLogic
-
 	var gameEvents []event.GameEvent
 
 	playerActionQueue := entity.GetPlayerActionQueueComponent(ctx.World)
 
-	// 待機中のプレイヤーがいるかチェック
+	// 行動選択待ちのプレイヤーがいるかチェック
 	if len(playerActionQueue.Queue) > 0 {
 		actingEntry := playerActionQueue.Queue[0]
 
-		// まだ処理していないエントリの場合のみモーダル表示イベントを発行
+		// まだモーダルを表示していないエントリの場合のみイベントを発行
 		if s.processedEntry != actingEntry {
-			// 有効で待機状態ならモーダルを表示
 			if actingEntry.Valid() && component.StateComponent.Get(actingEntry).CurrentState == core.StateIdle {
-				actionTargetMap := make(map[core.PartSlotKey]core.ActionTarget) // core.ActionTarget を使用
-				// ViewModelFactoryを介して利用可能なパーツを取得
-				// UIMediator 経由で ViewModelFactory のメソッドを呼び出す
-				availableParts := battleLogic.GetPartInfoProvider().GetAvailableAttackParts(actingEntry) // ViewModelFactory から直接取得しない
+				actionTargetMap := make(map[core.PartSlotKey]core.ActionTarget)
+				availableParts := ctx.PartInfoProvider.GetAvailableAttackParts(actingEntry)
+
 				for _, available := range availableParts {
 					partDef := available.PartDef
 					slotKey := available.Slot
 					var targetEntity *donburi.Entry
 					var targetPartSlot core.PartSlotKey
+
+					// 射撃・介入パーツの場合、デフォルトのターゲットをAI戦略に基づいて提案
 					if partDef.Category == core.CategoryRanged || partDef.Category == core.CategoryIntervention {
 						medal := component.MedalComponent.Get(actingEntry)
 						personality, ok := PersonalityRegistry[medal.Personality]
 						if !ok {
-							personality = PersonalityRegistry["リーダー"]
+							personality = PersonalityRegistry["リーダー"] // フォールバック
 						}
-						targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(ctx.World, actingEntry, battleLogic)
+						targetEntity, targetPartSlot = personality.TargetingStrategy.SelectTarget(ctx.World, actingEntry, ctx.TargetSelector, ctx.PartInfoProvider, ctx.Rand)
 					}
+
 					var targetID donburi.Entity
 					if targetEntity != nil {
 						targetID = targetEntity.Entity()
 					}
-					actionTargetMap[slotKey] = core.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot} // core.ActionTarget を使用
+					actionTargetMap[slotKey] = core.ActionTarget{TargetEntityID: targetID, Slot: targetPartSlot}
 				}
 
-				// ViewModelの構築に必要な情報をイベントに詰めて発行する
+				// モーダル表示イベントを発行
 				gameEvents = append(gameEvents, event.ShowActionModalGameEvent{
 					ActingEntry:     actingEntry,
 					ActionTargetMap: actionTargetMap,
 				})
 				s.processedEntry = actingEntry // 処理済みとしてマーク
 			} else {
-				// 無効または待機状態でないならキューから削除
+				// 待機状態でないなど、何らかの理由で行動できない場合はキューから削除
 				playerActionQueue.Queue = playerActionQueue.Queue[1:]
-				// 次のフレームで再度Updateが呼ばれるのを待つ
 			}
 		}
-		// 既に処理済みのエントリの場合は、UIからのイベントを待つため何もしない
-
+		// 既にモーダル表示済みの場合は、UIからのイベントを待つ
 	} else {
-		// キューが空なら処理完了
+		// キューが空なら行動選択フェーズ完了
 		gameEvents = append(gameEvents, event.PlayerActionSelectFinishedGameEvent{})
 		gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateGaugeProgress})
 	}
@@ -162,21 +172,24 @@ type ActionExecutionState struct{}
 func (s *ActionExecutionState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	var gameEvents []event.GameEvent
 
+	// アクションキューからアクションを実行
+	// BattleLogicの代わりに、必要なシステムを直接渡す
 	actionResults, err := UpdateActionQueueSystem(
 		ctx.World,
-		ctx.BattleLogic.GetDamageCalculator(),
-		ctx.BattleLogic.GetHitCalculator(),
-		ctx.BattleLogic.GetTargetSelector(),
-		ctx.BattleLogic.GetPartInfoProvider(),
+		ctx.DamageCalculator,
+		ctx.HitCalculator,
+		ctx.TargetSelector,
+		ctx.PartInfoProvider,
 		ctx.Config,
 		ctx.StatusEffectSystem,
 		ctx.PostActionEffectSystem,
 		ctx.Rand,
 	)
 	if err != nil {
-		fmt.Println("アクションキューシステムの処理中にエラーが発生しました:", err)
+		log.Printf("アクションキューシステムの処理中にエラーが発生しました: %v", err)
 	}
 
+	// 実行結果があればアニメーション状態に遷移
 	for _, result := range actionResults {
 		if result.ActingEntry != nil && result.ActingEntry.Valid() {
 			gameEvents = append(gameEvents, event.ActionAnimationStartedGameEvent{AnimationData: component.ActionAnimationData{Result: result, StartTime: ctx.Tick}})
@@ -201,9 +214,9 @@ func (s *ActionExecutionState) Draw(screen *ebiten.Image) {}
 type AnimatingActionState struct{}
 
 func (s *AnimatingActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
-	var gameEvents []event.GameEvent
-	// 何もしない。状態遷移は ActionAnimationFinishedGameEvent によってトリガーされる。
-	return gameEvents, nil
+	// アニメーションの完了はUIからの ActionAnimationFinishedGameEvent によって通知されるため、
+	// この状態では何もしない。
+	return nil, nil
 }
 
 func (s *AnimatingActionState) Draw(screen *ebiten.Image) {}
@@ -215,6 +228,7 @@ type PostActionState struct{}
 func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	var gameEvents []event.GameEvent
 
+	// 直前のアクション結果を取得
 	lastActionResultEntry, ok := query.NewQuery(filter.Contains(component.LastActionResultComponent)).First(ctx.World)
 	if !ok {
 		log.Panicln("LastActionResultComponent がワールドに見つかりません。")
@@ -224,20 +238,19 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) 
 	// クールダウン開始
 	actingEntry := result.ActingEntry
 	if actingEntry != nil && actingEntry.Valid() && component.StateComponent.Get(actingEntry).CurrentState != core.StateBroken {
-		StartCooldownSystem(actingEntry, ctx.World, ctx.BattleLogic.GetPartInfoProvider())
+		StartCooldownSystem(actingEntry, ctx.World, ctx.PartInfoProvider)
 	}
 
-	// メッセージ生成とエンキューのロジックを修正。
-	// ActionResultを直接UIマネージャーに渡して、メッセージ生成を依頼します。
-	// これにより、このStateはUIメッセージの具体的な内容を知る必要がなくなります。
+	// UIマネージャーにメッセージ表示を依頼
 	ctx.BattleUIManager.DisplayMessagesForResult(result, func() {
-		// メッセージ表示後のコールバックで履歴を更新
+		// メッセージ表示後のコールバックでAIの行動履歴を更新
 		UpdateHistorySystem(ctx.World, result)
 	})
 
 	// 処理が終わったらLastActionResultをクリア
 	*result = component.ActionResult{}
 
+	// メッセージ表示状態へ遷移
 	gameEvents = append(gameEvents, event.StateChangeRequestedGameEvent{NextState: core.StateMessage})
 	return gameEvents, nil
 }
@@ -251,9 +264,7 @@ type MessageState struct{}
 func (s *MessageState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	var gameEvents []event.GameEvent
 
-	// UIMediator に Update メソッドがないため、ここでは直接呼び出さない。
-	// UIのUpdateはBattleSceneのUpdateで一括して行われる想定。
-	// メッセージ表示完了のチェックのみUIMediator経由で行う。
+	// UI側でメッセージ表示が完了したかどうかをチェック
 	if ctx.BattleUIManager.IsMessageFinished() {
 		gameEvents = append(gameEvents, event.MessageDisplayFinishedGameEvent{})
 	}
@@ -269,6 +280,7 @@ type GameOverState struct{}
 
 func (s *GameOverState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	var gameEvents []event.GameEvent
+	// クリックでタイトル画面へ
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		gameEvents = append(gameEvents, event.GoToTitleSceneGameEvent{})
 	}

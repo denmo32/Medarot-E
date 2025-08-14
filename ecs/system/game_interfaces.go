@@ -33,17 +33,21 @@ type UIUpdater interface {
 // ViewModelBuilder はViewModelを構築するインターフェースです。
 type ViewModelBuilder interface {
 	BuildInfoPanelViewModel(entry *donburi.Entry) (core.InfoPanelViewModel, error)
-	BuildBattlefieldViewModel(world donburi.World) (core.BattlefieldViewModel, error) // 引数をworldのみに変更
+	BuildBattlefieldViewModel(world donburi.World) (core.BattlefieldViewModel, error)
 	BuildActionModalViewModel(actingEntry *donburi.Entry, actionTargetMap map[core.PartSlotKey]core.ActionTarget) (core.ActionModalViewModel, error)
 	GetAvailableAttackParts(entry *donburi.Entry) []core.AvailablePart
 }
 
 // TargetingStrategy はAIのターゲット選択アルゴリズムをカプセル化するインターフェースです。
+// BattleLogicへの依存をなくし、必要なシステムを直接受け取るようにシグネチャが変更されました。
 type TargetingStrategy interface {
 	SelectTarget(
 		world donburi.World,
 		actingEntry *donburi.Entry,
-		battleLogic *BattleLogic,
+		targetSelector *TargetSelector,
+		partInfoProvider PartInfoProviderInterface,
+		// randの型を *core.Rand から正しい *rand.Rand に修正しました。
+		rand *rand.Rand,
 	) (*donburi.Entry, core.PartSlotKey)
 }
 
@@ -68,6 +72,7 @@ type TraitActionHandler interface {
 		targetSelector *TargetSelector,
 		partInfoProvider PartInfoProviderInterface,
 		actingPartDef *core.PartDefinition,
+		// randの型を *core.Rand から正しい *rand.Rand に修正しました。
 		rand *rand.Rand,
 	) component.ActionResult
 }

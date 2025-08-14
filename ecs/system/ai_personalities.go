@@ -8,11 +8,10 @@ import (
 
 // AIPartSelectionStrategyFunc はAIパーツ選択戦略の関数シグネチャを定義します。
 // 行動するAIエンティティと利用可能なパーツのリストを受け取り、選択されたパーツとそのスロットを返します。
+// BattleLogicへの依存がなくなり、純粋にパーツリストから選択するため、引数がシンプルになりました。
 type AIPartSelectionStrategyFunc func(
 	actingEntry *donburi.Entry,
 	availableParts []core.AvailablePart,
-	world donburi.World,
-	battleLogic *BattleLogic,
 ) (core.PartSlotKey, *core.PartDefinition)
 
 // AIPersonality はAIの性格に関連する戦略をカプセル化します。

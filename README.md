@@ -47,7 +47,7 @@ Scene (各画面の実装)
     *   役割: すべてのシーンが満たすべき共通のルール（インターフェース）を定義します。
     *   内容: `Update`, `Draw` メソッドの型定義や、シーン間で共有するリソース（`SharedResources`）を定義します。
 *   `scene/scene_title.go`: タイトル画面の実装。
-*   `scene/scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）と、戦闘全体の進行を管理するステートマシン（`GameState`）を保持します。UIの更新は、`Update`ループ内で`ViewModelFactory`を用いてViewModelを生成し、`BattleUIManager`に渡すことで行われます。UIからの入力はゲームイベントとして処理されます。
+*   `scene/scene_battle.go`: 戦闘シーンの統括。戦闘用のWorld（ECS）と戦闘全体の進行を管理するステートマシン（`GameState`）を保持します。また、`DamageCalculator`や`HitCalculator`などの戦闘関連システムを直接保持し、初期化する責務を持ちます。UIの更新は、`Update`ループ内で`ViewModelFactory`を用いてViewModelを生成し、`BattleUIManager`に渡すことで行われます。UIからの入力はゲームイベントとして処理されます。
 *   `scene/scene_customize.go`: メダロットのカスタマイズ画面の実装。
 *   `scene/scene_placeholder.go`: 未実装画面などのための、汎用的なプレースホルダー画面。
 
@@ -72,12 +72,8 @@ Battle Logic & AI (戦闘ルールと思考)
 戦闘のコアロジックやAIの思考ルーチンです。
 
 *   `ecs/system/battle_logic_helpers.go`: **[ロジック/ヘルパー]** 戦闘ロジック内で共通して利用されるヘルパー関数群（命中判定、ダメージ適用、ターゲット解決など）を定義します。
-
-*   `data/battle_logger.go`: **[ロジック/振る舞い]** 戦闘中のログメッセージの生成と管理を行います。
+*   `data/battle_logger.go`: **[ロジック/振る舞い]** 戦闘中の詳細な計算過程などをデバッグ目的でログ出力します。
 *   `ecs/system/game_states.go`: **[ロジック/振る舞い]** 戦闘全体の進行を制御する各`GameState`（`GaugeProgressState`, `PlayerActionSelectState`, `ActionExecutionState`など）の具体的なロジックを実装します。各状態は、戦闘フローの特定のフェーズ（ゲージ進行、行動選択、アニメーションなど）を担当します。
-*   `ecs/system/battle_logic.go`
-    *   役割: 戦闘中のコアな計算ロジック（Calculator群）をカプセル化します。
-    *   内容: 戦闘に関連するヘルパー群（`DamageCalculator`, `HitCalculator`, `TargetSelector`, `PartInfoProvider`, `ChargeInitiationSystem`）を内包する`BattleLogic`構造体を定義します。これにより、`BattleScene`からの依存関係が単純化され、戦闘ロジックが一元管理されます。具体的な計算式や選択アルゴリズムは各ヘルパー内に実装されています。
 *   `ecs/system/battle_damage_calculator.go`: **[ロジック/振る舞い]** ダメージ計算に関するロジックを扱います。
 *   `ecs/system/battle_hit_calculator.go`: **[ロジック/振る舞い]** 命中・回避・防御判定に関するロジックを扱います。
 *   `ecs/system/battle_part_info_provider.go`: **[ロジック/振る舞い]** パーツの状態や情報を取得・操作するロジックを扱います。

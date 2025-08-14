@@ -1,6 +1,8 @@
 package system
 
 import (
+	"math/rand"
+
 	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
@@ -12,8 +14,7 @@ import (
 )
 
 // UpdatePlayerInputSystem はアイドル状態のすべてのプレイヤー制御メダロットを見つけます。
-// このシステムは BattleScene に直接依存しません。
-// 行動が必要なプレイヤーエンティティのリストを返します。
+// このシステムは、行動が必要なプレイヤーエンティティのリストを含むイベントを発行します。
 func UpdatePlayerInputSystem(world donburi.World) []event.GameEvent {
 	playerActionQueue := entity.GetPlayerActionQueueComponent(world)
 	var gameEvents []event.GameEvent
@@ -27,54 +28,61 @@ func UpdatePlayerInputSystem(world donburi.World) []event.GameEvent {
 	})
 
 	if len(playerActionQueue.Queue) > 0 {
+		// 行動選択が必要なプレイヤーがいることを示すイベントを発行
 		gameEvents = append(gameEvents, event.PlayerActionRequiredGameEvent{})
-
 	}
 
 	return gameEvents
 }
 
 // UpdateAIInputSystem はAI制御のメダロットの行動選択を処理します。
-// このシステムは BattleScene に直接依存しません。
-// aiSelectAction は BattleScene ではなく、world と必要なヘルパーを引数に取るように変更されることを想定しています。
+// BattleLogicへの依存をなくし、必要なシステムを直接引数に取ります。
 func UpdateAIInputSystem(
 	world donburi.World,
-	battleLogic *BattleLogic,
+	partInfoProvider PartInfoProviderInterface,
+	chargeSystem *ChargeInitiationSystem,
+	targetSelector *TargetSelector,
+	// randの型を *core.Rand から正しい *rand.Rand に修正しました。
+	rand *rand.Rand,
 ) {
+	// 存在しない filter.In を削除し、Eachループ内でif文によるチェックを行うように修正しました。
+	// これがdonburiの標準的な値によるフィルタリング方法です。
 	query.NewQuery(
 		filter.Not(filter.Contains(component.PlayerControlComponent)), // プレイヤー制御ではないエンティティ
 	).Each(world, func(entry *donburi.Entry) {
+		// アイドル状態のエンティティのみを処理
 		if !entry.HasComponent(component.StateComponent) || component.StateComponent.Get(entry).CurrentState != core.StateIdle {
 			return
 		}
-		aiSelectAction(world, entry, battleLogic)
+		aiSelectAction(world, entry, partInfoProvider, chargeSystem, targetSelector, rand)
 	})
 }
 
 // ProcessPlayerIntent はプレイヤーの行動意図を解釈し、具体的なアクションを開始します。
-func ProcessPlayerIntent(world donburi.World, battleLogic *BattleLogic, event event.PlayerActionIntentEvent) {
-	actingEntry := world.Entry(event.ActingEntityID)
+// BattleLogicへの依存をなくし、ChargeInitiationSystemを直接受け取ります。
+func ProcessPlayerIntent(
+	world donburi.World,
+	chargeSystem *ChargeInitiationSystem,
+	intentEvent event.PlayerActionIntentEvent,
+) {
+	actingEntry := world.Entry(intentEvent.ActingEntityID)
 	if actingEntry == nil || !actingEntry.Valid() {
 		return
 	}
 
 	var targetEntry *donburi.Entry
-	if event.TargetEntityID != 0 {
-		targetEntry = world.Entry(event.TargetEntityID)
+	if intentEvent.TargetEntityID != 0 {
+		targetEntry = world.Entry(intentEvent.TargetEntityID)
 		if targetEntry == nil || !targetEntry.Valid() {
 			return // ターゲットが無効なら中断
 		}
 	}
 
-	successful := battleLogic.GetChargeInitiationSystem().StartCharge(
+	// チャージ開始システムを呼び出す
+	chargeSystem.StartCharge(
 		actingEntry,
-		event.SelectedSlotKey,
+		intentEvent.SelectedSlotKey,
 		targetEntry,
-		event.TargetPartSlot,
+		intentEvent.TargetPartSlot,
 	)
-
-	if !successful {
-		// エラーログはStartCharge内で行われるため、ここでは不要
-	}
 }
-

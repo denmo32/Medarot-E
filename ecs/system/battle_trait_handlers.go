@@ -27,9 +27,10 @@ func (h *BaseAttackHandler) Execute(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	actingPartDef *core.PartDefinition,
+	// randの型を *core.Rand から正しい *rand.Rand に修正しました。
 	rand *rand.Rand,
 ) component.ActionResult {
-	
+
 	result := initializeAttackResult(actingEntry, actingPartDef)
 
 	targetEntry, targetPartSlot := resolveAttackTarget(actingEntry, world, targetSelector, partInfoProvider, rand)
@@ -76,6 +77,7 @@ func (h *SupportTraitExecutor) Execute(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	actingPartDef *core.PartDefinition,
+	// randの型を *core.Rand から正しい *rand.Rand に修正しました。
 	rand *rand.Rand,
 ) component.ActionResult {
 	settings := component.SettingsComponent.Get(actingEntry)
@@ -139,6 +141,7 @@ func (h *ObstructTraitExecutor) Execute(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 	actingPartDef *core.PartDefinition,
+	// randの型を *core.Rand から正しい *rand.Rand に修正しました。
 	rand *rand.Rand,
 ) component.ActionResult {
 	settings := component.SettingsComponent.Get(actingEntry)
