@@ -121,7 +121,7 @@ func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.G
 	battlefieldVM, _ := bum.viewModelFactory.BuildBattlefieldViewModel(world, bum.GetBattlefieldWidgetRect(), bum.config)
 
 	// 2. Update UI with new ViewModels
-	bum.SetViewModels(infoPanelVMs, battlefieldVM)
+	bum.updateUIWithViewModels(infoPanelVMs, battlefieldVM)
 
 	// 3. Update UI logic
 	bum.ebitenui.Update()
@@ -201,8 +201,9 @@ func (bum *BattleUIManager) hideActionModal(world donburi.World) {
 	}
 }
 
-// SetViewModels は、渡されたViewModelに基づいてUI全体を更新します。
-func (bum *BattleUIManager) SetViewModels(infoPanelVMs []core.InfoPanelViewModel, battlefieldVM core.BattlefieldViewModel) {
+// updateUIWithViewModels は、渡されたViewModelに基づいてUI全体を更新します。
+// このメソッドはBattleUIManagerの内部でのみ使用されます。
+func (bum *BattleUIManager) updateUIWithViewModels(infoPanelVMs []core.InfoPanelViewModel, battlefieldVM core.BattlefieldViewModel) {
 	// Battlefield
 	bum.battlefieldWidget.SetViewModel(battlefieldVM)
 

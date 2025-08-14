@@ -27,7 +27,6 @@ type BattleScene struct {
 	playerTeam      core.TeamID
 	winner          core.TeamID
 	battleUIManager system.UIUpdater
-	// viewModelFactory system.ViewModelBuilder // Removed
 
 	gameDataManager        *data.GameDataManager
 	rand                   *rand.Rand
@@ -68,7 +67,6 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 	// Initialize UI and ViewModelFactory
 	viewModelFactory := ui.NewViewModelFactory(bs.battleLogic.GetPartInfoProvider(), bs.gameDataManager, bs.rand)
 	bs.battleUIManager = ui.NewBattleUIManager(&bs.resources.Config, bs.resources, viewModelFactory)
-	// bs.viewModelFactory = viewModelFactory // Removed
 
 	// Initialize BattleStates map
 	bs.battleStates = map[core.GameState]system.BattleState{
@@ -115,7 +113,6 @@ func (bs *BattleScene) Update() error {
 		Rand:                   bs.rand,
 		Tick:                   bs.tickCount,
 		BattleUIManager:        bs.battleUIManager,
-		ViewModelFactory:       nil, // ViewModelFactory is no longer directly used by BattleScene
 		StatusEffectSystem:     bs.statusEffectSystem,
 		PostActionEffectSystem: bs.postActionEffectSystem,
 		BattleLogic:            bs.battleLogic,

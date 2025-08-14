@@ -15,7 +15,6 @@ import (
 
 // UIUpdater はUIの更新とイベント収集のインターフェースです。
 type UIUpdater interface {
-	SetViewModels(infoPanelVMs []core.InfoPanelViewModel, battlefieldVM core.BattlefieldViewModel)
 	Update(tickCount int, world donburi.World) []event.GameEvent
 	ProcessEvents(world donburi.World, events []event.GameEvent)
 	EnqueueMessageQueue(messages []string, callback func())
