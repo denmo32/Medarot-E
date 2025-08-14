@@ -17,41 +17,37 @@ type MessageManager struct {
 	messages map[string]string
 }
 
-// NewMessageManager creates and initializes a new MessageManager.
-func NewMessageManager(filePath string) (*MessageManager, error) {
-	mm := &MessageManager{
-		messages: make(map[string]string),
-	}
-	err := mm.LoadMessages(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load messages: %w", err)
-	}
-	return mm, nil
-}
-
-// LoadMessages loads message templates from a JSON file using the resource loader.
-func (mm *MessageManager) LoadMessages(filePath string) error {
-	// resource loader を使用してメッセージデータをロード
-	// filePath は assetPaths.Messages から来るので、RawMessagesJSON を使用
-	res := r.LoadRaw(RawMessagesJSON)
-	if res.Data == nil { // res.Data が nil かどうかでチェック
-		return fmt.Errorf("could not load message resource %s: data is nil", filePath)
+// NewMessageManager は、JSON形式のメッセージデータを受け取り、新しいMessageManagerを初期化して返します。
+// ファイルパスではなくバイトデータを受け取ることで、このマネージャーはファイルI/Oやリソース管理から独立します。
+func NewMessageManager(jsonData []byte) (*MessageManager, error) {
+	if jsonData == nil {
+		return nil, fmt.Errorf("メッセージデータがnilです")
 	}
 
 	var templates []core.MessageTemplate
-	err := json.Unmarshal(res.Data, &templates)
-	if err != nil {
-		return fmt.Errorf("could not parse message data from %s: %w", filePath, err)
+	// 受け取ったJSONデータをMessageTemplateのスライスにアンマーシャルします。
+	if err := json.Unmarshal(jsonData, &templates); err != nil {
+		return nil, fmt.Errorf("メッセージデータのJSONパースに失敗しました: %w", err)
 	}
 
+	// パースしたデータをマップに格納します。
+	messages := make(map[string]string)
 	for _, t := range templates {
-		mm.messages[t.ID] = t.Text
+		messages[t.ID] = t.Text
 	}
-	log.Printf("Loaded %d messages from %s", len(mm.messages), filePath)
-	return nil
+
+	mm := &MessageManager{
+		messages: messages,
+	}
+
+	log.Printf("%d件のメッセージをロードしました。", len(mm.messages))
+	return mm, nil
 }
 
-// GetMessage retrieves a raw message template by its ID.
+// LoadMessages メソッドは不要になったため削除されました。
+// 初期化ロジックは NewMessageManager に統合されています。
+
+// GetRawMessage retrieves a raw message template by its ID.
 func (mm *MessageManager) GetRawMessage(id string) (string, bool) {
 	msg, found := mm.messages[id]
 	return msg, found

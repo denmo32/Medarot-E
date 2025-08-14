@@ -19,16 +19,12 @@ type GameDataManager struct {
 }
 
 // NewGameDataManager はGameDataManagerの新しいインスタンスを作成し、初期化します。
-func NewGameDataManager(font text.Face, assetPaths *AssetPaths) (*GameDataManager, error) {
-	messageManager, err := NewMessageManager(assetPaths.Messages)
-	if err != nil {
-		return nil, fmt.Errorf("メッセージマネージャーの初期化に失敗しました: %w", err)
-	}
-
+// この関数は、ファイルパスへの依存をなくすため、初期化済みのMessageManagerを引数で受け取るように変更されました。
+func NewGameDataManager(font text.Face, messageManager *MessageManager) (*GameDataManager, error) {
 	gdm := &GameDataManager{
 		partDefinitions:  make(map[string]*core.PartDefinition),
 		medalDefinitions: make(map[string]*core.Medal),
-		Messages:         messageManager,                          // メッセージマネージャー
+		Messages:         messageManager,                          // 渡されたメッセージマネージャーを使用
 		Font:             font,                                    // UIで使用するフォント
 		Formulas:         make(map[core.Trait]core.ActionFormula), // 初期化
 	}

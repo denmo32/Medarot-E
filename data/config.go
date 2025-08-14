@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-
-	"medarot-ebiten/core"
 )
 
 // Configは、ゲーム全体のコンフィグレーションを保持します。
 // この構造体は、game_settings.jsonから直接デシリアライズされる部分と、
-// コード内で後から設定される部分（AssetPaths, Game, Formulas）で構成されます。
+// コード内で後から設定される部分（AssetPaths, Game）で構成されます。
 type Config struct {
 	// --- Balance Settings (from game_settings.json) ---
 	// BalanceConfig構造体を廃止し、フィールドをConfig直下に配置することで、
@@ -73,7 +71,8 @@ type Config struct {
 	// 以下のフィールドはJSONファイルからロードされず、コード内で設定されます。
 	AssetPaths AssetPaths
 	Game       GameConfig
-	Formulas   map[core.Trait]core.ActionFormulaConfig
+	// Formulasフィールドを削除: この責務はGameDataManagerが担うため冗長でした。
+	// Formulas   map[core.Trait]core.ActionFormulaConfig
 }
 
 // AssetPaths は各種アセットへのパスを保持します。

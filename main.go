@@ -4,70 +4,47 @@ import (
 	"log"
 	"os"
 
-	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/scene"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
-// main関数がエントリーポイントであることは変わりません
 func main() {
-
-	config := data.LoadConfig()
+	// カレントワーキングディレクトリのログ出力
 	wd, err := os.Getwd()
 	if err != nil {
-		// ここは標準のlogをそのまま使います
 		log.Printf("カレントワーキングディレクトリの取得に失敗しました: %v", err)
 	} else {
 		log.Printf("カレントワーキングディレクトリ: %s", wd)
 	}
 
-	// Initialize audio context for the resource loader
-	audioContext := audio.NewContext(44100)
-	data.InitResources(audioContext, &config.AssetPaths) // data.InitResources は r を初期化する
-
-	normalFont, modalButtonFont, messageWindowFont, err := data.LoadFonts(&config.AssetPaths, &config)
-	if err != nil {
-		log.Fatalf("フォントの読み込みに失敗しました: %v", err)
+	// 1. すべての初期データを一括で読み込む
+	// この関数は、設定、リソース、静的データを読み込み、
+	// 関連するマネージャを初期化して返します。
+	// これにより、main関数の関心事は「ゲームの起動と実行」に集中します。
+	initialData := data.LoadInitialGameData()
+	if initialData == nil {
+		log.Fatal("ゲームデータの初期化に失敗しました。")
 	}
 
-	gameDataManager, err := data.NewGameDataManager(normalFont, &config.AssetPaths)
-	if err != nil {
-		log.Fatalf("GameDataManagerの初期化に失敗しました: %v", err)
-	}
-
-	formulas, err := data.LoadFormulas()
-	if err != nil {
-		log.Fatalf("Failed to load formulas: %v", err)
-	}
-	gameDataManager.Formulas = formulas
-
-	if err := data.LoadAllStaticGameData(gameDataManager); err != nil {
-		log.Fatalf("静的ゲームデータの読み込みに失敗しました: %v", err)
-	}
-
-	medarotLoadouts, err := data.LoadMedarotLoadouts()
-	if err != nil {
-		log.Fatalf("メダロットロードアウトの読み込みに失敗しました: %v", err)
-	}
-
-	// 共有リソースを作成
+	// 2. 共有リソースを作成
+	// LoadInitialGameDataから返された初期化済みデータを使用して、
+	// シーン間で共有されるリソースバンドルを生成します。
 	sharedResources := data.NewSharedResources(
-		&core.GameData{Medarots: medarotLoadouts},
-		config,
-		normalFont,
-		modalButtonFont,
-		messageWindowFont,
-		gameDataManager,
+		initialData.GameData,
+		initialData.Config,
+		initialData.NormalFont,
+		initialData.ModalButtonFont,
+		initialData.MessageWindowFont,
+		initialData.GameDataManager,
 	)
 
-	// シーンマネージャを作成
+	// 3. シーンマネージャを作成
 	manager := scene.NewSceneManager(sharedResources)
 
-	// Ebitenのゲームを実行します。渡すのはbamennのシーケンスです。
-	ebiten.SetWindowSize(config.UI.Screen.Width, config.UI.Screen.Height)
+	// 4. Ebitenゲームループを実行
+	ebiten.SetWindowSize(initialData.Config.UI.Screen.Width, initialData.Config.UI.Screen.Height)
 	ebiten.SetWindowTitle("Ebiten Medarot Battle (bamenn)")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 
