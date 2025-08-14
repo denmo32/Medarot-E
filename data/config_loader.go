@@ -72,7 +72,7 @@ func LoadInitialGameData() *InitialGameData {
 	// これにより、MessageManagerはファイルI/Oから独立します。
 	messageManager, err := NewMessageManager(messageBytes)
 	if err != nil {
-		log.Fatalf("MessageManagerの初期化に失敗しました: %w", err)
+		log.Fatalf("MessageManagerの初期化に失敗しました: %v", err)
 	}
 
 	// 6. GameDataManagerの初期化
