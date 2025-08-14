@@ -15,15 +15,19 @@ import (
 	resource "github.com/quasilyte/ebitengine-resource"
 )
 
-var r *resource.Loader
+// グローバル変数 r を削除しました。
+// var r *resource.Loader
 
-func InitResources(audioContext *audio.Context, assetPaths *AssetPaths) {
-	r = resource.NewLoader(audioContext)
+// NewLoader はリソースローダーを初期化してそのインスタンスを返します。
+// 以前の InitResources の役割を引き継ぎますが、グローバル変数に代入する代わりに、
+// 生成したローダーを返すことで、依存関係を明確にします。
+func NewLoader(audioContext *audio.Context, assetPaths *AssetPaths) *resource.Loader {
+	loader := resource.NewLoader(audioContext)
 
 	// In a real application, you would use something like go:embed
 	// to bundle your assets. For this example, we'll use os.ReadFile.
 	// This function will be used by the loader to get the resource data.
-	r.OpenAssetFunc = func(path string) io.ReadCloser {
+	loader.OpenAssetFunc = func(path string) io.ReadCloser {
 		// For now, we'll read from the filesystem.
 		// This can be replaced with an embedded filesystem later.
 		data, err := os.ReadFile(path)
@@ -43,47 +47,51 @@ func InitResources(audioContext *audio.Context, assetPaths *AssetPaths) {
 		RawFormulasJSON: {Path: assetPaths.FormulasJSON},
 		RawMessagesJSON: {Path: assetPaths.Messages}, // 追加
 	}
-	r.RawRegistry.Assign(rawResources)
+	loader.RawRegistry.Assign(rawResources)
 
 	// Register font resources.
 	fontResources := map[resource.FontID]resource.FontInfo{
 		FontMPLUS1pRegular: {Path: assetPaths.Font, Size: 9}, // フォントサイズ
 	}
-	r.FontRegistry.Assign(fontResources)
+	loader.FontRegistry.Assign(fontResources)
 
 	// Register image resources.
 	imageResources := map[resource.ImageID]resource.ImageInfo{
 		ImageBattleBackground: {Path: assetPaths.Image},
 	}
-	r.ImageRegistry.Assign(imageResources)
+	loader.ImageRegistry.Assign(imageResources)
+
+	return loader
 }
 
-func LoadFonts(assetPaths *AssetPaths, config *Config) (text.Face, text.Face, text.Face, error) {
+// LoadFonts は、引数で受け取ったローダーを使用してフォントを読み込みます。
+// これにより、この関数がどのリソースローダーに依存しているかが明確になります。
+func LoadFonts(loader *resource.Loader, assetPaths *AssetPaths, config *Config) (text.Face, text.Face, text.Face, error) {
 	// ベースフォントの読み込み
-	r.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
+	loader.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
 		FontMPLUS1pRegular: {Path: assetPaths.Font, Size: 9}, // ベースフォントサイズ
 	})
-	baseFont := r.LoadFont(FontMPLUS1pRegular)
+	baseFont := loader.LoadFont(FontMPLUS1pRegular)
 	normalFont := text.NewGoXFace(baseFont.Face)
 
 	// モーダルボタン用フォントの読み込み
-	r.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
+	loader.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
 		FontModalButton: {Path: assetPaths.Font, Size: int(config.UI.ActionModal.ModalButtonFontSize)},
 	})
-	modalButtonFont := text.NewGoXFace(r.LoadFont(FontModalButton).Face)
+	modalButtonFont := text.NewGoXFace(loader.LoadFont(FontModalButton).Face)
 
 	// メッセージウィンドウ用フォントの読み込み
-	r.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
+	loader.FontRegistry.Assign(map[resource.FontID]resource.FontInfo{
 		FontMessageWindow: {Path: assetPaths.Font, Size: int(config.UI.MessageWindow.MessageWindowFontSize)},
 	})
-	messageWindowFont := text.NewGoXFace(r.LoadFont(FontMessageWindow).Face)
+	messageWindowFont := text.NewGoXFace(loader.LoadFont(FontMessageWindow).Face)
 
 	return normalFont, modalButtonFont, messageWindowFont, nil
 }
 
-// LoadFormulas loads action formulas from the JSON resource.
-func LoadFormulas() (map[core.Trait]core.ActionFormula, error) {
-	res := r.LoadRaw(RawFormulasJSON)
+// LoadFormulas は、引数で受け取ったローダーを使用して計算式をJSONリソースから読み込みます。
+func LoadFormulas(loader *resource.Loader) (map[core.Trait]core.ActionFormula, error) {
+	res := loader.LoadRaw(RawFormulasJSON)
 	var formulasConfig map[core.Trait]core.ActionFormulaConfig
 	err := json.Unmarshal(res.Data, &formulasConfig)
 	if err != nil {
@@ -103,20 +111,20 @@ func LoadFormulas() (map[core.Trait]core.ActionFormula, error) {
 	return formulas, nil
 }
 
-// LoadAllStaticGameData re-implements the original function using the resource loader.
-func LoadAllStaticGameData(gdm *GameDataManager) error {
-	if err := LoadMedals(gdm); err != nil {
+// LoadAllStaticGameData は、引数で受け取ったローダーを使用して全ての静的ゲームデータを読み込みます。
+func LoadAllStaticGameData(loader *resource.Loader, gdm *GameDataManager) error {
+	if err := LoadMedals(loader, gdm); err != nil {
 		return fmt.Errorf("failed to load medals.csv: %w", err)
 	}
-	if err := LoadParts(gdm); err != nil {
+	if err := LoadParts(loader, gdm); err != nil {
 		return fmt.Errorf("failed to load parts.csv: %w", err)
 	}
 	return nil
 }
 
-// LoadMedals loads medal definitions from the CSV resource.
-func LoadMedals(gdm *GameDataManager) error {
-	res := r.LoadRaw(RawMedalsCSV)
+// LoadMedals は、引数で受け取ったローダーを使用してメダル定義をCSVリソースから読み込みます。
+func LoadMedals(loader *resource.Loader, gdm *GameDataManager) error {
+	res := loader.LoadRaw(RawMedalsCSV)
 	reader := csv.NewReader(bytes.NewReader(res.Data))
 	_, err := reader.Read() // Skip header
 	if err != nil {
@@ -149,9 +157,9 @@ func LoadMedals(gdm *GameDataManager) error {
 	return nil
 }
 
-// LoadParts loads part definitions from the CSV resource.
-func LoadParts(gdm *GameDataManager) error {
-	res := r.LoadRaw(RawPartsCSV)
+// LoadParts は、引数で受け取ったローダーを使用してパーツ定義をCSVリソースから読み込みます。
+func LoadParts(loader *resource.Loader, gdm *GameDataManager) error {
+	res := loader.LoadRaw(RawPartsCSV)
 	reader := csv.NewReader(bytes.NewReader(res.Data))
 	reader.Read() // Skip header
 
@@ -189,9 +197,9 @@ func LoadParts(gdm *GameDataManager) error {
 	return nil
 }
 
-// LoadMedarotLoadouts loads medarot setup data from the CSV resource.
-func LoadMedarotLoadouts() ([]core.MedarotData, error) {
-	res := r.LoadRaw(RawMedarotsCSV)
+// LoadMedarotLoadouts は、引数で受け取ったローダーを使用してメダロットの構成データをCSVリソースから読み込みます。
+func LoadMedarotLoadouts(loader *resource.Loader) ([]core.MedarotData, error) {
+	res := loader.LoadRaw(RawMedarotsCSV)
 	reader := csv.NewReader(bytes.NewReader(res.Data))
 	_, err := reader.Read() // Skip header
 	if err != nil {
@@ -229,6 +237,7 @@ func LoadMedarotLoadouts() ([]core.MedarotData, error) {
 	return medarots, nil
 }
 
-func GetImage(id resource.ImageID) resource.Image {
-	return r.LoadImage(id)
+// GetImage は、引数で受け取ったローダーを使用して画像リソースを取得します。
+func GetImage(loader *resource.Loader, id resource.ImageID) resource.Image {
+	return loader.LoadImage(id)
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"medarot-ebiten/data"
 	"medarot-ebiten/scene"
@@ -11,26 +10,16 @@ import (
 )
 
 func main() {
-	// カレントワーキングディレクトリのログ出力
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Printf("カレントワーキングディレクトリの取得に失敗しました: %v", err)
-	} else {
-		log.Printf("カレントワーキングディレクトリ: %s", wd)
-	}
+	// ... (ログ出力部分は変更なし) ...
 
 	// 1. すべての初期データを一括で読み込む
-	// この関数は、設定、リソース、静的データを読み込み、
-	// 関連するマネージャを初期化して返します。
-	// これにより、main関数の関心事は「ゲームの起動と実行」に集中します。
 	initialData := data.LoadInitialGameData()
 	if initialData == nil {
 		log.Fatal("ゲームデータの初期化に失敗しました。")
 	}
 
 	// 2. 共有リソースを作成
-	// LoadInitialGameDataから返された初期化済みデータを使用して、
-	// シーン間で共有されるリソースバンドルを生成します。
+	// 【変更点】`initialData`からローダーを取り出し、`NewSharedResources`に渡します。
 	sharedResources := data.NewSharedResources(
 		initialData.GameData,
 		initialData.Config,
@@ -38,6 +27,7 @@ func main() {
 		initialData.ModalButtonFont,
 		initialData.MessageWindowFont,
 		initialData.GameDataManager,
+		initialData.Loader, // 追加
 	)
 
 	// 3. シーンマネージャを作成

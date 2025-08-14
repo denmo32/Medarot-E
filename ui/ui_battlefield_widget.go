@@ -36,8 +36,9 @@ func NewBattlefieldWidget(config *data.Config, resources *data.SharedResources) 
 		whitePixel: whiteImg,
 	}
 
-	// 背景画像を読み込み
-	bf.bgImage = data.GetImage(data.ImageBattleBackground).Data
+	// 【変更点】背景画像を読み込む際に、`resources.Loader`をGetImage関数に渡します。
+	// これにより、コンパイルエラーが解消されます。
+	bf.bgImage = data.GetImage(resources.Loader, data.ImageBattleBackground).Data
 
 	// カスタム描画用のGraphicウィジェットを作成
 	bf.customWidget = widget.NewGraphic(
