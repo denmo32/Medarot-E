@@ -36,14 +36,16 @@ func (hc *HitCalculator) CalculateHit(attacker, target *donburi.Entry, partDef *
 	evasion := hc.partInfoProvider.GetEvasionRate(target)
 
 	// 命中確率 = 基準値 + (成功度 - 回避度)
-	chance := hc.config.Balance.Hit.BaseChance + (successRate - evasion)
+	// config.Balance.Hit を config.Hit に変更
+	chance := hc.config.Hit.BaseChance + (successRate - evasion)
 
 	// 確率の上下限を適用
-	if chance < hc.config.Balance.Hit.MinChance {
-		chance = hc.config.Balance.Hit.MinChance
+	// config.Balance.Hit を config.Hit に変更
+	if chance < hc.config.Hit.MinChance {
+		chance = hc.config.Hit.MinChance
 	}
-	if chance > hc.config.Balance.Hit.MaxChance {
-		chance = hc.config.Balance.Hit.MaxChance
+	if chance > hc.config.Hit.MaxChance {
+		chance = hc.config.Hit.MaxChance
 	}
 
 	roll := hc.rand.Intn(100)
@@ -60,14 +62,16 @@ func (hc *HitCalculator) CalculateDefense(attacker, target *donburi.Entry, actin
 	defenseRate := hc.partInfoProvider.GetDefenseRate(target)
 
 	// 防御成功確率 = 基準値 + (防御度 - 成功度)
-	chance := hc.config.Balance.Defense.BaseChance + (defenseRate - successRate)
+	// config.Balance.Defense を config.Defense に変更
+	chance := hc.config.Defense.BaseChance + (defenseRate - successRate)
 
 	// 確率の上下限を適用
-	if chance < hc.config.Balance.Defense.MinChance {
-		chance = hc.config.Balance.Defense.MinChance
+	// config.Balance.Defense を config.Defense に変更
+	if chance < hc.config.Defense.MinChance {
+		chance = hc.config.Defense.MinChance
 	}
-	if chance > hc.config.Balance.Defense.MaxChance {
-		chance = hc.config.Balance.Defense.MaxChance
+	if chance > hc.config.Defense.MaxChance {
+		chance = hc.config.Defense.MaxChance
 	}
 
 	roll := hc.rand.Intn(100)

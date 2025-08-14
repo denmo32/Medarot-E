@@ -251,9 +251,10 @@ func (pip *PartInfoProvider) CalculateGaugeDuration(baseSeconds float64, entry *
 		}
 	}
 
-	balanceConfig := &pip.config.Balance
-	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.Time.PropulsionEffectRate)
-	totalTicks := (baseSeconds * 60.0) / (balanceConfig.Time.GameSpeedMultiplier * propulsionFactor)
+	// config.Balance.Time を config.Time に変更
+	balanceConfig := &pip.config.Time
+	propulsionFactor := 1.0 + (float64(propulsion) * balanceConfig.PropulsionEffectRate)
+	totalTicks := (baseSeconds * 60.0) / (balanceConfig.GameSpeedMultiplier * propulsionFactor)
 
 	if totalTicks < 1 {
 		return 1

@@ -27,11 +27,6 @@ func NewDamageCalculator(world donburi.World, config *data.Config, pip PartInfoP
 	return &DamageCalculator{world: world, config: config, partInfoProvider: pip, gameDataManager: gdm, rand: r, logger: logger}
 }
 
-// SetPartInfoProvider は PartInfoProvider の依存性を設定します。 // 削除
-// func (dc *DamageCalculator) SetPartInfoProvider(pip *PartInfoProvider) {
-// 	dc.partInfoProvider = pip
-// }
-
 // CalculateDamage はActionFormulaに基づいてダメージを計算します。
 func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, actingPartDef *core.PartDefinition, selectedPartKey core.PartSlotKey) (int, bool) {
 	// 1. 計算式の取得
@@ -54,11 +49,13 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 
 	// クリティカル判定
 	isCritical := false
-	criticalChance := dc.config.Balance.Damage.Critical.BaseChance + (successRate * dc.config.Balance.Damage.Critical.SuccessRateFactor) + formula.CriticalRateBonus
+	// config.Balance.Damage を config.Damage に変更
+	criticalChance := dc.config.Damage.Critical.BaseChance + (successRate * dc.config.Damage.Critical.SuccessRateFactor) + formula.CriticalRateBonus
 
 	// クリティカル率の上下限を適用
-	criticalChance = math.Max(criticalChance, dc.config.Balance.Damage.Critical.MinChance)
-	criticalChance = math.Min(criticalChance, dc.config.Balance.Damage.Critical.MaxChance)
+	// config.Balance.Damage を config.Damage に変更
+	criticalChance = math.Max(criticalChance, dc.config.Damage.Critical.MinChance)
+	criticalChance = math.Min(criticalChance, dc.config.Damage.Critical.MaxChance)
 
 	if dc.rand.Intn(100) < int(criticalChance) {
 		isCritical = true
@@ -68,7 +65,8 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 	}
 
 	// 5. 最終ダメージ計算
-	damage := (successRate-evasion)/dc.config.Balance.Damage.DamageAdjustmentFactor + power
+	// config.Balance.Damage を config.Damage に変更
+	damage := (successRate-evasion)/dc.config.Damage.DamageAdjustmentFactor + power
 	// 乱数(±10%)
 	randomFactor := 1.0 + (dc.rand.Float64()*0.2 - 0.1)
 	damage *= randomFactor
@@ -77,13 +75,12 @@ func (dc *DamageCalculator) CalculateDamage(attacker, target *donburi.Entry, act
 		damage = 1
 	}
 
+	// config.Balance.Damage を config.Damage に変更
 	log.Printf("ダメージ計算 (%s): (%.1f - %.1f) / %.1f + %.1f * %.2f = %d (Crit: %t)",
-		formula.ID, successRate, evasion, dc.config.Balance.Damage.DamageAdjustmentFactor, power, randomFactor, int(damage), isCritical)
+		formula.ID, successRate, evasion, dc.config.Damage.DamageAdjustmentFactor, power, randomFactor, int(damage), isCritical)
 
 	return int(damage), isCritical
 }
-
-
 
 // CalculateReducedDamage は防御成功時のダメージを計算します。
 func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEntry *donburi.Entry) int {
@@ -96,5 +93,3 @@ func (dc *DamageCalculator) CalculateReducedDamage(originalDamage int, targetEnt
 	log.Printf("防御成功！ ダメージ軽減: %d -> %d (脚部パーツ防御力: %d)", originalDamage, reducedDamage, int(defenseValue))
 	return reducedDamage
 }
-
-

@@ -262,13 +262,14 @@ func updateSingleInfoPanel(ui *infoPanelUI, vm core.InfoPanelViewModel, config *
 		partUI.targetHP = float64(partVM.CurrentArmor)
 
 		// 現在表示されているHPを目標HPに近づける
+		// config.Balance.HPAnimationSpeed を config.HPAnimationSpeed に変更
 		if partUI.displayedHP < partUI.targetHP {
-			partUI.displayedHP += config.Balance.HPAnimationSpeed
+			partUI.displayedHP += config.HPAnimationSpeed
 			if partUI.displayedHP > partUI.targetHP {
 				partUI.displayedHP = partUI.targetHP
 			}
 		} else if partUI.displayedHP > partUI.targetHP {
-			partUI.displayedHP -= config.Balance.HPAnimationSpeed
+			partUI.displayedHP -= config.HPAnimationSpeed
 			if partUI.displayedHP < partUI.targetHP {
 				partUI.displayedHP = partUI.targetHP
 			}

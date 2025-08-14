@@ -2,123 +2,35 @@ package data
 
 import (
 	"encoding/json"
-	"fmt" // fmtパッケージを追加
+	"fmt"
 	"image/color"
 	"io/ioutil"
 	"log"
-
-	"medarot-ebiten/core"
 )
 
-// GameSettings は game_settings.json の構造を定義します。
-type GameSettings struct {
-	Time struct {
-		PropulsionEffectRate float64
-		GameSpeedMultiplier  float64
-	}
-	HPAnimationSpeed float64
-	Factors          struct {
-		AccuracyStabilityFactor      float64
-		EvasionStabilityFactor       float64
-		DefenseStabilityFactor       float64
-		PowerStabilityFactor         float64
-		MeleeAccuracyMobilityFactor  float64
-		BerserkPowerPropulsionFactor float64
-	}
-	Effects struct {
-		Melee struct {
-			DefenseRateDebuff float64
-			CriticalRateBonus int
-		}
-		Berserk struct {
-			DefenseRateDebuff float64
-			EvasionRateDebuff float64
-		}
-		Shoot struct{}
-		Aim   struct {
-			EvasionRateDebuff float64
-			CriticalRateBonus int
-		}
-	}
-	Damage struct {
-		CriticalMultiplier     float64
-		MedalSkillFactor       int
-		DamageAdjustmentFactor float64
-		Critical               struct {
-			BaseChance        float64
-			SuccessRateFactor float64
-			MinChance         float64
-			MaxChance         float64
-		}
-	}
-	Hit struct {
-		BaseChance float64
-		MinChance  float64
-		MaxChance  float64
-	}
-	Defense struct {
-		BaseChance float64
-		MinChance  float64
-		MaxChance  float64
-	}
-	Formulas map[core.Trait]core.ActionFormulaConfig
-	UI       struct {
-		Screen struct {
-			Width  int
-			Height int
-		}
-		Battlefield struct {
-			Height                       float32
-			Team1HomeX                   float32
-			Team2HomeX                   float32
-			Team1ExecutionLineX          float32
-			Team2ExecutionLineX          float32
-			IconRadius                   float32
-			HomeMarkerRadius             float32
-			LineWidth                    float32
-			MedarotVerticalSpacingFactor float32
-			TargetIndicator              struct {
-				Width  float32
-				Height float32
-			}
-		}
-		InfoPanel struct {
-			Padding           int
-			BlockWidth        float32
-			BlockHeight       float32
-			PartHPGaugeWidth  float32
-			PartHPGaugeHeight float32
-		}
-		ActionModal struct {
-			ButtonWidth         float32
-			ButtonHeight        float32
-			ButtonSpacing       int
-			ModalButtonFontSize float64 // 追加
-		}
-		MessageWindow struct { // 追加
-			MessageWindowFontSize float64 // 追加
-		}
-		Colors struct {
-			White      string
-			Red        string
-			Blue       string
-			Yellow     string
-			Gray       string
-			Team1      string
-			Team2      string
-			Leader     string
-			Broken     string
-			HP         string
-			HPCritical string
-			Background string
-			Black      string
-		}
-	}
+// JSONColors は game_settings.json の "UI.Colors" セクションを
+// デシリアライズするための中間構造体です。16進数文字列として色を読み込みます。
+type JSONColors struct {
+	White      string `json:"White"`
+	Red        string `json:"Red"`
+	Blue       string `json:"Blue"`
+	Yellow     string `json:"Yellow"`
+	Gray       string `json:"Gray"`
+	Team1      string `json:"Team1"`
+	Team2      string `json:"Team2"`
+	Leader     string `json:"Leader"`
+	Broken     string `json:"Broken"`
+	HP         string `json:"HP"`
+	HPCritical string `json:"HPCritical"`
+	Background string `json:"Background"`
+	Black      string `json:"Black"`
 }
 
+// LoadConfig は設定ファイルを読み込み、初期化済みのConfig構造体を返します。
+// 中間構造体を廃止し、JSONから直接Config構造体にデシリアライズすることで、
+// 冗長な手動コピー処理を排除し、コードを簡潔で保守しやすくしています。
 func LoadConfig() Config {
-	// game_settings.json から設定をロード
-	var gameSettings GameSettings
+	// アセットパスを一元管理
 	assetPaths := AssetPaths{
 		GameSettings: "assets/configs/game_settings.json",
 		Messages:     "assets/texts/messages.json",
@@ -130,129 +42,60 @@ func LoadConfig() Config {
 		Image:        "assets/images/Gemini_Generated_Image_hojkprhojkprhojk.png",
 	}
 
+	// game_settings.json をファイルから読み込み
 	jsonFile, err := ioutil.ReadFile(assetPaths.GameSettings)
 	if err != nil {
 		log.Fatalf("Error reading game_settings.json: %v", err)
 	}
-	err = json.Unmarshal(jsonFile, &gameSettings)
+
+	// 手順1: JSONデータをConfig構造体に直接アンマーシャルします。
+	// UI.Colorsは型が異なるため、この時点では設定されません。
+	var cfg Config
+	err = json.Unmarshal(jsonFile, &cfg)
 	if err != nil {
-		log.Fatalf("Error unmarshalling game_settings.json: %v", err)
+		log.Fatalf("Error unmarshalling game_settings.json into Config: %v", err)
 	}
 
-	cfg := Config{
-		Balance: BalanceConfig{
-			Time:             gameSettings.Time,
-			HPAnimationSpeed: gameSettings.HPAnimationSpeed,
-			Factors:          gameSettings.Factors,
-			Effects:          gameSettings.Effects,
-			Damage:           gameSettings.Damage,
-			Hit:              gameSettings.Hit,
-			Defense:          gameSettings.Defense,
-			Formulas:         gameSettings.Formulas,
-		},
-		AssetPaths: assetPaths,
-		UI: UIConfig{
-			Screen: struct {
-				Width  int
-				Height int
-			}{
-				Width:  gameSettings.UI.Screen.Width,
-				Height: gameSettings.UI.Screen.Height,
-			},
-			Battlefield: struct {
-				Height                       float32
-				Team1HomeX                   float32
-				Team2HomeX                   float32
-				Team1ExecutionLineX          float32
-				Team2ExecutionLineX          float32
-				IconRadius                   float32
-				HomeMarkerRadius             float32
-				LineWidth                    float32
-				MedarotVerticalSpacingFactor float32
-				TargetIndicator              struct {
-					Width  float32
-					Height float32
-				}
-			}{
-				Height:                       gameSettings.UI.Battlefield.Height,
-				Team1HomeX:                   gameSettings.UI.Battlefield.Team1HomeX,
-				Team2HomeX:                   gameSettings.UI.Battlefield.Team2HomeX,
-				Team1ExecutionLineX:          gameSettings.UI.Battlefield.Team1ExecutionLineX,
-				Team2ExecutionLineX:          gameSettings.UI.Battlefield.Team2ExecutionLineX,
-				IconRadius:                   gameSettings.UI.Battlefield.IconRadius,
-				HomeMarkerRadius:             gameSettings.UI.Battlefield.HomeMarkerRadius,
-				LineWidth:                    gameSettings.UI.Battlefield.LineWidth,
-				MedarotVerticalSpacingFactor: gameSettings.UI.Battlefield.MedarotVerticalSpacingFactor,
-				TargetIndicator: struct {
-					Width  float32
-					Height float32
-				}{
-					Width:  gameSettings.UI.Battlefield.TargetIndicator.Width,
-					Height: gameSettings.UI.Battlefield.TargetIndicator.Height,
-				},
-			},
-			InfoPanel: struct {
-				Padding           int
-				BlockWidth        float32
-				BlockHeight       float32
-				PartHPGaugeWidth  float32
-				PartHPGaugeHeight float32
-			}{
-				Padding:           gameSettings.UI.InfoPanel.Padding,
-				BlockWidth:        gameSettings.UI.InfoPanel.BlockWidth,
-				BlockHeight:       gameSettings.UI.InfoPanel.BlockHeight,
-				PartHPGaugeWidth:  gameSettings.UI.InfoPanel.PartHPGaugeWidth,
-				PartHPGaugeHeight: gameSettings.UI.InfoPanel.PartHPGaugeHeight,
-			},
-			ActionModal: struct {
-				ButtonWidth         float32
-				ButtonHeight        float32
-				ButtonSpacing       int
-				ModalButtonFontSize float64
-			}{
-				ButtonWidth:         gameSettings.UI.ActionModal.ButtonWidth,
-				ButtonHeight:        gameSettings.UI.ActionModal.ButtonHeight,
-				ButtonSpacing:       gameSettings.UI.ActionModal.ButtonSpacing,
-				ModalButtonFontSize: gameSettings.UI.ActionModal.ModalButtonFontSize,
-			},
-			MessageWindow: struct {
-				MessageWindowFontSize float64
-			}{
-				MessageWindowFontSize: gameSettings.UI.MessageWindow.MessageWindowFontSize,
-			},
-			Colors: struct {
-				White      color.Color
-				Red        color.Color
-				Blue       color.Color
-				Yellow     color.Color
-				Gray       color.Color
-				Team1      color.Color
-				Team2      color.Color
-				Leader     color.Color
-				Broken     color.Color
-				HP         color.Color
-				HPCritical color.Color
-				Background color.Color
-				Black      color.Color
-			}{
-				White:      parseHexColor(gameSettings.UI.Colors.White),
-				Red:        parseHexColor(gameSettings.UI.Colors.Red),
-				Blue:       parseHexColor(gameSettings.UI.Colors.Blue),
-				Yellow:     parseHexColor(gameSettings.UI.Colors.Yellow),
-				Gray:       parseHexColor(gameSettings.UI.Colors.Gray),
-				Team1:      parseHexColor(gameSettings.UI.Colors.Team1),
-				Team2:      parseHexColor(gameSettings.UI.Colors.Team2),
-				Leader:     parseHexColor(gameSettings.UI.Colors.Leader),
-				Broken:     parseHexColor(gameSettings.UI.Colors.Broken),
-				HP:         parseHexColor(gameSettings.UI.Colors.HP),
-				HPCritical: parseHexColor(gameSettings.UI.Colors.HPCritical),
-				Background: parseHexColor(gameSettings.UI.Colors.Background),
-				Black:      parseHexColor(gameSettings.UI.Colors.Black),
-			},
-		},
+	// 手順2: 色設定(文字列)をデコードするための中間構造体に再度アンマーシャルします。
+	var tempColors struct {
+		UI struct {
+			Colors JSONColors `json:"Colors"`
+		} `json:"UI"`
 	}
+	err = json.Unmarshal(jsonFile, &tempColors)
+	if err != nil {
+		log.Fatalf("Error unmarshalling game_settings.json for colors: %v", err)
+	}
+
+	// 手順3: 文字列からパースした色データを、メインのConfig構造体に設定します。
+	cfg.UI.Colors = parseJSONColors(tempColors.UI.Colors)
+
+	// 手順4: JSONファイルには含まれない、コード側で定義する値を設定します。
+	cfg.AssetPaths = assetPaths
+	// GameConfigのRandomSeedなどは必要に応じてここで設定できます。
+	// 例: cfg.Game.RandomSeed = time.Now().UnixNano()
 
 	return cfg
+}
+
+// parseJSONColors はJSONColors構造体（16進数文字列）から
+// ParsedColors構造体（color.Color）に変換するヘルパー関数です。
+func parseJSONColors(jc JSONColors) ParsedColors {
+	return ParsedColors{
+		White:      parseHexColor(jc.White),
+		Red:        parseHexColor(jc.Red),
+		Blue:       parseHexColor(jc.Blue),
+		Yellow:     parseHexColor(jc.Yellow),
+		Gray:       parseHexColor(jc.Gray),
+		Team1:      parseHexColor(jc.Team1),
+		Team2:      parseHexColor(jc.Team2),
+		Leader:     parseHexColor(jc.Leader),
+		Broken:     parseHexColor(jc.Broken),
+		HP:         parseHexColor(jc.HP),
+		HPCritical: parseHexColor(jc.HPCritical),
+		Background: parseHexColor(jc.Background),
+		Black:      parseHexColor(jc.Black),
+	}
 }
 
 // parseHexColor は16進数文字列からcolor.Colorをパースします。
@@ -262,7 +105,7 @@ func parseHexColor(s string) color.Color {
 		_, err := fmt.Sscanf(s, "%02x%02x%02x", &r, &g, &b)
 		if err != nil {
 			log.Printf("Failed to parse hex color %s: %v", s, err)
-			return color.White // エラー時はデフォルト色
+			return color.White // エラー時はデフォルト色として白を返す
 		}
 	}
 	return color.RGBA{R: r, G: g, B: b, A: 255}
