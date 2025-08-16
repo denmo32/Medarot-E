@@ -77,6 +77,17 @@ func NewTitleScene(res *data.SharedResources, manager *SceneManager) *TitleScene
 	)
 	panel.AddChild(customizeButton)
 
+	mapButton := widget.NewButton(
+		widget.ButtonOpts.Image(buttonImage),
+		widget.ButtonOpts.Text("2D Map", res.Font, buttonTextColor),
+		widget.ButtonOpts.TextPadding(widget.NewInsetsSimple(10)),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			// マネージャ経由でシーン遷移を依頼
+			t.manager.GoToMapScene()
+		}),
+	)
+	panel.AddChild(mapButton)
+
 	t.ui = &ebitenui.UI{Container: rootContainer}
 	return t
 }

@@ -48,6 +48,10 @@ func (m *SceneManager) newCustomizeScene() (Scene, error) {
 	return NewCustomizeScene(m.resources, m), nil
 }
 
+func (m *SceneManager) newMapScene() (Scene, error) {
+	return NewMapScene(m.resources, m)
+}
+
 // GoTo... メソッド群は、各シーンから呼び出され、指定されたシーンに遷移させます
 
 func (m *SceneManager) GoToTitleScene() {
@@ -72,6 +76,15 @@ func (m *SceneManager) GoToCustomizeScene() {
 	scene, err := m.newCustomizeScene()
 	if err != nil {
 		log.Printf("カスタマイズシーンへの切り替えに失敗しました: %v", err)
+		return
+	}
+	m.Sequence.Switch(scene)
+}
+
+func (m *SceneManager) GoToMapScene() {
+	scene, err := m.newMapScene()
+	if err != nil {
+		log.Printf("マップシーンへの切り替えに失敗しました: %v", err)
 		return
 	}
 	m.Sequence.Switch(scene)
