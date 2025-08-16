@@ -27,7 +27,7 @@ func performHitCheck(actingEntry, targetEntry *donburi.Entry, actingPartDef *cor
 	return hitCalculator.CalculateHit(actingEntry, targetEntry, actingPartDef, selectedPartKey)
 }
 
-// applyDamageAndDefense はダメージを適用し、防御処理を行います。
+// applyDamageAndDefense はダメージ計算と防御判定のロジックをカプセル化します。
 func applyDamageAndDefense(
 	result *component.ActionResult,
 	actingEntry *donburi.Entry,
@@ -38,34 +38,39 @@ func applyDamageAndDefense(
 	targetSelector *TargetSelector,
 	partInfoProvider PartInfoProviderInterface,
 ) {
+	// 1. 防御に使用するパーツを選択
 	defendingPartInst := targetSelector.SelectDefensePart(result.TargetEntry)
+	var isDefended bool
 
-	// 防御パーツが存在する場合にのみ防御判定を行う
+	// 2. 防御判定
 	if defendingPartInst != nil {
 		defendingPartDef, _ := partInfoProvider.GetGameDataManager().GetPartDefinition(defendingPartInst.DefinitionID)
-		// 【修正点】CalculateDefenseに防御パーツの定義を渡すように修正。
-		// これにより、battle_hit_calculator.goのシグネチャ変更に追従します。
-		if hitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey, defendingPartDef) {
-			result.ActionIsDefended = true
-			result.DefendingPartType = string(defendingPartDef.Type)
-			result.ActualHitPartSlot = partInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
-
-			finalDamage := damageCalculator.CalculateReducedDamage(result.OriginalDamage, result.TargetEntry)
-			result.DamageDealt = finalDamage
-			result.DamageToApply = finalDamage
-			result.TargetPartInstance = defendingPartInst
-			return // 防御成功時はここで処理を終了
-		}
+		isDefended = hitCalculator.CalculateDefense(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey, defendingPartDef)
+		result.ActionIsDefended = isDefended
+		result.DefendingPartType = string(defendingPartDef.Type)
+	} else {
+		isDefended = false
+		result.ActionIsDefended = false
 	}
 
-	// 防御失敗、または防御パーツがなかった場合の処理
-	result.ActionIsDefended = false
-	intendedTargetPartInstance := component.PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
-	result.DamageDealt = result.OriginalDamage
-	result.ActualHitPartSlot = result.TargetPartSlot
+	// 3. ダメージ計算
+	// 防御の成否を引数に渡し、計算式を切り替える
+	damage, isCritical := damageCalculator.CalculateDamage(actingEntry, result.TargetEntry, actingPartDef, selectedPartKey, isDefended)
+	result.IsCritical = isCritical
+	result.OriginalDamage = damage // 計算後のダメージをOriginalDamageとして記録（UI表示用）
+	result.DamageDealt = damage
+	result.DamageToApply = damage
 
-	result.DamageToApply = result.OriginalDamage
-	result.TargetPartInstance = intendedTargetPartInstance
+	// 4. 実際にダメージを受けるパーツを決定
+	if isDefended {
+		// 防御成功時は防御パーツがダメージを受ける
+		result.ActualHitPartSlot = partInfoProvider.FindPartSlot(result.TargetEntry, defendingPartInst)
+		result.TargetPartInstance = defendingPartInst
+	} else {
+		// 防御失敗時は元々狙われたパーツがダメージを受ける
+		result.ActualHitPartSlot = result.TargetPartSlot
+		result.TargetPartInstance = component.PartsComponent.Get(result.TargetEntry).Map[result.TargetPartSlot]
+	}
 }
 
 // finalizeActionResult は ActionResult を最終化します。

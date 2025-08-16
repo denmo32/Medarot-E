@@ -54,10 +54,7 @@ func (h *BaseAttackHandler) Execute(
 		return result
 	}
 
-	damage, isCritical := damageCalculator.CalculateDamage(actingEntry, targetEntry, actingPartDef, intent.SelectedPartKey)
-	result.IsCritical = isCritical
-	result.OriginalDamage = damage
-
+	// ダメージ計算と防御判定をヘルパー関数に集約
 	applyDamageAndDefense(&result, actingEntry, actingPartDef, intent.SelectedPartKey, damageCalculator, hitCalculator, targetSelector, partInfoProvider)
 
 	finalizeActionResult(&result, partInfoProvider)

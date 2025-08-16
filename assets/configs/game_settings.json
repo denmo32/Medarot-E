@@ -30,7 +30,7 @@
   "Damage": {
     "CriticalMultiplier": 1.5,
     "MedalSkillFactor": 2,
-    "DamageAdjustmentFactor": 10.0,
+    "DamageAdjustmentFactor": 4.0,
     "Critical": {
       "BaseChance": 5.0,
       "SuccessRateFactor": 0.5,
@@ -39,12 +39,12 @@
     }
   },
   "Hit": {
-    "BaseChance": 50.0,
+    "BaseChance": 75.0,
     "MinChance": 5.0,
     "MaxChance": 95.0
   },
   "Defense": {
-    "BaseChance": 10.0,
+    "BaseChance": 25.0,
     "MinChance": 5.0,
     "MaxChance": 95.0
   },

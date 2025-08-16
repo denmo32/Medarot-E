@@ -104,6 +104,10 @@ type PlayerActionSelectState struct {
 	processedEntry *donburi.Entry
 }
 
+func (s *PlayerActionSelectState) Reset() {
+	s.processedEntry = nil
+}
+
 func (s *PlayerActionSelectState) Update(ctx *BattleContext) ([]event.GameEvent, error) {
 	var gameEvents []event.GameEvent
 

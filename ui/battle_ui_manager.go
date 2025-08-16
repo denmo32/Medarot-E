@@ -348,14 +348,19 @@ func (bum *BattleUIManager) buildActionLogMessages(result *component.ActionResul
 					"actual_damage":     result.DamageDealt,
 				}))
 			} else {
+				// 通常の防御成功メッセージ
 				messages = append(messages, messageManager.FormatMessage("action_defend", map[string]interface{}{
 					"defending_part_type": result.DefendingPartType,
 				}))
+				// 防御成功に続けて、軽減されたダメージ量を表示
+				messages = append(messages, messageManager.FormatMessage("action_damage", map[string]interface{}{
+					"defender_name":    result.DefenderName,
+					"target_part_type": result.DefendingPartType, // ダメージを受けたのは防御パーツ
+					"damage":           result.DamageDealt,
+				}))
 			}
-		}
-
-		// ダメージメッセージ
-		if result.DamageDealt > 0 && !result.ActionIsDefended { // 防御成功時は専用メッセージでダメージを表示するため重複を避ける
+		} else if result.DamageDealt > 0 {
+			// 防御が発生しなかった場合の通常のダメージメッセージ
 			messages = append(messages, messageManager.FormatMessage("action_damage", map[string]interface{}{
 				"defender_name":    result.DefenderName,
 				"target_part_type": result.TargetPartType,

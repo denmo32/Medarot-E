@@ -186,6 +186,9 @@ func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.G
 		switch e := evt.(type) {
 		case event.PlayerActionRequiredGameEvent:
 			// プレイヤーの行動選択が必要になったので、対応する状態へ遷移
+			if pss, ok := bs.battleStates[core.StatePlayerActionSelect].(*system.PlayerActionSelectState); ok {
+				pss.Reset()
+			}
 			stateChangeEvents = append(stateChangeEvents, event.StateChangeRequestedGameEvent{NextState: core.StatePlayerActionSelect})
 		case event.PlayerActionIntentEvent:
 			// プレイヤーの行動意図を処理
