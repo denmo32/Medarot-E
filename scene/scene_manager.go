@@ -52,6 +52,10 @@ func (m *SceneManager) newMapScene() (Scene, error) {
 	return NewMapScene(m.resources, m)
 }
 
+func (m *SceneManager) newBalanceTestScene() (Scene, error) {
+	return NewBalanceTestScene(m.resources, m)
+}
+
 // GoTo... メソッド群は、各シーンから呼び出され、指定されたシーンに遷移させます
 
 func (m *SceneManager) GoToTitleScene() {
@@ -85,6 +89,15 @@ func (m *SceneManager) GoToMapScene() {
 	scene, err := m.newMapScene()
 	if err != nil {
 		log.Printf("マップシーンへの切り替えに失敗しました: %v", err)
+		return
+	}
+	m.Sequence.Switch(scene)
+}
+
+func (m *SceneManager) GoToBalanceTestScene() {
+	scene, err := m.newBalanceTestScene()
+	if err != nil {
+		log.Printf("バランス調整シーンへの切り替えに失敗しました: %v", err)
 		return
 	}
 	m.Sequence.Switch(scene)

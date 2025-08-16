@@ -9,7 +9,7 @@
     "SuccessRateBonuses": [
       {
         "SourceParam": "Stability",
-        "Multiplier": 1.0
+        "Multiplier": 1.25
       }
     ],
     "PowerBonuses": [],
@@ -17,7 +17,7 @@
     "UserDebuffs": [
       {
         "Type": "Evasion",
-        "Multiplier": 0.5
+        "Multiplier": 0
       }
     ]
   },
@@ -25,15 +25,15 @@
     "SuccessRateBonuses": [
       {
         "SourceParam": "Mobility",
-        "Multiplier": 1.0
+        "Multiplier": 1.5
       }
     ],
     "PowerBonuses": [],
-    "CriticalRateBonus": 10.0,
+    "CriticalRateBonus": 25.0,
     "UserDebuffs": [
       {
         "Type": "Defense",
-        "Multiplier": 0.5
+        "Multiplier": 0
       }
     ]
   },
@@ -41,7 +41,7 @@
     "SuccessRateBonuses": [
       {
         "SourceParam": "Mobility",
-        "Multiplier": 1.0
+        "Multiplier": 1.25
       }
     ],
     "PowerBonuses": [
@@ -54,11 +54,11 @@
     "UserDebuffs": [
       {
         "Type": "Evasion",
-        "Multiplier": 0.5
+        "Multiplier": 0
       },
       {
         "Type": "Defense",
-        "Multiplier": 0.5
+        "Multiplier": 0
       }
     ]
   },

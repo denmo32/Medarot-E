@@ -44,7 +44,7 @@
     "MaxChance": 95.0
   },
   "Defense": {
-    "BaseChance": 25.0,
+    "BaseChance": 50.0,
     "MinChance": 5.0,
     "MaxChance": 95.0
   },
