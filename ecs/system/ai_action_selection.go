@@ -6,8 +6,7 @@ import (
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // aiSelectAction はAI制御のメダロットの行動を決定します。

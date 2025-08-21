@@ -7,9 +7,7 @@ import (
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
+	"medarot-ebiten/donburi"
 )
 
 // InitializeBattleWorld は戦闘ワールドのECSエンティティを初期化します。
@@ -110,7 +108,7 @@ func CreateMedarotEntities(world donburi.World, gameData *core.GameData, playerT
 
 func FindLeader(world donburi.World, teamID core.TeamID) *donburi.Entry {
 	var leaderEntry *donburi.Entry
-	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		settings := component.SettingsComponent.Get(entry)
 		if settings.Team == teamID && settings.IsLeader {
 			leaderEntry = entry

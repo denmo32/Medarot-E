@@ -7,8 +7,7 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // ActionExecutor はアクションの実行に関するロジックをカプセル化します。

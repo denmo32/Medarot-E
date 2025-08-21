@@ -10,19 +10,18 @@ import (
 	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
 
+	"medarot-ebiten/donburi"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // BattleContext は戦闘シーンの各状態が共通して必要とする依存関係をまとめた構造体です。
 // BattleLogicを廃止し、個別のシステムへの参照を直接保持することで、依存関係を明確にしています。
 type BattleContext struct {
-	World                  donburi.World
-	Config                 *data.Config
-	GameDataManager        *data.GameDataManager
+	World           donburi.World
+	Config          *data.Config
+	GameDataManager *data.GameDataManager
 	// Randの型を *core.Rand から正しい *rand.Rand に修正しました。
 	Rand                   *rand.Rand
 	Tick                   int
@@ -233,7 +232,7 @@ func (s *PostActionState) Update(ctx *BattleContext) ([]event.GameEvent, error) 
 	var gameEvents []event.GameEvent
 
 	// 直前のアクション結果を取得
-	lastActionResultEntry, ok := query.NewQuery(filter.Contains(component.LastActionResultComponent)).First(ctx.World)
+	lastActionResultEntry, ok := donburi.NewQuery(donburi.Contains(component.LastActionResultComponent)).First(ctx.World)
 	if !ok {
 		log.Panicln("LastActionResultComponent がワールドに見つかりません。")
 	}

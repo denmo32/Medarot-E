@@ -5,11 +5,8 @@ import (
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // PartInfoProvider はパーツの状態や情報を取得・操作するロジックを担当します。
@@ -184,7 +181,7 @@ func (pip *PartInfoProvider) GetDefenseRate(entry *donburi.Entry) float64 {
 // GetTeamAccuracyBuffMultiplier は、指定されたエンティティが所属するチームの
 // 命中率バフ（スキャンなど）の中から最も効果の高いものの乗数を返します。
 func (pip *PartInfoProvider) GetTeamAccuracyBuffMultiplier(entry *donburi.Entry) float64 {
-	teamBuffsEntry, ok := query.NewQuery(filter.Contains(component.TeamBuffsComponent)).First(pip.world)
+	teamBuffsEntry, ok := donburi.NewQuery(donburi.Contains(component.TeamBuffsComponent)).First(pip.world)
 	if !ok {
 		return 1.0 // バフコンポーネントがなければ効果なし
 	}
@@ -211,7 +208,7 @@ func (pip *PartInfoProvider) GetTeamAccuracyBuffMultiplier(entry *donburi.Entry)
 
 // RemoveBuffsFromSource は、指定されたパーツインスタンスが提供していたバフをすべて削除します。
 func (pip *PartInfoProvider) RemoveBuffsFromSource(entry *donburi.Entry, partInst *core.PartInstanceData) {
-	teamBuffsEntry, ok := query.NewQuery(filter.Contains(component.TeamBuffsComponent)).First(pip.world)
+	teamBuffsEntry, ok := donburi.NewQuery(donburi.Contains(component.TeamBuffsComponent)).First(pip.world)
 	if !ok {
 		return
 	}

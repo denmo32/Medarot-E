@@ -10,13 +10,12 @@ import (
 	"medarot-ebiten/ecs/system"
 	"medarot-ebiten/event"
 
+	"medarot-ebiten/donburi"
+
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // BattleUIManager はバトルシーンのUI要素の管理と描画を担当する唯一の司令塔です。
@@ -113,7 +112,7 @@ func NewBattleUIManager(
 func (bum *BattleUIManager) Update(tickCount int, world donburi.World) []event.GameEvent {
 	// 1. Create ViewModels from current game state
 	infoPanelVMs := make([]core.InfoPanelViewModel, 0)
-	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		vm, err := bum.viewModelFactory.BuildInfoPanelViewModel(entry)
 		if err == nil {
 			infoPanelVMs = append(infoPanelVMs, vm)
@@ -178,7 +177,7 @@ func (bum *BattleUIManager) ProcessEvents(world donburi.World, events []event.Ga
 
 // showActionModal はアクションモーダルを表示します。
 func (bum *BattleUIManager) showActionModal(world donburi.World, vm *core.ActionModalViewModel) {
-	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(world)
+	uiStateEntry, ok := donburi.NewQuery(donburi.Contains(BattleUIStateComponent)).First(world)
 	if !ok {
 		log.Println("BattleUIStateComponent が見つかりません。")
 		return
@@ -194,7 +193,7 @@ func (bum *BattleUIManager) showActionModal(world donburi.World, vm *core.Action
 
 // hideActionModal はアクションモーダルを非表示にします。
 func (bum *BattleUIManager) hideActionModal(world donburi.World) {
-	uiStateEntry, ok := query.NewQuery(filter.Contains(BattleUIStateComponent)).First(world)
+	uiStateEntry, ok := donburi.NewQuery(donburi.Contains(BattleUIStateComponent)).First(world)
 	if !ok {
 		log.Println("BattleUIStateComponent が見つかりません。")
 		return

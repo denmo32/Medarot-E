@@ -8,11 +8,8 @@ import (
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // TargetSelector はターゲット選択やパーツ選択に関連するロジックを担当します。
@@ -131,7 +128,7 @@ func (ts *TargetSelector) FindClosestEnemy(actingEntry *donburi.Entry, partInfoP
 func (ts *TargetSelector) GetTargetableEnemies(actingEntry *donburi.Entry) []*donburi.Entry {
 	opponentTeamID := ts.GetOpponentTeam(actingEntry)
 	candidates := []*donburi.Entry{}
-	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.SettingsComponent)).Each(ts.world, func(entry *donburi.Entry) {
 		if component.StateComponent.Get(entry).CurrentState == core.StateBroken {
 			return
 		}

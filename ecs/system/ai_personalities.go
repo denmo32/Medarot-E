@@ -2,8 +2,7 @@ package system
 
 import (
 	"medarot-ebiten/core"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // AIPartSelectionStrategyFunc はAIパーツ選択戦略の関数シグネチャを定義します。

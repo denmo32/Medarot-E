@@ -7,11 +7,8 @@ import (
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // ViewModelPartInfoProvider は ViewModelFactory がパーツ情報にアクセスするために必要なインターフェースです。
@@ -84,12 +81,12 @@ func (f *ViewModelFactory) BuildBattlefieldViewModel(world donburi.World) (core.
 	vm := core.BattlefieldViewModel{
 		Icons: []*core.IconViewModel{},
 		DebugMode: func() bool {
-			_, ok := query.NewQuery(filter.Contains(component.DebugModeComponent)).First(world)
+			_, ok := donburi.NewQuery(donburi.Contains(component.DebugModeComponent)).First(world)
 			return ok
 		}(),
 	}
 
-	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		settings := component.SettingsComponent.Get(entry)
 		state := component.StateComponent.Get(entry)
 		gauge := component.GaugeComponent.Get(entry)

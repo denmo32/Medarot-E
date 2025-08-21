@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"medarot-ebiten/core"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // ApplyChargeStopEffect はChargeStopEffectDataを適用するロジックです。

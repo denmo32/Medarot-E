@@ -3,7 +3,7 @@ package core
 import (
 	"image/color"
 
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // --- Enums and Constants ---

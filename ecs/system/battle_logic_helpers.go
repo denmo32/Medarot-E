@@ -6,8 +6,7 @@ import (
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // validateTarget はターゲットが有効かどうかをチェックします。

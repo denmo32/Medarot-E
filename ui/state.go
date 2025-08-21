@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // BattleUIState is a singleton component that can store UI-specific data if needed.

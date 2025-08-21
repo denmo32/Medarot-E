@@ -6,7 +6,7 @@ import (
 	"medarot-ebiten/event"
 
 	"github.com/ebitenui/ebitenui/widget"
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // TargetManager は、UIコンポーネントがターゲットのハイライトを管理するために必要なメソッドを定義します。

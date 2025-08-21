@@ -17,7 +17,7 @@ import (
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // balanceTestUnit は攻撃側または防御側の単一ユニットの状態を保持します。

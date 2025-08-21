@@ -3,10 +3,7 @@ package entity
 import (
 	"log"
 
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
-
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
 )
 
@@ -17,7 +14,7 @@ func GetActionQueueComponent(world donburi.World) *component.ActionQueueComponen
 	// ActionQueueComponentType を持つエンティティをクエリします。
 	// EnsureActionQueueEntity が既にそのようなエンティティを作成済みであると想定されます。
 	// (おそらく worldStateTag も付与されているでしょう)。Get の簡潔さのため、ここではコンポーネントのみを探します。
-	entry, ok := query.NewQuery(filter.Contains(component.ActionQueueComponentType)).First(world)
+	entry, ok := donburi.NewQuery(donburi.Contains(component.ActionQueueComponentType)).First(world)
 	if !ok {
 		// これは NewBattleScene で正しく初期化されていれば起こりません。
 		log.Panicln("ActionQueueComponent がワールドに見つかりません。ワールド状態エンティティで初期化する必要があります。")
@@ -30,7 +27,7 @@ func GetActionQueueComponent(world donburi.World) *component.ActionQueueComponen
 // 存在しない場合は作成します。これは通常、セットアップ時に一度だけ呼び出されます。
 func EnsureActionQueueEntity(world donburi.World) *donburi.Entry {
 	// ActionQueueComponentType と worldStateTag の両方を持つエンティティをクエリします。
-	entry, ok := query.NewQuery(filter.And(filter.Contains(component.ActionQueueComponentType), filter.Contains(component.WorldStateTag))).First(world)
+	entry, ok := donburi.NewQuery(donburi.And(donburi.Contains(component.ActionQueueComponentType), donburi.Contains(component.WorldStateTag))).First(world)
 	if ok {
 		return entry
 	}
@@ -46,7 +43,7 @@ func EnsureActionQueueEntity(world donburi.World) *donburi.Entry {
 // GetPlayerActionQueueComponent はワールド状態エンティティから PlayerActionQueueComponentData を取得します。
 // PlayerActionQueueComponentType を持つエンティティが1つだけ存在することを期待します。
 func GetPlayerActionQueueComponent(world donburi.World) *component.PlayerActionQueueComponentData {
-	entry, ok := query.NewQuery(filter.Contains(component.PlayerActionQueueComponent)).First(world)
+	entry, ok := donburi.NewQuery(donburi.Contains(component.PlayerActionQueueComponent)).First(world)
 	if !ok {
 		log.Panicln("PlayerActionQueueComponent がワールドに見つかりません。ワールド状態エンティティで初期化する必要があります。")
 		return nil
@@ -57,7 +54,7 @@ func GetPlayerActionQueueComponent(world donburi.World) *component.PlayerActionQ
 // EnsurePlayerActionQueueEntity は PlayerActionQueueComponentType と worldStateTag を持つエンティティが存在することを保証します。
 // 存在しない場合は作成します。これは通常、セットアップ時に一度だけ呼び出されます。
 func EnsurePlayerActionQueueEntity(world donburi.World) *donburi.Entry {
-	entry, ok := query.NewQuery(filter.And(filter.Contains(component.PlayerActionQueueComponent), filter.Contains(component.WorldStateTag))).First(world)
+	entry, ok := donburi.NewQuery(donburi.And(donburi.Contains(component.PlayerActionQueueComponent), donburi.Contains(component.WorldStateTag))).First(world)
 	if ok {
 		return entry
 	}

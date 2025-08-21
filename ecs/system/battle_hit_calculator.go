@@ -6,8 +6,7 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // HitCalculator は命中・回避・防御判定に関連するロジックを担当します。

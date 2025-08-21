@@ -6,8 +6,7 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // PostActionEffectSystem は、アクション実行後の効果を処理するECSシステムです。

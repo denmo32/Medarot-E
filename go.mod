@@ -7,7 +7,6 @@ require (
 	github.com/hajimehoshi/ebiten/v2 v2.8.8
 	github.com/noppikinatta/bamenn v0.2.0
 	github.com/quasilyte/ebitengine-resource v0.5.0
-	github.com/yohamta/donburi v1.15.7
 )
 
 require (

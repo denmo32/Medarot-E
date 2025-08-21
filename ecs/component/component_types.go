@@ -2,8 +2,7 @@ package component
 
 import (
 	"medarot-ebiten/core"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // --- Componentの型定義 ---

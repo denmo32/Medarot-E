@@ -6,11 +6,11 @@ import (
 
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/event"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/yohamta/donburi"
 )
 
 // UIUpdater はUIの更新とイベント収集のインターフェースです。

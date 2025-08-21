@@ -6,12 +6,9 @@ import (
 	"sort"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // getAllTargetablePartsは、指定された攻撃者がターゲットにできる全てのパーツを取得します。
@@ -386,7 +383,7 @@ func (s *AssistStrategy) SelectTarget(
 	var assistSlot core.PartSlotKey
 
 	// 自分以外の味方をクエリ
-	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(teammate *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.SettingsComponent)).Each(world, func(teammate *donburi.Entry) {
 		if assistTarget != nil { // 既にターゲットを見つけていれば終了
 			return
 		}

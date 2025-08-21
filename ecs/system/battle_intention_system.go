@@ -4,13 +4,10 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
 	"medarot-ebiten/event"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // UpdatePlayerInputSystem はアイドル状態のすべてのプレイヤー制御メダロットを見つけます。
@@ -21,7 +18,7 @@ func UpdatePlayerInputSystem(world donburi.World) []event.GameEvent {
 
 	// キューをクリアし、現在のアイドル状態のプレイヤーエンティティを再収集
 	playerActionQueue.Queue = make([]*donburi.Entry, 0)
-	query.NewQuery(filter.Contains(component.PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.PlayerControlComponent)).Each(world, func(entry *donburi.Entry) {
 		if component.StateComponent.Get(entry).CurrentState == core.StateIdle {
 			playerActionQueue.Queue = append(playerActionQueue.Queue, entry)
 		}
@@ -47,8 +44,8 @@ func UpdateAIInputSystem(
 ) {
 	// 存在しない filter.In を削除し、Eachループ内でif文によるチェックを行うように修正しました。
 	// これがdonburiの標準的な値によるフィルタリング方法です。
-	query.NewQuery(
-		filter.Not(filter.Contains(component.PlayerControlComponent)), // プレイヤー制御ではないエンティティ
+	donburi.NewQuery(
+		donburi.Not(donburi.Contains(component.PlayerControlComponent)), // プレイヤー制御ではないエンティティ
 	).Each(world, func(entry *donburi.Entry) {
 		// アイドル状態のエンティティのみを処理
 		if !entry.HasComponent(component.StateComponent) || component.StateComponent.Get(entry).CurrentState != core.StateIdle {

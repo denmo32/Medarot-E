@@ -4,8 +4,7 @@ import (
 	"log"
 
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // UpdateHistorySystem は、アクションの結果に基づいてAIの行動履歴を更新します。

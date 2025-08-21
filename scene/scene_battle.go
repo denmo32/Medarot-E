@@ -12,10 +12,9 @@ import (
 	"medarot-ebiten/event"
 	"medarot-ebiten/ui"
 
+	"medarot-ebiten/donburi"
+
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // BattleScene は戦闘シーン全体の管理を行います。
@@ -35,7 +34,7 @@ type BattleScene struct {
 
 	// --- 依存性注入されるシステム群 ---
 	// BattleLogicの代わりに、必要なシステムを直接フィールドとして保持します。
-	gameDataManager        *data.GameDataManager
+	gameDataManager *data.GameDataManager
 	// randの型を *core.Rand から正しい *rand.Rand に修正しました。
 	rand                   *rand.Rand
 	statusEffectSystem     *system.StatusEffectSystem
@@ -103,7 +102,7 @@ func NewBattleScene(res *data.SharedResources, manager *SceneManager) *BattleSce
 }
 
 func (bs *BattleScene) SetState(newState core.GameState) {
-	gameStateEntry, ok := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
+	gameStateEntry, ok := donburi.NewQuery(donburi.Contains(component.GameStateComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("GameStateComponent がワールドに見つかりません。")
 	}
@@ -117,7 +116,7 @@ func (bs *BattleScene) Update() error {
 	uiEvents := bs.battleUIManager.Update(bs.tickCount, bs.world)
 
 	// 2. 現在のゲーム状態に対応するロジックを実行
-	gameStateEntry, _ := query.NewQuery(filter.Contains(component.GameStateComponent)).First(bs.world)
+	gameStateEntry, _ := donburi.NewQuery(donburi.Contains(component.GameStateComponent)).First(bs.world)
 	currentGameStateComp := component.GameStateComponent.Get(gameStateEntry)
 
 	// BattleContextに必要なシステムをすべて渡す
@@ -176,7 +175,7 @@ func (bs *BattleScene) Layout(outsideWidth, outsideHeight int) (int, int) {
 func (bs *BattleScene) processGameEvents(gameEvents []event.GameEvent) []event.GameEvent {
 	var stateChangeEvents []event.GameEvent
 
-	lastActionResultEntry, ok := query.NewQuery(filter.Contains(component.LastActionResultComponent)).First(bs.world)
+	lastActionResultEntry, ok := donburi.NewQuery(donburi.Contains(component.LastActionResultComponent)).First(bs.world)
 	if !ok {
 		log.Panicln("LastActionResultComponent がワールドに見つかりません。")
 	}

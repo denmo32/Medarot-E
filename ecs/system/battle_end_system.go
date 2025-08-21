@@ -4,12 +4,9 @@ import (
 	"fmt"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // CheckGameEndSystem はゲーム終了条件をチェックします。
@@ -21,7 +18,7 @@ func CheckGameEndSystem(world donburi.World) core.GameEndResult {
 	team1FuncCount := 0
 	team2FuncCount := 0
 
-	query.NewQuery(filter.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.SettingsComponent)).Each(world, func(entry *donburi.Entry) {
 		if component.StateComponent.Get(entry).CurrentState != core.StateBroken {
 			if component.SettingsComponent.Get(entry).Team == core.Team1 {
 				team1FuncCount++

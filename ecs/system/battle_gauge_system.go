@@ -4,17 +4,14 @@ import (
 	"log"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // UpdateGaugeSystem はチャージとクールダウンのゲージ進行を更新します。
 func UpdateGaugeSystem(world donburi.World) {
-	query.NewQuery(filter.Contains(component.StateComponent)).Each(world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.StateComponent)).Each(world, func(entry *donburi.Entry) {
 		state := component.StateComponent.Get(entry)
 
 		// チャージ中またはクールダウン中のエンティティのみを処理

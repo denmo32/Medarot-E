@@ -4,11 +4,8 @@ import (
 	"log"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // StatusEffectSystem はステータス効果の適用、更新、解除を管理します。
@@ -60,7 +57,7 @@ func (s *StatusEffectSystem) Remove(entry *donburi.Entry, effectData interface{}
 
 // Update は毎フレーム呼び出され、効果の持続時間を更新し、期限切れの効果を削除します。
 func (s *StatusEffectSystem) Update() {
-	query.NewQuery(filter.Contains(component.ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
+	donburi.NewQuery(donburi.Contains(component.ActiveEffectsComponent)).Each(s.world, func(entry *donburi.Entry) {
 		activeEffects := component.ActiveEffectsComponent.Get(entry)
 		effectsToRemove := make([]*core.ActiveStatusEffectData, 0)
 

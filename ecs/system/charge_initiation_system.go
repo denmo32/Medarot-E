@@ -4,8 +4,7 @@ import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // ChargeInitiationSystem はチャージ状態の開始ロジックをカプセル化します。

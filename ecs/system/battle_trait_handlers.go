@@ -5,11 +5,8 @@ import (
 	"math/rand"
 
 	"medarot-ebiten/core"
+	"medarot-ebiten/donburi"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
-	"github.com/yohamta/donburi/filter"
-	"github.com/yohamta/donburi/query"
 )
 
 // --- BaseAttackHandler ---
@@ -88,7 +85,7 @@ func (h *SupportTraitExecutor) Execute(
 		WeaponType:     actingPartDef.WeaponType,
 	}
 
-	teamBuffsEntry, ok := query.NewQuery(filter.Contains(component.TeamBuffsComponent)).First(world)
+	teamBuffsEntry, ok := donburi.NewQuery(donburi.Contains(component.TeamBuffsComponent)).First(world)
 	if !ok {
 		log.Println("エラー: TeamBuffsComponent がワールドに見つかりません。")
 		result.ActionDidHit = false

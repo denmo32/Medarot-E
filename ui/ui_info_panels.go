@@ -11,7 +11,7 @@ import (
 
 	eimage "github.com/ebitenui/ebitenui/image"
 	"github.com/ebitenui/ebitenui/widget"
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 type infoPanelUI struct {

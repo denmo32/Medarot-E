@@ -9,8 +9,7 @@ import (
 	"medarot-ebiten/data"
 	"medarot-ebiten/ecs/component"
 	"medarot-ebiten/ecs/entity"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // UpdateActionQueueSystem は行動準備完了キューを処理します。

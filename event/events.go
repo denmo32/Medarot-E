@@ -3,8 +3,7 @@ package event
 import (
 	"medarot-ebiten/core"
 	"medarot-ebiten/ecs/component"
-
-	"github.com/yohamta/donburi"
+	"medarot-ebiten/donburi"
 )
 
 // GameEvent は、ゲームロジックから発行されるすべてのイベントを示すマーカーインターフェースです。
